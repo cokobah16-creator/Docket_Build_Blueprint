@@ -109,7 +109,8 @@ adds Stripe for USD now. Superset; nothing to reconcile.
 
 - **Confirm Daily over Google Meet**, or accept the out-of-portal Meet
   experience. This gates slice 2.
-- **Confirm Supabase Storage over Google Drive**, or accept dual permission
-  systems. This gates slice 3. (A middle path exists: Storage as the system
-  of record, with a nightly export to a firm Drive for partner comfort.)
+- ~~Confirm Supabase Storage over Google Drive~~ — **DECIDED**: Supabase
+  Storage is the system of record; the optional one-way Drive mirror is
+  specced as a Phase 2 add-on, off by default. See
+  [decision 0001](decisions/0001-document-storage.md). Slice 3 is unblocked.
 - The blueprint §14 list still stands: domain, entities, VAT, prices.
