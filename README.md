@@ -82,3 +82,7 @@ Firm domain · platform entity · which entities hold Paystack and Stripe · VAT
 ## Next slices
 
 See `BUILD_PROMPTS.md` — six self-contained prompts for Claude Code that build the Next.js app on top of this foundation, in the order of the 90-day plan.
+
+## Source requirements
+
+The original Klinique requirements document lives at `docs/Attorneys_Klinique_Partner_Platform_Prompt.md`; `docs/MASTER_PROMPT_RECONCILIATION.md` maps it section by section onto this architecture — what's covered, what the blueprint deliberately changed (Daily vs Google Meet, Supabase Storage vs Google Drive), and the partnership-pooling additions (originating/handling partner attribution, migration 5; Firm Overview scheduled into slice 4).

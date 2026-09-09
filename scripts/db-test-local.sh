@@ -7,11 +7,9 @@ DB=docket_test
 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -q -c "drop database if exists $DB" -c "create database $DB"
 TEST_URL="${DATABASE_URL%/*}/$DB"
 cd "$(dirname "$0")/../supabase"
-psql "$TEST_URL" -v ON_ERROR_STOP=1 -q \
-  -f tests/00_local_auth_stub.sql \
-  -f migrations/20260909000001_schema.sql \
-  -f migrations/20260909000002_rls.sql \
-  -f migrations/20260909000003_functions.sql \
-  -f migrations/20260909000004_supabase_storage_cron.sql \
-  -f seed.sql
+psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f tests/00_local_auth_stub.sql
+for f in migrations/*.sql; do
+  psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f "$f"
+done
+psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f seed.sql
 psql "$TEST_URL" -v ON_ERROR_STOP=1 -q -f tests/10_rls_isolation.sql 2>&1 | sed -E 's/^psql:[^:]+:[0-9]+: //' | grep -E 'PASS|FAIL|ERROR|ALL CHECKS'
