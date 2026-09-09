@@ -1,118 +1,56 @@
-// Paystack webhook (NGN). Trust chain, in order:
-//   1. HMAC-SHA512 of the raw body with PAYSTACK_SECRET_KEY must match
-//      x-paystack-signature.
-//   2. The transaction is RE-VERIFIED against the Paystack API — the webhook
-//      body is never the source of truth for money.
-//   3. record_payment() (service role, idempotent on the Paystack reference)
-//      settles the invoice and confirms the appointment.
-//
-// Point Paystack's webhook URL at /functions/v1/paystack-webhook.
+// Supabase Edge Function — Paystack webhook.
+// 1) verify the HMAC-SHA512 signature  2) re-verify the transaction with Paystack  3) record_payment() with the service role.
+// The frontend callback page never marks anything paid; this function is the only path to a paid invoice.
+import { createClient } from 'npm:@supabase/supabase-js@2';
 
-import {
-  hmacHex,
-  json,
-  logWebhookEvent,
-  rpc,
-  timingSafeEqual,
-} from "../_shared/db.ts";
+const PAYSTACK_SECRET = Deno.env.get('PAYSTACK_SECRET_KEY')!;
 
-const PAYSTACK_SECRET_KEY = Deno.env.get("PAYSTACK_SECRET_KEY")!;
-
-interface PaystackVerification {
-  status: boolean;
-  data?: {
-    status: string;
-    reference: string;
-    amount: number; // kobo
-    currency: string;
-    metadata?: { invoice_number?: string } | null;
-  };
+async function hmacSha512Hex(secret: string, body: string) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-512' }, false, ['sign']);
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  return [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
 Deno.serve(async (req) => {
-  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
-
+  if (req.method !== 'POST') return new Response('method not allowed', { status: 405 });
   const body = await req.text();
-  const signature = req.headers.get("x-paystack-signature") ?? "";
-  const expected = await hmacHex("SHA-512", PAYSTACK_SECRET_KEY, body);
-  if (!timingSafeEqual(signature, expected)) {
-    await logWebhookEvent({
-      provider: "paystack",
-      status: "failed",
-      error: "bad signature",
-    });
-    return json({ error: "invalid signature" }, 401);
+  const signature = req.headers.get('x-paystack-signature') ?? '';
+  if (!signature || signature !== (await hmacSha512Hex(PAYSTACK_SECRET, body))) {
+    return new Response('invalid signature', { status: 401 });
   }
 
-  let event: { event?: string; data?: { reference?: string } };
-  try {
-    event = JSON.parse(body);
-  } catch {
-    return json({ error: "invalid JSON" }, 400);
+  const event = JSON.parse(body);
+  if (event.event !== 'charge.success') return new Response('ignored', { status: 200 });
+
+  // never trust the webhook body for money — ask Paystack directly
+  const reference: string = event.data.reference;
+  const vres = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+    headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` },
+  });
+  const v = await vres.json();
+  if (!vres.ok || !v.status || v.data?.status !== 'success') {
+    console.warn('paystack verify did not confirm', reference, v?.message);
+    return new Response('not verified', { status: 200 });
+  }
+  const invoiceNumber = v.data.metadata?.invoice_number;
+  if (!invoiceNumber) {
+    console.error('charge without invoice_number metadata', reference);
+    return new Response('missing invoice metadata', { status: 200 });
   }
 
-  const reference = event.data?.reference;
-  if (event.event !== "charge.success" || !reference) {
-    await logWebhookEvent({
-      provider: "paystack",
-      event_type: event.event,
-      provider_ref: reference,
-      status: "ignored",
-    });
-    return json({ received: true });
+  const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const { data, error } = await supabase.rpc('record_payment', {
+    p_provider: 'paystack',
+    p_provider_ref: reference,
+    p_invoice_number: invoiceNumber,
+    p_amount_minor: v.data.amount,
+    p_currency: v.data.currency,
+    p_status: 'succeeded',
+    p_raw: { id: v.data.id, channel: v.data.channel, paid_at: v.data.paid_at, customer: v.data.customer?.email },
+  });
+  if (error) {
+    console.error('record_payment failed', error);
+    return new Response('db error', { status: 500 });   // non-2xx makes Paystack retry
   }
-
-  try {
-    // Re-verify with Paystack before touching the database.
-    const verifyRes = await fetch(
-      `https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`,
-      { headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}` } },
-    );
-    const verification = (await verifyRes.json()) as PaystackVerification;
-    const tx = verification.data;
-    if (!verifyRes.ok || !verification.status || !tx) {
-      throw new Error(`verification failed: ${verifyRes.status}`);
-    }
-
-    const invoiceNumber = tx.metadata?.invoice_number;
-    if (!invoiceNumber) {
-      await logWebhookEvent({
-        provider: "paystack",
-        event_type: event.event,
-        provider_ref: reference,
-        status: "ignored",
-        error: "no invoice_number in metadata",
-      });
-      return json({ received: true });
-    }
-
-    const result = await rpc("record_payment", {
-      p_provider: "paystack",
-      p_ref: tx.reference,
-      p_invoice_number: invoiceNumber,
-      p_amount: tx.amount / 100, // kobo → naira
-      p_currency: tx.currency,
-      p_status: tx.status, // 'success' when verified paid
-      p_raw: tx,
-    });
-
-    await logWebhookEvent({
-      provider: "paystack",
-      event_type: event.event,
-      provider_ref: reference,
-      status: "processed",
-      payload: result,
-    });
-    return json({ received: true });
-  } catch (err) {
-    await logWebhookEvent({
-      provider: "paystack",
-      event_type: event.event,
-      provider_ref: reference,
-      status: "failed",
-      error: String(err),
-    });
-    // 500 so Paystack retries.
-    return json({ error: "processing failed" }, 500);
-  }
+  return new Response(JSON.stringify(data), { status: 200, headers: { 'Content-Type': 'application/json' } });
 });

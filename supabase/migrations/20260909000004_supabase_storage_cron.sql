@@ -1,133 +1,72 @@
--- Docket slice 0 — migration 4: Supabase Storage buckets/policies and pg_cron
--- schedules. Both are guarded so the migration is a no-op on plain Postgres
--- (the local test runner) and does the real work on Supabase.
+-- Docket v0.2 — Supabase-hosted pieces: storage buckets/policies and pg_cron schedules.
+-- Guarded so the file is a no-op on a plain Postgres (local tests).
 
--- ---------------------------------------------------------------------------
--- Storage. Three private buckets; every object path carries the tenant:
---   documents/{firm_id}/{document_id}/{version_id}.{ext}
---   intake-uploads/{firm_id}/{client_id}/…
---   firm-assets/{firm_id}/…
--- ---------------------------------------------------------------------------
-
-do $storage$
+-- ---------------------------------------------------------------- storage
+do $$
 begin
-  if not exists (select 1 from pg_namespace where nspname = 'storage') then
-    raise notice 'storage schema not present — skipping bucket setup (plain Postgres)';
+  if to_regclass('storage.buckets') is null then
+    raise notice 'storage schema not present — skipping bucket setup';
     return;
   end if;
 
-  insert into storage.buckets (id, name, public, file_size_limit)
+  insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
   values
-    ('documents',      'documents',      false, 52428800),  -- 50 MB
-    ('intake-uploads', 'intake-uploads', false, 26214400),  -- 25 MB
-    ('firm-assets',    'firm-assets',    false, 10485760)   -- 10 MB
+    ('firm-assets',    'firm-assets',    true,  5242880,
+      array['image/png','image/jpeg','image/webp','image/svg+xml']),
+    ('documents',      'documents',      false, 26214400,
+      array['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'image/jpeg','image/png','image/heic']),
+    ('intake-uploads', 'intake-uploads', false, 26214400,
+      array['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'image/jpeg','image/png','image/heic'])
   on conflict (id) do nothing;
 
-  -- documents: a version file is visible iff the document_versions row is
-  -- visible to the caller (public RLS decides — single source of truth).
+  -- object paths: documents/{firm_id}/{document_id}/{version_id}.{ext}
+  --               intake-uploads/{firm_id}/{client_id}/{filename}
+  --               firm-assets/{firm_id}/...
   execute $p$
-    create policy docket_documents_read on storage.objects for select
-    using (
-      bucket_id = 'documents'
-      and exists (select 1 from public.document_versions v where v.storage_path = name)
-    )
+    create policy "documents: read if you can access the document" on storage.objects for select
+      using (bucket_id = 'documents'
+             and public.can_access_document(((storage.foldername(name))[2])::uuid))
   $p$;
   execute $p$
-    create policy docket_documents_write on storage.objects for insert
-    with check (
-      bucket_id = 'documents'
-      and (
-        app.can_write(((storage.foldername(name))[1])::uuid)
-        or exists (
-          select 1 from public.documents d
-          where d.id = ((storage.foldername(name))[2])::uuid
-            and d.owner_id = auth.uid()
-        )
-      )
-    )
+    create policy "documents: upload if you can access the document" on storage.objects for insert
+      with check (bucket_id = 'documents'
+                  and public.can_access_document(((storage.foldername(name))[2])::uuid))
   $p$;
   execute $p$
-    create policy docket_documents_delete on storage.objects for delete
-    using (
-      bucket_id = 'documents'
-      and app.can_write(((storage.foldername(name))[1])::uuid)
-    )
+    create policy "intake: client writes own folder" on storage.objects for insert
+      with check (bucket_id = 'intake-uploads' and (storage.foldername(name))[2] = auth.uid()::text)
   $p$;
+  execute $p$
+    create policy "intake: client or firm staff reads" on storage.objects for select
+      using (bucket_id = 'intake-uploads'
+             and ((storage.foldername(name))[2] = auth.uid()::text
+                  or public.is_firm_member(((storage.foldername(name))[1])::uuid)))
+  $p$;
+  execute $p$
+    create policy "firm assets: public read" on storage.objects for select using (bucket_id = 'firm-assets')
+  $p$;
+  execute $p$
+    create policy "firm assets: admin write" on storage.objects for all
+      using (bucket_id = 'firm-assets' and public.admin_w(((storage.foldername(name))[1])::uuid))
+      with check (bucket_id = 'firm-assets' and public.admin_w(((storage.foldername(name))[1])::uuid))
+  $p$;
+end $$;
 
-  -- intake-uploads/{firm}/{client}/…: the client writes and reads their own
-  -- folder; firm staff read the firm's folder.
-  execute $p$
-    create policy docket_intake_write on storage.objects for insert
-    with check (
-      bucket_id = 'intake-uploads'
-      and ((storage.foldername(name))[2])::uuid = auth.uid()
-    )
-  $p$;
-  execute $p$
-    create policy docket_intake_read on storage.objects for select
-    using (
-      bucket_id = 'intake-uploads'
-      and (
-        ((storage.foldername(name))[2])::uuid = auth.uid()
-        or app.is_staff(((storage.foldername(name))[1])::uuid)
-      )
-    )
-  $p$;
-
-  -- firm-assets: public read (logos, lawyer photos on the public site),
-  -- MFA-verified staff write.
-  execute $p$
-    create policy docket_assets_read on storage.objects for select
-    to anon, authenticated
-    using (bucket_id = 'firm-assets')
-  $p$;
-  execute $p$
-    create policy docket_assets_write on storage.objects for insert
-    with check (
-      bucket_id = 'firm-assets'
-      and app.can_write(((storage.foldername(name))[1])::uuid)
-    )
-  $p$;
-  execute $p$
-    create policy docket_assets_update on storage.objects for update
-    using (
-      bucket_id = 'firm-assets'
-      and app.can_write(((storage.foldername(name))[1])::uuid)
-    )
-  $p$;
-  execute $p$
-    create policy docket_assets_delete on storage.objects for delete
-    using (
-      bucket_id = 'firm-assets'
-      and app.can_write(((storage.foldername(name))[1])::uuid)
-    )
-  $p$;
-end
-$storage$;
-
--- ---------------------------------------------------------------------------
--- pg_cron. dispatch-notifications is driven separately by a Supabase Cron
--- HTTP schedule (see README); these are the pure-SQL jobs.
--- ---------------------------------------------------------------------------
-
-do $cron$
+-- ---------------------------------------------------------------- cron
+do $$
 begin
-  begin
-    create extension if not exists pg_cron;
-  exception when others then
-    raise notice 'pg_cron unavailable — skipping job schedules (plain Postgres)';
+  if not exists (select 1 from pg_available_extensions where name = 'pg_cron') then
+    raise notice 'pg_cron not available — skipping schedules';
     return;
-  end;
-
-  perform cron.schedule('docket-release-expired-holds', '* * * * *',
-    $$select public.release_expired_holds()$$);
-  perform cron.schedule('docket-appointment-reminders', '*/5 * * * *',
-    $$select public.enqueue_appointment_reminders()$$);
-  perform cron.schedule('docket-court-reminders', '0 * * * *',
-    $$select public.enqueue_court_reminders()$$);
-  perform cron.schedule('docket-overdue-invoices', '17 * * * *',
-    $$select public.mark_overdue_invoices()$$);
-  perform cron.schedule('docket-sittings-digest', '0 7 * * *',
-    $$select public.digest_sittings_without_update()$$);
-end
-$cron$;
+  end if;
+  execute 'create extension if not exists pg_cron';
+  perform cron.schedule('docket-release-holds',      '* * * * *',   $j$ select public.release_expired_holds() $j$);
+  perform cron.schedule('docket-appointment-remind', '* * * * *',   $j$ select public.enqueue_appointment_reminders() $j$);
+  perform cron.schedule('docket-court-remind',       '0 7 * * *',   $j$ select public.enqueue_court_reminders() $j$);
+  perform cron.schedule('docket-overdue-invoices',   '15 0 * * *',  $j$ select public.mark_overdue_invoices() $j$);
+  perform cron.schedule('docket-sitting-digest',     '30 7 * * *',  $j$ select public.digest_sittings_without_update() $j$);
+  -- the notification dispatcher is an Edge Function; schedule it from the Supabase dashboard
+  -- (Integrations → Cron → HTTP request to /functions/v1/dispatch-notifications every minute)
+end $$;

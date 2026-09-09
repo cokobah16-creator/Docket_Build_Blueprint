@@ -1,646 +1,513 @@
--- Docket slice 0 — migration 1: types, tables, indexes, grants, firm_public view.
--- Implements blueprint §5 (data model). All timestamps are UTC (timestamptz);
--- rendering in the viewer's timezone is a frontend concern (profiles.timezone).
+-- Docket v0.2 — schema
+-- Multi-tenant: every firm-owned row carries firm_id. Attorneys Klinique is tenant #1 (see seed.sql).
 
-create extension if not exists pgcrypto;
 create extension if not exists btree_gist;
+create extension if not exists pgcrypto;
 
--- Internal schema for security helpers and functions that must not be exposed
--- through PostgREST.
-create schema if not exists app;
+-- ---------------------------------------------------------------- types
+create type firm_role          as enum ('owner','admin','lawyer','staff');
+create type party_role         as enum ('client','contact','co_counsel');
+create type client_type        as enum ('individual','business');
+create type matter_type        as enum ('litigation','property','corporate','estate','family','employment',
+                                        'debt_recovery','ip','regulatory','immigration','advisory','other');
+create type update_kind        as enum ('court_sitting','consultation','appointment','filing','correspondence',
+                                        'milestone','fee','document','note','status_change');
+create type visibility         as enum ('client','internal');
+create type currency           as enum ('NGN','USD');
+create type appointment_status as enum ('pending','awaiting_payment','confirmed','rescheduled','completed','cancelled','no_show');
+create type appointment_mode   as enum ('virtual','in_person','phone');
+create type invoice_status     as enum ('draft','issued','partially_paid','paid','overdue','cancelled');
+create type payment_status     as enum ('initiated','succeeded','failed','refunded');
+create type channel            as enum ('in_app','push','email','sms','whatsapp');
+create type consent_kind       as enum ('terms','privacy','engagement','recording','marketing');
+create type content_kind       as enum ('page','faq','article','announcement','testimonial');
 
--- ---------------------------------------------------------------------------
--- Enumerated types
--- ---------------------------------------------------------------------------
-
-create type public.firm_role as enum ('owner', 'admin', 'lawyer', 'staff');
-
-create type public.appointment_status as enum
-  ('held', 'confirmed', 'rescheduled', 'completed', 'cancelled', 'no_show');
-
-create type public.appointment_mode as enum ('virtual', 'in_person', 'phone');
-
-create type public.invoice_status as enum ('draft', 'issued', 'paid', 'overdue', 'void');
-
-create type public.payment_status as enum ('pending', 'paid', 'failed', 'refunded');
-
-create type public.update_visibility as enum ('client', 'internal');
-
-create type public.court_outcome as enum
-  ('hearing_held', 'adjourned', 'mention', 'judgment_delivered',
-   'ruling_delivered', 'struck_out', 'settled', 'discontinued', 'other');
-
-create type public.adjourned_instance as enum ('claimant', 'defendant', 'court', 'joint');
-
-create type public.notification_channel as enum ('in_app', 'email', 'sms', 'push', 'whatsapp');
-
-create type public.notification_status as enum ('queued', 'sending', 'sent', 'failed', 'cancelled');
-
-create type public.invite_status as enum ('pending', 'accepted', 'revoked', 'expired');
-
-create type public.task_status as enum ('open', 'done', 'cancelled');
-
-create type public.consent_type as enum ('terms', 'privacy', 'marketing');
-
-create type public.party_role as enum ('client', 'guardian', 'witness', 'opposing', 'other');
-
--- ---------------------------------------------------------------------------
--- Tenancy
--- ---------------------------------------------------------------------------
-
-create table public.firms (
-  id                uuid primary key default gen_random_uuid(),
-  slug              text not null unique check (slug ~ '^[a-z0-9][a-z0-9-]{1,62}$'),
-  name              text not null,
-  custom_domain     text unique,
-  brand             jsonb not null default '{}'::jsonb,
-  policies          jsonb not null default '{}'::jsonb,
-  vat_rate          numeric(5,2) not null default 0 check (vat_rate >= 0 and vat_rate <= 100),
-  currency          text not null default 'NGN' check (currency in ('NGN', 'USD')),
+-- ---------------------------------------------------------------- identity and tenancy
+create table profiles (
+  id                uuid primary key references auth.users on delete cascade,
+  full_name         text,
+  phone             text unique,
+  email             text unique,
+  country           text,
+  state             text,
+  address           text,
+  client_type       client_type default 'individual',
+  company_name      text,
   timezone          text not null default 'Africa/Lagos',
-  reference_prefix  text not null default 'DKT',
-  matter_counter    integer not null default 0,
-  invoice_counter   integer not null default 0,
-  is_active         boolean not null default true,
-  created_at        timestamptz not null default now(),
-  updated_at        timestamptz not null default now()
+  locale            text not null default 'en',
+  preferred_channel channel not null default 'sms',
+  created_at        timestamptz not null default now()
 );
 
-create table public.platform_admins (
-  user_id     uuid primary key references auth.users (id) on delete cascade,
-  note        text,
-  created_at  timestamptz not null default now()
-);
-
-create table public.profiles (
-  id                 uuid primary key references auth.users (id) on delete cascade,
-  full_name          text,
-  email              text,
-  phone              text,
-  timezone           text not null default 'Africa/Lagos',
-  preferred_channel  public.notification_channel not null default 'sms',
-  quiet_hours        jsonb, -- {"start":"22:00","end":"07:00"} in the profile's timezone
-  created_at         timestamptz not null default now(),
-  updated_at         timestamptz not null default now()
-);
-
-create table public.firm_members (
-  id          uuid primary key default gen_random_uuid(),
-  firm_id     uuid not null references public.firms (id) on delete cascade,
-  user_id     uuid not null references auth.users (id) on delete cascade,
-  role        public.firm_role not null default 'staff',
-  is_active   boolean not null default true,
-  created_at  timestamptz not null default now(),
-  unique (firm_id, user_id)
-);
-
-create table public.consent_records (
-  id           uuid primary key default gen_random_uuid(),
-  firm_id      uuid references public.firms (id) on delete cascade,
-  user_id      uuid not null references auth.users (id) on delete cascade,
-  consent      public.consent_type not null,
-  version      text not null,
-  granted      boolean not null default true,
-  recorded_at  timestamptz not null default now()
-);
-
--- ---------------------------------------------------------------------------
--- Catalogue: services, lawyers, availability, intake
--- ---------------------------------------------------------------------------
-
-create table public.services (
-  id                    uuid primary key default gen_random_uuid(),
-  firm_id               uuid not null references public.firms (id) on delete cascade,
-  slug                  text not null,
-  name                  text not null,
-  description           text,
-  duration_minutes      integer not null default 30 check (duration_minutes between 5 and 480),
-  price                 numeric(12,2) not null default 0 check (price >= 0),
-  currency              text not null default 'NGN' check (currency in ('NGN', 'USD')),
-  modes                 public.appointment_mode[] not null default '{virtual}',
-  allows_lawyer_choice  boolean not null default true,
-  is_active             boolean not null default false,
-  position              integer not null default 0,
-  created_at            timestamptz not null default now(),
-  updated_at            timestamptz not null default now(),
-  unique (firm_id, slug)
-);
-
-create table public.lawyer_profiles (
-  id          uuid primary key default gen_random_uuid(),
-  firm_id     uuid not null references public.firms (id) on delete cascade,
-  user_id     uuid not null references auth.users (id) on delete cascade,
-  slug        text not null,
-  title       text,
-  bio         text,
-  photo_path  text, -- storage path in firm-assets/{firm_id}/…
-  timezone    text not null default 'Africa/Lagos',
-  is_public   boolean not null default false,
-  is_bookable boolean not null default true,
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now(),
-  unique (firm_id, user_id),
-  unique (firm_id, slug)
-);
-
-create table public.availability_rules (
-  id            uuid primary key default gen_random_uuid(),
-  firm_id       uuid not null references public.firms (id) on delete cascade,
-  lawyer_id     uuid not null references public.lawyer_profiles (id) on delete cascade,
-  weekday       integer not null check (weekday between 0 and 6), -- 0 = Sunday
-  start_time    time not null,
-  end_time      time not null check (end_time > start_time),
-  breaks        jsonb not null default '[]'::jsonb, -- [{"start":"13:00","end":"14:00"}]
-  slot_minutes  integer not null default 30 check (slot_minutes between 5 and 240),
-  daily_cap     integer, -- max appointments per lawyer per day; null = unlimited
-  is_active     boolean not null default true,
-  created_at    timestamptz not null default now()
-);
-
-create table public.availability_exceptions (
-  id          uuid primary key default gen_random_uuid(),
-  firm_id     uuid not null references public.firms (id) on delete cascade,
-  lawyer_id   uuid not null references public.lawyer_profiles (id) on delete cascade,
-  on_date     date not null,
-  is_closed   boolean not null default true,
-  start_time  time, -- when not closed: override window for that date
-  end_time    time,
-  reason      text,
-  created_at  timestamptz not null default now(),
-  unique (lawyer_id, on_date)
-);
-
-create table public.intake_forms (
-  id          uuid primary key default gen_random_uuid(),
-  firm_id     uuid not null references public.firms (id) on delete cascade,
-  service_id  uuid references public.services (id) on delete set null,
-  name        text not null,
-  version     integer not null default 1,
-  schema      jsonb not null default '[]'::jsonb, -- fields: text|longtext|choice|multiple|file, show_if
-  is_active   boolean not null default true,
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
-);
-
--- ---------------------------------------------------------------------------
--- Appointments and consultations
--- ---------------------------------------------------------------------------
-
-create table public.appointments (
-  id               uuid primary key default gen_random_uuid(),
-  firm_id          uuid not null references public.firms (id) on delete cascade,
-  client_id        uuid not null references auth.users (id),
-  lawyer_id        uuid not null references public.lawyer_profiles (id),
-  service_id       uuid not null references public.services (id),
-  status           public.appointment_status not null default 'held',
-  mode             public.appointment_mode not null default 'virtual',
-  starts_at        timestamptz not null,
-  ends_at          timestamptz not null,
-  client_timezone  text not null default 'Africa/Lagos',
-  price            numeric(12,2) not null,
-  currency         text not null check (currency in ('NGN', 'USD')),
-  hold_expires_at  timestamptz,
-  cancelled_at     timestamptz,
-  cancel_reason    text,
-  created_at       timestamptz not null default now(),
-  updated_at       timestamptz not null default now(),
-  check (ends_at > starts_at),
-  -- Hard double-booking guard: one lawyer, one live appointment per time range.
-  exclude using gist (
-    lawyer_id with =,
-    tstzrange(starts_at, ends_at) with &&
-  ) where (status in ('held', 'confirmed', 'rescheduled'))
-);
-
-create table public.intake_responses (
-  id              uuid primary key default gen_random_uuid(),
-  firm_id         uuid not null references public.firms (id) on delete cascade,
-  appointment_id  uuid not null references public.appointments (id) on delete cascade,
-  form_id         uuid references public.intake_forms (id) on delete set null,
-  client_id       uuid not null references auth.users (id),
-  answers         jsonb not null default '{}'::jsonb,
-  created_at      timestamptz not null default now()
-);
-
-create table public.consultation_sessions (
-  id              uuid primary key default gen_random_uuid(),
-  firm_id         uuid not null references public.firms (id) on delete cascade,
-  appointment_id  uuid not null unique references public.appointments (id) on delete cascade,
-  provider        text not null default 'daily',
-  room_name       text not null,
-  room_url        text not null,
-  expires_at      timestamptz not null,
-  created_by      uuid references auth.users (id),
-  created_at      timestamptz not null default now()
-);
-
-create table public.consultation_notes (
-  id              uuid primary key default gen_random_uuid(),
-  firm_id         uuid not null references public.firms (id) on delete cascade,
-  appointment_id  uuid not null unique references public.appointments (id) on delete cascade,
-  summary         text,          -- client-visible
-  advice          text,          -- client-visible
-  follow_up       text,          -- client-visible
-  author_id       uuid references auth.users (id),
-  created_at      timestamptz not null default now(),
-  updated_at      timestamptz not null default now()
-);
-
-create table public.consultation_internal_notes (
-  id              uuid primary key default gen_random_uuid(),
-  firm_id         uuid not null references public.firms (id) on delete cascade,
-  appointment_id  uuid not null references public.appointments (id) on delete cascade,
-  body            text not null,
-  author_id       uuid references auth.users (id),
-  created_at      timestamptz not null default now()
-);
-
--- ---------------------------------------------------------------------------
--- Billing
--- ---------------------------------------------------------------------------
-
-create table public.matter_statuses (
-  id           uuid primary key default gen_random_uuid(),
-  firm_id      uuid not null references public.firms (id) on delete cascade,
-  key          text not null,
-  label        text not null,
-  description  text,
-  position     integer not null default 0,
-  is_terminal  boolean not null default false,
-  unique (firm_id, key)
-);
-
-create table public.matters (
-  id           uuid primary key default gen_random_uuid(),
-  firm_id      uuid not null references public.firms (id) on delete cascade,
-  reference    text not null,
-  title        text not null,
-  description  text,
-  status_id    uuid references public.matter_statuses (id),
-  court        text,
-  next_action  text,
-  opened_at    timestamptz not null default now(),
-  closed_at    timestamptz,
-  created_by   uuid references auth.users (id),
-  created_at   timestamptz not null default now(),
-  updated_at   timestamptz not null default now(),
-  unique (firm_id, reference)
-);
-
-create table public.invoices (
-  id              uuid primary key default gen_random_uuid(),
-  firm_id         uuid not null references public.firms (id) on delete cascade,
-  number          text not null,
-  client_id       uuid not null references auth.users (id),
-  matter_id       uuid references public.matters (id) on delete set null,
-  appointment_id  uuid references public.appointments (id) on delete set null,
-  status          public.invoice_status not null default 'draft',
-  currency        text not null check (currency in ('NGN', 'USD')),
-  subtotal        numeric(12,2) not null default 0,
-  vat_rate        numeric(5,2) not null default 0,
-  vat_amount      numeric(12,2) not null default 0,
-  total           numeric(12,2) not null default 0,
-  amount_paid     numeric(12,2) not null default 0,
-  due_at          timestamptz,
-  issued_at       timestamptz,
-  paid_at         timestamptz,
-  voided_at       timestamptz,
-  created_by      uuid references auth.users (id),
-  created_at      timestamptz not null default now(),
-  updated_at      timestamptz not null default now(),
-  unique (firm_id, number)
-);
-
-create table public.invoice_items (
-  id           uuid primary key default gen_random_uuid(),
-  firm_id      uuid not null references public.firms (id) on delete cascade,
-  invoice_id   uuid not null references public.invoices (id) on delete cascade,
-  description  text not null,
-  quantity     numeric(10,2) not null default 1 check (quantity > 0),
-  unit_price   numeric(12,2) not null default 0,
-  amount       numeric(12,2) not null default 0,
-  position     integer not null default 0
-);
-
-create table public.payments (
-  id            uuid primary key default gen_random_uuid(),
-  firm_id       uuid not null references public.firms (id) on delete cascade,
-  invoice_id    uuid not null references public.invoices (id),
-  provider      text not null, -- 'paystack' | 'stripe'
-  provider_ref  text not null unique,
-  amount        numeric(12,2) not null,
-  currency      text not null check (currency in ('NGN', 'USD')),
-  status        public.payment_status not null default 'pending',
-  paid_at       timestamptz,
-  raw           jsonb not null default '{}'::jsonb,
-  created_at    timestamptz not null default now()
-);
-
-create table public.webhook_events (
-  id            uuid primary key default gen_random_uuid(),
-  provider      text not null,
-  event_type    text,
-  provider_ref  text,
-  status        text not null default 'received', -- received | processed | ignored | failed
-  error         text,
-  payload       jsonb not null default '{}'::jsonb,
-  received_at   timestamptz not null default now()
-);
-
--- ---------------------------------------------------------------------------
--- Matters: parties, timeline, court diary, documents, messaging, tasks
--- ---------------------------------------------------------------------------
-
-create table public.matter_parties (
-  id          uuid primary key default gen_random_uuid(),
-  firm_id     uuid not null references public.firms (id) on delete cascade,
-  matter_id   uuid not null references public.matters (id) on delete cascade,
-  user_id     uuid not null references auth.users (id) on delete cascade,
-  role        public.party_role not null default 'client',
-  added_by    uuid references auth.users (id),
-  created_at  timestamptz not null default now(),
-  unique (matter_id, user_id)
-);
-
-create table public.matter_lawyers (
-  id          uuid primary key default gen_random_uuid(),
-  firm_id     uuid not null references public.firms (id) on delete cascade,
-  matter_id   uuid not null references public.matters (id) on delete cascade,
-  user_id     uuid not null references auth.users (id) on delete cascade,
-  is_lead     boolean not null default false,
-  created_at  timestamptz not null default now(),
-  unique (matter_id, user_id)
-);
-
-create table public.updates (
-  id           uuid primary key default gen_random_uuid(),
-  firm_id      uuid not null references public.firms (id) on delete cascade,
-  matter_id    uuid not null references public.matters (id) on delete cascade,
-  author_id    uuid references auth.users (id),
-  visibility   public.update_visibility not null default 'client',
-  kind         text not null default 'note', -- note | court_update | document | system
-  title        text not null,
-  body         text,
-  document_id  uuid, -- FK added after documents exists
-  occurred_at  timestamptz not null default now(),
-  created_at   timestamptz not null default now()
-);
-
-create table public.court_events (
+create table firms (
   id                 uuid primary key default gen_random_uuid(),
-  firm_id            uuid not null references public.firms (id) on delete cascade,
-  matter_id          uuid not null references public.matters (id) on delete cascade,
-  scheduled_at       timestamptz not null,
-  court              text,
-  purpose            text,
-  outcome            public.court_outcome,
-  adjourned_by       public.adjourned_instance,
-  outcome_update_id  uuid references public.updates (id) on delete set null,
-  created_by         uuid references auth.users (id),
+  slug               text unique not null,
+  name               text not null,
+  legal_name         text,
+  rc_number          text,
+  reference_prefix   text not null default 'DK',
+  custom_domain      text unique,
+  timezone           text not null default 'Africa/Lagos',
+  default_currency   currency not null default 'NGN',
+  vat_rate           numeric(5,2) not null default 0,
+  brand              jsonb not null default '{}',   -- logo, colours, fonts, contact, social
+  policies           jsonb not null default '{}',   -- cancellation, terms, privacy, disclaimers (versioned)
+  paystack_subaccount text,
+  stripe_account     text,
   created_at         timestamptz not null default now()
 );
 
-create table public.documents (
+create table firm_members (
+  firm_id  uuid not null references firms on delete cascade,
+  user_id  uuid not null references profiles on delete cascade,
+  role     firm_role not null,
+  primary key (firm_id, user_id)
+);
+
+create table firm_counters (               -- per-firm, per-year reference numbering
+  firm_id uuid not null references firms on delete cascade,
+  kind    text not null,
+  year    int  not null,
+  value   int  not null default 0,
+  primary key (firm_id, kind, year)
+);
+
+create table lawyer_profiles (
+  firm_id        uuid not null references firms on delete cascade,
+  user_id        uuid not null references profiles on delete cascade,
+  slug           text,
+  title          text,
+  bio            text,
+  photo_path     text,
+  practice_areas text[] not null default '{}',
+  category       text,
+  is_public      bool not null default true,
+  primary key (firm_id, user_id),
+  unique (firm_id, slug)
+);
+
+-- ---------------------------------------------------------------- catalogue and intake
+create table services (
   id                  uuid primary key default gen_random_uuid(),
-  firm_id             uuid not null references public.firms (id) on delete cascade,
-  matter_id           uuid references public.matters (id) on delete cascade,
-  appointment_id      uuid references public.appointments (id) on delete set null,
-  owner_id            uuid not null references auth.users (id),
-  title               text not null,
-  is_client_visible   boolean not null default true,
-  current_version_id  uuid, -- FK added after document_versions exists
+  firm_id             uuid not null references firms on delete cascade,
+  slug                text not null,
+  name                text not null,
+  description         text,
+  price_minor         bigint not null check (price_minor >= 0),
+  currency            currency not null default 'NGN',
+  duration_min        int not null check (duration_min > 0),
+  lawyer_category     text,
+  requires_prepayment bool not null default true,
+  virtual_available   bool not null default true,
+  is_active           bool not null default true,
+  sort                int not null default 0,
+  unique (firm_id, slug)
+);
+
+create table intake_forms (
+  id         uuid primary key default gen_random_uuid(),
+  firm_id    uuid not null references firms on delete cascade,
+  service_id uuid references services on delete set null,
+  name       text,
+  schema     jsonb not null,                -- {questions:[{key,type,label,options,required,show_if}]}
+  is_active  bool not null default true
+);
+
+create table intake_responses (
+  id             uuid primary key default gen_random_uuid(),
+  form_id        uuid references intake_forms on delete set null,
+  firm_id        uuid not null references firms on delete cascade,
+  appointment_id uuid,
+  client_id      uuid not null references profiles on delete cascade,
+  answers        jsonb not null,
+  created_at     timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------- availability and appointments
+create table availability_rules (
+  id          uuid primary key default gen_random_uuid(),
+  firm_id     uuid not null references firms on delete cascade,
+  lawyer_id   uuid not null references profiles on delete cascade,
+  weekday     smallint not null check (weekday between 0 and 6),   -- 0 = Sunday
+  start_time  time not null,
+  end_time    time not null,
+  break_start time,
+  break_end   time,
+  slot_min    int not null default 45,
+  max_per_day int not null default 6,
+  check (end_time > start_time)
+);
+
+create table availability_exceptions (
+  id           uuid primary key default gen_random_uuid(),
+  firm_id      uuid not null references firms on delete cascade,
+  lawyer_id    uuid not null references profiles on delete cascade,
+  on_date      date not null,
+  is_available bool not null default false,   -- false = blocked (whole day if no times)
+  start_time   time,
+  end_time     time,
+  reason       text
+);
+
+create table appointments (
+  id                  uuid primary key default gen_random_uuid(),
+  firm_id             uuid not null references firms on delete cascade,
+  reference           text unique not null,                       -- AK-2026-000123
+  client_id           uuid not null references profiles,
+  lawyer_id           uuid references profiles,
+  service_id          uuid references services,
+  matter_id           uuid,
+  mode                appointment_mode not null default 'virtual',
+  status              appointment_status not null default 'pending',
+  starts_at           timestamptz not null,
+  ends_at             timestamptz not null,
+  client_timezone     text,
+  fee_minor           bigint,
+  currency            currency,
+  invoice_id          uuid,
+  hold_expires_at     timestamptz,
+  reminders_sent      text[] not null default '{}',
+  cancellation_reason text,
   created_at          timestamptz not null default now(),
-  updated_at          timestamptz not null default now()
+  check (ends_at > starts_at),
+  -- a lawyer can never hold two live appointments that overlap
+  exclude using gist (lawyer_id with =, tstzrange(starts_at, ends_at) with &&)
+    where (status in ('pending','awaiting_payment','confirmed','rescheduled'))
+);
+alter table intake_responses add foreign key (appointment_id) references appointments on delete set null;
+
+create table consultation_sessions (
+  id                 uuid primary key default gen_random_uuid(),
+  firm_id            uuid not null references firms on delete cascade,
+  appointment_id     uuid not null unique references appointments on delete cascade,
+  provider           text not null default 'daily',
+  room_name          text unique,
+  room_expires_at    timestamptz,
+  client_admitted_at timestamptz,
+  started_at         timestamptz,
+  ended_at           timestamptz,
+  events             jsonb not null default '[]'
 );
 
-create table public.document_versions (
-  id            uuid primary key default gen_random_uuid(),
-  firm_id       uuid not null references public.firms (id) on delete cascade,
-  document_id   uuid not null references public.documents (id) on delete cascade,
-  version       integer not null default 1,
-  storage_path  text not null, -- documents/{firm_id}/{document_id}/{version_id}.{ext}
-  mime_type     text,
-  size_bytes    bigint,
-  uploaded_by   uuid references auth.users (id),
-  created_at    timestamptz not null default now(),
-  unique (document_id, version)
+-- client-visible notes and internal notes are separate tables so row-level security can keep them apart
+create table consultation_notes (
+  id             uuid primary key default gen_random_uuid(),
+  firm_id        uuid not null references firms on delete cascade,
+  appointment_id uuid not null unique references appointments on delete cascade,
+  matter_id      uuid,
+  lawyer_id      uuid references profiles,
+  client_summary text,
+  advice_given   text,
+  follow_up      text,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
 );
 
-alter table public.updates
-  add constraint updates_document_id_fkey
-  foreign key (document_id) references public.documents (id) on delete set null;
-
-alter table public.documents
-  add constraint documents_current_version_id_fkey
-  foreign key (current_version_id) references public.document_versions (id) on delete set null;
-
-create table public.messages (
-  id           uuid primary key default gen_random_uuid(),
-  firm_id      uuid not null references public.firms (id) on delete cascade,
-  matter_id    uuid not null references public.matters (id) on delete cascade,
-  sender_id    uuid not null references auth.users (id),
-  body         text not null,
-  document_id  uuid references public.documents (id) on delete set null,
-  created_at   timestamptz not null default now()
+create table consultation_internal_notes (
+  id             uuid primary key default gen_random_uuid(),
+  firm_id        uuid not null references firms on delete cascade,
+  appointment_id uuid not null unique references appointments on delete cascade,
+  body           text,
+  created_at     timestamptz not null default now(),
+  updated_at     timestamptz not null default now()
 );
 
-create table public.message_reads (
-  message_id  uuid not null references public.messages (id) on delete cascade,
-  user_id     uuid not null references auth.users (id) on delete cascade,
-  read_at     timestamptz not null default now(),
-  primary key (message_id, user_id)
+-- ---------------------------------------------------------------- matters
+create table matter_statuses (
+  id          uuid primary key default gen_random_uuid(),
+  firm_id     uuid not null references firms on delete cascade,
+  key         text not null,
+  label       text not null,
+  colour      text,
+  sort        int not null default 0,
+  is_terminal bool not null default false,
+  unique (firm_id, key)
 );
 
-create table public.invites (
-  id           uuid primary key default gen_random_uuid(),
-  firm_id      uuid not null references public.firms (id) on delete cascade,
-  matter_id    uuid references public.matters (id) on delete cascade,
-  role         public.party_role not null default 'client',
-  phone        text,
-  email        text,
-  token        text not null unique default encode(gen_random_bytes(24), 'hex'),
-  status       public.invite_status not null default 'pending',
-  invited_by   uuid references auth.users (id),
-  expires_at   timestamptz not null default now() + interval '14 days',
-  accepted_by  uuid references auth.users (id),
-  accepted_at  timestamptz,
-  created_at   timestamptz not null default now(),
-  check (phone is not null or email is not null)
-);
-
-create table public.tasks (
-  id            uuid primary key default gen_random_uuid(),
-  firm_id       uuid not null references public.firms (id) on delete cascade,
-  matter_id     uuid references public.matters (id) on delete cascade,
-  title         text not null,
-  assignee_id   uuid references auth.users (id),
-  due_at        timestamptz,
-  status        public.task_status not null default 'open',
-  created_by    uuid references auth.users (id),
-  completed_at  timestamptz,
-  created_at    timestamptz not null default now()
-);
-
--- ---------------------------------------------------------------------------
--- Notifications (the outbox drained by the dispatch-notifications function)
--- ---------------------------------------------------------------------------
-
-create table public.notifications (
+create table matters (
   id              uuid primary key default gen_random_uuid(),
-  firm_id         uuid references public.firms (id) on delete cascade,
-  user_id         uuid not null references auth.users (id) on delete cascade,
-  channel         public.notification_channel not null,
-  event           text not null, -- appointment_confirmed | reminder_24h | court_update | …
+  firm_id         uuid not null references firms on delete cascade,
+  reference       text unique not null,
   title           text not null,
-  body            text,
-  url             text,
-  status          public.notification_status not null default 'queued',
-  scheduled_for   timestamptz not null default now(),
-  sent_at         timestamptz,
-  read_at         timestamptz,
-  error           text,
-  attempts        integer not null default 0,
-  appointment_id  uuid references public.appointments (id) on delete cascade,
-  matter_id       uuid references public.matters (id) on delete cascade,
-  dedupe_key      text unique,
+  type            matter_type not null,
+  status_id       uuid references matter_statuses,
+  description     text,
+  next_action     text,
+  court_name      text,
+  suit_number     text,
+  judge           text,
+  opposing_party  text,
+  next_event_at   timestamptz,
+  next_event_note text,
+  opened_at       date not null default current_date,
+  closed_at       date,
+  deleted_at      timestamptz,
+  created_by      uuid references profiles,
   created_at      timestamptz not null default now()
 );
+alter table appointments       add foreign key (matter_id) references matters on delete set null;
+alter table consultation_notes add foreign key (matter_id) references matters on delete set null;
 
-create table public.notification_preferences (
-  id       uuid primary key default gen_random_uuid(),
-  user_id  uuid not null references auth.users (id) on delete cascade,
-  event    text not null,
-  channel  public.notification_channel not null,
-  enabled  boolean not null default true,
-  unique (user_id, event, channel)
+create table matter_parties (              -- client-side access to a matter
+  matter_id     uuid not null references matters on delete cascade,
+  firm_id       uuid not null references firms on delete cascade,
+  user_id       uuid not null references profiles on delete cascade,
+  role          party_role not null,
+  can_view_docs bool not null default true,
+  can_pay       bool not null default true,
+  invited_by    uuid references profiles,
+  primary key (matter_id, user_id)
 );
 
-create table public.push_subscriptions (
+create table matter_lawyers (
+  matter_id uuid not null references matters on delete cascade,
+  firm_id   uuid not null references firms on delete cascade,
+  user_id   uuid not null references profiles on delete cascade,
+  is_lead   bool not null default false,
+  primary key (matter_id, user_id)
+);
+
+create table updates (                     -- the timeline
   id          uuid primary key default gen_random_uuid(),
-  user_id     uuid not null references auth.users (id) on delete cascade,
-  endpoint    text not null unique,
-  p256dh      text not null,
-  auth        text not null,
-  user_agent  text,
+  matter_id   uuid not null references matters on delete cascade,
+  firm_id     uuid not null references firms on delete cascade,
+  kind        update_kind not null,
+  visibility  visibility not null default 'client',
+  title       text not null,
+  body        text,
+  payload     jsonb not null default '{}',   -- court_sitting: {outcome, adjourned_at_instance_of, next_date, next_purpose}
+  occurred_at timestamptz not null default now(),
+  posted_by   uuid references profiles,
   created_at  timestamptz not null default now()
 );
 
--- ---------------------------------------------------------------------------
--- Audit and public content
--- ---------------------------------------------------------------------------
+create table court_events (
+  id                uuid primary key default gen_random_uuid(),
+  matter_id         uuid not null references matters on delete cascade,
+  firm_id           uuid not null references firms on delete cascade,
+  scheduled_at      timestamptz not null,
+  court_name        text,
+  purpose           text,
+  outcome_update_id uuid references updates on delete set null,
+  reminders_sent    text[] not null default '{}'
+);
 
-create table public.audit_log (
-  id          bigint generated always as identity primary key,
-  firm_id     uuid,
-  actor_id    uuid,
-  action      text not null,
-  entity      text not null,
-  entity_id   text,
-  detail      jsonb not null default '{}'::jsonb,
+create table tasks (                       -- Phase 2 UI, Phase 1 schema
+  id          uuid primary key default gen_random_uuid(),
+  firm_id     uuid not null references firms on delete cascade,
+  matter_id   uuid references matters on delete cascade,
+  assignee_id uuid references profiles,
+  title       text not null,
+  due_at      timestamptz,
+  status      text not null default 'open',
   created_at  timestamptz not null default now()
 );
 
-create table public.content (
-  id            uuid primary key default gen_random_uuid(),
-  firm_id       uuid not null references public.firms (id) on delete cascade,
-  key           text not null, -- home.hero, about.body, …
-  locale        text not null default 'en',
-  body          jsonb not null default '{}'::jsonb,
-  is_published  boolean not null default false,
-  updated_by    uuid references auth.users (id),
-  created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now(),
-  unique (firm_id, key, locale)
+-- ---------------------------------------------------------------- documents and messages
+create table documents (
+  id                 uuid primary key default gen_random_uuid(),
+  firm_id            uuid not null references firms on delete cascade,
+  matter_id          uuid references matters on delete cascade,
+  appointment_id     uuid references appointments on delete cascade,
+  name               text not null,
+  category           text,
+  client_visible     bool not null default false,
+  current_version_id uuid,
+  uploaded_by        uuid references profiles,
+  deleted_at         timestamptz,
+  created_at         timestamptz not null default now(),
+  check (matter_id is not null or appointment_id is not null)
 );
 
--- ---------------------------------------------------------------------------
--- Indexes
--- ---------------------------------------------------------------------------
+create table document_versions (
+  id           uuid primary key default gen_random_uuid(),
+  document_id  uuid not null references documents on delete cascade,
+  storage_path text not null,
+  mime         text,
+  size_bytes   bigint,
+  checksum     text,
+  uploaded_by  uuid references profiles,
+  created_at   timestamptz not null default now()
+);
+alter table documents add foreign key (current_version_id) references document_versions on delete set null;
 
-create index firm_members_user_idx on public.firm_members (user_id);
-create index consent_records_user_idx on public.consent_records (user_id, consent);
-create index services_firm_idx on public.services (firm_id) where is_active;
-create index lawyer_profiles_firm_public_idx on public.lawyer_profiles (firm_id) where is_public;
-create index availability_rules_lawyer_idx on public.availability_rules (lawyer_id, weekday) where is_active;
-create index appointments_firm_starts_idx on public.appointments (firm_id, starts_at);
-create index appointments_client_idx on public.appointments (client_id, starts_at);
-create index appointments_lawyer_day_idx on public.appointments (lawyer_id, starts_at);
-create index appointments_hold_idx on public.appointments (hold_expires_at) where status = 'held';
-create index intake_responses_appt_idx on public.intake_responses (appointment_id);
-create index invoices_client_idx on public.invoices (client_id);
-create index invoices_firm_status_idx on public.invoices (firm_id, status);
-create index payments_invoice_idx on public.payments (invoice_id);
-create index matters_firm_idx on public.matters (firm_id);
-create index matter_parties_user_idx on public.matter_parties (user_id);
-create index matter_lawyers_user_idx on public.matter_lawyers (user_id);
-create index updates_matter_idx on public.updates (matter_id, created_at desc);
-create index court_events_matter_idx on public.court_events (matter_id, scheduled_at);
-create index court_events_unreported_idx on public.court_events (firm_id, scheduled_at)
-  where outcome_update_id is null;
-create index documents_matter_idx on public.documents (matter_id);
-create index document_versions_document_idx on public.document_versions (document_id);
-create index messages_matter_idx on public.messages (matter_id, created_at);
-create index notifications_outbox_idx on public.notifications (status, scheduled_for)
-  where status = 'queued';
-create index notifications_user_idx on public.notifications (user_id, created_at desc);
-create index audit_log_firm_idx on public.audit_log (firm_id, created_at desc);
-create index content_firm_idx on public.content (firm_id, key) where is_published;
+create table messages (
+  id             uuid primary key default gen_random_uuid(),
+  firm_id        uuid not null references firms on delete cascade,
+  matter_id      uuid references matters on delete cascade,
+  appointment_id uuid references appointments on delete cascade,
+  sender_id      uuid references profiles,
+  body           text,
+  attachments    jsonb not null default '[]',
+  read_at        timestamptz,
+  created_at     timestamptz not null default now(),
+  check (matter_id is not null or appointment_id is not null)
+);
 
--- ---------------------------------------------------------------------------
--- updated_at maintenance
--- ---------------------------------------------------------------------------
+-- ---------------------------------------------------------------- money
+create table invoices (
+  id             uuid primary key default gen_random_uuid(),
+  firm_id        uuid not null references firms on delete cascade,
+  number         text unique not null,
+  client_id      uuid not null references profiles,
+  matter_id      uuid references matters on delete set null,
+  appointment_id uuid references appointments on delete set null,
+  currency       currency not null,
+  subtotal_minor bigint not null check (subtotal_minor >= 0),
+  vat_minor      bigint not null default 0,
+  total_minor    bigint not null,
+  paid_minor     bigint not null default 0,
+  status         invoice_status not null default 'draft',
+  issued_at      timestamptz,
+  due_at         date,
+  created_at     timestamptz not null default now()
+);
+alter table appointments add foreign key (invoice_id) references invoices on delete set null;
 
-create function app.set_updated_at() returns trigger
-language plpgsql as $$
-begin
-  new.updated_at := now();
-  return new;
-end $$;
+create table invoice_items (
+  id          uuid primary key default gen_random_uuid(),
+  invoice_id  uuid not null references invoices on delete cascade,
+  description text not null,
+  quantity    numeric not null default 1,
+  unit_minor  bigint not null
+);
 
-do $$
-declare t text;
-begin
-  foreach t in array array[
-    'firms', 'profiles', 'services', 'lawyer_profiles', 'intake_forms',
-    'appointments', 'consultation_notes', 'matters', 'invoices',
-    'documents', 'content'
-  ] loop
-    execute format(
-      'create trigger set_updated_at before update on public.%I
-         for each row execute function app.set_updated_at()', t);
-  end loop;
-end $$;
+create table payments (
+  id           uuid primary key default gen_random_uuid(),
+  invoice_id   uuid not null references invoices,
+  provider     text not null,
+  provider_ref text unique not null,
+  status       payment_status not null default 'initiated',
+  amount_minor bigint not null,
+  currency     currency not null,
+  paid_at      timestamptz,
+  raw          jsonb
+);
 
--- ---------------------------------------------------------------------------
--- Anonymous tenant resolution: the only firm data the public internet sees.
--- The view runs with its owner's rights, so anon never touches public.firms.
--- ---------------------------------------------------------------------------
+-- ---------------------------------------------------------------- notifications, consent, content, operations
+create table notifications (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references profiles on delete cascade,
+  firm_id    uuid references firms on delete cascade,
+  channel    channel not null,
+  event      text not null,
+  payload    jsonb not null default '{}',
+  status     text not null default 'queued',       -- queued | sent | failed | skipped
+  send_after timestamptz not null default now(),
+  sent_at    timestamptz,
+  read_at    timestamptz,
+  error      text,
+  created_at timestamptz not null default now()
+);
 
-create view public.firm_public as
-  select id, slug, name, custom_domain, brand, policies, currency, timezone
-  from public.firms
-  where is_active;
+create table notification_preferences (
+  user_id uuid not null references profiles on delete cascade,
+  event   text not null,
+  channel channel not null,
+  enabled bool not null default true,
+  primary key (user_id, event, channel)
+);
 
--- ---------------------------------------------------------------------------
--- Grants. Row-level security (migration 2) does the real authorization; these
--- grants only define the widest possible surface per Supabase role.
--- ---------------------------------------------------------------------------
+create table push_subscriptions (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid not null references profiles on delete cascade,
+  endpoint   text unique not null,
+  keys       jsonb not null,
+  user_agent text,
+  created_at timestamptz not null default now()
+);
 
-grant usage on schema public to anon, authenticated, service_role;
-grant usage on schema app to authenticated, service_role;
+create table consent_records (
+  id          uuid primary key default gen_random_uuid(),
+  user_id     uuid not null references profiles on delete cascade,
+  firm_id     uuid references firms on delete cascade,
+  kind        consent_kind not null,
+  version     text not null,
+  accepted_at timestamptz not null default now(),
+  ip          inet,
+  user_agent  text
+);
 
--- service_role: full access (used only by Edge Functions).
-grant all on all tables in schema public to service_role;
+create table content (
+  id           uuid primary key default gen_random_uuid(),
+  firm_id      uuid not null references firms on delete cascade,
+  kind         content_kind not null,
+  slug         text,
+  title        text,
+  body         text,
+  status       text not null default 'draft',
+  published_at timestamptz,
+  unique (firm_id, kind, slug)
+);
 
--- authenticated: RLS-guarded access to everything.
-grant select, insert, update, delete on all tables in schema public to authenticated;
+create table invites (
+  id          uuid primary key default gen_random_uuid(),
+  firm_id     uuid not null references firms on delete cascade,
+  matter_id   uuid references matters on delete cascade,
+  phone       text,
+  email       text,
+  role        party_role not null default 'client',
+  token       text unique not null default encode(gen_random_bytes(24), 'hex'),
+  expires_at  timestamptz not null default now() + interval '14 days',
+  accepted_by uuid references profiles,
+  created_by  uuid references profiles,
+  created_at  timestamptz not null default now()
+);
 
--- anon: the public browsing surface only.
-grant select on public.firm_public to anon, authenticated;
-grant select on public.services, public.lawyer_profiles, public.content,
-  public.intake_forms, public.availability_rules, public.availability_exceptions
-  to anon;
+create table conflict_checks (             -- Phase 2
+  id          uuid primary key default gen_random_uuid(),
+  firm_id     uuid not null references firms on delete cascade,
+  matter_id   uuid references matters on delete cascade,
+  query       jsonb,
+  matches     jsonb,
+  outcome     text,
+  reviewed_by uuid references profiles,
+  reviewed_at timestamptz
+);
 
--- Nobody mutates or reads audit_log directly; app.audit() (security definer,
--- migration 3) is the only writer and the owner/admin policy the only reader.
-revoke insert, update, delete, truncate on public.audit_log from anon, authenticated, service_role;
+create table audit_log (
+  id        bigserial primary key,
+  firm_id   uuid,
+  actor_id  uuid,
+  action    text not null,
+  entity    text not null,
+  entity_id uuid,
+  meta      jsonb not null default '{}',
+  ip        inet,
+  at        timestamptz not null default now()
+);
+
+-- ---------------------------------------------------------------- indexes
+create index on firm_members (user_id);
+create index on services (firm_id) where is_active;
+create index on appointments (firm_id, starts_at);
+create index on appointments (lawyer_id, starts_at);
+create index on appointments (client_id, starts_at);
+create index on appointments (status, hold_expires_at) where status = 'awaiting_payment';
+create index on matters (firm_id, status_id) where deleted_at is null;
+create index on matter_parties (user_id);
+create index on updates (matter_id, occurred_at desc);
+create index on court_events (matter_id, scheduled_at);
+create index on court_events (scheduled_at) where outcome_update_id is null;
+create index on documents (matter_id) where deleted_at is null;
+create index on documents (appointment_id) where deleted_at is null;
+create index on messages (matter_id, created_at);
+create index on messages (appointment_id, created_at);
+create index on invoices (firm_id, status);
+create index on invoices (client_id);
+create index on notifications (status, send_after) where status = 'queued';
+create index on notifications (user_id, created_at desc);
+create index on audit_log (firm_id, at desc);
+
+-- ---------------------------------------------------------------- hard grants (belt and braces under RLS)
+revoke all on audit_log     from anon, authenticated;
+revoke all on firm_counters from anon, authenticated;
+revoke insert, update, delete on payments              from anon, authenticated;
+revoke insert, update, delete on consultation_sessions from anon, authenticated;
+revoke insert, delete         on notifications         from anon, authenticated;
+grant  select on audit_log to authenticated;      -- rows still gated by RLS (owner/admin only)
+
+-- public-safe projection of firms for tenant sites (anon may read this, never the firms table)
+create view firm_public with (security_invoker = false) as
+  select id, slug, name, brand, custom_domain, timezone, default_currency from firms;
+grant select on firm_public to anon, authenticated;

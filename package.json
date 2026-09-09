@@ -1,14 +1,16 @@
 {
   "name": "docket",
-  "version": "0.1.0",
   "private": true,
-  "description": "Docket slice 0 — database, security and provider adapters. The Next.js app arrives in slice 1 (see BUILD_PROMPTS.md).",
+  "version": "0.2.0",
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
     "db:test:local": "bash scripts/db-test-local.sh"
   },
+  "dependencies": {
+    "stripe": "^17.0.0"
+  },
   "devDependencies": {
-    "@types/node": "^22.5.0",
+    "@types/node": "^22.0.0",
     "typescript": "^5.6.0"
   }
 }

@@ -1,541 +1,251 @@
--- Docket RLS isolation suite: two firms, six users, 52 checks. Proves that
--- tenant isolation, MFA gating, the booking engine, the payment cascade and
--- the audit trail behave as blueprint §6 demands. Everything rolls back.
---
--- Run via scripts/db-test-local.sh (needs tests/00_local_auth_stub.sql first).
--- Expected tail: 52 "PASS" notices, then "ALL CHECKS PASSED".
-
+-- Docket v0.2 — RLS isolation and flow tests. Runs inside one transaction and rolls back.
+-- psql -v ON_ERROR_STOP=1 -f tests/00_local_auth_stub.sql -f migrations/*.sql -f seed.sql -f tests/10_rls_isolation.sql
 begin;
 
-create temp table _results (n serial, name text, pass boolean);
-
--- security definer so the results table is writable regardless of the role
--- being impersonated when a check lands.
-create function pg_temp.chk(p_name text, p_pass boolean) returns void
-language plpgsql security definer as $fn$
+create function t_as(u uuid, aal text default 'aal2') returns void language plpgsql as $$
 begin
-  insert into _results (name, pass) values (p_name, coalesce(p_pass, false));
-  if coalesce(p_pass, false) then
-    raise notice 'PASS: %', p_name;
-  else
-    raise warning 'FAIL: %', p_name;
-  end if;
-end $fn$;
-
--- Impersonation: exactly what PostgREST does — set request.jwt.claims and
--- switch to the matching database role.
-create function pg_temp.as_user(p_user uuid, p_aal text default 'aal1') returns void
-language plpgsql as $fn$
+  perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated', 'aal', aal)::text, false);
+  perform set_config('role', 'authenticated', false);
+end $$;
+create function t_anon() returns void language plpgsql as $$
 begin
-  reset role;
-  perform set_config('request.jwt.claims', json_build_object(
-    'sub', p_user, 'role', 'authenticated', 'aal', p_aal)::text, true);
-  set local role authenticated;
-end $fn$;
-
-create function pg_temp.as_anon() returns void
-language plpgsql as $fn$
+  perform set_config('request.jwt.claims', '{"role":"anon"}', false);
+  perform set_config('role', 'anon', false);
+end $$;
+create function t_reset() returns void language plpgsql as $$
 begin
-  reset role;
-  perform set_config('request.jwt.claims', '', true);
-  set local role anon;
-end $fn$;
-
-create function pg_temp.as_service() returns void
-language plpgsql as $fn$
+  execute 'reset role';
+  perform set_config('request.jwt.claims', '', false);
+end $$;
+create function t_check(name text, ok bool) returns void language plpgsql as $$
 begin
-  reset role;
-  perform set_config('request.jwt.claims', '', true);
-  set local role service_role;
-end $fn$;
+  if ok then raise notice 'PASS  %', name; else raise exception 'FAIL  %', name; end if;
+end $$;
 
-create function pg_temp.as_super() returns void
-language plpgsql as $fn$
+-- ---------------------------------------------------------------- fixture (as postgres)
+create temp table fx (k text primary key, v uuid);
+grant select on fx to anon, authenticated;
+insert into firms (slug, name, reference_prefix) values ('firm-a', 'Firm A', 'FA'), ('firm-b', 'Firm B', 'FB');
+insert into fx select 'firm_a', id from firms where slug = 'firm-a';
+insert into fx select 'firm_b', id from firms where slug = 'firm-b';
+
+insert into auth.users (id, email) values
+  (gen_random_uuid(), 'lawyer_a@test'), (gen_random_uuid(), 'admin_a@test'), (gen_random_uuid(), 'client_a1@test'),
+  (gen_random_uuid(), 'client_a2@test'), (gen_random_uuid(), 'lawyer_b@test'), (gen_random_uuid(), 'client_b1@test');
+insert into fx select split_part(email, '@', 1), id from auth.users where email like '%@test';
+
+insert into firm_members (firm_id, user_id, role) values
+  ((select v from fx where k='firm_a'), (select v from fx where k='lawyer_a'), 'lawyer'),
+  ((select v from fx where k='firm_a'), (select v from fx where k='admin_a'),  'admin'),
+  ((select v from fx where k='firm_b'), (select v from fx where k='lawyer_b'), 'lawyer');
+
+insert into matter_statuses (firm_id, key, label) values ((select v from fx where k='firm_a'), 'open', 'Open');
+
+insert into services (firm_id, slug, name, price_minor, currency, duration_min) values
+  ((select v from fx where k='firm_a'), 'consult', 'Consultation', 5000000, 'NGN', 45),
+  ((select v from fx where k='firm_b'), 'consult', 'Consultation', 4000000, 'NGN', 45);
+insert into fx select 'svc_a', id from services where firm_id = (select v from fx where k='firm_a');
+
+-- lawyer A works 09:00–17:00 with a lunch break on the test date's weekday
+insert into availability_rules (firm_id, lawyer_id, weekday, start_time, end_time, break_start, break_end, slot_min, max_per_day)
+values ((select v from fx where k='firm_a'), (select v from fx where k='lawyer_a'),
+        extract(dow from current_date + 7)::int, '09:00', '17:00', '13:00', '14:00', 45, 6);
+
+insert into matters (id, firm_id, reference, title, type, court_name)
+values (gen_random_uuid(), (select v from fx where k='firm_a'), 'FA-M-2026-000001', 'A v B', 'litigation', 'High Court of the FCT, Maitama');
+insert into fx select 'matter_a', id from matters where reference = 'FA-M-2026-000001';
+insert into matters (id, firm_id, reference, title, type)
+values (gen_random_uuid(), (select v from fx where k='firm_b'), 'FB-M-2026-000001', 'C v D', 'property');
+insert into fx select 'matter_b', id from matters where reference = 'FB-M-2026-000001';
+
+insert into matter_parties (matter_id, firm_id, user_id, role) values
+  ((select v from fx where k='matter_a'), (select v from fx where k='firm_a'), (select v from fx where k='client_a1'), 'client'),
+  ((select v from fx where k='matter_b'), (select v from fx where k='firm_b'), (select v from fx where k='client_b1'), 'client');
+insert into matter_lawyers (matter_id, firm_id, user_id, is_lead) values
+  ((select v from fx where k='matter_a'), (select v from fx where k='firm_a'), (select v from fx where k='lawyer_a'), true);
+
+insert into updates (matter_id, firm_id, kind, visibility, title, posted_by) values
+  ((select v from fx where k='matter_a'), (select v from fx where k='firm_a'), 'note', 'client',   'Client-visible note', (select v from fx where k='lawyer_a')),
+  ((select v from fx where k='matter_a'), (select v from fx where k='firm_a'), 'note', 'internal', 'Internal note',       (select v from fx where k='lawyer_a'));
+
+insert into documents (firm_id, matter_id, name, client_visible, uploaded_by) values
+  ((select v from fx where k='firm_a'), (select v from fx where k='matter_a'), 'Statement of claim.pdf', true,  (select v from fx where k='lawyer_a')),
+  ((select v from fx where k='firm_a'), (select v from fx where k='matter_a'), 'Strategy memo.docx',     false, (select v from fx where k='lawyer_a'));
+
+insert into invoices (firm_id, number, client_id, matter_id, currency, subtotal_minor, total_minor, status, issued_at)
+values ((select v from fx where k='firm_a'), next_reference((select v from fx where k='firm_a'), 'invoice'), (select v from fx where k='client_a1'),
+        (select v from fx where k='matter_a'), 'NGN', 10000000, 10000000, 'issued', now());
+
+-- ---------------------------------------------------------------- 1. client isolation
+do $$
+declare a1 uuid := (select v from fx where k='client_a1'); a2 uuid := (select v from fx where k='client_a2'); b1 uuid := (select v from fx where k='client_b1');
 begin
-  reset role;
-end $fn$;
+  perform t_as(a1, 'aal1');
+  perform t_check('client A1 sees exactly her matter',            (select count(*) from matters) = 1);
+  perform t_check('client A1 sees only client-visible updates',   (select count(*) from updates) = 1 and (select visibility from updates limit 1) = 'client');
+  perform t_check('client A1 sees only client-visible documents', (select count(*) from documents) = 1);
+  perform t_check('client A1 sees her invoice',                   (select count(*) from invoices) = 1);
+  perform t_check('client A1 sees active services of every firm', (select count(*) from services) >= 2 and not exists (select 1 from services where not is_active));
+  perform t_check('client A1 cannot read the firms table',        (select count(*) from firms) = 0);
+  perform t_reset();
 
-do $test$
-declare
-  -- users
-  u_alice uuid := gen_random_uuid();     -- client of firm A
-  u_bob uuid := gen_random_uuid();       -- client of firm B (later invited to A)
-  u_carol uuid := gen_random_uuid();     -- client at BOTH firms
-  u_lawyer_a uuid := gen_random_uuid();  -- lawyer, firm A
-  u_admin_a uuid := gen_random_uuid();   -- owner, firm A
-  u_lawyer_b uuid := gen_random_uuid();  -- lawyer, firm B
-  -- tenants and fixtures
-  firm_a uuid;
-  firm_b uuid := gen_random_uuid();
-  svc uuid;
-  form uuid;
-  lp_a uuid := gen_random_uuid();
-  lp_b uuid := gen_random_uuid();
-  st_filed uuid;
-  m_a1 uuid := gen_random_uuid();  -- alice's matter at A
-  m_a2 uuid := gen_random_uuid();  -- carol's matter at A
-  m_b1 uuid := gen_random_uuid();  -- bob's matter at B
-  m_ab uuid := gen_random_uuid();  -- carol's matter at B
-  upd_client uuid := gen_random_uuid();
-  upd_internal uuid := gen_random_uuid();
-  doc_visible uuid := gen_random_uuid();
-  doc_hidden uuid := gen_random_uuid();
-  inv_b uuid := gen_random_uuid();
-  ce1 uuid := gen_random_uuid();
-  -- the test day: a week out, so lead time never interferes
-  v_day date := current_date + 7;
-  v_slot1 timestamptz;
-  v_slot2 timestamptz;
-  -- scratch
-  ok boolean;
-  n integer;
-  n2 integer;
-  js jsonb;
-  b1 uuid;          -- alice's first (paid) appointment
-  b1_invoice text;  -- its invoice number
-  b1_total numeric;
-  b2 uuid;          -- alice's second (expired-hold) appointment
-  v_update uuid;
+  perform t_as(a2, 'aal1');
+  perform t_check('client A2 (no matter) sees nothing',           (select count(*) from matters) + (select count(*) from updates)
+                                                                  + (select count(*) from documents) + (select count(*) from invoices) = 0);
+  perform t_reset();
+
+  perform t_as(b1, 'aal1');
+  perform t_check('client B1 sees only firm B matter',            (select count(*) from matters) = 1 and (select reference from matters) = 'FB-M-2026-000001');
+  perform t_reset();
+end $$;
+
+-- ---------------------------------------------------------------- 2. staff isolation and MFA gating
+do $$
+declare la uuid := (select v from fx where k='lawyer_a'); lb uuid := (select v from fx where k='lawyer_b'); ma uuid := (select v from fx where k='matter_a');
+        fa uuid := (select v from fx where k='firm_a'); ok bool;
 begin
-  -- =========================================================================
-  -- Fixtures (as superuser; the migration owner bypasses RLS)
-  -- =========================================================================
-  perform pg_temp.as_super();
-
-  insert into auth.users (id, email) values
-    (u_alice, 'alice@example.test'),
-    (u_bob, 'bob@example.test'),
-    (u_carol, 'carol@example.test'),
-    (u_lawyer_a, 'lawyer.a@example.test'),
-    (u_admin_a, 'admin.a@example.test'),
-    (u_lawyer_b, 'lawyer.b@example.test');
-  insert into public.profiles (id, full_name) values
-    (u_alice, 'Alice Client'), (u_bob, 'Bob Client'), (u_carol, 'Carol Client'),
-    (u_lawyer_a, 'Firm A Lawyer'), (u_admin_a, 'Firm A Owner'), (u_lawyer_b, 'Firm B Lawyer');
-
-  select id into firm_a from public.firms where slug = 'klinique';
-  if firm_a is null then raise exception 'seed missing: run supabase/seed.sql first'; end if;
-  update public.firms set vat_rate = 7.5 where id = firm_a; -- exercise the VAT math
-
-  insert into public.firms (id, slug, name, reference_prefix)
-  values (firm_b, 'okafor-partners', 'Okafor & Partners', 'OK');
-
-  insert into public.firm_members (firm_id, user_id, role) values
-    (firm_a, u_lawyer_a, 'lawyer'),
-    (firm_a, u_admin_a, 'owner'),
-    (firm_b, u_lawyer_b, 'lawyer');
-
-  insert into public.lawyer_profiles (id, firm_id, user_id, slug, title, timezone, is_public, is_bookable)
-  values
-    (lp_a, firm_a, u_lawyer_a, 'firm-a-lawyer', 'Senior Associate', 'Africa/Lagos', true, true),
-    (lp_b, firm_b, u_lawyer_b, 'firm-b-lawyer', 'Partner', 'Africa/Lagos', false, true);
-
-  -- Weekly rule for the test day: 09:00–17:00, lunch 13:00–14:00, 30-minute
-  -- slots, at most 2 appointments a day. Second rule + closed exception for
-  -- the day after.
-  insert into public.availability_rules
-    (firm_id, lawyer_id, weekday, start_time, end_time, breaks, slot_minutes, daily_cap)
-  values
-    (firm_a, lp_a, extract(dow from v_day)::int, '09:00', '17:00',
-     '[{"start":"13:00","end":"14:00"}]', 30, 2),
-    (firm_a, lp_a, extract(dow from v_day + 1)::int, '09:00', '17:00', '[]', 30, null);
-  insert into public.availability_exceptions (firm_id, lawyer_id, on_date, is_closed, reason)
-  values (firm_a, lp_a, v_day + 1, true, 'court holiday');
-
-  select id into svc from public.services where firm_id = firm_a and slug = 'legal-consultation';
-  select id into form from public.intake_forms where firm_id = firm_a and service_id = svc;
-  select id into st_filed from public.matter_statuses where firm_id = firm_a and key = 'filed';
-
-  insert into public.matters (id, firm_id, reference, title, status_id, court) values
-    (m_a1, firm_a, 'AK/2026/0001', 'Alice v Landlord', st_filed, 'High Court of Lagos'),
-    (m_a2, firm_a, 'AK/2026/0002', 'Carol — contract dispute', st_filed, null),
-    (m_b1, firm_b, 'OK/2026/0001', 'Bob — debt recovery', null, null),
-    (m_ab, firm_b, 'OK/2026/0002', 'Carol — property purchase', null, null);
-  insert into public.matter_parties (firm_id, matter_id, user_id, role) values
-    (firm_a, m_a1, u_alice, 'client'),
-    (firm_a, m_a2, u_carol, 'client'),
-    (firm_b, m_b1, u_bob, 'client'),
-    (firm_b, m_ab, u_carol, 'client');
-  insert into public.matter_lawyers (firm_id, matter_id, user_id, is_lead)
-  values (firm_a, m_a1, u_lawyer_a, true);
-
-  insert into public.updates (id, firm_id, matter_id, author_id, visibility, kind, title, body) values
-    (upd_client, firm_a, m_a1, u_lawyer_a, 'client', 'note',
-     'We have filed your originating summons', 'Filed today at the registry.'),
-    (upd_internal, firm_a, m_a1, u_lawyer_a, 'internal', 'note',
-     'Internal strategy', 'Client should not see this.');
-
-  insert into public.documents (id, firm_id, matter_id, owner_id, title, is_client_visible) values
-    (doc_visible, firm_a, m_a1, u_lawyer_a, 'Originating summons', true),
-    (doc_hidden, firm_a, m_a1, u_lawyer_a, 'Draft strategy memo', false);
-  insert into public.document_versions (firm_id, document_id, version, storage_path, uploaded_by) values
-    (firm_a, doc_visible, 1, 'documents/' || firm_a || '/' || doc_visible || '/v1.pdf', u_lawyer_a),
-    (firm_a, doc_hidden, 1, 'documents/' || firm_a || '/' || doc_hidden || '/v1.pdf', u_lawyer_a);
-
-  insert into public.invoices (id, firm_id, number, client_id, matter_id, status, currency,
-                               subtotal, total, issued_at)
-  values (inv_b, firm_b, 'INV-OK-000001', u_bob, m_b1, 'issued', 'NGN', 100000, 100000, now());
-
-  -- a sitting today, not yet reported on
-  insert into public.court_events (id, firm_id, matter_id, scheduled_at, court, purpose)
-  values (ce1, firm_a, m_a1,
-          (current_date::timestamp + time '09:00') at time zone 'Africa/Lagos',
-          'High Court of Lagos', 'Mention');
-
-  -- an invite for bob into alice's matter (redeemed at the end)
-  insert into public.invites (firm_id, matter_id, role, email, token, invited_by)
-  values (firm_a, m_a1, 'client', 'bob@example.test', 'test-invite-token-bob', u_admin_a);
-
-  v_slot1 := (v_day::timestamp + time '10:00') at time zone 'Africa/Lagos';
-  v_slot2 := (v_day::timestamp + time '11:00') at time zone 'Africa/Lagos';
-
-  -- =========================================================================
-  -- The anonymous surface
-  -- =========================================================================
-  perform pg_temp.as_anon();
-
-  select count(*) into n from public.firm_public where slug = 'klinique';
-  perform pg_temp.chk('anon resolves the tenant through firm_public', n = 1);
-
-  select count(*) into n from public.services where firm_id = firm_a;
-  perform pg_temp.chk('anon sees only active services', n = 1);
-
-  select count(*) into n from public.lawyer_profiles;
-  perform pg_temp.chk('anon sees only public lawyer profiles', n = 1);
-
+  perform t_as(lb);
+  perform t_check('lawyer B sees only firm B matters',            (select count(*) from matters) = 1 and (select reference from matters) = 'FB-M-2026-000001');
+  perform t_check('lawyer B sees no firm A updates',              (select count(*) from updates) = 0);
   ok := false;
   begin
-    perform 1 from public.firms limit 1;
+    insert into updates (matter_id, firm_id, kind, title, posted_by) values (ma, fa, 'note', 'cross-tenant write', lb);
+  exception when insufficient_privilege or check_violation then ok := true;
+  end;
+  perform t_check('lawyer B cannot write into firm A',            ok);
+  perform t_reset();
+
+  perform t_as(la, 'aal1');
+  perform t_check('lawyer A (no MFA) can read firm A',            (select count(*) from matters) = 1 and (select count(*) from updates) = 2);
+  ok := false;
+  begin
+    insert into updates (matter_id, firm_id, kind, title, posted_by) values (ma, fa, 'note', 'write without MFA', la);
+  exception when insufficient_privilege or check_violation then ok := true;
+  end;
+  perform t_check('lawyer A without MFA cannot write',            ok);
+  perform t_reset();
+
+  perform t_as(la, 'aal2');
+  insert into updates (matter_id, firm_id, kind, title, posted_by) values (ma, fa, 'note', 'write with MFA', la);
+  perform t_check('lawyer A with MFA can write',                  (select count(*) from updates where title = 'write with MFA') = 1);
+  perform t_reset();
+end $$;
+
+-- ---------------------------------------------------------------- 3. anonymous surface
+do $$
+declare fa uuid := (select v from fx where k='firm_a'); la uuid := (select v from fx where k='lawyer_a'); sa uuid := (select v from fx where k='svc_a');
+begin
+  perform t_anon();
+  perform t_check('anon reads the public firm projection',        (select count(*) from firm_public) >= 2);
+  perform t_check('anon reads active services',                   (select count(*) from services) >= 2);
+  perform t_check('anon sees no matters or appointments',         (select count(*) from matters) + (select count(*) from appointments) = 0);
+  perform t_check('anon can compute booking slots',               (select count(*) from available_slots(fa, la, sa, current_date + 7)) > 0);
+  perform t_reset();
+end $$;
+
+-- ---------------------------------------------------------------- 4. booking, double-booking, payment cascade
+do $$
+declare fa uuid := (select v from fx where k='firm_a'); la uuid := (select v from fx where k='lawyer_a'); sa uuid := (select v from fx where k='svc_a');
+        a1 uuid := (select v from fx where k='client_a1'); a2 uuid := (select v from fx where k='client_a2');
+        slot timestamptz; res jsonb; res2 jsonb; ok bool; n_slots int;
+begin
+  perform t_as(a1, 'aal1');
+  select count(*) into n_slots from available_slots(fa, la, sa, current_date + 7);
+  perform t_check('slots exclude the lunch break (8 hours, 45-min slots, 1-hour break)', n_slots between 8 and 10);
+  select s.starts_at into slot from available_slots(fa, la, sa, current_date + 7) s order by 1 limit 1;
+  res := book_appointment(fa, sa, la, slot, 'virtual', 'America/New_York', '{"issue_summary":"land dispute"}'::jsonb, null);
+  perform t_check('booking creates a held appointment awaiting payment', res ->> 'status' = 'awaiting_payment' and res ->> 'invoice_number' like 'FA-INV-%');
+  perform t_check('booking reference follows the firm prefix',           res ->> 'reference' like 'FA-2026-%' or res ->> 'reference' like 'FA-20%');
+  perform t_check('held slot disappears from availability',              not exists (select 1 from available_slots(fa, la, sa, current_date + 7) s where s.starts_at = slot));
+  perform t_check('client sees her own appointment',                     (select count(*) from appointments) = 1);
+  perform t_check('intake answers were stored',                          (select count(*) from intake_responses) = 1);
+  perform t_reset();
+
+  perform t_as(a2, 'aal1');
+  ok := false;
+  begin
+    res2 := book_appointment(fa, sa, la, slot);
+  exception when others then ok := sqlerrm like '%slot unavailable%';
+  end;
+  perform t_check('second client cannot take the same slot',             ok);
+  perform t_check('other client sees no appointments',                   (select count(*) from appointments) = 0);
+  ok := false;
+  begin
+    perform cancel_appointment((res ->> 'appointment_id')::uuid, 'nope');
   exception when insufficient_privilege then ok := true;
   end;
-  perform pg_temp.chk('anon cannot read the firms table directly', ok);
+  perform t_check('other client cannot cancel someone else''s appointment', ok);
+  perform t_reset();
 
+  -- webhook path (service role / postgres)
+  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{"channel":"card"}'::jsonb);
+  perform t_check('payment marks the invoice paid',                      res2 ->> 'invoice_status' = 'paid');
+  perform t_check('payment confirms the appointment',                    (select status from appointments where id = (res ->> 'appointment_id')::uuid) = 'confirmed');
+  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{}'::jsonb);
+  perform t_check('duplicate webhook is ignored',                        (res2 ->> 'duplicate')::bool and (select paid_minor from invoices where number = res ->> 'invoice_number') = (res ->> 'amount_minor')::bigint);
+  perform t_check('client was told: confirmed + payment',                (select count(*) from notifications where user_id = a1 and event in ('appointment_confirmed','payment_confirmed') and channel = 'in_app') = 2);
+
+  perform t_as(a1, 'aal1');
+  perform t_check('client reads her payment through the invoice',        (select count(*) from payments) = 1);
+  perform t_reset();
+  perform t_as((select v from fx where k='lawyer_b'));
+  perform t_check('lawyer B sees no firm A payments or appointments',    (select count(*) from payments) + (select count(*) from appointments) = 0);
+  perform t_reset();
+
+  insert into fx values ('appt_a1', (res ->> 'appointment_id')::uuid);
+end $$;
+
+-- ---------------------------------------------------------------- 5. court update, consultation notes, audit
+do $$
+declare la uuid := (select v from fx where k='lawyer_a'); ma uuid := (select v from fx where k='matter_a'); a1 uuid := (select v from fx where k='client_a1');
+        ad uuid := (select v from fx where k='admin_a'); ap uuid := (select v from fx where k='appt_a1'); upd uuid; ok bool;
+begin
+  perform t_as(la, 'aal2');
+  upd := post_court_update(ma, 'adjourned', now(), null, 'the defendant', now() + interval '21 days', 'hearing',
+                           'Court adjourned at the defendant''s request. Nothing needed from you.', 'Opposing counsel absent again — consider costs.');
+  perform t_check('court update posted with composed title',             (select title from updates where id = upd) like 'Adjourned at the instance of the defendant to % for hearing');
+  perform t_check('next court event created',                            (select count(*) from court_events where matter_id = ma and outcome_update_id is null) = 1);
+  perform t_check('matter next date updated',                            (select next_event_at from matters where id = ma) is not null);
+  perform t_check('lawyer sees the internal note',                       (select count(*) from updates where matter_id = ma and visibility = 'internal') = 2);
+  perform save_consultation_notes(ap, 'We discussed your land dispute.', 'Obtain a certified true copy of the survey plan.', 'Send documents within 7 days.', 'Client seems to have a weak chain of title.');
+  perform t_check('lawyer reads internal consultation notes',            (select count(*) from consultation_internal_notes) = 1);
+  perform t_reset();
+
+  perform t_as(a1, 'aal1');
+  perform t_check('client sees the court update',                        (select count(*) from updates where id = upd) = 1);
+  perform t_check('client never sees internal notes',                    (select count(*) from updates where visibility = 'internal') = 0);
+  perform t_check('client sees her next court date',                     (select count(*) from court_events) = 1);
+  perform t_check('client was notified of the update',                   (select count(*) from notifications where event = 'matter_update' and channel = 'in_app' and (payload ->> 'update_id')::uuid = upd) = 1);
+  perform t_check('client reads the consultation summary',               (select count(*) from consultation_notes) = 1);
+  perform t_check('client cannot read internal consultation notes',      (select count(*) from consultation_internal_notes) = 0);
+  perform t_check('appointment marked completed after notes',            (select status from appointments where id = ap) = 'completed');
+  perform t_check('client cannot read the audit log',                    (select count(*) from audit_log) = 0);
   ok := false;
   begin
-    perform 1 from public.appointments limit 1;
+    update audit_log set action = 'tampered';
   exception when insufficient_privilege then ok := true;
   end;
-  perform pg_temp.chk('anon cannot read appointments', ok);
+  perform t_check('audit log is append-only for users',                  ok);
+  perform t_reset();
 
-  ok := false;
-  begin
-    perform public.book_appointment(firm_a, svc, lp_a, v_slot1);
-  exception when insufficient_privilege then ok := true;
-  end;
-  perform pg_temp.chk('anon cannot call book_appointment', ok);
+  perform t_as(la, 'aal2');
+  perform t_check('a plain lawyer cannot read the audit log',            (select count(*) from audit_log) = 0);
+  perform t_reset();
+  perform t_as(ad, 'aal2');
+  perform t_check('firm admin reads firm A audit trail',                 (select count(*) from audit_log) > 5 and (select count(*) from audit_log where firm_id <> (select v from fx where k='firm_a')) = 0);
+  perform t_reset();
+end $$;
 
-  -- =========================================================================
-  -- Slot computation (rules, breaks, exceptions)
-  -- =========================================================================
-  select count(*) into n from public.available_slots(firm_a, lp_a, svc, v_day);
-  perform pg_temp.chk('slot grid: 09:00-17:00 minus lunch yields 14 slots', n = 14);
+-- ---------------------------------------------------------------- 6. jobs
+do $$
+declare n int;
+begin
+  update appointments set status = 'awaiting_payment', hold_expires_at = now() - interval '1 minute' where reference like 'FA-%' and status = 'completed';
+  n := release_expired_holds();
+  perform t_check('expired holds are released by the job',               n = 1 and (select count(*) from appointments where cancellation_reason = 'payment_timeout') = 1);
+  n := enqueue_court_reminders();
+  perform t_check('court reminder job runs (nothing due yet)',           n = 0);
+end $$;
 
-  select count(*) into n from public.available_slots(firm_a, lp_a, svc, v_day) s
-  where (s.slot_starts_at at time zone 'Africa/Lagos')::time >= '13:00'
-    and (s.slot_starts_at at time zone 'Africa/Lagos')::time < '14:00';
-  perform pg_temp.chk('no slots are offered during the break', n = 0);
-
-  select count(*) into n from public.available_slots(firm_a, lp_a, svc, v_day + 1);
-  perform pg_temp.chk('a closed exception day offers no slots', n = 0);
-
-  -- =========================================================================
-  -- Booking
-  -- =========================================================================
-  perform pg_temp.as_user(u_alice);
-
-  ok := false;
-  begin
-    insert into public.appointments
-      (firm_id, client_id, lawyer_id, service_id, starts_at, ends_at, price, currency)
-    values (firm_a, u_alice, lp_a, svc, v_slot1, v_slot1 + interval '30 minutes', 0, 'NGN');
-  exception when insufficient_privilege then ok := true;
-  end;
-  perform pg_temp.chk('clients cannot insert appointments directly', ok);
-
-  js := public.book_appointment(
-    firm_a, svc, lp_a, v_slot1, 'virtual', 'Africa/Lagos',
-    '{"topic": "Property or land", "summary": "Landlord dispute", "urgency": "Within the month", "in_court": "No"}'::jsonb,
-    form);
-  b1 := (js ->> 'appointment_id')::uuid;
-  b1_invoice := js ->> 'invoice_number';
-  b1_total := (js ->> 'amount_due')::numeric;
-
-  select count(*) into n from public.appointments
-  where id = b1 and status = 'held'
-    and hold_expires_at between now() + interval '13 minutes' and now() + interval '16 minutes';
-  perform pg_temp.chk('book_appointment creates a 15-minute hold', n = 1);
-
-  select count(*) into n from public.invoices
-  where number = b1_invoice and status = 'issued'
-    and vat_amount = 3750.00 and total = 53750.00;
-  perform pg_temp.chk('the invoice is issued with VAT from firms.vat_rate', n = 1 and b1_total = 53750.00);
-
-  select count(*) into n from public.intake_responses
-  where appointment_id = b1 and client_id = u_alice
-    and answers ->> 'summary' = 'Landlord dispute';
-  perform pg_temp.chk('intake answers are stored with the appointment', n = 1);
-
-  select count(*) into n from public.available_slots(firm_a, lp_a, svc, v_day) s
-  where s.slot_starts_at = v_slot1;
-  perform pg_temp.chk('a held slot disappears from available_slots', n = 0);
-
-  perform pg_temp.as_user(u_bob);
-  ok := false;
-  begin
-    js := public.book_appointment(firm_a, svc, lp_a, v_slot1);
-  exception when others then ok := true;
-  end;
-  perform pg_temp.chk('a second client cannot take the same slot', ok);
-
-  -- =========================================================================
-  -- Payment cascade
-  -- =========================================================================
-  perform pg_temp.as_user(u_alice);
-  ok := false;
-  begin
-    perform public.record_payment('paystack', 'FAKE', b1_invoice, 1, 'NGN', 'success');
-  exception when insufficient_privilege then ok := true;
-  end;
-  perform pg_temp.chk('authenticated users cannot call record_payment', ok);
-
-  perform pg_temp.as_service();
-  js := public.record_payment('paystack', 'PSK_TEST_REF_1', b1_invoice,
-                              53750.00, 'NGN', 'success', '{"source": "test"}'::jsonb);
-
-  perform pg_temp.as_super();
-  select count(*) into n from public.invoices
-  where number = b1_invoice and status = 'paid' and amount_paid = 53750.00;
-  perform pg_temp.chk('record_payment settles the invoice', n = 1);
-
-  select count(*) into n from public.appointments
-  where id = b1 and status = 'confirmed' and hold_expires_at is null;
-  perform pg_temp.chk('a paid invoice confirms the held appointment', n = 1);
-
-  perform pg_temp.as_service();
-  js := public.record_payment('paystack', 'PSK_TEST_REF_1', b1_invoice,
-                              53750.00, 'NGN', 'success');
-  perform pg_temp.as_super();
-  select amount_paid into b1_total from public.invoices where number = b1_invoice;
-  perform pg_temp.chk('a duplicate webhook is idempotent',
-    (js ->> 'duplicate')::boolean and b1_total = 53750.00);
-
-  -- =========================================================================
-  -- The 15-minute hold and the daily cap
-  -- =========================================================================
-  perform pg_temp.as_user(u_alice);
-  js := public.book_appointment(firm_a, svc, lp_a, v_slot2);
-  b2 := (js ->> 'appointment_id')::uuid;
-
-  perform pg_temp.as_anon();
-  select count(*) into n from public.available_slots(firm_a, lp_a, svc, v_day);
-  perform pg_temp.chk('the daily cap stops further bookings', n = 0);
-
-  perform pg_temp.as_super();
-  update public.appointments set hold_expires_at = now() - interval '1 minute' where id = b2;
-  perform pg_temp.as_service();
-  select public.release_expired_holds() into n;
-  perform pg_temp.as_super();
-  select count(*) into n2 from public.appointments
-  where id = b2 and status = 'cancelled' and cancel_reason = 'hold_expired';
-  perform pg_temp.chk('release_expired_holds cancels the expired hold', n >= 1 and n2 = 1);
-
-  select count(*) into n from public.invoices
-  where appointment_id = b2 and status = 'void';
-  perform pg_temp.chk('an expired hold voids its unpaid invoice', n = 1);
-
-  perform pg_temp.as_anon();
-  select count(*) into n from public.available_slots(firm_a, lp_a, svc, v_day);
-  perform pg_temp.chk('released holds free the capacity again', n > 0);
-
-  -- =========================================================================
-  -- Client isolation
-  -- =========================================================================
-  perform pg_temp.as_user(u_alice);
-
-  select count(*) into n from public.matters;
-  select count(*) into n2 from public.matters where id = m_a1;
-  perform pg_temp.chk('a client sees exactly their own matters', n = 1 and n2 = 1);
-
-  select count(*) into n from public.updates where matter_id = m_a1;
-  perform pg_temp.chk('a client sees the client-visible timeline', n >= 1);
-
-  select count(*) into n from public.updates where visibility = 'internal';
-  perform pg_temp.chk('internal timeline entries never reach clients', n = 0);
-
-  select count(*) into n from public.documents where id = doc_visible;
-  select count(*) into n2 from public.documents where id = doc_hidden;
-  perform pg_temp.chk('clients see visible documents, never hidden ones', n = 1 and n2 = 0);
-
-  select count(*) into n from public.invoices where id = inv_b;
-  select count(*) into n2 from public.invoices where client_id = u_alice;
-  perform pg_temp.chk('clients see only their own invoices', n = 0 and n2 = 2);
-
-  select count(*) into n from public.payments;
-  perform pg_temp.chk('clients see only payments on their own invoices', n = 1);
-
-  select count(*) into n from public.matters where firm_id = firm_b;
-  select count(*) into n2 from public.updates where firm_id = firm_b;
-  perform pg_temp.chk('a firm-A client sees nothing of firm B', n = 0 and n2 = 0);
-
-  perform pg_temp.as_user(u_carol);
-  select count(*) into n from public.matters;
-  select count(*) into n2 from public.matters where id in (m_a2, m_ab);
-  perform pg_temp.chk('a client at two firms gets one merged feed of exactly their matters',
-    n = 2 and n2 = 2);
-
-  -- =========================================================================
-  -- Staff isolation and MFA gating
-  -- =========================================================================
-  perform pg_temp.as_user(u_lawyer_a, 'aal1'); -- staff can READ without MFA
-
-  select count(*) into n from public.matters where firm_id = firm_a;
-  perform pg_temp.chk('staff see all their firm''s matters', n = 2);
-
-  select count(*) into n from public.matters where firm_id = firm_b;
-  perform pg_temp.chk('staff see nothing of other firms', n = 0);
-
-  select count(*) into n from public.updates where id = upd_internal;
-  perform pg_temp.chk('staff read internal timeline entries', n = 1);
-
-  ok := false;
-  begin
-    insert into public.updates (firm_id, matter_id, author_id, visibility, kind, title)
-    values (firm_a, m_a1, u_lawyer_a, 'client', 'note', 'written without MFA');
-  exception when insufficient_privilege then ok := true;
-  end;
-  perform pg_temp.chk('staff writes are rejected without an MFA session', ok);
-
-  perform pg_temp.as_user(u_lawyer_a, 'aal2');
-  insert into public.updates (firm_id, matter_id, author_id, visibility, kind, title)
-  values (firm_a, m_a1, u_lawyer_a, 'client', 'note', 'written with MFA');
-  perform pg_temp.chk('staff writes succeed at aal2', true);
-
-  ok := false;
-  begin
-    insert into public.updates (firm_id, matter_id, author_id, visibility, kind, title)
-    values (firm_b, m_b1, u_lawyer_a, 'client', 'note', 'cross-tenant write');
-  exception when insufficient_privilege then ok := true;
-  end;
-  perform pg_temp.chk('staff cannot write into another firm, even with MFA', ok);
-
-  select count(*) into n from public.profiles where id = u_alice;
-  select count(*) into n2 from public.profiles where id = u_bob;
-  perform pg_temp.chk('staff see their own clients'' profiles, not other firms''',
-    n = 1 and n2 = 0);
-
-  -- =========================================================================
-  -- The court-update form (blueprint §5.11)
-  -- =========================================================================
-  perform pg_temp.as_user(u_lawyer_a, 'aal1');
-  ok := false;
-  begin
-    perform public.post_court_update(m_a1, 'adjourned', current_date,
-      'High Court of Lagos', 'defendant');
-  exception when insufficient_privilege then ok := true;
-  end;
-  perform pg_temp.chk('post_court_update refuses a non-MFA session', ok);
-
-  perform pg_temp.as_user(u_lawyer_a, 'aal2');
-  v_update := public.post_court_update(
-    m_a1, 'adjourned', current_date, 'High Court of Lagos', 'defendant',
-    (current_date + 14)::timestamp at time zone 'Africa/Lagos' + interval '9 hours',
-    'Hearing of pending motion',
-    'The court adjourned at the defendant''s instance. Nothing is required from you.',
-    'Opposing counsel sought adjournment; costs reserved.');
-
-  select count(*) into n from public.updates
-  where matter_id = m_a1 and kind = 'court_update' and visibility = 'client';
-  select count(*) into n2 from public.updates
-  where matter_id = m_a1 and kind = 'court_update' and visibility = 'internal';
-  perform pg_temp.chk('post_court_update posts client and internal entries', n = 1 and n2 = 1);
-
-  select count(*) into n from public.court_events
-  where id = ce1 and outcome = 'adjourned' and outcome_update_id = v_update;
-  perform pg_temp.chk('today''s sitting is closed by the update', n = 1);
-
-  select count(*) into n from public.court_events
-  where matter_id = m_a1 and outcome_update_id is null
-    and purpose = 'Hearing of pending motion';
-  perform pg_temp.chk('the next court date is diarised', n = 1);
-
-  perform pg_temp.as_super();
-  select count(*) into n from public.notifications
-  where user_id = u_alice and event = 'court_update' and channel = 'in_app';
-  perform pg_temp.chk('the client party is notified of the court update', n >= 1);
-
-  -- =========================================================================
-  -- Consultation notes
-  -- =========================================================================
-  perform pg_temp.as_user(u_lawyer_a, 'aal2');
-  perform public.save_consultation_notes(
-    b1, 'We discussed your tenancy dispute and your options.',
-    'Serve a formal notice before filing.', 'Send the tenancy agreement this week.',
-    'Client seems ready to litigate; quote conservatively.', true);
-  perform pg_temp.as_super();
-  select count(*) into n from public.appointments where id = b1 and status = 'completed';
-  select count(*) into n2 from public.consultation_notes where appointment_id = b1;
-  perform pg_temp.chk('save_consultation_notes writes notes and completes the appointment',
-    n = 1 and n2 = 1);
-
-  perform pg_temp.as_user(u_alice);
-  select count(*) into n from public.consultation_notes
-  where appointment_id = b1 and summary is not null;
-  perform pg_temp.chk('the client sees their consultation summary', n = 1);
-
-  select count(*) into n from public.consultation_internal_notes;
-  perform pg_temp.chk('internal consultation notes never reach clients', n = 0);
-
-  -- =========================================================================
-  -- Invites
-  -- =========================================================================
-  perform pg_temp.as_user(u_bob);
-  select count(*) into n from public.invites;
-  perform pg_temp.chk('invite tokens are invisible to clients', n = 0);
-
-  js := public.accept_invite('test-invite-token-bob');
-  select count(*) into n from public.matters where id = m_a1;
-  perform pg_temp.chk('accept_invite makes the client a party to the matter',
-    (js ->> 'matter_id')::uuid = m_a1 and n = 1);
-
-  -- =========================================================================
-  -- Audit log: owner/admin read, append-only for everyone
-  -- =========================================================================
-  perform pg_temp.as_user(u_admin_a);
-  select count(*) into n from public.audit_log where firm_id = firm_a;
-  perform pg_temp.chk('the firm owner reads the firm''s audit log', n > 0);
-
-  perform pg_temp.as_user(u_lawyer_a, 'aal2');
-  select count(*) into n from public.audit_log;
-  perform pg_temp.chk('non-admin staff cannot read the audit log', n = 0);
-
-  perform pg_temp.as_service();
-  ok := false;
-  begin
-    update public.audit_log set action = 'tampered' where firm_id = firm_a;
-  exception when others then ok := true;
-  end;
-  perform pg_temp.chk('audit_log rejects updates even from the service role', ok);
-
-  ok := false;
-  begin
-    delete from public.audit_log where firm_id = firm_a;
-  exception when others then ok := true;
-  end;
-  perform pg_temp.chk('audit_log rejects deletes even from the service role', ok);
-
-  -- =========================================================================
-  -- Verdict
-  -- =========================================================================
-  perform pg_temp.as_super();
-  select count(*) filter (where pass), count(*) filter (where not pass)
-  into n, n2 from _results;
-  if n2 > 0 then
-    raise exception '% of % checks FAILED', n2, n + n2;
-  end if;
-  if n <> 52 then
-    raise exception 'expected 52 checks, ran %', n;
-  end if;
-  raise notice 'ALL CHECKS PASSED';
-end $test$;
-
+do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
 rollback;

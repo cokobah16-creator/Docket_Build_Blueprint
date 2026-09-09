@@ -1,226 +1,102 @@
-// dispatch-notifications: drains the outbox (public.notifications rows with
-// status 'queued', scheduled_for <= now, channel email/sms/push) and delivers
-// via Resend (email), Termii or Twilio (SMS) and Web Push (VAPID). in_app
-// rows are not dispatched — the client reads them straight from the table.
-//
-// Driven by Supabase Cron every minute (see README). Callable only with the
-// service-role key (or CRON_SECRET as a bearer token).
+// Supabase Edge Function — notification dispatcher. Schedule it every minute (Dashboard → Cron → HTTP).
+// Drains `notifications` rows with status 'queued' for email / sms / push. WhatsApp is Phase 2 (marked 'skipped').
+// Templates are minimal and branded by firm name; move them to firms.brand once the design system lands.
+import { createClient } from 'npm:@supabase/supabase-js@2';
+import webpush from 'npm:web-push@3';
 
-import { json, select, update } from "../_shared/db.ts";
-import { type PushSubscription, sendWebPush } from "../_shared/webpush.ts";
+const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') ?? 'mailto:ops@docket.app', Deno.env.get('VAPID_PUBLIC_KEY')!, Deno.env.get('VAPID_PRIVATE_KEY')!);
 
-const BATCH = 50;
-const MAX_ATTEMPTS = 5;
-const APP_BASE_URL = (Deno.env.get("APP_BASE_URL") ?? "").replace(/\/$/, "");
+type Row = { id: string; user_id: string; firm_id: string | null; channel: string; event: string; payload: Record<string, any> };
 
-interface NotificationRow {
-  id: string;
-  user_id: string;
-  channel: "email" | "sms" | "push";
-  event: string;
-  title: string;
-  body: string | null;
-  url: string | null;
-  attempts: number;
+function fmt(iso: string | undefined, tz: string) {
+  if (!iso) return '';
+  return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: tz }).format(new Date(iso));
 }
 
-interface ProfileRow {
-  id: string;
-  email: string | null;
-  phone: string | null;
-  quiet_hours: { start?: string; end?: string } | null;
-  timezone: string;
+function render(n: Row, firm: string, tz: string): { subject: string; text: string; url: string } {
+  const p = n.payload ?? {};
+  const when = fmt(p.starts_at ?? p.scheduled_at, tz);
+  switch (n.event) {
+    case 'appointment_confirmed':    return { subject: `${firm}: consultation ${p.reference} confirmed`, text: `Your consultation with ${firm} is confirmed for ${when}. Open the app to prepare.`, url: `/app/appointments/${p.appointment_id}` };
+    case 'appointment_reminder_24h': return { subject: `${firm}: your consultation is tomorrow`, text: `Your ${firm} consultation is tomorrow at ${when}.`, url: `/app/appointments/${p.appointment_id}` };
+    case 'appointment_reminder_1h':  return { subject: `${firm}: consultation in 1 hour`, text: `Your ${firm} consultation begins in 1 hour (${when}).`, url: `/app/appointments/${p.appointment_id}` };
+    case 'appointment_reminder_10m': return { subject: `${firm}: consultation in 10 minutes`, text: `Your consultation begins in 10 minutes. Open the app and join the waiting room.`, url: `/app/appointments/${p.appointment_id}/waiting-room` };
+    case 'appointment_reminder_now': return { subject: `${firm}: your consultation is ready`, text: `Your consultation is ready. Join now.`, url: `/app/appointments/${p.appointment_id}/waiting-room` };
+    case 'appointment_cancelled':    return { subject: `${firm}: consultation ${p.reference} cancelled`, text: `Your consultation scheduled for ${when} has been cancelled.`, url: `/app/appointments/${p.appointment_id}` };
+    case 'appointment_rescheduled':  return { subject: `${firm}: consultation rescheduled`, text: `Your consultation has been moved to ${when}.`, url: `/app/appointments/${p.appointment_id}` };
+    case 'payment_confirmed':        return { subject: `${firm}: payment received`, text: `We received your payment for invoice ${p.invoice_number}. Your receipt is in the app.`, url: `/app/payments` };
+    case 'matter_update':            return { subject: `${firm}: update on your matter`, text: `${p.title}. Open the app for details.`, url: `/app/matters/${p.matter_id}` };
+    case 'court_date_t3':            return { subject: `${firm}: court date in 3 days`, text: `Your matter comes up on ${when}${p.purpose ? ` for ${p.purpose}` : ''}.`, url: `/app/matters/${p.matter_id}` };
+    case 'court_date_t1':            return { subject: `${firm}: court date tomorrow`, text: `Your matter comes up tomorrow, ${when}${p.court_name ? ` at ${p.court_name}` : ''}.`, url: `/app/matters/${p.matter_id}` };
+    case 'new_message':              return { subject: `${firm}: new message`, text: `You have a new message from ${firm}.`, url: p.matter_id ? `/app/matters/${p.matter_id}` : `/app/messages` };
+    case 'sitting_without_update':   return { subject: `Docket: sitting without an update`, text: `A court sitting on ${when} has no update posted yet. Post it now — your client is waiting.`, url: `/firm/matters/${p.matter_id}` };
+    default:                         return { subject: `${firm}: notification`, text: JSON.stringify(p), url: '/app' };
+  }
 }
 
-function authorized(req: Request): boolean {
-  const bearer = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
-  const cronSecret = Deno.env.get("CRON_SECRET");
-  return (
-    bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ||
-    (!!cronSecret && bearer === cronSecret)
-  );
-}
-
-// --- email: Resend ----------------------------------------------------------
-
-async function sendEmail(to: string, title: string, body: string, url: string | null) {
-  const link = url ? `${APP_BASE_URL}${url}` : APP_BASE_URL;
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${Deno.env.get("RESEND_API_KEY")}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      from: Deno.env.get("EMAIL_FROM") ?? "Docket <notifications@docket.app>",
-      to: [to],
-      subject: title,
-      text: `${body}\n\n${link}`,
-    }),
+async function sendEmail(to: string, subject: string, text: string, fromName: string) {
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST', headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: `${fromName} <${Deno.env.get('EMAIL_FROM')}>`, to, subject, text, html: `<p>${text}</p>` }),
   });
-  if (!res.ok) throw new Error(`resend ${res.status}: ${await res.text()}`);
+  if (!r.ok) throw new Error(`resend ${r.status}`);
 }
-
-// --- SMS: Termii (Nigeria, DND-safe) with Twilio fallback -------------------
 
 async function sendSms(to: string, text: string) {
-  const termiiKey = Deno.env.get("TERMII_API_KEY");
-  if (termiiKey) {
-    const res = await fetch("https://api.ng.termii.com/api/sms/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: termiiKey,
-        to,
-        from: Deno.env.get("TERMII_SENDER_ID") ?? "Docket",
-        sms: text,
-        type: "plain",
-        channel: "dnd",
-      }),
+  if (to.startsWith('+234')) {
+    const r = await fetch('https://api.ng.termii.com/api/sms/send', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ api_key: Deno.env.get('TERMII_API_KEY'), to, from: Deno.env.get('TERMII_SENDER_ID') ?? 'Docket', sms: text, type: 'plain', channel: 'dnd' }),
     });
-    if (!res.ok) throw new Error(`termii ${res.status}: ${await res.text()}`);
-    return;
+    if (!r.ok) throw new Error(`termii ${r.status}`);
+  } else {
+    const sid = Deno.env.get('TWILIO_ACCOUNT_SID')!;
+    const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+      method: 'POST',
+      headers: { Authorization: 'Basic ' + btoa(`${sid}:${Deno.env.get('TWILIO_AUTH_TOKEN')}`), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ To: to, From: Deno.env.get('TWILIO_FROM')!, Body: text }),
+    });
+    if (!r.ok) throw new Error(`twilio ${r.status}`);
   }
-
-  const sid = Deno.env.get("TWILIO_ACCOUNT_SID");
-  const token = Deno.env.get("TWILIO_AUTH_TOKEN");
-  const from = Deno.env.get("TWILIO_FROM");
-  if (!sid || !token || !from) throw new Error("no SMS provider configured");
-  const res = await fetch(
-    `https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${btoa(`${sid}:${token}`)}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({ To: to, From: from, Body: text }),
-    },
-  );
-  if (!res.ok) throw new Error(`twilio ${res.status}: ${await res.text()}`);
 }
 
-// --- push -------------------------------------------------------------------
-
-async function sendPush(userId: string, n: NotificationRow): Promise<void> {
-  const subs = await select<
-    { id: string; endpoint: string; p256dh: string; auth: string }
-  >("push_subscriptions", `user_id=eq.${userId}&select=id,endpoint,p256dh,auth`);
-  if (subs.length === 0) throw new Error("no push subscriptions");
-
-  let delivered = 0;
-  for (const sub of subs) {
-    const result = await sendWebPush(sub as PushSubscription, {
-      title: n.title,
-      body: n.body ?? "",
-      url: n.url ?? "/",
-      event: n.event,
-    });
-    if (result.gone) {
-      // Dead endpoint: forget it.
-      await fetch(
-        `${Deno.env.get("SUPABASE_URL")}/rest/v1/push_subscriptions?id=eq.${sub.id}`,
-        {
-          method: "DELETE",
-          headers: {
-            apikey: Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-            Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
-          },
-        },
-      ).catch(() => {});
-    } else if (result.ok) {
-      delivered++;
-    }
-  }
-  if (delivered === 0) throw new Error("no push endpoint accepted the message");
-}
-
-// --- quiet hours ------------------------------------------------------------
-
-function inQuietHours(profile: ProfileRow): boolean {
-  const qh = profile.quiet_hours;
-  if (!qh?.start || !qh?.end) return false;
-  const now = new Date().toLocaleTimeString("en-GB", {
-    hour12: false,
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone: profile.timezone || "Africa/Lagos",
-  });
-  return qh.start <= qh.end
-    ? now >= qh.start && now < qh.end
-    : now >= qh.start || now < qh.end; // window crosses midnight
-}
-
-// --- the drain --------------------------------------------------------------
-
-Deno.serve(async (req) => {
-  if (!authorized(req)) return json({ error: "unauthorized" }, 401);
-
-  const due = await select<NotificationRow>(
-    "notifications",
-    "status=eq.queued&channel=in.(email,sms,push)" +
-      `&scheduled_for=lte.${encodeURIComponent(new Date().toISOString())}` +
-      `&select=id,user_id,channel,event,title,body,url,attempts` +
-      `&order=scheduled_for.asc&limit=${BATCH}`,
-  );
-  if (due.length === 0) return json({ dispatched: 0 });
-
-  const userIds = [...new Set(due.map((n) => n.user_id))];
-  const profiles = await select<ProfileRow>(
-    "profiles",
-    `id=in.(${userIds.join(",")})&select=id,email,phone,quiet_hours,timezone`,
-  );
-  const byUser = new Map(profiles.map((p) => [p.id, p]));
-
-  let sent = 0;
-  let failed = 0;
-  let deferred = 0;
-
-  for (const n of due) {
-    const profile = byUser.get(n.user_id);
-
-    // Respect quiet hours for interruptive channels (email queues quietly).
-    if (profile && (n.channel === "sms" || n.channel === "push") && inQuietHours(profile)) {
-      await update("notifications", `id=eq.${n.id}`, {
-        scheduled_for: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-      });
-      deferred++;
-      continue;
-    }
-
-    await update("notifications", `id=eq.${n.id}`, {
-      status: "sending",
-      attempts: n.attempts + 1,
-    });
-
+async function sendPush(userId: string, subject: string, text: string, url: string) {
+  const { data: subs } = await supabase.from('push_subscriptions').select('id, endpoint, keys').eq('user_id', userId);
+  if (!subs?.length) throw new Error('no push subscription');
+  for (const s of subs) {
     try {
-      const text = n.body ?? n.title;
-      if (n.channel === "email") {
-        if (!profile?.email) throw new Error("profile has no email");
-        await sendEmail(profile.email, n.title, text, n.url);
-      } else if (n.channel === "sms") {
-        if (!profile?.phone) throw new Error("profile has no phone");
-        await sendSms(profile.phone, `${n.title}. ${text}`.slice(0, 320));
-      } else {
-        await sendPush(n.user_id, n);
-      }
-      await update("notifications", `id=eq.${n.id}`, {
-        status: "sent",
-        sent_at: new Date().toISOString(),
-        error: null,
-      });
-      sent++;
-    } catch (err) {
-      const attempts = n.attempts + 1;
-      await update("notifications", `id=eq.${n.id}`, {
-        status: attempts >= MAX_ATTEMPTS ? "failed" : "queued",
-        error: String(err).slice(0, 500),
-        // linear backoff: 2 minutes per attempt
-        scheduled_for: new Date(Date.now() + attempts * 2 * 60 * 1000).toISOString(),
-      });
-      failed++;
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys as any }, JSON.stringify({ title: subject, body: text, url }));
+    } catch (e: any) {
+      if (e?.statusCode === 404 || e?.statusCode === 410) await supabase.from('push_subscriptions').delete().eq('id', s.id);
+      else throw e;
     }
   }
+}
 
-  return json({ dispatched: sent, failed, deferred, batch: due.length });
+Deno.serve(async () => {
+  const { data: rows, error } = await supabase
+    .from('notifications')
+    .select('id, user_id, firm_id, channel, event, payload, profiles!inner(email, phone, timezone, full_name), firms(name)')
+    .eq('status', 'queued').lte('send_after', new Date().toISOString())
+    .in('channel', ['email', 'sms', 'push', 'whatsapp'])
+    .order('created_at').limit(50);
+  if (error) return new Response(error.message, { status: 500 });
+
+  let sent = 0, failed = 0, skipped = 0;
+  for (const r of rows ?? []) {
+    const prof: any = (r as any).profiles; const firm = (r as any).firms?.name ?? 'Docket';
+    const { subject, text, url } = render(r as any, firm, prof?.timezone ?? 'Africa/Lagos');
+    const appUrl = (Deno.env.get('APP_URL') ?? '') + url;
+    try {
+      if (r.channel === 'whatsapp') { await supabase.from('notifications').update({ status: 'skipped', error: 'whatsapp is phase 2' }).eq('id', r.id); skipped++; continue; }
+      if (r.channel === 'email') { if (!prof?.email) throw new Error('no email'); await sendEmail(prof.email, subject, `${text}\n\n${appUrl}`, firm); }
+      if (r.channel === 'sms')   { if (!prof?.phone) throw new Error('no phone'); await sendSms(prof.phone, `${text} ${appUrl}`); }
+      if (r.channel === 'push')  { await sendPush(r.user_id, subject, text, url); }
+      await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', r.id); sent++;
+    } catch (e: any) {
+      await supabase.from('notifications').update({ status: 'failed', error: String(e?.message ?? e).slice(0, 500) }).eq('id', r.id); failed++;
+    }
+  }
+  return new Response(JSON.stringify({ sent, failed, skipped }), { headers: { 'Content-Type': 'application/json' } });
 });
