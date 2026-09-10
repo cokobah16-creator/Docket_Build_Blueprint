@@ -19,6 +19,12 @@ type Quality = "good" | "low" | "very-low" | "unknown";
 
 const JOIN_BEFORE_MS = 10 * 60 * 1000;
 
+/** Daily reports access as "unknown" or { level: "none" | "lobby" | "full" }. */
+function accessLevel(frame: any): string | undefined {
+  const access = frame?.accessState?.()?.access;
+  return access && typeof access === "object" ? (access as { level?: string }).level : undefined;
+}
+
 function pad(n: number) {
   return n < 10 ? `0${n}` : String(n);
 }
@@ -175,7 +181,7 @@ export function ConsultationRoom({
             setPhase("in-call");
             setJoinedAt(Date.now());
             emit("started");
-          } else if (frame.accessState?.()?.access?.level === "full") {
+          } else if (accessLevel(frame) === "full") {
             setPhase("in-call");
             setJoinedAt(Date.now());
             emit("joined");
