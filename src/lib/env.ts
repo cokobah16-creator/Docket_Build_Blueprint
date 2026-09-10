@@ -15,3 +15,11 @@ export function supabaseAnonKey(): string | null {
 export function isSupabaseConfigured(): boolean {
   return Boolean(supabaseUrl() && supabaseAnonKey());
 }
+
+/** PostgREST headers for the public key: JWT anon keys also go in Authorization;
+ *  sb_publishable_ keys are not JWTs and travel only as apikey. */
+export function restHeaders(key: string): Record<string, string> {
+  return key.startsWith("sb_publishable_")
+    ? { apikey: key }
+    : { apikey: key, authorization: `Bearer ${key}` };
+}
