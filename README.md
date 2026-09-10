@@ -82,6 +82,11 @@ scripts/db-test-local.sh
    `cron_secret` from Vault: `select vault.create_secret('https://<ref>.supabase.co/functions/v1/dispatch-notifications', 'dispatch_url');`
    and `select vault.create_secret('<CRON_SECRET>', 'cron_secret');`. On Vercel set `NEXT_PUBLIC_VAPID_PUBLIC_KEY` so the
    client can subscribe. Clients knock into the Daily room without a token; only the lawyer holds an owner token and admits.
+10. **Slice 3 (client portal).** Migration 10 adds `profiles.quiet_hours_start/end` (push, SMS and email wait until quiet
+    hours end; in-app and 10-minute reminders never wait), the `document_versions` → `documents.current_version_id` trigger,
+    and adds `updates`, `messages`, `notifications` and `invoices` to the Realtime publication. Client uploads go
+    `documents` row → Storage `documents/{firm}/{document}/{version}.{ext}` → `document_versions` row, all as the user.
+    The web manifest and icons are rendered per tenant from `firms.brand`; `/offline.html` is the offline shell.
 
 ## Run the tests locally
 

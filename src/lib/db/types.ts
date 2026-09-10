@@ -300,3 +300,110 @@ export interface JoinInfo {
   ends_at: string;
   reference: string;
 }
+
+// ---- client portal (slice 3)
+export interface MatterStatus {
+  id: string;
+  firm_id: string;
+  key: string;
+  label: string;
+  colour: string | null;
+  is_terminal: boolean;
+}
+
+export interface MatterRow {
+  id: string;
+  firm_id: string;
+  reference: string;
+  title: string;
+  type: string;
+  status_id: string | null;
+  description: string | null;
+  next_action: string | null;
+  court_name: string | null;
+  suit_number: string | null;
+  next_event_at: string | null;
+  next_event_note: string | null;
+  opened_at: string;
+  closed_at: string | null;
+}
+
+export interface UpdateRow {
+  id: string;
+  matter_id: string;
+  firm_id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  payload: Record<string, unknown>;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface CourtEventRow {
+  id: string;
+  matter_id: string;
+  firm_id: string;
+  scheduled_at: string;
+  court_name: string | null;
+  purpose: string | null;
+  outcome_update_id: string | null;
+}
+
+export interface DocumentRow {
+  id: string;
+  firm_id: string;
+  matter_id: string | null;
+  appointment_id: string | null;
+  name: string;
+  category: string | null;
+  client_visible: boolean;
+  current_version_id: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export interface DocumentVersionRow {
+  id: string;
+  document_id: string;
+  storage_path: string;
+  mime: string | null;
+  size_bytes: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export interface MessageAttachment {
+  document_id: string;
+  name: string;
+  mime?: string | null;
+}
+
+export interface MessageRow {
+  id: string;
+  firm_id: string;
+  matter_id: string | null;
+  appointment_id: string | null;
+  sender_id: string | null;
+  body: string | null;
+  attachments: MessageAttachment[];
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationRow {
+  id: string;
+  firm_id: string | null;
+  channel: string;
+  event: string;
+  payload: Record<string, unknown>;
+  status: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationPreference {
+  event: string;
+  channel: string;
+  enabled: boolean;
+}
