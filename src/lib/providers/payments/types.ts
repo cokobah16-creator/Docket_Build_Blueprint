@@ -25,7 +25,7 @@ export interface VerifyPaymentResult {
 }
 
 export interface PaymentProvider {
-  readonly name: 'paystack' | 'stripe' | 'flutterwave';
+  readonly name: 'paystack' | 'flutterwave';
   initialize(args: InitializePaymentArgs): Promise<InitializePaymentResult>;
   verify(providerRef: string): Promise<VerifyPaymentResult>;
 }
