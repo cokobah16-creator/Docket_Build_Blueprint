@@ -79,6 +79,8 @@ export const COURT_OUTCOMES: Array<{ key: string; label: string; needsInstance?:
   { key: "stood_down", label: "Stood down" },
   { key: "mention", label: "Mention" },
   { key: "court_did_not_sit", label: "Court did not sit" },
+  { key: "hearing_notice", label: "Hearing notice (date fixed, no sitting)" },
+  { key: "adjourned_sine_die", label: "Adjourned sine die" },
 ];
 
 /** "At whose instance" chips for adjournments. */

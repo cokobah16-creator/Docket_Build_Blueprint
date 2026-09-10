@@ -67,6 +67,18 @@ begin
   exception when insufficient_privilege then ok := true;
   end;
   perform t_check('owner cannot activate her own firm',                   ok and (select status from firms where id = f) = 'pending');
+  ok := false;
+  begin
+    update firms set slug = 'admin' where id = f;
+  exception when insufficient_privilege or check_violation then ok := true;
+  end;
+  perform t_check('owner cannot rename the slug to a reserved name',      ok and (select slug from firms where id = f) = 'ubuntu-partners');
+  ok := false;
+  begin
+    update firms set custom_domain = 'app.docket.app' where id = f;
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('custom domains are mapped by the platform',            ok);
   perform t_check('firm creation is in the audit trail',                   (select count(*) from audit_log where firm_id = f and action = 'firm.created') = 1);
   perform t_reset();
   insert into fx values ('firm_u', f);
@@ -193,13 +205,29 @@ end $$;
 -- ---------------------------------------------------------------- 4. a firm brings its own lawyers
 do $$
 declare o1 uuid := (select v from fx where k='owner_one'); fu uuid := (select v from fx where k='firm_u'); st uuid := (select v from fx where k='stranger');
-        tok text; res jsonb; ok bool; newbie uuid;
+        tok text; tok2 text; res jsonb; ok bool; newbie uuid;
 begin
   insert into auth.users (id, email) values (gen_random_uuid(), 'new_lawyer@ptest') returning id into newbie;
 
   perform t_as(o1, 'aal2');
   insert into staff_invites (firm_id, email, role, created_by) values (fu, 'New_Lawyer@ptest', 'lawyer', o1) returning token into tok;
   perform t_check('owner invites a lawyer by email',                       tok is not null);
+  perform t_reset();
+
+  -- an impostor who edits their profile email to match an invite is still refused: the
+  -- identity provider's email is what counts
+  insert into auth.users (id, email) values (gen_random_uuid(), 'impostor@ptest');
+  perform t_as(o1, 'aal2');
+  insert into staff_invites (firm_id, email, role, created_by) values (fu, 'target@ptest', 'admin', o1) returning token into tok2;
+  perform t_reset();
+  perform t_as((select id from auth.users where email = 'impostor@ptest'), 'aal2');
+  update profiles set email = 'target@ptest' where id = auth.uid();
+  ok := false;
+  begin
+    res := accept_staff_invite(tok2);
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('a self-edited profile email cannot claim an invite',   ok);
   perform t_reset();
 
   perform t_as(st, 'aal2');

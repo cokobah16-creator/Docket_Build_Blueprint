@@ -25,7 +25,9 @@ test("firm registration is reachable from the landing", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("link", { name: /register your firm/i }).click();
   await expect(page).toHaveURL(/\/firm\/start/);
-  await expect(page.getByRole("heading", { name: /register your firm/i })).toBeVisible();
+  if (configured) {
+    await expect(page.getByRole("heading", { name: /register your firm/i })).toBeVisible();
+  }
 });
 
 test("client login renders both sign-in methods", async ({ page }) => {

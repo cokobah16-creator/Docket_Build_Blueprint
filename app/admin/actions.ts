@@ -49,14 +49,18 @@ const statusSchema = z.object({
   status: z.enum(["pending", "active", "suspended"]),
 });
 
-export async function setFirmStatus(formData: FormData): Promise<void> {
+export type FirmStatusState = { error?: string };
+
+export async function setFirmStatus(_prev: FirmStatusState, formData: FormData): Promise<FirmStatusState> {
   const parsed = statusSchema.safeParse({ firmId: formData.get("firmId"), status: formData.get("status") });
-  if (!parsed.success) return;
+  if (!parsed.success) return { error: "Invalid request." };
   const supabase = await supabaseServer();
-  if (!supabase) return;
+  if (!supabase) return { error: "Not configured." };
   // Lifecycle changes go through set_firm_status(): platform admins have no row-level
   // write on firms, so nothing else about a tenant can be touched from here. Activating
   // is the verification step (the RPC stamps verified_at and tells the firm).
-  await supabase.rpc("set_firm_status", { p_firm: parsed.data.firmId, p_status: parsed.data.status });
+  const { error } = await supabase.rpc("set_firm_status", { p_firm: parsed.data.firmId, p_status: parsed.data.status });
+  if (error) return { error: error.message };
   revalidatePath("/admin");
+  return {};
 }

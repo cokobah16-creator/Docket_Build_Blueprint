@@ -25,9 +25,9 @@ Every slice inherits these rules:
 > 3. Auth: client sign-in by phone OTP or email magic link; staff sign-in by email + password. A TOTP enrolment flow (`/firm/security/mfa`) that staff must complete before any `/firm` route renders — check the session's `aal` and redirect to enrolment/challenge when it is not `aal2`. Read the roles from `firm_members` to route `owner/admin/lawyer/staff`.
 > 4. A design-token layer: read `firms.brand.colours` and fonts into CSS variables in the tenant layout; base components (Button, Input, Select, Card, Modal, Table, Badge/StatusPill with icon + label, Alert, Toast, BottomNav) in `src/components/ui`.
 > 5. Consent capture: on first login, record `terms` and `privacy` acceptance in `consent_records` with the versions from `firms.policies`.
-> 6. `.env.example` is complete; `npm run typecheck` and `npm run db:test:local` pass; Playwright is set up with a smoke test that loads the Klinique public home and the client login.
+> 6. `.env.example` is complete; `npm run typecheck` and `npm run db:test:local` pass; Playwright is set up with a smoke test that loads the tenant public home for `E2E_FIRM_SLUG` and the client login.
 >
-> Acceptance: a staff user without TOTP is forced to enrol; after enrolment `aal2` shows in the session; a client can sign in by phone and lands on an empty dashboard branded with Klinique's colours.
+> Acceptance: a staff user without TOTP is forced to enrol; after enrolment `aal2` shows in the session; a client can sign in by phone and lands on an empty dashboard branded with the tenant's colours.
 
 ## Slice 1 — tenant public site, booking wizard, Paystack (weeks 3–4)
 
@@ -62,7 +62,7 @@ Every slice inherits these rules:
 > Build the client PWA at `/app` with bottom navigation Home · Appointments · Matters · Messages · Profile.
 >
 > - Home: welcome, quick actions (Book, Join, Upload, Message, Pay), next appointment with Join when live, my matters (reference, lawyer, status label from `matter_statuses`, last update, next action), recent documents, outstanding balance, recent notifications. Empty states with CTAs.
-> - Matters list and matter detail with tabs: Timeline (`updates` where visible, newest first, Realtime), Documents (upload to `documents/{firm}/{doc}/{version}` with a new `documents` + `document_versions` row, preview PDF/images via short signed URLs, versions), Messages (thread on the matter, attachments, read receipts, Realtime), Invoices (pay via the same payment action as slice 1, USD invoices go to Stripe).
+> - Matters list and matter detail with tabs: Timeline (`updates` where visible, newest first, Realtime), Documents (upload to `documents/{firm}/{doc}/{version}` with a new `documents` + `document_versions` row, preview PDF/images via short signed URLs, versions), Messages (thread on the matter, attachments, read receipts, Realtime), Invoices (pay via the same payment action as slice 1; USD through Paystack multi-currency where the firm's account has it — decision 0002).
 > - Court dates: merged calendar across firms with ICS export.
 > - Notifications feed (`notifications` where channel `in_app`, mark read) and preferences (`notification_preferences` per event/channel, quiet hours as a profile field).
 > - Profile: contact details, timezone, preferred channel, consent history, sign-out everywhere.
@@ -77,12 +77,12 @@ Every slice inherits these rules:
 > - Today: today's appointments with Join, **sittings without an update** (`court_events` in the past with `outcome_update_id` null), overdue tasks placeholder, unread messages, documents awaiting review.
 > - Post court update form → `post_court_update` RPC exactly as blueprint §5.11: date (today), court, outcome chips, "at whose instance" when adjourned, next date + purpose, note to client, internal note, attachment. Must be usable in 30 seconds on a phone; the client is notified within 60.
 > - Matters: list with per-firm status filter, create (reference via `next_reference` inside a server action), edit, parties (invite by phone/email → `invites`, link shown for WhatsApp/SMS), lawyers, timeline with internal entries visible, documents (client-visible toggle), messages, invoices (create manual invoices with items and VAT; issue; pay-by-link), tasks (create/close — minimal).
-> - Court and counsel (migrations 10–11): a court picker on the matter (platform directory by level/state/division, plus "add our own court" → `courts` with `firm_id`), suit number with the court's hint, originating/handling partner; a counsel roster (`matter_counsel`: opposing / co-counsel, pick a firm on Docket from `firm_public` or enter an address for service); **Serve process** → `serve_process` (document, title, method, date, note) and a **Service inbox** (`service_inbox`) with one-tap `acknowledge_service`; the post-court-update form warns via `is_non_sitting_day()` when the next date is a weekend, public holiday or published vacation, and offers the court's vacation judge note.
+> - Court and counsel (migrations 10–11): a court picker on the matter (platform directory by level/state/division, plus "add our own court" → `courts` with `firm_id`), suit number with the court's hint, originating/handling partner; a counsel roster (`matter_counsel`: party and side, opposing / co-counsel, pick a firm on Docket from `firm_service_directory` or enter an address for service, record counsel's undertaking to accept service); **Serve process** → `serve_process` (document, title, method, date, originating?, order for substituted service, who was served and by whom) and the **Service inbox** at `/firm/inbox` (already a minimal page: acknowledge) gains `link_service_to_matter` with a response date and `revoke_service`; the post-court-update form warns via `is_non_sitting_day()` when the next date is a weekend, public holiday or published vacation, and offers the court's vacation judge note.
 > - Firm Overview (master prompt §4): side-by-side firm calendar, activity feed, firm-wide totals, originated-vs-handling column.
 > - Clients: list and detail (profile, appointments, matters, invoices, consent records).
 > - Availability editor: weekly rules with breaks, exceptions/holidays, slot length, daily cap; preview of the next 14 days of slots.
 > - Consultations: appointment list, detail, notes (from slice 2).
-> - Stripe USD: invoices in USD use `stripeProvider()`; Stripe webhook deployed; receipts in both currencies.
+> - Receipts in both currencies; manual invoices go through the same `paymentProviderFor()` and settle to the firm's subaccount.
 >
 > Acceptance: a lawyer posts a court update from a phone in under 30 seconds and the client's phone buzzes; sittings without an update clears when the update is posted; an admin can invite a client to a matter and the client sees it after `accept_invite`.
 
@@ -97,7 +97,7 @@ Every slice inherits these rules:
 > - Compliance pack: privacy notice and DPA templates wired to `firms.policies`; data-subject request runbook; breach-response runbook; NDPC registration checklist.
 > - Docs: admin guide, client guide, API/RPC reference, deployment runbook, `.env.example` audit.
 >
-> Acceptance: all blueprint §12 week-9/10 gates met; every active Klinique client onboarded; `npm run typecheck`, Playwright and the SQL suite green in CI.
+> Acceptance: all blueprint §12 week-9/10 gates met; every active client of tenant #1 onboarded; `npm run typecheck`, Playwright and the SQL suite green in CI.
 
 ## Slice 6 — second firm and Phase 2 scoping (weeks 11–12)
 

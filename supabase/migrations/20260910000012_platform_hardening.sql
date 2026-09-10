@@ -29,7 +29,8 @@
 --      prefixes, Delta's Warri FHC division, a matter carries several court
 --      numbers over its life (matter_court_numbers), holidays scoped to a
 --      state with an observed date and 2027 seeded, vacations record whether
---      time runs, platform admins maintain all of it from /admin.
+--      time runs, platform admins maintain all of it through the API
+--      (policies courts_platform_write / public_holidays_platform_write / court_vacations_platform_write; the /admin data-entry UI is slice 5).
 --   E. Practitioner identity: SCN unique across accounts and normalised,
 --      NBA stamp and seal (per practising year) and practising-fee year.
 --   F. Firms bring their own lawyers: staff_invites + accept_staff_invite().
@@ -709,7 +710,7 @@ create policy courts_insert on public.courts for insert
 create policy courts_update on public.courts for update
   using (firm_id is not null and staff_w(firm_id)) with check (firm_id is not null and staff_w(firm_id));
 create policy courts_delete on public.courts for delete using (firm_id is not null and admin_w(firm_id));
--- platform admins maintain the shared directory, holidays and vacations from /admin
+-- platform admins maintain the shared directory, holidays and vacations (API now; /admin UI in slice 5)
 create policy courts_platform_write on public.courts for all
   using (firm_id is null and is_platform_admin() and mfa_ok()) with check (firm_id is null and is_platform_admin() and mfa_ok());
 grant insert, update, delete on public.courts, public.public_holidays, public.court_vacations to authenticated;

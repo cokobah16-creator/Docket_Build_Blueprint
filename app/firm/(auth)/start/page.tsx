@@ -24,11 +24,16 @@ export default async function FirmStartPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  let ownedCount = 0;
   if (user) {
-    const { count } = await supabase
+    // Only the caller's own memberships count (a platform admin can read everyone's).
+    const { data: mine } = await supabase
       .from("firm_members")
-      .select("firm_id", { count: "exact", head: true });
-    if ((count ?? 0) > 0) redirect("/firm");
+      .select("firm_id, role")
+      .eq("user_id", user.id);
+    const rows = (mine ?? []) as Array<{ firm_id: string; role: string }>;
+    ownedCount = rows.filter((r) => r.role === "owner").length;
+    if (ownedCount >= 3) redirect("/firm");
   }
 
   return (
@@ -41,6 +46,12 @@ export default async function FirmStartPage() {
         site and bookings go live once Docket has verified the firm (RC/BN number
         and the owner’s enrolment number); the console is yours right away.
       </p>
+      {ownedCount > 0 && (
+        <p className="mt-2 text-sm text-gray-600">
+          You already own {ownedCount} firm{ownedCount === 1 ? "" : "s"} on Docket —{" "}
+          <a href="/firm" className="font-medium text-brand underline">open the console</a> or register another (up to three).
+        </p>
+      )}
       <div className="mt-6">
         <FirmStart signedIn={Boolean(user)} email={user?.email ?? null} />
       </div>

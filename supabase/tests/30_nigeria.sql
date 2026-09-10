@@ -147,13 +147,14 @@ begin
   perform t_reset();
 
   perform t_reset();
+  update lawyer_profiles set scn_verified_at = now() where user_id = ln;   -- the platform verified lawyer N's number
   perform t_as(lo, 'aal2');
   ok := false;
   begin
     insert into lawyer_profiles (firm_id, user_id, slug, scn, is_public) values (fo, lo, 'lawyer-o', 'scn 098765', false);
-  exception when others then ok := sqlerrm like '%already registered to another practitioner%';
+  exception when others then ok := sqlerrm like '%cannot be registered%' and sqlerrm not like '%another%';
   end;
-  perform t_check('an enrolment number belongs to one practitioner',       ok);
+  perform t_check('a verified enrolment number cannot be claimed by anyone else', ok);
   insert into lawyer_profiles (firm_id, user_id, slug, scn, is_public) values (fo, lo, 'lawyer-o', ' scn 12 34 ', false);
   perform t_check('enrolment numbers are normalised',                      (select scn from lawyer_profiles where user_id = lo) = 'SCN1234');
   ok := false;
@@ -186,10 +187,18 @@ begin
   exception when insufficient_privilege then ok := true;
   end;
   perform t_check('anon cannot read practitioner records at all',         ok);
+  perform t_check('anon reads the platform court directory',               (select count(*) from courts where firm_id is null) > 100);
   perform t_check('anon reads states (for forms)',                         (select count(*) from ng_states) = 37);
   perform t_check('anon reads public holidays',                            (select count(*) from public_holidays) >= 8);
   perform t_check('public lawyer profile carries year of call, not SCN',   (select year_of_call from lawyer_public where slug = 'lawyer-n') = 2012
                                                                            and not exists (select 1 from information_schema.columns where table_name = 'lawyer_public' and column_name = 'scn'));
+  perform t_reset();
+  update firms set status = 'pending' where id = (select v from fx where k='firm_n');
+  perform t_anon();
+  perform t_check('a pending firm''s lawyers are not public',              (select count(*) from lawyer_public where slug = 'lawyer-n') = 0);
+  perform t_reset();
+  update firms set status = 'active' where id = (select v from fx where k='firm_n');
+  perform t_anon();
   perform t_reset();
 end $$;
 

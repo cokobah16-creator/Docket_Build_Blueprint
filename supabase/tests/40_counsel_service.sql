@@ -161,8 +161,15 @@ begin
   perform t_check('the inbox names who served, with SCN',                  (select served_by_name from service_inbox where id = s1) is not null);
   perform t_check('the inbox never carries the serving firm''s notes',     not exists (select 1 from information_schema.columns where table_name = 'service_inbox' and column_name in ('note','proof_document_id','acknowledgement_note','revoke_reason')));
   perform t_check('off-platform service on Docket counsel grants nothing', (select count(*) from service_inbox where process_title = 'Written Address') = 0);
-  perform t_check('served firm can open the served document version',     (select count(*) from documents where id = ds) = 1 and (select count(*) from document_versions where id = v1) = 1);
-  perform t_check('served firm can never upload into the serving firm''s document', can_access_document(ds) and not can_upload_document(ds));
+  perform t_check('served firm can open the served document version',     (select count(*) from document_versions where id = v1) = 1 and (select document_name from service_inbox where id = s1) = 'Originating Summons.pdf');
+  perform t_check('served firm never sees the serving firm''s documents row', (select count(*) from documents where id = ds) = 0 and not can_access_document(ds));
+  perform t_check('served firm can never upload into the serving firm''s document', not can_upload_document(ds));
+  ok := false;
+  begin
+    insert into updates (matter_id, firm_id, kind, title, posted_by) values (m, fb, 'note', 'planted', lb);
+  exception when others then ok := sqlerrm like '%does not belong to the firm%';
+  end;
+  perform t_check('a firm cannot plant rows on another firm''s matter',    ok);
   perform t_reset();
 
   perform t_as((select v from fx where k='staff_b'), 'aal2');
@@ -227,6 +234,12 @@ begin
   perform t_check('serving lawyer was told',                              (select count(*) from notifications where user_id = la and event = 'service_acknowledged') >= 1);
   update process_service set note = 'bailiff copy filed' where id = s1;
   perform t_check('serving firm keeps its own bookkeeping',               (select note from process_service where id = s1) = 'bailiff copy filed');
+  ok := false;
+  begin
+    update process_service set proof_document_id = gen_random_uuid() where id = s1;
+  exception when others then ok := sqlstate = '23503' or sqlerrm like '%your firm''s documents%';
+  end;
+  perform t_check('proof of service must be the firm''s own document',    ok);
   ok := false;
   begin
     perform revoke_service(s2, 'served on the wrong chambers');

@@ -32,8 +32,9 @@ values (
                                        'text', 'Consultations may be rescheduled or cancelled free of charge up to 24 hours before the appointment.'),
     'disclaimer',   jsonb_build_object('version', '2026-09',
                                        'text', 'Submitting an inquiry or booking a consultation does not create a lawyer-client relationship. Formal legal advice and representation begin only on a signed engagement.'),
-    'terms',        jsonb_build_object('version', '2026-09', 'url', null),
-    'privacy',      jsonb_build_object('version', '2026-09', 'url', null)
+    -- terms and privacy stay '0-draft' (not shown to clients) until the firm publishes text or a URL
+    'terms',        jsonb_build_object('version', '0-draft', 'url', null, 'text', 'To be published by the firm before go-live.'),
+    'privacy',      jsonb_build_object('version', '0-draft', 'url', null, 'text', 'To be published by the firm before go-live.')
   )
 )
 on conflict (slug) do nothing;

@@ -13,8 +13,8 @@ export function AdminCreateFirm() {
       {state.error && <Alert kind="error">{state.error}</Alert>}
       {state.created && (
         <Alert kind="success" title="Firm created">
-          <code>{state.created.slug}</code> is pending until its owner signs in, enrols two-factor
-          and completes settings.
+          <code>{state.created.slug}</code> is pending until you verify its RC/BN number and the
+          owner’s enrolment number and click <em>Verify and activate</em>.
         </Alert>
       )}
       <Input label="Firm name" name="name" required />

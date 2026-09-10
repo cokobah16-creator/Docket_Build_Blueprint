@@ -18,7 +18,7 @@ Decision [0003](decisions/0003-platform-first.md) is the short form.
 | **The client** (in Asaba, Lagos or Atlanta) | "Tell us → Book → Pay → Meet → Track." One app across every firm acting for them: every court sitting explained within 24 hours, every process served on their behalf visible, every invoice payable in-app, receipts and documents in one place. | `/app` client PWA; merged feed via RLS on `matter_parties` |
 | **The firm** (any size, any state) | A branded public site and booking funnel, Paystack settlement to its own account, virtual consultations, matters against the real court hierarchy, the 30-second court-update form, documents, messaging, invoicing, audit log — and a network: serve counsel on Docket and get an acknowledgement; receive processes into an inbox. Free for three lawyers or fewer. | `/firm` console; `firms`, `firm_members`, `courts`, `matter_counsel`, `process_service` |
 | **The courts** | Matters recorded with proper suit numbers (normalised match key, several numbers over a matter's life) against a shared directory of courts and judicial divisions; sittings captured structurally (outcome, at whose instance, next date, purpose kind, judge, courtroom, source); hearing notices and adjournments sine die; vacated dates refixed without phantom reminders; a firm-side cause list per court and day; processes served with a timestamped, named acknowledgement; hearing dates that respect public holidays and published vacations. Phase 2: cause-list ingestion and e-filing where a judiciary offers it. | `courts`, `court_events`, `matter_court_numbers`, `post_court_update()`, `vacate_court_event()`, `firm_cause_list`, `is_non_sitting_day()` |
-| **Other firms / counsel** | Recorded as counsel of record on the other side, with the party they act for and whether they have undertaken to accept service. Firms that opt in are served non-originating processes through the platform; they acknowledge in one tap, file the process against their own matter with a response date, and see exactly the version served — nothing else. Originating processes still go to the party (or to counsel under an undertaking, or by an order for substituted service). | `matter_counsel`, `service_inbox`, `acknowledge_service()`, `link_service_to_matter()` |
+| **Other firms / counsel** | Recorded as counsel of record on the other side, with the party they act for and whether they have undertaken to accept service. Firms that opt in are served non-originating processes through the platform; they acknowledge in one tap, file the process against their own matter with a response date, and see exactly the version served — nothing else. Originating processes still go to the party (or to counsel under an undertaking, or by an order for substituted service). The in-app acknowledgement is evidence of receipt: it supports the affidavit of service where the rules require one, and stands as counsel's endorsed acknowledgement where counsel accepts service. | `matter_counsel`, `service_inbox`, `/firm/inbox`, `acknowledge_service()`, `link_service_to_matter()` |
 | **The platform operator** | Firm lifecycle (create, suspend, plans, domains, health) with **no** access to any matter content — enforced by the absence of policies, not by policy. | `/admin`, `platform_admins`, `is_platform_admin()` |
 
 ## 2. What makes it Nigerian (built)
@@ -46,8 +46,10 @@ Decision [0003](decisions/0003-platform-first.md) is the short form.
   Government shifts one, state-declared holidays scoped to their state, Eid
   dates added when declared) and `court_vacations` (each court's annual,
   Christmas and Easter vacation from its practice direction, with whether
-  time runs — nothing invented). `post_court_update()` refuses a next date
-  that is not a sitting day unless told the vacation judge will sit.
+  time runs — nothing invented; the table is empty until the operator enters
+  each court's practice-direction dates). `post_court_update()` refuses a next
+  date that is not a sitting day unless told the vacation judge will sit — only
+  weekends and holidays until vacations are entered.
 - **The practitioner.** Supreme Court enrolment number (unique across the
   platform, normalised, verified by the platform), year of call, NBA branch,
   the NBA stamp-and-seal serial for the practising year and the year the
@@ -95,8 +97,10 @@ Decision [0003](decisions/0003-platform-first.md) is the short form.
    receiving service through Docket (`accepts_platform_service`) and record
    the firm's address for service.
 
-Klinique followed the same path with its data supplied by `supabase/seed.sql`
-instead of typed into forms. A second firm needs no SQL.
+Klinique differs in one respect: `supabase/seed.sql` inserts it already active
+and verified (the founders are the platform) and then calls the same
+`seed_firm_defaults()`; its owners and Paystack subaccount are attached as in
+steps 4–5. A second firm needs no SQL.
 
 ## 4. Built now vs scheduled
 
@@ -126,6 +130,10 @@ instead of typed into forms. A second firm needs no SQL.
   public; an inactive firm can neither serve nor be served.
 - Every suit-number hint is a verified registry format or null. Every holiday
   and vacation date is entered from a gazette or practice direction.
+- Rows on matter-linked tables belong to the firm that owns the matter; views
+  are read-only; API roles cannot TRUNCATE.
+- A payment applies only when Paystack reports the firm's own subaccount;
+  anything else is recorded as a flagged failure and reported, never retried.
 
 ## 5. What is Klinique-specific
 

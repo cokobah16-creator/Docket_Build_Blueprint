@@ -180,12 +180,12 @@ begin
   perform t_reset();
 
   -- webhook path (service role / postgres)
-  ok := false;
-  begin
-    res2 := record_payment('paystack', 'PSK-REF-0', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{}'::jsonb, 'ACCT_someone_else');
-  exception when others then ok := sqlerrm like '%settlement account mismatch%';
-  end;
-  perform t_check('a payment settled to the wrong subaccount is refused',  ok);
+  res2 := record_payment('paystack', 'PSK-REF-0', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{}'::jsonb, 'ACCT_someone_else');
+  perform t_check('a payment settled to the wrong subaccount confirms nothing and is flagged',
+                  (res2 ->> 'settlement_mismatch')::bool
+                  and (select status from appointments where id = (res ->> 'appointment_id')::uuid) = 'awaiting_payment'
+                  and (select status from payments where provider_ref = 'PSK-REF-0') = 'failed'
+                  and (select count(*) from audit_log where action = 'payment.settlement_mismatch') = 1);
   res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{"channel":"card"}'::jsonb, 'ACCT_firm_a');
   perform t_check('payment marks the invoice paid',                      res2 ->> 'invoice_status' = 'paid');
   perform t_check('payment confirms the appointment',                    (select status from appointments where id = (res ->> 'appointment_id')::uuid) = 'confirmed');
@@ -194,7 +194,7 @@ begin
   perform t_check('client was told: confirmed + payment',                (select count(*) from notifications where user_id = a1 and event in ('appointment_confirmed','payment_confirmed') and channel = 'in_app') = 2);
 
   perform t_as(a1, 'aal1');
-  perform t_check('client reads her payment through the invoice',        (select count(*) from payments) = 1);
+  perform t_check('client reads her payments through the invoice',       (select count(*) from payments) = 2 and (select count(*) from payments where status = 'succeeded') = 1);
   perform t_reset();
   perform t_as((select v from fx where k='lawyer_b'));
   perform t_check('lawyer B sees no firm A payments or appointments',    (select count(*) from payments) + (select count(*) from appointments) = 0);

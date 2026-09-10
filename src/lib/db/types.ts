@@ -135,9 +135,20 @@ export interface CourtRow {
 }
 
 export type CounselSide = "opposing" | "co_counsel" | "other";
-export type ServiceMethod = "platform" | "email" | "personal" | "courier" | "bailiff" | "substituted";
+export type ServiceMethod =
+  | "platform"
+  | "counsel_address"
+  | "email"
+  | "whatsapp"
+  | "personal"
+  | "bailiff"
+  | "courier"
+  | "registered_post"
+  | "publication"
+  | "pasting"
+  | "substituted"; // legacy value; new rows record the mode and set substituted_by_order
 
-/** Row of the service_inbox view: processes served on the current user's firm. */
+/** Row of the service_inbox view: processes served on (or by) the current user's firm through Docket. */
 export interface ServiceInboxRow {
   id: string;
   process_title: string;
@@ -146,10 +157,25 @@ export interface ServiceInboxRow {
   court_name: string | null;
   method: ServiceMethod;
   served_at: string;
+  is_originating: boolean;
+  substituted_by_order: boolean;
+  served_on_name: string | null;
+  deemed_served_on: string | null;
+  served_by_name: string | null;
+  served_by_scn: string | null;
   acknowledged_at: string | null;
+  acknowledged_by_name: string | null;
   document_id: string;
+  document_version_id: string | null;
+  checksum: string | null;
+  document_name: string;
+  document_mime: string | null;
+  document_size_bytes: number | null;
+  recipient_matter_id: string | null;
+  response_due_on: string | null;
   serving_firm_id: string;
   served_firm_id: string;
+  served_for_party: string | null;
 }
 
 export interface ConsentRecord {

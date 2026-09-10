@@ -11,7 +11,7 @@ import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import type { FirmAdminRow } from "@/lib/db/types";
 import { AdminCreateFirm } from "./create-firm";
-import { setFirmStatus } from "./actions";
+import { FirmStatusButton } from "./firm-status-button";
 
 export const metadata = { title: "Platform admin" };
 
@@ -114,16 +114,7 @@ export default async function AdminPage() {
                       <TD>{f.has_settlement_account ? "subaccount set" : <span className="text-amber-700">no subaccount</span>}</TD>
                       <TD>{new Date(f.created_at).toLocaleDateString("en-GB")}</TD>
                       <TD>
-                        <form action={setFirmStatus} className="flex items-center gap-2">
-                          <input type="hidden" name="firmId" value={f.id} />
-                          <input type="hidden" name="status" value={f.status === "active" ? "suspended" : "active"} />
-                          <button
-                            type="submit"
-                            className="text-xs font-medium text-brand underline"
-                          >
-                            {f.status === "pending" ? "Verify and activate" : f.status === "suspended" ? "Reactivate" : "Suspend"}
-                          </button>
-                        </form>
+                        <FirmStatusButton firmId={f.id} status={f.status} />
                       </TD>
                     </TR>
                   ))}

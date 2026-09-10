@@ -66,6 +66,9 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
             <Link href="/firm" className="font-medium text-gray-700 hover:text-brand">
               Today
             </Link>
+            <Link href="/firm/inbox" className="font-medium text-gray-700 hover:text-brand">
+              Service inbox
+            </Link>
             <Link
               href="/firm/security/mfa"
               className="font-medium text-gray-700 hover:text-brand"
