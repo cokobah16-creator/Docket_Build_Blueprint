@@ -2,7 +2,7 @@
 // Reads only the anon-safe firm_public view over PostgREST — never the firms
 // table, never with the service role.
 
-import { supabaseAnonKey, supabaseUrl } from "@/lib/env";
+import { restHeaders, supabaseAnonKey, supabaseUrl } from "@/lib/env";
 import type { FirmPublic } from "@/lib/db/types";
 
 const CACHE_TTL_MS = 60_000;
@@ -20,7 +20,7 @@ async function fetchFirmPublic(filter: string): Promise<FirmPublic | null> {
   try {
     const res = await fetch(
       `${url}/rest/v1/firm_public?select=id,slug,name,brand,policies,custom_domain,timezone,default_currency&${filter}&limit=1`,
-      { headers: { apikey: key, authorization: `Bearer ${key}` } },
+      { headers: restHeaders(key) },
     );
     if (res.ok) {
       const rows = (await res.json()) as FirmPublic[];

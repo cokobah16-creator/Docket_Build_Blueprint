@@ -1,6 +1,6 @@
 // Public service catalogue reads (anon-safe: RLS shows active services only).
 
-import { supabaseAnonKey, supabaseUrl } from "@/lib/env";
+import { restHeaders, supabaseAnonKey, supabaseUrl } from "@/lib/env";
 import type { ServiceRow } from "@/lib/db/types";
 
 export async function activeServices(firmId: string): Promise<ServiceRow[]> {
@@ -12,7 +12,7 @@ export async function activeServices(firmId: string): Promise<ServiceRow[]> {
       `${url}/rest/v1/services?select=id,slug,name,description,price_minor,currency,duration_min,virtual_available,is_active,sort,firm_id` +
         `&firm_id=eq.${encodeURIComponent(firmId)}&is_active=eq.true&order=sort.asc`,
       {
-        headers: { apikey: key, authorization: `Bearer ${key}` },
+        headers: restHeaders(key),
         next: { revalidate: 120 },
       },
     );
