@@ -45,7 +45,13 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: rows } = await supabase.from("firm_members").select("firm_id, user_id, role");
+  // firm_members_select is `is_firm_member(firm_id)`, so this query returns every
+  // colleague's row as well as the caller's. Whose row is whose matters: the role
+  // below is what the console offers to do, and picking a row at random would
+  // offer a lawyer the owner's buttons and let the database refuse them one by
+  // one. Ask the database for the firm's people through firmStaff(); here, only
+  // the caller's own memberships count.
+  const { data: rows } = await supabase.from("firm_members").select("firm_id, user_id, role").eq("user_id", user.id);
   const memberships = (rows ?? []) as FirmMembership[];
   if (memberships.length === 0) return null;
 

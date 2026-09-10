@@ -97,7 +97,7 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
     <div className="space-y-5">
       <h1 className="font-heading text-2xl font-semibold text-brand">Service inbox</h1>
       <p className="text-sm text-gray-600">
-        Processes served on {ctx.memberships.length > 1 ? "your firms" : ctx.firmName} through Docket, and the ones
+        Processes served on {myFirmIds.size > 1 ? "your firms" : ctx.firmName} through Docket, and the ones
         they served. Times in {timezone}.
       </p>
 

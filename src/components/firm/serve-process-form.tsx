@@ -6,7 +6,11 @@
 // Rules stated plainly here, because they are the rules of court and the
 // database enforces every one of them:
 //  · Only a document with an uploaded version can be served: what is served is
-//    pinned to that version and its checksum, so it can never be swapped later.
+//    pinned to that exact version, so it can never be swapped for another later.
+//    Versions uploaded through Docket also carry a SHA-256 of the file, which the
+//    service record snapshots; a file uploaded before Docket recorded one is
+//    still pinned by version, and the inbox shows a checksum only where there
+//    is one.
 //  · Service through Docket is stamped by the database at the moment it lands in
 //    the other firm's inbox — it cannot be back-dated, and it is refused unless
 //    that firm has undertaken to accept service here.
@@ -112,8 +116,8 @@ export function ServeProcessForm({
     return (
       <div className="space-y-3">
         <Alert kind="warning" title="Nothing on this matter can be served yet">
-          A document with no uploaded file cannot be served: the service record pins the exact version and its
-          checksum, which is what makes it proof of service.
+          A document with no uploaded file cannot be served: the service record pins the exact version that was
+          sent, which is what makes it proof of service.
           {documents.length > 0 && ` ${documents.length} document${documents.length === 1 ? " is" : "s are"} on the matter with no file uploaded.`}
         </Alert>
         <p className="text-sm text-gray-600">
@@ -128,8 +132,8 @@ export function ServeProcessForm({
     return (
       <div className="space-y-3">
         <Alert kind="success" title="Served">
-          The service record is filed with the document version and its checksum, and your client can see that the
-          process was served.{" "}
+          The service record is filed against the exact document version that was sent, and your client can see that
+          the process was served.{" "}
           {isPlatform
             ? "It is in the other firm's inbox now; their acknowledgement will appear on this matter."
             : "Attach the affidavit of service or the courier slip to the matter when you have it."}
@@ -208,7 +212,7 @@ export function ServeProcessForm({
           ))}
         </select>
         <p className="mt-1 text-xs text-gray-500">
-          The exact version and its checksum are recorded, so what you served cannot be changed afterwards.
+          The exact version you send is recorded, so what you served cannot be changed afterwards.
           {unservable > 0 && ` ${unservable} document${unservable === 1 ? "" : "s"} on this matter ${unservable === 1 ? "has" : "have"} no uploaded file and cannot be served.`}
         </p>
       </div>

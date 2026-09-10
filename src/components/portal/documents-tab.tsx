@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Modal } from "@/components/ui/modal";
 import type { DocumentRow, DocumentVersionRow } from "@/lib/db/types";
+import { sha256Hex } from "@/lib/checksum";
 
 export type DocumentWithVersion = DocumentRow & { version: DocumentVersionRow | null; version_count: number };
 
@@ -51,7 +52,7 @@ export function DocumentsTab({
     if (!created.ok) { setBusy(null); setError(created.error); return; }
     const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined, upsert: false });
     if (upErr) { setBusy(null); setError(`Upload failed: ${upErr.message}`); return; }
-    const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size });
+    const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
     setBusy(null);
     if (fin?.error) { setError(fin.error); return; }
     router.refresh();

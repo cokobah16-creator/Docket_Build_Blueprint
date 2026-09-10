@@ -239,7 +239,17 @@ export async function removeCounsel(counselId: string): Promise<Err> {
   if (!found) return { error: "Counsel not found on this matter." };
 
   const { error } = await supabase.from("matter_counsel").delete().eq("id", counselId);
-  if (error) return { error: error.message };
+  if (error) {
+    // process_service.counsel_id is ON DELETE RESTRICT, and the raw foreign-key
+    // message is not a sentence a lawyer can act on. Lead with the rule, keep the
+    // database's own words after it.
+    return {
+      error:
+        error.code === "23503"
+          ? `This counsel has already been served through Docket, so the entry cannot be removed — the service record is your proof of service and points at it. Correct the address for service instead. (${error.message})`
+          : error.message,
+    };
+  }
 
   refreshMatter(found.matter_id);
   return undefined;

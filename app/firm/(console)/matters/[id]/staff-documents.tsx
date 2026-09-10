@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
 import type { DocumentRow, DocumentVersionRow } from "@/lib/db/types";
+import { sha256Hex } from "@/lib/checksum";
 
 export type StaffDocument = DocumentRow & { version: DocumentVersionRow | null; version_count: number };
 
@@ -94,6 +95,9 @@ export function StaffDocuments({
     });
     if (docError) { setBusy(null); setError(docError.message); return; }
 
+    // Hash before the upload, from the file the person actually chose.
+    const checksum = await sha256Hex(file);
+
     const { error: upError } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || undefined, upsert: false });
     if (upError) { setBusy(null); setError(`Upload failed: ${upError.message}`); return; }
 
@@ -103,6 +107,7 @@ export function StaffDocuments({
       storage_path: path,
       mime: file.type || "application/octet-stream",
       size_bytes: file.size,
+      checksum,
       uploaded_by: userId,
     });
     setBusy(null);
@@ -123,6 +128,7 @@ export function StaffDocuments({
     const versionId = crypto.randomUUID();
     const path = storagePathFor(firmId, doc.id, versionId, file.name);
     setBusy(`Adding a version of ${doc.name}…`);
+    const checksum = await sha256Hex(file);
     const { error: upError } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || undefined, upsert: false });
     if (upError) { setBusy(null); setError(`Upload failed: ${upError.message}`); return; }
     const { error: versionError } = await supabase.from("document_versions").insert({
@@ -131,6 +137,7 @@ export function StaffDocuments({
       storage_path: path,
       mime: file.type || "application/octet-stream",
       size_bytes: file.size,
+      checksum,
       uploaded_by: userId,
     });
     setBusy(null);
