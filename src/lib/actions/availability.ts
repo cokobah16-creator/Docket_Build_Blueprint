@@ -9,7 +9,7 @@
 //  · The database is the authorization layer. Every write runs as the signed-in
 //    staff member and no service key is ever used. availability_rules_write and
 //    availability_exceptions_write allow (lawyer_id = auth.uid() and staff_w) or
-//    admin_w — a lawyer edits her own week, an owner or admin edits anyone's —
+//    admin_w — a lawyer edits their own week, an owner or admin edits anyone's —
 //    and staff_w already means member + MFA + firm not suspended. This file
 //    never decides who may write; it shows the database's refusal verbatim.
 //  · The times below are the LAWYER'S own local times. available_slots() reads
@@ -83,7 +83,8 @@ function minutes(t: string): number {
 }
 
 function dayName(weekday: number): string {
-  return WEEKDAYS[weekday] ?? `Day ${weekday}`;
+  const name: string | undefined = WEEKDAYS[weekday];
+  return name ?? `Day ${weekday}`;
 }
 
 function refresh() {

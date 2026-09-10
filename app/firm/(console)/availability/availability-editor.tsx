@@ -318,8 +318,8 @@ export function AvailabilityEditor({
 
           {!canEdit && (
             <Alert kind="info" title="Read only">
-              You can see this week but not change it. The database lets a lawyer edit her own availability, and an owner
-              or admin edit anyone's.
+              You can see this week but not change it. The database lets the lawyer whose diary this is edit it, and an
+              owner or admin edit anyone's.
             </Alert>
           )}
           {weekError && <Alert kind="error" title="Not saved">{weekError}</Alert>}
