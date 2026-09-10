@@ -9,30 +9,30 @@ import { Alert } from "@/components/ui/alert";
 import { Card, CardBody } from "@/components/ui/card";
 
 export const metadata = {
-  title: "Docket — one sign-in, every firm you instruct",
+  title: "Docket — one app, every matter, any firm",
   description:
-    "The client experience platform for Nigerian law firms: a branded firm site, online booking, Paystack checkout, video consultations, matters against the real court hierarchy and service of process — for firms, their clients and the courts.",
+    "The client experience platform for Nigerian law firms: booking, payment, face-to-face consultation, court updates and service of process — for firms, their clients and the courts.",
 };
 
 const AUDIENCES = [
   {
     title: "For law firms",
     body:
-      "Your own branded site, online booking and Paystack checkout that settles to your firm, video consultations with a waiting room, and a console with today's list, appointments, the service inbox and two-factor on staff writes. Documents, messaging and invoicing are in build.",
+      "Your own branded site, booking and Paystack checkout, virtual consultations, matters with a court-update timeline, documents, messaging and invoicing — from one console, on any phone.",
     href: "/firm/start",
     cta: "Register your firm",
   },
   {
     title: "For clients",
     body:
-      "Tell the firm what you need, book, pay online, and meet your lawyer face to face from your phone. Every appointment and receipt stays in one place, and the same sign-in works at any firm on Docket. Your matter timeline and messages arrive in the next release.",
+      "Tell us what you need, book, pay, meet your lawyer face to face — then follow every court sitting and filing in one app, whichever firms act for you.",
     href: "/app/login",
     cta: "Client sign in",
   },
   {
     title: "For the courts and counsel",
     body:
-      "Matters recorded against the real Nigerian court hierarchy, each court showing the suit-number shape it uses. Court dates raise reminders. A process served on your firm through Docket lands in a service inbox and is acknowledged by a named practitioner, pinned to the exact document version. The screen a firm serves from is in build.",
+      "Matters recorded against the real Nigerian court hierarchy, each court showing the suit-number shape it uses. Sittings with no update posted are flagged for the firm to chase. Court processes are served on the other side's counsel with an acknowledged proof of service.",
     href: "/firm/login",
     cta: "Staff sign in",
   },
@@ -45,13 +45,13 @@ export default function PlatformLanding() {
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">Docket</p>
         <h1 className="mt-2 font-heading text-4xl font-semibold text-brand sm:text-5xl">
-          One sign-in, every firm you instruct.
+          One app, every matter, any firm.
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-gray-600">
           Docket is the platform Nigerian law firms use to run their client
-          work — and one client sign-in that carries from firm to firm, whoever
-          acts for you next. Built for the Nigerian courts, the Nigerian Bar and
-          the diaspora client with a matter back home.
+          work — and the one app their clients keep, whoever acts for them.
+          Built for the Nigerian courts, the Nigerian Bar and the diaspora
+          client with a matter back home.
         </p>
       </div>
 
@@ -88,8 +88,9 @@ export default function PlatformLanding() {
       )}
 
       <p className="text-sm text-gray-500">
-        Fees settle to the firm’s own Paystack account; Docket never holds
-        client money. Firm pricing is not set yet and no firm is billed.
+        Every firm is on the free plan while Docket is in build, and no firm is
+        billed. Fees settle to the firm’s own Paystack account; Docket never
+        holds client money.
       </p>
     </main>
   );

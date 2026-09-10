@@ -8,12 +8,15 @@ export const metadata: Metadata = {
     template: "%s · Docket",
   },
   description:
-    "Book a consultation with a Nigerian law firm, pay online, meet your lawyer face to face, and keep every receipt in one place — on your phone.",
+    "Book a consultation, meet your lawyer face to face, and track your matter — on your phone.",
+  icons: { icon: "/icon-192.png", apple: "/icon-192.png" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Docket" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

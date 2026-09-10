@@ -300,3 +300,334 @@ export interface JoinInfo {
   ends_at: string;
   reference: string;
 }
+
+// ---- client portal (slice 3)
+export interface MatterStatus {
+  id: string;
+  firm_id: string;
+  key: string;
+  label: string;
+  colour: string | null;
+  is_terminal: boolean;
+}
+
+export interface MatterRow {
+  id: string;
+  firm_id: string;
+  reference: string;
+  title: string;
+  type: string;
+  status_id: string | null;
+  description: string | null;
+  next_action: string | null;
+  court_name: string | null;
+  suit_number: string | null;
+  next_event_at: string | null;
+  next_event_note: string | null;
+  opened_at: string;
+  closed_at: string | null;
+}
+
+export interface UpdateRow {
+  id: string;
+  matter_id: string;
+  firm_id: string;
+  kind: string;
+  title: string;
+  body: string | null;
+  payload: Record<string, unknown>;
+  occurred_at: string;
+  created_at: string;
+}
+
+export interface CourtEventRow {
+  id: string;
+  matter_id: string;
+  firm_id: string;
+  scheduled_at: string;
+  court_name: string | null;
+  purpose: string | null;
+  outcome_update_id: string | null;
+}
+
+export interface DocumentRow {
+  id: string;
+  firm_id: string;
+  matter_id: string | null;
+  appointment_id: string | null;
+  name: string;
+  category: string | null;
+  client_visible: boolean;
+  current_version_id: string | null;
+  uploaded_by: string | null;
+  /** When staff marked a client upload as looked at; null keeps it on the review counter. */
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  created_at: string;
+}
+
+export interface DocumentVersionRow {
+  id: string;
+  document_id: string;
+  storage_path: string;
+  mime: string | null;
+  size_bytes: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export interface MessageAttachment {
+  document_id: string;
+  name: string;
+  mime?: string | null;
+}
+
+export interface MessageRow {
+  id: string;
+  firm_id: string;
+  matter_id: string | null;
+  appointment_id: string | null;
+  sender_id: string | null;
+  body: string | null;
+  attachments: MessageAttachment[];
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationRow {
+  id: string;
+  firm_id: string | null;
+  channel: string;
+  event: string;
+  payload: Record<string, unknown>;
+  status: string;
+  read_at: string | null;
+  created_at: string;
+}
+
+export interface NotificationPreference {
+  event: string;
+  channel: string;
+  enabled: boolean;
+}
+
+// ---- staff console (slice 4)
+export type FirmRoleName = "owner" | "admin" | "lawyer" | "staff";
+
+export interface FirmMembership {
+  firm_id: string;
+  user_id: string;
+  role: FirmRoleName;
+}
+
+/** Row of firm_overview (migration 18): one per firm the caller belongs to. */
+export interface FirmOverview {
+  firm_id: string;
+  name: string;
+  status: string;
+  open_matters: number;
+  upcoming_appointments: number;
+  court_dates_30d: number;
+  sittings_due: number;
+  /** Minor units per currency, e.g. { NGN: 22575000, USD: 50000 }. Never one sum. */
+  outstanding_by_currency: Record<string, number>;
+  collected_this_month_by_currency: Record<string, number>;
+  unread_messages: number;
+  overdue_tasks: number;
+  client_uploads: number;
+  service_to_acknowledge: number;
+}
+
+/** Row of firm_sittings_due: a past court date with no update posted. */
+export interface SittingDue {
+  court_event_id: string;
+  firm_id: string;
+  matter_id: string;
+  reference: string;
+  cause_title: string;
+  suit_number: string | null;
+  scheduled_at: string;
+  court: string | null;
+  purpose: string | null;
+  purpose_kind: string | null;
+  lawyer_id: string | null;
+}
+
+/** Row of firm_cause_list: an open (unvacated, un-updated) sitting. */
+export interface CauseListRow {
+  court_event_id: string;
+  firm_id: string;
+  matter_id: string;
+  reference: string;
+  cause_title: string;
+  suit_number: string | null;
+  scheduled_at: string;
+  on_date: string;
+  court_id: string | null;
+  court: string | null;
+  courtroom: string | null;
+  judge: string | null;
+  purpose_kind: string | null;
+  purpose: string | null;
+  source: string;
+}
+
+export interface MatterCounselRow {
+  id: string;
+  firm_id: string;
+  matter_id: string;
+  side: "opposing" | "co_counsel" | "other";
+  party_name: string | null;
+  party_side: string | null;
+  counsel_firm_id: string | null;
+  counsel_name: string | null;
+  counsel_firm_name: string | null;
+  scn: string | null;
+  email: string | null;
+  phone: string | null;
+  address_for_service: string | null;
+  on_record: boolean;
+  accepts_service: boolean;
+  note: string | null;
+  created_at: string;
+}
+
+/** Row of firm_service_directory: an active firm on Docket, for choosing counsel. */
+export interface ServiceDirectoryRow {
+  id: string;
+  slug: string;
+  name: string;
+  legal_name: string | null;
+  state_code: string | null;
+  accepts_platform_service: boolean;
+  address_for_service: Record<string, unknown>;
+}
+
+export interface TaskRow {
+  id: string;
+  firm_id: string;
+  matter_id: string | null;
+  assignee_id: string | null;
+  title: string;
+  due_at: string | null;
+  status: string;
+  created_at: string;
+}
+
+export interface InviteRow {
+  id: string;
+  firm_id: string;
+  matter_id: string | null;
+  phone: string | null;
+  email: string | null;
+  role: string;
+  token: string;
+  expires_at: string;
+  accepted_by: string | null;
+  created_at: string;
+}
+
+export interface InvoiceRow {
+  id: string;
+  firm_id: string;
+  number: string;
+  client_id: string;
+  matter_id: string | null;
+  appointment_id: string | null;
+  currency: "NGN" | "USD";
+  subtotal_minor: number;
+  vat_minor: number;
+  total_minor: number;
+  paid_minor: number;
+  status: string;
+  issued_at: string | null;
+  due_at: string | null;
+  created_at: string;
+}
+
+export interface InvoiceItemRow {
+  id: string;
+  invoice_id: string;
+  description: string;
+  quantity: number;
+  unit_minor: number;
+}
+
+export interface AvailabilityRule {
+  id: string;
+  firm_id: string;
+  lawyer_id: string;
+  weekday: number;
+  start_time: string;
+  end_time: string;
+  break_start: string | null;
+  break_end: string | null;
+  slot_min: number;
+  max_per_day: number;
+}
+
+export interface AvailabilityException {
+  id: string;
+  firm_id: string;
+  lawyer_id: string;
+  on_date: string;
+  is_available: boolean;
+  start_time: string | null;
+  end_time: string | null;
+  reason: string | null;
+}
+
+/** Result of create_invoice() / issue_invoice(). */
+export interface InvoiceResult {
+  invoice_id: string;
+  number: string;
+  subtotal_minor?: number;
+  vat_minor?: number;
+  total_minor?: number;
+  currency?: string;
+  status: string;
+}
+
+/** Result of invite_matter_party(). */
+export interface InviteResult {
+  invite_id: string;
+  token: string;
+  matter_id: string;
+  matter_reference: string;
+  matter_title: string;
+  firm_id: string;
+  role: string;
+  expires_at: string;
+}
+
+/** The controlled outcomes post_court_update() accepts. */
+export const COURT_OUTCOMES: Array<{ value: string; label: string; needsNextDate?: boolean; asksInstance?: boolean }> = [
+  { value: "adjourned", label: "Adjourned", asksInstance: true },
+  { value: "hearing_held", label: "Hearing held" },
+  { value: "mention", label: "Mention" },
+  { value: "ruling_delivered", label: "Ruling delivered" },
+  { value: "judgment_delivered", label: "Judgment delivered" },
+  { value: "struck_out", label: "Struck out" },
+  { value: "stood_down", label: "Stood down" },
+  { value: "court_did_not_sit", label: "Court did not sit" },
+  { value: "hearing_notice", label: "Hearing notice", needsNextDate: true },
+  { value: "adjourned_sine_die", label: "Adjourned sine die" },
+];
+
+export const PURPOSE_KINDS = ["mention", "hearing", "cmc", "pre_trial", "motion", "ruling", "judgment", "arraignment", "trial", "other"] as const;
+
+export const SERVICE_METHODS: Array<{ value: string; label: string; hint?: string }> = [
+  { value: "platform", label: "Through Docket", hint: "Only when the other firm has undertaken to accept service here" },
+  { value: "counsel_address", label: "At counsel's address for service" },
+  { value: "personal", label: "Personal service" },
+  { value: "courier", label: "Courier" },
+  { value: "bailiff", label: "Bailiff / sheriff" },
+  { value: "email", label: "Email" },
+  { value: "registered_post", label: "Registered post" },
+  { value: "whatsapp", label: "WhatsApp" },
+  { value: "publication", label: "Publication (substituted)" },
+  { value: "pasting", label: "Pasting (substituted)" },
+];
+
+export const MATTER_TYPES = ["litigation", "property", "corporate", "estate", "family", "employment",
+  "debt_recovery", "ip", "regulatory", "immigration", "advisory", "criminal", "arbitration", "other"] as const;

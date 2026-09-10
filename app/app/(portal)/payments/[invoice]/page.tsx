@@ -5,6 +5,8 @@ import { firmById } from "@/lib/tenant";
 import { formatMoneyMinor } from "@/lib/money";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
+import { Alert } from "@/components/ui/alert";
+import { startInvoicePayment } from "@/lib/actions/portal";
 
 export const metadata = { title: "Invoice" };
 
@@ -12,8 +14,9 @@ interface Invoice { id: string; firm_id: string; number: string; status: string;
 interface Item { id: string; description: string; quantity: number; unit_minor: number }
 interface Payment { id: string; provider: string; provider_ref: string; status: string; amount_minor: number; paid_at: string | null }
 
-export default async function InvoicePage({ params }: { params: Promise<{ invoice: string }> }) {
+export default async function InvoicePage({ params, searchParams }: { params: Promise<{ invoice: string }>; searchParams: Promise<{ error?: string }> }) {
   const { invoice: id } = await params;
+  const { error: actionError } = await searchParams;
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
@@ -35,6 +38,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ invoic
   const items = (itemRows ?? []) as Item[];
   const payments = (paymentRows ?? []) as Payment[];
   const fmt = (m: number) => formatMoneyMinor(m, inv.currency);
+  const outstanding = Math.max(0, inv.total_minor - inv.paid_minor);
+  const payable = ["issued", "partially_paid", "overdue"].includes(inv.status) && outstanding > 0;
+  const invoiceId = inv.id;
+  const pay = async () => {
+    "use server";
+    const r = await startInvoicePayment(invoiceId);
+    if (r?.error) redirect(`/app/payments/${invoiceId}?error=${encodeURIComponent(r.error)}`);
+  };
 
   return (
     <div className="space-y-5">
@@ -45,6 +56,13 @@ export default async function InvoicePage({ params }: { params: Promise<{ invoic
         </div>
         <StatusPill status={inv.status as Status} />
       </header>
+
+      {actionError && <Alert kind="error">{actionError}</Alert>}
+      {payable && (
+        <form action={pay}>
+          <button type="submit" className="w-full rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-brand-on hover:opacity-90">Pay {fmt(outstanding)}</button>
+        </form>
+      )}
 
       <Card>
         <CardHeader title="Items" />

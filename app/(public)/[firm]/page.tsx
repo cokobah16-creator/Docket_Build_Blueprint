@@ -79,7 +79,7 @@ export default async function FirmHome({
           {[
             ["Tell us", "Choose a service and answer a few questions so your lawyer can prepare."],
             ["Book & pay", "Pick a time that suits you and pay securely. Your slot is held for 15 minutes."],
-            ["Meet & join", "Join the consultation from your phone, or meet your lawyer in person. You get a reminder before the appointment."],
+            ["Meet & track", "Join the consultation from your phone, then follow your matter as it progresses."],
           ].map(([title, body], i) => (
             <li key={title} className="rounded-card border border-gray-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">Step {i + 1}</p>
