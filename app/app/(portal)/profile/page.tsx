@@ -3,6 +3,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { signOut } from "../actions";
+import { PushOptIn } from "@/components/push/push-opt-in";
 
 export const metadata = { title: "Profile" };
 
@@ -50,6 +51,10 @@ export default async function ProfilePage() {
             ))}
           </dl>
         </CardBody>
+      </Card>
+      <Card>
+        <CardHeader title="Notifications" />
+        <CardBody><PushOptIn /></CardBody>
       </Card>
       <form action={signOut}>
         <Button type="submit" variant="ghost" className="w-full">

@@ -1,4 +1,4 @@
-// Supabase Edge Function — notification dispatcher. Schedule it every minute (Dashboard → Cron → HTTP).
+// Supabase Edge Function — notification dispatcher. pg_cron calls it every minute with the x-cron-secret header (migration 9).
 // Drains `notifications` rows with status 'queued' for email / sms / push. WhatsApp is Phase 2 (marked 'skipped').
 // Templates are minimal and branded by firm name; move them to firms.brand once the design system lands.
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -74,7 +74,10 @@ async function sendPush(userId: string, subject: string, text: string, url: stri
   }
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req: Request) => {
+  // Invoked by pg_cron (net.http_post) every minute; the shared secret is the only credential (verify_jwt is off).
+  const secret = Deno.env.get('CRON_SECRET');
+  if (!secret || req.headers.get('x-cron-secret') !== secret) return new Response('unauthorized', { status: 401 });
   const { data: rows, error } = await supabase
     .from('notifications')
     .select('id, user_id, firm_id, channel, event, payload, profiles!inner(email, phone, timezone, full_name), firms(name)')
