@@ -64,12 +64,18 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
       .order("starts_at", { ascending: true }),
     sittingsDue(supabase, firmId),
     firmOverview(supabase, firmId),
-    supabase.from("firm_public").select("default_currency").eq("id", firmId).maybeSingle(),
+    // firm_public is filtered to active firms, so a pending or suspended firm would
+    // read null here and fall back to naira. firms_select (is_firm_member) already
+    // shows staff their own row whatever its status, so read the table itself.
+    supabase.from("firms").select("default_currency").eq("id", firmId).maybeSingle(),
     firmStaff(supabase, firmId),
   ]);
 
   const appointments = (apptRows ?? []) as unknown as ApptRow[];
   const currency = (firmRow as { default_currency: string } | null)?.default_currency ?? "NGN";
+  // sittingsDue() caps the rows it fetches; firm_overview counts every one of them.
+  // The heading must be the real number, and a cap that bites is said out loud below.
+  const sittingsTotal = overview?.sittings_due ?? sittings.length;
   const staffById = new Map(staff.map((m) => [m.user_id, staffLabel(m)]));
   const nowMs = Date.now();
   const todayLabel = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeZone: tz }).format(new Date());
@@ -116,7 +122,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
       {/* The chase list first: a sitting nobody reported is the firm's biggest exposure. */}
       <Card className={cn(sittings.length > 0 && "border-amber-300")}>
         <CardHeader
-          title={`Sittings without an update (${sittings.length})`}
+          title={`Sittings without an update (${sittingsTotal})`}
           action={<Link href="/firm/sittings" className="text-sm text-brand underline">All sittings →</Link>}
         />
         {sittings.length === 0 ? (
@@ -150,6 +156,12 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
               </li>
             ))}
           </ul>
+        )}
+        {sittingsTotal > sittings.length && (
+          <p className="px-5 pb-4 text-xs text-gray-500">
+            Showing the {sittings.length} that have waited longest.{" "}
+            <Link href="/firm/sittings" className="text-brand underline">See all {sittingsTotal}</Link>.
+          </p>
         )}
       </Card>
 

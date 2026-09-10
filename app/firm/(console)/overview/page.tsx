@@ -24,6 +24,8 @@ import type { CauseListRow } from "@/lib/db/types";
 export const metadata = { title: "Firm overview" };
 
 const CALENDAR_DAYS = 14;
+/** How many attributed payments the fee column adds up. A cap that bites is disclosed. */
+const FEE_SCAN = 5000;
 
 const KIND_ICON: Record<string, string> = {
   court_sitting: "⚖", consultation: "🎥", appointment: "📅", filing: "📄", correspondence: "✉",
@@ -74,7 +76,9 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
   const [overview, { data: firmRow }, { data: sittingRows }, { data: apptRows }, { data: updateRows }, staff, matters] =
     await Promise.all([
       firmOverview(supabase, firmId),
-      supabase.from("firm_public").select("default_currency").eq("id", firmId).maybeSingle(),
+      // As on Today: firm_public excludes any firm that is not active, so a pending
+      // or suspended firm would read null and every money tile would claim naira.
+      supabase.from("firms").select("default_currency").eq("id", firmId).maybeSingle(),
       supabase
         .from("firm_cause_list")
         .select("court_event_id, matter_id, reference, cause_title, suit_number, scheduled_at, court, courtroom, purpose, purpose_kind")
@@ -107,23 +111,32 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
 
   // The matters behind the activity feed, so every entry can name its file.
   const feedMatterIds = Array.from(new Set(feed.map((u) => u.matter_id)));
+  // Soft-deleted matters are excluded everywhere else in the console, so an entry
+  // on one must not list here and link to a page that answers 404.
   const { data: feedMatterRows } = feedMatterIds.length
-    ? await supabase.from("matters").select("id, reference, title, cause_title").in("id", feedMatterIds)
+    ? await supabase
+        .from("matters")
+        .select("id, reference, title, cause_title")
+        .is("deleted_at", null)
+        .in("id", feedMatterIds)
     : { data: [] as MatterRef[] };
   const matterById = new Map(((feedMatterRows ?? []) as MatterRef[]).map((m) => [m.id, m]));
+  const visibleFeed = feed.filter((u) => matterById.has(u.matter_id));
 
   // Fees collected on each partner's originated work. partner_attribution reads
   // through the caller's own RLS on payments and invoices; a firm whose access
   // closes that view still gets the counts, just without the money column.
   let feesByLawyer: Map<string, Map<string, number>> | null = null;
+  let feeRowsCapped = false;
   try {
     const { data, error } = await supabase
       .from("partner_attribution")
       .select("originating_lawyer_id, amount_minor, currency")
       .eq("firm_id", firmId)
-      .limit(5000);
+      .limit(FEE_SCAN);
     if (error) throw new Error(error.message);
     const map = new Map<string, Map<string, number>>();
+    feeRowsCapped = (data ?? []).length >= FEE_SCAN;
     for (const row of (data ?? []) as Array<{ originating_lawyer_id: string | null; amount_minor: number; currency: string }>) {
       if (!row.originating_lawyer_id) continue;
       const perCurrency = map.get(row.originating_lawyer_id) ?? new Map<string, number>();
@@ -286,7 +299,7 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
             title="Latest activity"
             action={<Link href="/firm/matters" className="text-sm text-brand underline">All matters →</Link>}
           />
-          {feed.length === 0 ? (
+          {visibleFeed.length === 0 ? (
             <EmptyState
               title="No updates posted yet"
               hint="Every court outcome, filing and note posted on a matter shows here, newest first."
@@ -295,7 +308,7 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
           ) : (
             <>
               <ol className="divide-y divide-gray-100">
-                {feed.map((u) => {
+                {visibleFeed.map((u) => {
                   const matter = matterById.get(u.matter_id);
                   const internal = u.visibility === "internal";
                   return (
@@ -378,6 +391,7 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                   : "Fees collected are not shown: the attribution view could not be read with your access."}
                 {" "}Origination is who brought the work in; handling is who runs it. Set both when you open or edit a matter.
                 {matters.length >= 500 ? " Counts cover the 500 most recently opened matters." : ""}
+                {feesByLawyer && feeRowsCapped ? ` Fees cover the ${FEE_SCAN.toLocaleString("en-GB")} most recent payments.` : ""}
               </CardBody>
             </>
           )}
