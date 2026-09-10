@@ -1,4 +1,4 @@
-// Paystack — NGN on the Nigerian entity. Server-side only (secret key).
+// Paystack — the platform account routes; each firm's fees settle to its own subaccount. Server-side only (secret key).
 import type { PaymentProvider, InitializePaymentArgs, InitializePaymentResult, VerifyPaymentResult } from './types';
 
 const API = 'https://api.paystack.co';
@@ -16,6 +16,8 @@ export function paystackProvider(secretKey = process.env.PAYSTACK_SECRET_KEY!): 
           email: a.email, amount: a.amountMinor, currency: a.currency, reference,
           callback_url: a.callbackUrl,
           metadata: { invoice_number: a.invoiceNumber, description: a.description },
+          // money settles to the firm: route to its subaccount and let it bear the processing fee
+          ...(a.subaccount ? { subaccount: a.subaccount, bearer: 'subaccount' } : {}),
         }),
       });
       const j = await res.json();

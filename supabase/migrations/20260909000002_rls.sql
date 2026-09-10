@@ -80,7 +80,7 @@ create policy profiles_update on profiles for update using (id = auth.uid()) wit
 -- ---------------------------------------------------------------- firms and membership
 create policy firms_select on firms for select using (is_firm_member(id));
 create policy firms_update on firms for update using (admin_w(id)) with check (admin_w(id));
--- firms are created by the platform (service role) only
+-- firms are created through create_firm() (migration 9): the caller becomes owner; the platform verifies before the firm goes public
 
 create policy firm_members_select on firm_members for select using (is_firm_member(firm_id));
 create policy firm_members_write  on firm_members for all using (admin_w(firm_id)) with check (admin_w(firm_id));

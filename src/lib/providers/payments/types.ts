@@ -9,6 +9,7 @@ export interface InitializePaymentArgs {
   description: string;
   callbackUrl: string;            // where the client lands after paying (display only — never marks paid)
   cancelUrl?: string;
+  subaccount?: string | null;     // the firm's settlement subaccount (firms.paystack_subaccount); the firm bears the fees
 }
 
 export interface InitializePaymentResult {

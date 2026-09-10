@@ -28,6 +28,10 @@ grant select on fx to anon, authenticated;
 insert into firms (slug, name, reference_prefix) values ('firm-a', 'Firm A', 'FA'), ('firm-b', 'Firm B', 'FB');
 insert into fx select 'firm_a', id from firms where slug = 'firm-a';
 insert into fx select 'firm_b', id from firms where slug = 'firm-b';
+update firms set paystack_subaccount = 'ACCT_firm_a' where slug = 'firm-a';   -- fees settle to the firm (migration 12)
+update firms set policies = jsonb_build_object('terms', jsonb_build_object('version', '2026-09', 'text', 'Terms.'),
+                                               'privacy', jsonb_build_object('version', '2026-09', 'text', 'Privacy.'))
+ where slug in ('firm-a', 'firm-b');                                          -- published policies: a client can consent (migration 15)
 
 insert into auth.users (id, email) values
   (gen_random_uuid(), 'lawyer_a@test'), (gen_random_uuid(), 'admin_a@test'), (gen_random_uuid(), 'client_a1@test'),
@@ -52,8 +56,8 @@ values ((select v from fx where k='firm_a'), (select v from fx where k='lawyer_a
         extract(dow from current_date + 7)::int, '09:00', '17:00', '13:00', '14:00', 45, 6);
 
 insert into matters (id, firm_id, reference, title, type, court_name)
-values (gen_random_uuid(), (select v from fx where k='firm_a'), 'FA-M-2026-000001', 'A v B', 'litigation', 'High Court of the FCT, Maitama');
-insert into fx select 'matter_a', id from matters where reference = 'FA-M-2026-000001';
+values (gen_random_uuid(), (select v from fx where k='firm_a'), next_reference((select v from fx where k='firm_a'), 'matter'), 'A v B', 'litigation', 'High Court of the FCT, Maitama');
+insert into fx select 'matter_a', id from matters where title = 'A v B';
 insert into matters (id, firm_id, reference, title, type)
 values (gen_random_uuid(), (select v from fx where k='firm_b'), 'FB-M-2026-000001', 'C v D', 'property');
 insert into fx select 'matter_b', id from matters where reference = 'FB-M-2026-000001';
@@ -149,6 +153,16 @@ declare fa uuid := (select v from fx where k='firm_a'); la uuid := (select v fro
         a1 uuid := (select v from fx where k='client_a1'); a2 uuid := (select v from fx where k='client_a2');
         slot timestamptz; res jsonb; res2 jsonb; ok bool; n_slots int;
 begin
+  update firms set policies = policies || jsonb_build_object('terms', jsonb_build_object('version', '0-draft')) where id = fa;
+  perform t_as(a1, 'aal1');
+  ok := false;
+  begin
+    res := book_appointment(fa, sa, la, now() + interval '3 days');
+  exception when others then ok := sqlerrm like '%not published its terms%';
+  end;
+  perform t_check('no booking while the firm''s terms are unpublished',  ok);
+  perform t_reset();
+  update firms set policies = policies || jsonb_build_object('terms', jsonb_build_object('version', '2026-09', 'text', 'Terms.')) where id = fa;
   perform t_as(a1, 'aal1');
   select count(*) into n_slots from available_slots(fa, la, sa, current_date + 7);
   perform t_check('slots exclude the lunch break (8 hours, 45-min slots, 1-hour break)', n_slots between 8 and 10);
@@ -156,6 +170,7 @@ begin
   res := book_appointment(fa, sa, la, slot, 'virtual', 'America/New_York', '{"issue_summary":"land dispute"}'::jsonb, null);
   perform t_check('booking creates a held appointment awaiting payment', res ->> 'status' = 'awaiting_payment' and res ->> 'invoice_number' like 'FA-INV-%');
   perform t_check('booking reference follows the firm prefix',           res ->> 'reference' like 'FA-2026-%' or res ->> 'reference' like 'FA-20%');
+  perform t_check('booking carries the firm''s settlement subaccount',    res ->> 'paystack_subaccount' = 'ACCT_firm_a');
   perform t_check('held slot disappears from availability',              not exists (select 1 from available_slots(fa, la, sa, current_date + 7) s where s.starts_at = slot));
   perform t_check('client sees her own appointment',                     (select count(*) from appointments) = 1);
   perform t_check('intake answers were stored',                          (select count(*) from intake_responses) = 1);
@@ -178,15 +193,21 @@ begin
   perform t_reset();
 
   -- webhook path (service role / postgres)
-  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{"channel":"card"}'::jsonb);
+  res2 := record_payment('paystack', 'PSK-REF-0', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{}'::jsonb, 'ACCT_someone_else');
+  perform t_check('a payment settled to the wrong subaccount confirms nothing and is flagged',
+                  (res2 ->> 'settlement_mismatch')::bool
+                  and (select status from appointments where id = (res ->> 'appointment_id')::uuid) = 'awaiting_payment'
+                  and (select status from payments where provider_ref = 'PSK-REF-0') = 'failed'
+                  and (select count(*) from audit_log where action = 'payment.settlement_mismatch') = 1);
+  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{"channel":"card"}'::jsonb, 'ACCT_firm_a');
   perform t_check('payment marks the invoice paid',                      res2 ->> 'invoice_status' = 'paid');
   perform t_check('payment confirms the appointment',                    (select status from appointments where id = (res ->> 'appointment_id')::uuid) = 'confirmed');
-  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{}'::jsonb);
+  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{}'::jsonb, 'ACCT_firm_a');
   perform t_check('duplicate webhook is ignored',                        (res2 ->> 'duplicate')::bool and (select paid_minor from invoices where number = res ->> 'invoice_number') = (res ->> 'amount_minor')::bigint);
   perform t_check('client was told: confirmed + payment',                (select count(*) from notifications where user_id = a1 and event in ('appointment_confirmed','payment_confirmed') and channel = 'in_app') = 2);
 
   perform t_as(a1, 'aal1');
-  perform t_check('client reads her payment through the invoice',        (select count(*) from payments) = 1);
+  perform t_check('client reads her payments through the invoice',       (select count(*) from payments) = 2 and (select count(*) from payments where status = 'succeeded') = 1);
   perform t_reset();
   perform t_as((select v from fx where k='lawyer_b'));
   perform t_check('lawyer B sees no firm A payments or appointments',    (select count(*) from payments) + (select count(*) from appointments) = 0);
@@ -201,7 +222,13 @@ declare la uuid := (select v from fx where k='lawyer_a'); ma uuid := (select v f
         ad uuid := (select v from fx where k='admin_a'); ap uuid := (select v from fx where k='appt_a1'); upd uuid; ok bool;
 begin
   perform t_as(la, 'aal2');
-  upd := post_court_update(ma, 'adjourned', now(), null, 'the defendant', now() + interval '21 days', 'hearing',
+  ok := false;
+  begin
+    upd := post_court_update(ma, 'adjourned', now(), null, 'the defendant', date_trunc('week', now() + interval '21 days') + interval '5 days 12 hours', 'hearing');
+  exception when others then ok := sqlerrm like '%not a sitting day%' or sqlerrm like '%weekend%';
+  end;
+  perform t_check('adjourning to a Saturday is refused unless the vacation judge sits', ok);
+  upd := post_court_update(ma, 'adjourned', now(), null, 'the defendant', date_trunc('week', now() + interval '21 days') + interval '2 days 12 hours', 'hearing',
                            'Court adjourned at the defendant''s request. Nothing needed from you.', 'Opposing counsel absent again — consider costs.');
   perform t_check('court update posted with composed title',             (select title from updates where id = upd) like 'Adjourned at the instance of the defendant to % for hearing');
   perform t_check('next court event created',                            (select count(*) from court_events where matter_id = ma and outcome_update_id is null) = 1);
@@ -262,6 +289,44 @@ begin
   perform t_check('expired holds are released by the job',               n = 1 and (select count(*) from appointments where cancellation_reason = 'payment_timeout') = 1);
   n := enqueue_court_reminders();
   perform t_check('court reminder job runs (nothing due yet)',           n = 0);
+end $$;
+
+-- ---------------------------------------------------------------- 7. opening a matter
+do $$
+declare la uuid := (select v from fx where k='lawyer_a'); lb uuid := (select v from fx where k='lawyer_b'); a2 uuid := (select v from fx where k='client_a2');
+        fa uuid := (select v from fx where k='firm_a'); res jsonb; m uuid; ok bool;
+begin
+  perform t_as(la, 'aal2');
+  res := open_matter(fa, 'Estate of Chief Okoro', 'estate', a2, 'In re Okoro', 'Probate and administration',
+                     (select id from courts where level = 'state_high' and state_code = 'LA' and division = 'Ikeja'), 'ID/123PM/2026', 'Ikeja');
+  m := (res ->> 'matter_id')::uuid;
+  perform t_check('staff open a matter with its reference',               res ->> 'reference' like 'FA-M-%' and (select court_name from matters where id = m) like 'High Court of Lagos State, Ikeja%');
+  perform t_check('the opening lawyer leads it and the client is party',  (select is_lead from matter_lawyers where matter_id = m and user_id = la)
+                                                                         and (select role from matter_parties where matter_id = m and user_id = a2) = 'client'
+                                                                         and (select handling_lawyer_id from matters where id = m) = la);
+  perform t_check('the suit number is on the matter''s court numbers',    (select count(*) from matter_court_numbers where matter_id = m and number = 'ID/123PM/2026') = 1);
+  ok := false;
+  begin
+    res := open_matter(fa, 'Self dealing', 'advisory', la);
+  exception when others then ok := sqlerrm like '%cannot be its client%';
+  end;
+  perform t_check('a firm member cannot be made the client',             ok);
+  perform t_reset();
+
+  perform t_as(lb, 'aal2');
+  ok := false;
+  begin
+    res := open_matter(fa, 'Intrusion', 'advisory');
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('another firm cannot open matters here',               ok);
+  perform t_reset();
+
+  perform t_as(a2, 'aal1');
+  perform t_check('the client sees her new matter and its first entry',  (select count(*) from matters where id = m) = 1
+                                                                         and (select count(*) from updates where matter_id = m and title like 'Matter opened:%') = 1
+                                                                         and (select count(*) from notifications where event = 'matter_update' and (payload ->> 'matter_id')::uuid = m) >= 1);
+  perform t_reset();
 end $$;
 
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;

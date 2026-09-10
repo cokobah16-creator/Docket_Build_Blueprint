@@ -1,7 +1,16 @@
--- Docket v0.2 — seed: Attorneys Klinique Law Consultancy as tenant #1
+-- Docket — seed: Attorneys Klinique Law Consultancy as tenant #1.
 -- Run once after the migrations. Idempotent on the firm slug.
+--
+-- Klinique is a firm on Docket, not a special case: this file only supplies
+-- the DATA a firm owner would otherwise enter at /firm/start and in
+-- /firm/admin (brand, policies, services), and calls the same
+-- seed_firm_defaults() every self-registered firm gets. Nothing here is
+-- referenced by application code.
 
-insert into firms (slug, name, legal_name, reference_prefix, timezone, default_currency, vat_rate, brand, policies)
+-- Status 'active' + verified_at: the launch tenant is verified by the founders themselves. Its owner accounts are
+-- attached at onboarding exactly like any other firm's (docs/ONBOARDING_A_FIRM.md step 4), and its Paystack
+-- subaccount goes into firms.paystack_subaccount before the first booking (step 5).
+insert into firms (slug, name, legal_name, reference_prefix, timezone, default_currency, vat_rate, status, verified_at, brand, policies)
 values (
   'attorneys-klinique',
   'Attorneys Klinique',
@@ -9,7 +18,8 @@ values (
   'AK',
   'Africa/Lagos',
   'NGN',
-  0,   -- Precious to confirm VAT treatment of consultation fees; set to 7.50 if applicable
+  0,   -- the firm confirms VAT treatment of consultation fees; set to 7.50 if applicable
+  'active', now(),
   jsonb_build_object(
     'tagline', 'Professional, trustworthy, discreet legal services',
     'colours', jsonb_build_object('primary', '#0F2A44', 'accent', '#B08D57', 'surface', '#F7F5F0'),
@@ -22,35 +32,12 @@ values (
                                        'text', 'Consultations may be rescheduled or cancelled free of charge up to 24 hours before the appointment.'),
     'disclaimer',   jsonb_build_object('version', '2026-09',
                                        'text', 'Submitting an inquiry or booking a consultation does not create a lawyer-client relationship. Formal legal advice and representation begin only on a signed engagement.'),
-    'terms',        jsonb_build_object('version', '2026-09', 'url', null),
-    'privacy',      jsonb_build_object('version', '2026-09', 'url', null)
+    -- terms and privacy stay '0-draft' (not shown to clients) until the firm publishes text or a URL
+    'terms',        jsonb_build_object('version', '0-draft', 'url', null, 'text', 'To be published by the firm before go-live.'),
+    'privacy',      jsonb_build_object('version', '0-draft', 'url', null, 'text', 'To be published by the firm before go-live.')
   )
 )
 on conflict (slug) do nothing;
-
--- default matter statuses (master prompt §14 plus litigation stages)
-insert into matter_statuses (firm_id, key, label, colour, sort, is_terminal)
-select f.id, s.key, s.label, s.colour, s.sort, s.is_terminal
-from firms f,
-     (values
-       ('new_inquiry',            'New Inquiry',            'slate',   10, false),
-       ('consultation_scheduled', 'Consultation Scheduled', 'blue',    20, false),
-       ('consultation_completed', 'Consultation Completed', 'blue',    30, false),
-       ('awaiting_documents',     'Awaiting Documents',     'amber',   40, false),
-       ('under_review',           'Under Review',           'indigo',  50, false),
-       ('in_progress',            'In Progress',            'green',   60, false),
-       ('filed',                  'Filed in Court',         'green',   65, false),
-       ('hearing',                'Hearing Ongoing',        'green',   66, false),
-       ('judgment_reserved',      'Judgment Reserved',      'indigo',  67, false),
-       ('judgment_delivered',     'Judgment Delivered',     'indigo',  68, false),
-       ('appeal',                 'On Appeal',              'indigo',  69, false),
-       ('awaiting_client',        'Awaiting Client',        'amber',   70, false),
-       ('awaiting_third_party',   'Awaiting Third Party',   'amber',   80, false),
-       ('completed',              'Completed',              'gray',    90, true),
-       ('closed',                 'Closed',                 'gray',   100, true)
-     ) as s(key, label, colour, sort, is_terminal)
-where f.slug = 'attorneys-klinique'
-on conflict (firm_id, key) do nothing;
 
 -- service catalogue (master prompt §5). Prices are PLACEHOLDERS: only the consultation is active until Precious sets fees.
 insert into services (firm_id, slug, name, description, price_minor, currency, duration_min, lawyer_category, requires_prepayment, virtual_available, is_active, sort)
@@ -75,7 +62,7 @@ from firms f,
 where f.slug = 'attorneys-klinique'
 on conflict (firm_id, slug) do nothing;
 
--- consultation intake form (master prompt §24): conditional questions, minimal data
+-- Klinique's own consultation intake (master prompt §24): conditional questions, minimal data
 insert into intake_forms (firm_id, service_id, name, schema, is_active)
 select f.id, s.id, 'Consultation intake',
   jsonb_build_object('questions', jsonb_build_array(
@@ -106,3 +93,7 @@ select f.id, s.id, 'Consultation intake',
 from firms f join services s on s.firm_id = f.id and s.slug = 'legal-consultation'
 where f.slug = 'attorneys-klinique'
   and not exists (select 1 from intake_forms i where i.firm_id = f.id and i.service_id = s.id);
+
+-- Finally the scaffold every firm receives — matter statuses, and a consultation service + intake form
+-- only where the firm has none (Klinique's own were inserted above, so only the statuses land here).
+select seed_firm_defaults(id) from firms where slug = 'attorneys-klinique';

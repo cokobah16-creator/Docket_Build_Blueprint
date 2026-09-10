@@ -50,6 +50,12 @@ export async function startPayment(appointmentId: string): Promise<{ error: stri
   }
   if (!email) return { error: "We need an email address to send your receipt. Add one and try again." };
 
+  // Fees settle to the firm's own Paystack subaccount. Only the invoice's client (or the
+  // firm) can ask for it, and the database refuses to record a payment settled anywhere else.
+  const { data: settlement } = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
+  const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
+  if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
+
   const origin = await siteOrigin();
   let checkoutUrl: string;
   try {
@@ -62,6 +68,7 @@ export async function startPayment(appointmentId: string): Promise<{ error: stri
       description: `Consultation ${appt.reference}`,
       callbackUrl: `${origin}${resultPath}`,
       cancelUrl: `${origin}/app/appointments/${appt.id}`,
+      subaccount,
     });
     checkoutUrl = result.checkoutUrl;
   } catch (err) {
