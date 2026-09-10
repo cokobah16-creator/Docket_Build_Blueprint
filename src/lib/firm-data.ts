@@ -149,16 +149,54 @@ export async function firmMatters(
   firmId: string,
   opts: { statusId?: string | null; openOnly?: boolean; lawyerId?: string | null; search?: string | null; limit?: number } = {},
 ): Promise<MatterListRow[]> {
-  let q = supabase
-    .from("matters")
-    .select("id, firm_id, reference, title, cause_title, type, status_id, description, next_action, court_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at, originating_lawyer_id, handling_lawyer_id")
-    .eq("firm_id", firmId)
-    .is("deleted_at", null);
-  if (opts.statusId) q = q.eq("status_id", opts.statusId);
-  if (opts.openOnly) q = q.is("closed_at", null);
-  if (opts.search) q = q.or(`title.ilike.%${opts.search}%,reference.ilike.%${opts.search}%,suit_number.ilike.%${opts.search}%`);
-  const { data } = await q.order("opened_at", { ascending: false }).limit(opts.limit ?? 100);
-  const matters = (data ?? []) as Array<MatterRow & { cause_title: string | null; court_id: string | null; originating_lawyer_id: string | null; handling_lawyer_id: string | null }>;
+  const limit = opts.limit ?? 100;
+
+  // "This lawyer's matters" means two things at once: the file is assigned to
+  // them, or they are on its team. Filtering the second one in JavaScript after
+  // the row limit would silently hide older files — the limit would be spent on
+  // matters that are then thrown away — so each side is a query the database
+  // limits for itself and the two are merged here.
+  const build = (side: "assigned" | "team") => {
+    let q = supabase
+      .from("matters")
+      .select(
+        side === "team"
+          ? "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, court_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at, originating_lawyer_id, handling_lawyer_id, matter_lawyers!inner(user_id)"
+          : "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, court_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at, originating_lawyer_id, handling_lawyer_id",
+      )
+      .eq("firm_id", firmId)
+      .is("deleted_at", null);
+    if (opts.statusId) q = q.eq("status_id", opts.statusId);
+    if (opts.openOnly) q = q.is("closed_at", null);
+    if (opts.search) q = q.or(`title.ilike.%${opts.search}%,reference.ilike.%${opts.search}%,suit_number.ilike.%${opts.search}%`);
+    if (opts.lawyerId) {
+      if (side === "team") q = q.eq("matter_lawyers.user_id", opts.lawyerId);
+      else q = q.eq("handling_lawyer_id", opts.lawyerId);
+    }
+    return q.order("opened_at", { ascending: false }).limit(limit);
+  };
+
+  type Fetched = MatterRow & {
+    cause_title: string | null;
+    court_id: string | null;
+    originating_lawyer_id: string | null;
+    handling_lawyer_id: string | null;
+  };
+
+  let matters: Fetched[];
+  if (opts.lawyerId) {
+    const [assigned, team] = await Promise.all([build("assigned"), build("team")]);
+    const byId = new Map<string, Fetched>();
+    for (const row of [...((assigned.data ?? []) as Fetched[]), ...((team.data ?? []) as Fetched[])]) {
+      if (!byId.has(row.id)) byId.set(row.id, row);
+    }
+    matters = Array.from(byId.values())
+      .sort((a, b) => (a.opened_at < b.opened_at ? 1 : a.opened_at > b.opened_at ? -1 : 0))
+      .slice(0, limit);
+  } else {
+    const { data } = await build("assigned");
+    matters = (data ?? []) as Fetched[];
+  }
   if (matters.length === 0) return [];
 
   const ids = matters.map((m) => m.id);
@@ -176,11 +214,7 @@ export async function firmMatters(
     : { data: [] as Array<{ id: string; full_name: string | null }> };
   const nameById = new Map(((partyProfiles ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [p.id, p.full_name]));
 
-  const filtered = opts.lawyerId
-    ? matters.filter((m) => m.handling_lawyer_id === opts.lawyerId || leadRows.some((l) => l.matter_id === m.id && l.user_id === opts.lawyerId))
-    : matters;
-
-  return filtered.map((m) => ({
+  return matters.map((m) => ({
     ...m,
     status: m.status_id ? statusById.get(m.status_id) ?? null : null,
     lead_lawyer_id: leadRows.find((l) => l.matter_id === m.id && l.is_lead)?.user_id ?? null,

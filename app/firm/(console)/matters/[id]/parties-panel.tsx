@@ -114,7 +114,7 @@ export function PartiesPanel({
   async function revoke(inviteId: string) {
     setError(null);
     setWorking(inviteId);
-    const result = await revokeMatterInvite(inviteId);
+    const result = await revokeMatterInvite(inviteId, matterId);
     setWorking(null);
     setConfirming(null);
     if (result?.error) { setError(result.error); return; }

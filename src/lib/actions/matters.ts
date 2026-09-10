@@ -275,14 +275,22 @@ export async function inviteMatterParty(
   };
 }
 
-/** Expires an invitation that has not been accepted; an accepted one is refused. */
-export async function revokeMatterInvite(inviteId: string): Promise<Err> {
+/**
+ * Expires an invitation that has not been accepted; an accepted one is refused.
+ *
+ * The matter is taken as an argument because the matter page is the only screen
+ * that lists outstanding invitations, and it is the one page refreshMatter cannot
+ * find on its own. Without it a revoked invitation stays in the cache and reads
+ * as still live to anyone who did not refresh the browser themselves.
+ */
+export async function revokeMatterInvite(inviteId: string, matterId?: string | null): Promise<Err> {
   if (!z.string().uuid().safeParse(inviteId).success) return { error: "Unknown invitation." };
+  if (matterId != null && !z.string().uuid().safeParse(matterId).success) return { error: "Unknown matter." };
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
   const { error } = await supabase.rpc("revoke_matter_invite", { p_invite: inviteId });
   if (error) return { error: error.message };
-  refreshMatter(null);
+  refreshMatter(matterId ?? null);
   return undefined;
 }
 
@@ -347,10 +355,21 @@ export async function closeTask(taskId: string): Promise<Err> {
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
 
-  const { data: row } = await supabase.from("tasks").select("id, matter_id").eq("id", taskId).maybeSingle();
+  // Read the matter first so the matter page can be revalidated by name. A read
+  // that fails is not fatal — the task still closes — but it must not be mistaken
+  // for a task with no matter, so say so on the way out.
+  const { data: row, error: readError } = await supabase
+    .from("tasks")
+    .select("id, matter_id")
+    .eq("id", taskId)
+    .maybeSingle();
   const { error } = await supabase.from("tasks").update({ status: "done" }).eq("id", taskId);
   if (error) return { error: error.message };
 
-  refreshMatter((row as { matter_id: string | null } | null)?.matter_id ?? null);
+  const matterId = (row as { matter_id: string | null } | null)?.matter_id ?? null;
+  refreshMatter(matterId);
+  if (readError && !matterId) {
+    return { error: "The task is closed, but this page could not be refreshed. Reload to see it." };
+  }
   return undefined;
 }
