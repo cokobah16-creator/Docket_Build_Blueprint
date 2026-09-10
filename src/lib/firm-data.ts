@@ -162,26 +162,6 @@ export async function firmMatters(
   // the row limit would silently hide older files — the limit would be spent on
   // matters that are then thrown away — so each side is a query the database
   // limits for itself and the two are merged here.
-  const build = (side: "assigned" | "team") => {
-    let q = supabase
-      .from("matters")
-      .select(
-        side === "team"
-          ? "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, court_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at, originating_lawyer_id, handling_lawyer_id, matter_lawyers!inner(user_id)"
-          : "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, court_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at, originating_lawyer_id, handling_lawyer_id",
-      )
-      .eq("firm_id", firmId)
-      .is("deleted_at", null);
-    if (opts.statusId) q = q.eq("status_id", opts.statusId);
-    if (opts.openOnly) q = q.is("closed_at", null);
-    if (opts.search) q = q.or(`title.ilike.%${opts.search}%,reference.ilike.%${opts.search}%,suit_number.ilike.%${opts.search}%`);
-    if (opts.lawyerId) {
-      if (side === "team") q = q.eq("matter_lawyers.user_id", opts.lawyerId);
-      else q = q.eq("handling_lawyer_id", opts.lawyerId);
-    }
-    return q.order("opened_at", { ascending: false }).limit(limit);
-  };
-
   type Fetched = MatterRow & {
     cause_title: string | null;
     court_id: string | null;
@@ -189,20 +169,61 @@ export async function firmMatters(
     handling_lawyer_id: string | null;
   };
 
+  const COLUMNS =
+    "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, court_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at, originating_lawyer_id, handling_lawyer_id";
+
+  const searchFilter = opts.search
+    ? `title.ilike.%${opts.search}%,reference.ilike.%${opts.search}%,suit_number.ilike.%${opts.search}%`
+    : null;
+
+  /** Matters the lawyer is assigned to — or, with no lawyer named, all of them. */
+  const assignedQuery = () => {
+    let q = supabase.from("matters").select(COLUMNS).eq("firm_id", firmId).is("deleted_at", null);
+    if (opts.statusId) q = q.eq("status_id", opts.statusId);
+    if (opts.openOnly) q = q.is("closed_at", null);
+    if (searchFilter) q = q.or(searchFilter);
+    if (opts.lawyerId) q = q.eq("handling_lawyer_id", opts.lawyerId);
+    return q.order("opened_at", { ascending: false }).limit(limit);
+  };
+
+  /**
+   * Matters the lawyer is on the team of. The embed is how the database, rather
+   * than this process, applies "on the team" BEFORE the row limit — filtering it
+   * afterwards would spend the limit on matters that are then thrown away and
+   * silently lose the older ones. supabase-js cannot type an embedded select on
+   * an untyped client, so the rows are cast the way every other embedded read in
+   * this codebase is.
+   */
+  const teamQuery = (lawyerId: string) => {
+    let q = supabase
+      .from("matters")
+      .select(`${COLUMNS}, matter_lawyers!inner(user_id)`)
+      .eq("firm_id", firmId)
+      .is("deleted_at", null);
+    if (opts.statusId) q = q.eq("status_id", opts.statusId);
+    if (opts.openOnly) q = q.is("closed_at", null);
+    if (searchFilter) q = q.or(searchFilter);
+    q = q.eq("matter_lawyers.user_id", lawyerId);
+    return q.order("opened_at", { ascending: false }).limit(limit);
+  };
+
   let matters: Fetched[];
   if (opts.lawyerId) {
-    const [assigned, team] = await Promise.all([build("assigned"), build("team")]);
+    const [assigned, team] = await Promise.all([assignedQuery(), teamQuery(opts.lawyerId)]);
     const byId = new Map<string, Fetched>();
-    for (const row of [...((assigned.data ?? []) as Fetched[]), ...((team.data ?? []) as Fetched[])]) {
-      if (!byId.has(row.id)) byId.set(row.id, row);
-    }
+    const rows = [
+      ...((assigned.data ?? []) as unknown as Fetched[]),
+      ...((team.data ?? []) as unknown as Fetched[]),
+    ];
+    for (const row of rows) if (!byId.has(row.id)) byId.set(row.id, row);
     matters = Array.from(byId.values())
       .sort((a, b) => (a.opened_at < b.opened_at ? 1 : a.opened_at > b.opened_at ? -1 : 0))
       .slice(0, limit);
   } else {
-    const { data } = await build("assigned");
-    matters = (data ?? []) as Fetched[];
+    const { data } = await assignedQuery();
+    matters = (data ?? []) as unknown as Fetched[];
   }
+
   if (matters.length === 0) return [];
 
   const ids = matters.map((m) => m.id);
