@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Default design tokens — overridden per tenant from firms.brand
+   (src/lib/brand.ts). Nothing firm-specific lives in code. */
+:root {
+  --dk-primary: #1c2b3a;
+  --dk-accent: #8a6d3b;
+  --dk-surface: #f6f5f2;
+  --dk-font-heading: Georgia;
+  --dk-font-body: system-ui;
+}
+
+body {
+  margin: 0;
+  background-color: var(--dk-surface);
+  font-family: var(--dk-font-body), system-ui, sans-serif;
+}

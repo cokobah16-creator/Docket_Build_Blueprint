@@ -1,16 +1,32 @@
 {
   "name": "docket",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "db:test:local": "bash scripts/db-test-local.sh"
+    "db:test:local": "bash scripts/db-test-local.sh",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
-    "stripe": "^17.0.0"
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.55.0",
+    "next": "^15.5.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "stripe": "^17.0.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.55.0",
     "@types/node": "^22.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.0",
+    "tailwindcss": "^3.4.17",
     "typescript": "^5.6.0"
   }
 }

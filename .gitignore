@@ -1,5 +1,11 @@
-node_modules
+node_modules/
+.next/
+.vercel/
 .env
-.env.*
-!.env.example
-.next
+.env.local
+.env*.local
+*.log
+playwright-report/
+test-results/
+*.tsbuildinfo
+tsconfig.stubcheck.json
