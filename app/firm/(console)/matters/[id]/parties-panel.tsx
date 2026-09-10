@@ -169,6 +169,7 @@ export function PartiesPanel({
         <h3 className="font-heading text-base font-semibold text-gray-900">Invite your client</h3>
         <p className="mt-0.5 text-sm text-gray-600">
           A phone number, an email address, or both. Send them the link over WhatsApp or SMS — it expires in fourteen days.
+          They sign in with the number or email you invited here, and the matter then appears in their app.
         </p>
         <form onSubmit={submit} className="mt-3 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">

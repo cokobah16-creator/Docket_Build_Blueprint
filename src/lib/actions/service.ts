@@ -190,11 +190,12 @@ export async function updateCounsel(counselId: string, patch: CounselPatch): Pro
 
   // Merge over what is already on record, so a patch that only flips a checkbox
   // cannot blank the address for service. A key passed as null clears it.
+  const current: Record<string, unknown> = existing;
   const given = (key: keyof CounselPatch) => Object.prototype.hasOwnProperty.call(patch, key);
   const take = <T>(key: keyof CounselPatch, column: string): T =>
-    (given(key) ? (patch[key] as unknown) : existing[column]) as T;
+    (given(key) ? (patch[key] as unknown) : current[column]) as T;
   const merged = counselSchema.safeParse({
-    side: given("side") ? patch.side : existing.side,
+    side: given("side") ? patch.side : (current.side as string),
     partyName: take<string | null>("partyName", "party_name"),
     partySide: take<string | null>("partySide", "party_side"),
     counselFirmId: take<string | null>("counselFirmId", "counsel_firm_id"),

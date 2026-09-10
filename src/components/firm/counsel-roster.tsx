@@ -142,6 +142,9 @@ export function CounselRoster({
   );
 
   const serving = counsel.find((c) => c.id === servingId) ?? null;
+  const servingName = serving
+    ? (serving.counsel_firm_id ? directoryById.get(serving.counsel_firm_id)?.name : null) ?? counselLabel(serving)
+    : null;
 
   function submitAdd() {
     setError(null);
@@ -398,7 +401,7 @@ export function CounselRoster({
       <Modal
         open={Boolean(serving)}
         onClose={() => setServingId(null)}
-        title={serving ? `Serve a process on ${serving.counsel_firm_id ? directoryById.get(serving.counsel_firm_id)?.name ?? counselLabel(serving) : counselLabel(serving)}` : "Serve a process"}
+        title={servingName ? `Serve a process on ${servingName}` : "Serve a process"}
       >
         {serving && (
           <div className="max-h-[70vh] overflow-y-auto pr-1">

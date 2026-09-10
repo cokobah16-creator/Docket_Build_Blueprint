@@ -155,6 +155,7 @@ export function OpenProcessButton({
   }
 
   async function open() {
+    if (!versionId) return;
     setBusy(true);
     setError(null);
     setUrl(null);
