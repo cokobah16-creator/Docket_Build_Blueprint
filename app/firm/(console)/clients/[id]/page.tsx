@@ -352,7 +352,8 @@ export default async function FirmClientPage({
       {profile && !hasEmail && (
         <Alert kind="warning" title="No email address on file">
           Receipts and invoice copies are emailed, so nothing can be sent to {name} by email until they add an address.
-          Only they can add it — send the payment link below by {CHANNEL_LABELS[channel] ?? channel} instead.
+          Only they can add it — send the payment link below by{" "}
+          {channelUnreachable ? "SMS or WhatsApp" : CHANNEL_LABELS[channel] ?? channel} instead.
         </Alert>
       )}
 

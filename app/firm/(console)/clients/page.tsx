@@ -25,12 +25,20 @@ import { cn } from "@/lib/cn";
 
 export const metadata = { title: "Clients" };
 
-/** How far back each scan reaches. A cap that bites is said out loud on the page. */
+/**
+ * How far back each scan reaches. A cap that bites is said out loud on the page.
+ *
+ * All five are 1000 on purpose. PostgREST can be configured with a server-side
+ * max-rows of its own, and nothing in this repository pins one, so asking for
+ * more than the server will give would make the row count never equal the number
+ * asked for — and the honest footnote would never appear. Asking for 1000 and
+ * comparing with >= means the note shows whichever cap bit, ours or the server's.
+ */
 const APPOINTMENT_SCAN = 1000;
-const PARTY_SCAN = 2000;
-const MATTER_SCAN = 2000;
-const INVOICE_SCAN = 2000;
-const UPDATE_SCAN = 2000;
+const PARTY_SCAN = 1000;
+const MATTER_SCAN = 1000;
+const INVOICE_SCAN = 1000;
+const UPDATE_SCAN = 1000;
 const SHOW = 200;
 
 const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
@@ -292,7 +300,12 @@ export default async function FirmClientsPage({
   const missingEmail = everyone.filter((c) => !c.email).length;
 
   const filtered = filter !== "all" || search.length > 0;
-  const capped = appointments.length === APPOINTMENT_SCAN || parties.length === PARTY_SCAN || matters.length === MATTER_SCAN;
+  const capped =
+    appointments.length >= APPOINTMENT_SCAN ||
+    parties.length >= PARTY_SCAN ||
+    matters.length >= MATTER_SCAN ||
+    invoices.length >= INVOICE_SCAN ||
+    updates.length >= UPDATE_SCAN;
 
   const query = (patch: Record<string, string | null>) => {
     const params = new URLSearchParams();
@@ -476,7 +489,7 @@ export default async function FirmClientsPage({
         part-paid or overdue, in the currency each was billed in.
         {matched.length > SHOW ? ` Showing the ${SHOW} most recent of ${matched.length} — search to reach the rest.` : ""}
         {capped
-          ? ` This screen reads the ${APPOINTMENT_SCAN} most recent consultations and up to ${PARTY_SCAN} matter parties; an older client may not appear.`
+          ? ` This screen reads up to ${APPOINTMENT_SCAN} of each of consultations, matter parties, matters, invoices and timeline entries, and at least one of those windows is full: an older client may not appear, and an older invoice or entry may not be counted.`
           : ""}
       </p>
     </div>
