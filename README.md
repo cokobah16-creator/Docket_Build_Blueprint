@@ -35,6 +35,9 @@ supabase/
                                                settlement mismatches recorded and reported (never a webhook retry loop)
     20260910000015_second_firm_walkthrough.sql owner invites by owners; registrant's SCN and profile; no booking on unpublished policies; open_matter()
     20260910000016_storage_guards.sql          storage policies never throw on a stray object name (try_uuid guards every path-segment cast)
+    20260910000017_merge_reconciliation.sql    one available_slots(): the active-firm check and the p_ignore argument in a single signature
+    20260910000018_staff_console.sql           manual invoicing (create/issue/cancel), matter invitations (invite/revoke), and the two firm-wide reads
+                                               the console runs on — firm_sittings_due (the chase list) and firm_overview (every counter in one trip)
   seed.sql                           Attorneys Klinique: brand, policies, 14 services, intake form — then seed_firm_defaults()
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
@@ -46,19 +49,23 @@ supabase/
     20_platform.sql                  self-serve firm creation, slug rules, caps, platform admin sees lifecycle only
     30_nigeria.sql                   states, court directory (platform vs firm-private), holidays, practitioner fields
     40_counsel_service.sql           service of process: served firm sees the record + document and nothing else
+    50_staff_console.sql             VAT and line arithmetic, drafts invisible to clients, invitations, the chase list clearing
 src/lib/providers/
   payments/   PaymentProvider — Paystack (all currencies; decision 0002)
   video/      VideoProvider   — Daily (private rooms, knocking, per-user tokens, no recording)
   messaging/  SmsProvider (Termii, Twilio), EmailProvider (Resend)
 src/lib/nigeria.ts   states, +234 normalisation, suit-number shape, court outcomes
+src/lib/firm-data.ts the console's shared reads (context, overview, chase list, matters, availability)
+src/lib/checksum.ts  SHA-256 of an upload, so a served document's checksum is a real one
 app/
   page.tsx                 Docket landing (firms · clients · courts)
   (public)/[firm]/…        tenant public site + booking wizard
   app/…                    client PWA
+  app/(auth)/join          matter-invitation landing → accept_invite() (the link a firm sends its client)
   firm/(auth)/start        self-serve firm registration → create_firm()
   firm/(auth)/join         staff-invite landing → accept_staff_invite()
-  firm/(console)/inbox     service inbox: acknowledge processes served through Docket
   firm/(auth)/security/mfa TOTP enrolment; firm/(console) staff console
+  firm/(console)/          today · overview · sittings · matters · clients · invoices · service inbox · availability
   admin/                   platform admin (platform_admins gate; lifecycle only)
 scripts/db-test-local.sh
 .env.example
