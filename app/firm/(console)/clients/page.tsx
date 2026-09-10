@@ -323,7 +323,7 @@ export default async function FirmClientsPage({
   const chipClass = (active: boolean) =>
     cn(
       "flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm",
-      active ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+      active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
     );
 
   const bookingHref = firm ? `/${firm.slug}/book` : null;
@@ -380,7 +380,7 @@ export default async function FirmClientsPage({
             />
           </div>
           <div className="flex items-center gap-3">
-            <button type="submit" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90">
+            <button type="submit" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">
               Search
             </button>
             {filtered && <Link href="/firm/clients" className="text-sm text-brand underline">Clear</Link>}
@@ -413,7 +413,7 @@ export default async function FirmClientsPage({
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <Link
                       href={bookingHref}
-                      className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90"
+                      className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
                     >
                       Open the booking page
                     </Link>

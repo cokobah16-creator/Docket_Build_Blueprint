@@ -506,7 +506,7 @@ export function AvailabilityEditor({
                       onClick={() => { setExWholeDay(true); setExError(null); }}
                       className={cn(
                         "min-h-[44px] flex-1 rounded-xl border px-3 text-sm font-medium",
-                        exWholeDay ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
+                        exWholeDay ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
                       )}
                     >
                       Whole day
@@ -517,7 +517,7 @@ export function AvailabilityEditor({
                       onClick={() => { setExWholeDay(false); setExError(null); }}
                       className={cn(
                         "min-h-[44px] flex-1 rounded-xl border px-3 text-sm font-medium",
-                        !exWholeDay ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
+                        !exWholeDay ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
                       )}
                     >
                       Part of it

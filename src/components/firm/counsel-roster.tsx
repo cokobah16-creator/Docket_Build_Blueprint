@@ -103,7 +103,7 @@ function addressLine(address: Record<string, unknown> | null | undefined): strin
 function chipClass(active: boolean): string {
   return cn(
     "min-h-[44px] rounded-xl border px-3 py-2 text-sm font-medium transition",
-    active ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
+    active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
   );
 }
 

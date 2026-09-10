@@ -92,7 +92,7 @@ export default async function ClientDashboard() {
         </div>
         <Link href="/app/notifications" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} className="relative rounded-full border border-gray-200 bg-white p-2 text-lg">
           <span aria-hidden="true">🔔</span>
-          {unread > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-white">{unread}</span>}
+          {unread > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-brand-on">{unread}</span>}
         </Link>
       </header>
 
@@ -113,14 +113,14 @@ export default async function ClientDashboard() {
             <div className="flex flex-wrap items-center gap-3">
               <StatusPill status={nextAppointment.status as Status} />
               {liveNow ? (
-                <Link href={`/app/appointments/${nextAppointment.id}/waiting-room`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90">Join now</Link>
+                <Link href={`/app/appointments/${nextAppointment.id}/waiting-room`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Join now</Link>
               ) : (
                 <Link href={`/app/appointments/${nextAppointment.id}`} className="text-sm text-brand underline">Details</Link>
               )}
             </div>
           </CardBody>
         ) : (
-          <EmptyState title="No upcoming consultations" hint="Book one and meet your lawyer face to face." action={firm && <Link href={`/${firm.slug}/book`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90">Book a Consultation</Link>} />
+          <EmptyState title="No upcoming consultations" hint="Book one and meet your lawyer face to face." action={firm && <Link href={`/${firm.slug}/book`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Book a Consultation</Link>} />
         )}
       </Card>
 

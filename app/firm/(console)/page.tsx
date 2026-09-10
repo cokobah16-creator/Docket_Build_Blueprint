@@ -111,7 +111,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
         <div className="flex flex-wrap items-center gap-2">
           <Link
             href="/firm/sittings"
-            className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+            className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
           >
             Post a court update
           </Link>
@@ -149,7 +149,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
                 </div>
                 <Link
                   href={`/firm/matters/${s.matter_id}?tab=timeline#post-update`}
-                  className="shrink-0 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+                  className="shrink-0 rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
                 >
                   Post update
                 </Link>
@@ -195,7 +195,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
                     {live && (
                       <Link
                         href={`/firm/appointments/${a.id}`}
-                        className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+                        className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
                       >
                         Open room
                       </Link>

@@ -31,7 +31,7 @@ export default async function LawyerProfilePage({ params }: { params: Params }) 
       <div className="mt-8">
         <Link
           href={`/${firm.slug}/book?lawyer=${row.id}`}
-          className="inline-block rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-white hover:opacity-90"
+          className="inline-block rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-brand-on hover:opacity-90"
         >
           Book a consultation
         </Link>

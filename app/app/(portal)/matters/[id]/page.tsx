@@ -68,7 +68,7 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
       <nav aria-label="Matter sections" className="flex gap-2 overflow-x-auto">
         {TABS.map(([key, label]) => (
           <Link key={key} href={`/app/matters/${matter.id}?tab=${key}`} aria-current={tab === key ? "page" : undefined}
-            className={cn("shrink-0 rounded-full border px-3 py-1.5 text-sm", tab === key ? "border-brand bg-brand text-white" : "border-gray-300 text-gray-700")}>
+            className={cn("shrink-0 rounded-full border px-3 py-1.5 text-sm", tab === key ? "border-brand bg-brand text-brand-on" : "border-gray-300 text-gray-700")}>
             {label}
           </Link>
         ))}
@@ -158,7 +158,7 @@ async function InvoicesSection({ supabase, matterId, tz }: { supabase: SB; matte
             </div>
             <div className="flex items-center gap-2">
               <StatusPill status={inv.status as Status} />
-              {payable && <form action={pay}><button type="submit" className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">Pay {formatMoneyMinor(outstanding, inv.currency)}</button></form>}
+              {payable && <form action={pay}><button type="submit" className="rounded-lg bg-brand px-3 py-1.5 text-xs font-medium text-brand-on hover:opacity-90">Pay {formatMoneyMinor(outstanding, inv.currency)}</button></form>}
             </div>
           </li>
         );

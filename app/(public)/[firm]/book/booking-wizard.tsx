@@ -347,7 +347,7 @@ export function BookingWizard({
                 key={d.iso}
                 type="button"
                 onClick={() => { setDate(d.iso); setSlot(null); }}
-                className={`rounded-lg border px-3 py-3 text-sm ${date === d.iso ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-800 hover:border-brand"}`}
+                className={`rounded-lg border px-3 py-3 text-sm ${date === d.iso ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand"}`}
               >
                 {d.label}
               </button>
@@ -369,7 +369,7 @@ export function BookingWizard({
                   key={s.starts_at}
                   type="button"
                   onClick={() => setSlot(s)}
-                  className={`rounded-lg border px-3 py-3 text-sm ${slot?.starts_at === s.starts_at ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-800 hover:border-brand"}`}
+                  className={`rounded-lg border px-3 py-3 text-sm ${slot?.starts_at === s.starts_at ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand"}`}
                 >
                   <span className="block font-medium">{fmtTime(s.starts_at, visitorTz)}</span>
                   {visitorTz !== lawyerTz && (

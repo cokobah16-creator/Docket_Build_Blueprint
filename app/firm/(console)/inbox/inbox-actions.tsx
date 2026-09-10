@@ -72,7 +72,7 @@ export function FileServiceForm({
         <div className="flex flex-wrap gap-2">
           <Link
             href="/firm/matters/new"
-            className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90"
+            className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
           >
             Open a matter
           </Link>

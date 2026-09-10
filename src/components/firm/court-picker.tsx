@@ -190,7 +190,7 @@ export function CourtPicker({
                     onClick={() => choose(c)}
                     className={cn(
                       "flex min-h-[44px] w-full flex-col justify-center rounded-lg border px-3 py-2 text-left",
-                      c.id === value ? "border-brand bg-brand text-white" : "border-gray-200 bg-white hover:border-brand",
+                      c.id === value ? "border-brand bg-brand text-brand-on" : "border-gray-200 bg-white hover:border-brand",
                     )}
                   >
                     <span className="text-sm font-medium">{courtLine(c)}</span>

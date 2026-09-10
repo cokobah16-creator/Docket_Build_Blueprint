@@ -192,7 +192,7 @@ export default async function FirmInvoicesPage({
   const chipClass = (active: boolean) =>
     cn(
       "flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm",
-      active ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+      active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
     );
 
   const tiles = overview
@@ -215,7 +215,7 @@ export default async function FirmInvoicesPage({
         </div>
         <Link
           href={raiseHref}
-          className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90"
+          className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
         >
           Raise an invoice
         </Link>
@@ -272,7 +272,7 @@ export default async function FirmInvoicesPage({
               action={
                 <Link
                   href={raiseHref}
-                  className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90"
+                  className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
                 >
                   Raise an invoice
                 </Link>

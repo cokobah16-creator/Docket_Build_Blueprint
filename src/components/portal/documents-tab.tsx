@@ -87,7 +87,7 @@ export function DocumentsTab({
       {canUpload && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
           <p className="text-xs text-gray-500">PDF, Word, JPEG, PNG or HEIC · up to 25 MB · shared with your firm</p>
-          <label className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90">
+          <label className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">
             {busy ?? "Upload a document"}
             <input type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
           </label>
@@ -147,7 +147,7 @@ export function DocumentsTab({
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-gray-700">This file type has no in-app preview.</p>
-            <a href={preview.url} className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white" download={preview.doc.name}>Download</a>
+            <a href={preview.url} className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on" download={preview.doc.name}>Download</a>
           </div>
         ))}
         <p className="mt-3 text-xs text-gray-500">Links expire after two minutes.</p>

@@ -11,6 +11,9 @@ const config: Config = {
           DEFAULT: "var(--dk-primary)",
           accent: "var(--dk-accent)",
           surface: "var(--dk-surface)",
+          // Readable foregrounds, derived from the firm's own colours.
+          on: "var(--dk-on-primary)",
+          "on-accent": "var(--dk-on-accent)",
         },
       },
       fontFamily: {

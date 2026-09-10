@@ -32,7 +32,7 @@ const AUDIENCES = [
   {
     title: "For the courts and counsel",
     body:
-      "Matters recorded against the real court hierarchy with proper suit numbers, sittings updated within 24 hours, and court processes served on the other side's counsel with an acknowledged proof of service.",
+      "Matters recorded against the real Nigerian court hierarchy, each court showing the suit-number shape it uses. Sittings with no update posted are flagged for the firm to chase. Court processes are served on the other side's counsel with an acknowledged proof of service.",
     href: "/firm/login",
     cta: "Staff sign in",
   },
@@ -63,7 +63,7 @@ export default function PlatformLanding() {
               <p className="flex-1 text-sm text-gray-600">{a.body}</p>
               <Link
                 href={a.href}
-                className="inline-flex justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+                className="inline-flex justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
               >
                 {a.cta}
               </Link>
@@ -88,8 +88,9 @@ export default function PlatformLanding() {
       )}
 
       <p className="text-sm text-gray-500">
-        Free for firms of three lawyers or fewer. Fees settle to the firm’s own
-        Paystack account; Docket never holds client money.
+        Every firm is on the free plan while Docket is in build, and no firm is
+        billed. Fees settle to the firm’s own Paystack account; Docket never
+        holds client money.
       </p>
     </main>
   );
