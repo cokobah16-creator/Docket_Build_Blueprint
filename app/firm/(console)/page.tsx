@@ -50,7 +50,7 @@ export default async function StaffToday() {
         <Card>
           <CardHeader title="Unread messages" />
           <EmptyState
-            title="No unread messages"
+            title="Client messaging is in build"
             hint="Client messages across your matters appear here (slice 4)."
           />
         </Card>

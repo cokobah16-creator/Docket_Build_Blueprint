@@ -97,8 +97,6 @@ export default async function ClientDashboard() {
 
   const quickActions = [
     { label: "Book", href: firm ? `/${firm.slug}/book` : "/app/appointments" },
-    { label: "Join", href: "/app/appointments" },
-    { label: "Upload", href: "/app/matters" },
     { label: "Message", href: "/app/messages" },
     { label: "Pay", href: "/app/appointments" },
   ];
@@ -112,7 +110,7 @@ export default async function ClientDashboard() {
         {firm && <p className="text-sm text-gray-600">{firm.name}</p>}
       </header>
 
-      <nav aria-label="Quick actions" className="grid grid-cols-5 gap-2">
+      <nav aria-label="Quick actions" className="grid grid-cols-3 gap-2">
         {quickActions.map((a) => (
           <Link
             key={a.label}
@@ -143,12 +141,12 @@ export default async function ClientDashboard() {
         ) : (
           <EmptyState
             title="No upcoming consultations"
-            hint="Book one and meet your lawyer face to face."
+            hint="Book one and it appears here once your firm confirms it."
             action={
               firm && (
                 <Link
                   href={`/${firm.slug}/book`}
-                  className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+                  className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
                 >
                   Book a Consultation
                 </Link>
@@ -162,7 +160,7 @@ export default async function ClientDashboard() {
         <CardHeader title="My matters" />
         <EmptyState
           title="No matters yet"
-          hint="When your firm opens a matter for you, it appears here with its full timeline."
+          hint="Matters your firm opens for you appear here with their timeline (slice 3)."
         />
       </Card>
 
@@ -170,7 +168,7 @@ export default async function ClientDashboard() {
         <CardHeader title="Recent documents" />
         <EmptyState
           title="No documents have been shared yet"
-          hint="Documents you upload or your lawyer shares will show here."
+          hint="Documents shared on your matters appear here (slice 3)."
         />
       </Card>
     </div>

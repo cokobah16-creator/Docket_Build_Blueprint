@@ -9,30 +9,30 @@ import { Alert } from "@/components/ui/alert";
 import { Card, CardBody } from "@/components/ui/card";
 
 export const metadata = {
-  title: "Docket — one app, every matter, any firm",
+  title: "Docket — one sign-in, every firm you instruct",
   description:
-    "The client experience platform for Nigerian law firms: booking, payment, face-to-face consultation, court updates and service of process — for firms, their clients and the courts.",
+    "The client experience platform for Nigerian law firms: a branded firm site, online booking, Paystack checkout, matters against the real court hierarchy and service of process — for firms, their clients and the courts.",
 };
 
 const AUDIENCES = [
   {
     title: "For law firms",
     body:
-      "Your own branded site, booking and Paystack checkout, virtual consultations, matters with a court-update timeline, documents, messaging and invoicing — from one console, on any phone.",
+      "Your own branded site, online booking and Paystack checkout that settles to your firm, and a console with today's list, the service inbox and two-factor on staff writes. Virtual consultations, documents, messaging and invoicing are in build.",
     href: "/firm/start",
     cta: "Register your firm",
   },
   {
     title: "For clients",
     body:
-      "Tell us what you need, book, pay, meet your lawyer face to face — then follow every court sitting and filing in one app, whichever firms act for you.",
+      "Tell the firm what you need, book, pay online, and keep every appointment and receipt in one place. The same sign-in works at any firm on Docket. Your matter timeline and messages arrive in the next release.",
     href: "/app/login",
     cta: "Client sign in",
   },
   {
     title: "For the courts and counsel",
     body:
-      "Matters recorded against the real court hierarchy with proper suit numbers, sittings updated within 24 hours, and court processes served on the other side's counsel with an acknowledged proof of service.",
+      "Matters recorded against the real Nigerian court hierarchy, each court showing the suit-number shape it uses. Court dates raise reminders. A process served on your firm through Docket lands in a service inbox and is acknowledged by a named practitioner, pinned to the exact document version. The screen a firm serves from is in build.",
     href: "/firm/login",
     cta: "Staff sign in",
   },
@@ -45,13 +45,13 @@ export default function PlatformLanding() {
       <div>
         <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">Docket</p>
         <h1 className="mt-2 font-heading text-4xl font-semibold text-brand sm:text-5xl">
-          One app, every matter, any firm.
+          One sign-in, every firm you instruct.
         </h1>
         <p className="mt-4 max-w-2xl text-lg text-gray-600">
           Docket is the platform Nigerian law firms use to run their client
-          work — and the one app their clients keep, whoever acts for them.
-          Built for the Nigerian courts, the Nigerian Bar and the diaspora
-          client with a matter back home.
+          work — and one client sign-in that carries from firm to firm, whoever
+          acts for you next. Built for the Nigerian courts, the Nigerian Bar and
+          the diaspora client with a matter back home.
         </p>
       </div>
 
@@ -63,7 +63,7 @@ export default function PlatformLanding() {
               <p className="flex-1 text-sm text-gray-600">{a.body}</p>
               <Link
                 href={a.href}
-                className="inline-flex justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+                className="inline-flex justify-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
               >
                 {a.cta}
               </Link>
@@ -88,8 +88,8 @@ export default function PlatformLanding() {
       )}
 
       <p className="text-sm text-gray-500">
-        Free for firms of three lawyers or fewer. Fees settle to the firm’s own
-        Paystack account; Docket never holds client money.
+        Fees settle to the firm’s own Paystack account; Docket never holds
+        client money. Firm pricing is not set yet and no firm is billed.
       </p>
     </main>
   );

@@ -68,7 +68,7 @@ export function PaymentResult({
             Consultation {reference} is confirmed for {when} ({timezone}).
           </Alert>
           <div className="flex flex-wrap gap-3">
-            <Link href={`/app/appointments/${appointmentId}`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90">View appointment</Link>
+            <Link href={`/app/appointments/${appointmentId}`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">View appointment</Link>
             {invoiceId && <Link href={`/app/payments/${invoiceId}`} className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">Receipt</Link>}
           </div>
         </CardBody>
@@ -84,7 +84,7 @@ export function PaymentResult({
           <Alert kind="warning">
             We didn't receive payment in time, so the slot was released. Nothing has been charged.
           </Alert>
-          <Link href={bookHref} className="inline-block rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90">Book again</Link>
+          <Link href={bookHref} className="inline-block rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Book again</Link>
         </CardBody>
       </Card>
     );

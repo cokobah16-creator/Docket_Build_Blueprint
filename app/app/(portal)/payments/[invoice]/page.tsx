@@ -85,7 +85,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ invoic
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90">Download PDF</a>
+        <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Download PDF</a>
         <Link href="/app/payments" className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">All payments</Link>
       </div>
     </div>

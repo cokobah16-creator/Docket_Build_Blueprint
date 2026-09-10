@@ -8,6 +8,8 @@
   --dk-primary: #1c2b3a;
   --dk-accent: #8a6d3b;
   --dk-surface: #f6f5f2;
+  --dk-on-primary: #ffffff;
+  --dk-on-accent: #ffffff;
   --dk-font-heading: Georgia;
   --dk-font-body: system-ui;
 }

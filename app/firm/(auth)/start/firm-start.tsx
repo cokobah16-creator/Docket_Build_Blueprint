@@ -147,7 +147,7 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
             label="Your Supreme Court enrolment number (optional)"
             name="ownerScn"
             placeholder="SCN123456"
-            hint="Docket checks it against the Roll before activating the firm. You can add it later on your profile."
+            hint="Recorded on your practitioner record and shown to Docket when it verifies the firm. It goes on the proof of service for processes you serve. Docket does not check it against the Roll."
             error={state.fieldErrors?.ownerScn}
           />
           <Input label="Primary colour (optional)" name="primaryColour" type="color" defaultValue="#1c2b3a" hint="You can refine the brand later in firm settings." />
@@ -155,10 +155,11 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
             {pending ? "Creating your firm…" : "Create firm and set up two-factor"}
           </Button>
           <p className="text-sm text-gray-500">
-            Free for firms of three lawyers or fewer. By continuing you accept the Docket
-            firm terms and act as the data controller for your clients’ information.
-            Fees you charge settle to your own Paystack subaccount — add it in settings
-            before your first booking.
+            No card at sign-up. Every firm starts on the free plan. By continuing you
+            accept the Docket firm terms and act as the data controller for your
+            clients’ information. Fees you charge settle to your own Paystack
+            subaccount; clients cannot pay online until it is set, and the screen for
+            adding it arrives in the next release.
           </p>
         </form>
       </CardBody>

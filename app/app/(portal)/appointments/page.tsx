@@ -37,7 +37,7 @@ export default async function AppointmentsPage() {
         {appointments.length === 0 ? (
           <EmptyState
             title="No consultations yet"
-            hint="Your booked consultations appear here with their status and join button."
+            hint="Your booked consultations appear here with their reference and status."
           />
         ) : (
           <CardBody className="divide-y divide-gray-100 p-0">

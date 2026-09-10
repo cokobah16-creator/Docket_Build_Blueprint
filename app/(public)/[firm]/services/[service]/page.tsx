@@ -37,7 +37,7 @@ export default async function ServiceDetailPage({ params }: { params: Params }) 
         <div>
           <dt className="text-xs uppercase tracking-wide text-gray-500">Format</dt>
           <dd className="mt-1 font-medium text-gray-900">
-            {row.virtual_available ? "Virtual or in person" : "In person"}
+            In person or by phone
           </dd>
         </div>
       </dl>
@@ -47,7 +47,7 @@ export default async function ServiceDetailPage({ params }: { params: Params }) 
       <div className="mt-8">
         <Link
           href={`/${firm.slug}/book?service=${row.slug}`}
-          className="inline-block rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-white hover:opacity-90"
+          className="inline-block rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-brand-on hover:opacity-90"
         >
           Book this consultation
         </Link>
