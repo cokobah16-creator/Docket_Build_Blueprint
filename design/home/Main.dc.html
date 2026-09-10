@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;800&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap">
+  <style>
+    body { margin: 0; background: #f3f2f2; color: #201e1d;
+           font-family: Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif;
+           font-size: 15px; line-height: 1.55; -webkit-font-smoothing: antialiased; }
+    * { box-sizing: border-box; }
+    h1, h2, h3, h4 { font-family: Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif;
+                     font-weight: 800; margin: 0; letter-spacing: -0.025em; }
+    p { margin: 0; text-wrap: pretty; }
+  input::placeholder, textarea::placeholder { color: #5b5959; opacity: 1; }
+    a { color: #3f694a; text-decoration: none; }
+    a:hover { color: #2c4a34; }
+    ul { margin: 0; padding: 0; list-style: none; }
+    .kicker { font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 600; }
+    .hair { height: 1px; background: #b4b2b2; border: 0; margin: 0; }
+    .num { font-size: 88px; line-height: 0.85; font-weight: 800; letter-spacing: -0.04em;
+           font-variant-numeric: tabular-nums; color: #2c4a34; }
+  </style>
+</helmet>
+
+<main style="background:#f3f2f2">
+
+  <header style="border-bottom:1px solid #b4b2b2;background:#f3f2f2">
+    <div style="max-width:1240px;margin:0 auto;padding:18px 32px;display:flex;align-items:center;gap:28px">
+      <a href="#top" style="display:flex;align-items:baseline;gap:10px;margin-right:auto;color:#201e1d;white-space:nowrap">
+        <span style="font-family:Archivo,sans-serif;font-weight:800;font-size:21px;letter-spacing:-0.03em">Docket</span>
+        <span class="kicker" style="color:#5b5959">Legal practice platform</span>
+      </a>
+      <nav style="display:flex;align-items:center;gap:22px;font-size:13px">
+        <a href="#firms" style="color:#201e1d">Firms</a>
+        <a href="#clients" style="color:#201e1d">Clients</a>
+        <a href="#courts" style="color:#201e1d">Counsel</a>
+        <a href="#money" style="color:#201e1d">Pricing</a>
+      </nav>
+      <div style="display:flex;align-items:center;gap:16px;padding-left:22px;border-left:1px solid #b4b2b2">
+        <a href="#signin" style="font-size:13px;color:#5b5959;white-space:nowrap">Sign in</a>
+        <a href="#walkthrough" style="display:inline-flex;align-items:center;padding:13px 18px;background:#2c4a34;color:#f3f2f2;font-weight:600;font-size:13px;white-space:nowrap">Book a walkthrough</a>
+      </div>
+    </div>
+  </header>
+
+  <section id="top" style="max-width:1240px;margin:0 auto;padding:120px 32px 96px">
+    <div style="width:64px;height:3px;background:#ffb81c;margin-bottom:20px"></div>
+    <p class="kicker" style="color:#2c4a34;margin-bottom:24px">Nigeria &middot; practice, clients, counsel</p>
+    <h1 style="font-size:88px;line-height:0.98;letter-spacing:-0.035em;max-width:none">One record of the matter.<br>For the firm, the client<br>and the counsel<br>on the other side.</h1>
+    <p style="font-size:21px;line-height:1.5;max-width:58ch;margin-top:32px;color:#3f3d3c">Docket is the practice platform Nigerian firms run their client work on &mdash; bookings, fees, consultations, matters and service of process &mdash; and the one sign-in their clients keep, whichever firms act for them.</p>
+    <div style="display:flex;align-items:center;gap:20px;margin-top:40px;flex-wrap:wrap">
+      <a href="#walkthrough" style="display:inline-flex;align-items:center;padding:15px 26px;background:#2c4a34;color:#f3f2f2;font-weight:600;font-size:15px">Book a walkthrough</a>
+      <p style="font-size:13px;color:#5b5959">Free while Docket is in build. No card.</p>
+    </div>
+  </section>
+
+  <section style="max-width:1240px;margin:0 auto;padding:0 32px 96px">
+    <div style="height:4px;background:#2c4a34"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0">
+      <div id="firms" style="padding:36px 36px 0 0;border-right:1px solid #b4b2b2;display:flex;flex-direction:column;gap:14px">
+        <p class="kicker" style="color:#2c4a34">For firms</p>
+        <h2 style="font-size:26px;line-height:1.15;letter-spacing:-0.015em">Your own site, console and ledger of matters</h2>
+        <p style="font-size:15px;color:#3f3d3c;flex:1">A branded public site with online booking, prepaid consultations that settle to your own account, and video consultations with a waiting room &mdash; from one console, on any phone. Matters sit against the real court hierarchy in the schema; the matters console, documents, messaging and invoicing are in build.</p>
+      </div>
+      <div id="clients" style="padding:36px 36px 0 36px;border-right:1px solid #b4b2b2;display:flex;flex-direction:column;gap:14px">
+        <p class="kicker" style="color:#2c4a34">For clients</p>
+        <h2 style="font-size:26px;line-height:1.15;letter-spacing:-0.015em">See what has happened, and what is next</h2>
+        <p style="font-size:15px;color:#3f3d3c;flex:1">Book and pay from your phone, and keep one sign-in whichever firms act for you. Sittings, filings and fees are written once and read in plain language. The client timeline and video consultations are in build.</p>
+      </div>
+      <div id="courts" style="padding:36px 0 0 36px;display:flex;flex-direction:column;gap:14px">
+        <p class="kicker" style="color:#2c4a34">For counsel on the other side</p>
+        <h2 style="font-size:26px;line-height:1.15;letter-spacing:-0.015em">Process served,<br>receipt acknowledged</h2>
+        <p style="font-size:15px;color:#3f3d3c;flex:1">The suit-number shape each court uses, shown on the form as a placeholder, a standing daily flag on any sitting that still has no update, and a service inbox where a process served on your firm is acknowledged by a named practitioner &mdash; pinned to the exact document version served.</p>
+      </div>
+    </div>
+  </section>
+
+  <section style="max-width:1240px;margin:0 auto;padding:0 32px">
+    <div style="height:4px;background:#2c4a34"></div>
+    <div style="padding-top:32px;display:flex;align-items:baseline;justify-content:space-between;gap:32px;flex-wrap:wrap">
+      <h2 style="font-size:44px;line-height:1.05;max-width:none">What the platform does, precisely</h2>
+      <p style="font-size:13px;color:#5b5959;max-width:40ch">Three flows carry the practice. Each one is a rule in the schema, not a habit anyone has to remember.</p>
+    </div>
+  </section>
+
+  <section id="booking" style="max-width:1240px;margin:0 auto;padding:0 32px 48px">
+    <div style="display:flex;align-items:center;height:3px;margin-top:48px">
+      <div style="width:176px;height:3px;background:#ffb81c"></div>
+      <div style="flex:1;height:1px;background:#b4b2b2"></div>
+    </div>
+    <div style="padding-top:28px;display:grid;grid-template-columns:176px minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start">
+      <p class="num">01</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3 style="font-size:26px;line-height:1.15;letter-spacing:-0.015em">Booking &amp; payment</h3>
+        <p style="font-size:15px;color:#3f3d3c">Slots are computed in the lawyer's own timezone, less breaks, exceptions, live appointments and the daily cap, with a two-hour lead time. The slot is held for fifteen minutes while the client pays.</p>
+      </div>
+      <ul style="display:flex;flex-direction:column;gap:12px;font-size:13px;color:#3f3d3c">
+          <li style="padding-bottom:12px;border-bottom:1px solid #b4b2b2">Fees settle to the firm's own Paystack subaccount. Docket never holds client money.</li>
+          <li style="padding-bottom:12px;border-bottom:1px solid #b4b2b2">Clients never write an appointment or a payment; the webhook does, once, idempotently.</li>
+          <li>A settlement reported against any other account is recorded as a flagged failure and returned to the firm for reconciliation.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="matters" style="max-width:1240px;margin:0 auto;padding:0 32px 48px">
+    <div style="display:flex;align-items:center;height:3px;margin-top:48px">
+      <div style="width:176px;height:3px;background:#ffb81c"></div>
+      <div style="flex:1;height:1px;background:#b4b2b2"></div>
+    </div>
+    <div style="padding-top:28px;display:grid;grid-template-columns:176px minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start">
+      <p class="num">02</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3 style="font-size:26px;line-height:1.15;letter-spacing:-0.015em">Matters &amp; court updates</h3>
+        <p style="font-size:15px;color:#3f3d3c">One entry &mdash; the outcome, the next date and its purpose. Docket composes the client entry and the internal note, closes the day's sitting and opens the next against the court, the judge and the courtroom.</p>
+      </div>
+      <ul style="display:flex;flex-direction:column;gap:12px;font-size:13px;color:#3f3d3c">
+          <li style="padding-bottom:12px;border-bottom:1px solid #b4b2b2">A next date falling on a weekend, a public holiday, or a vacation published by that court is refused.</li>
+          <li style="padding-bottom:12px;border-bottom:1px solid #b4b2b2">Internal notes have no client policy at all &mdash; they cannot reach the client.</li>
+          <li>Timestamps are held in UTC and rendered in the reader's own zone. The rule is enforced in the schema today; the form a lawyer posts the update from is in build.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="service" style="max-width:1240px;margin:0 auto;padding:0 32px 96px">
+    <div style="display:flex;align-items:center;height:3px;margin-top:48px">
+      <div style="width:176px;height:3px;background:#ffb81c"></div>
+      <div style="flex:1;height:1px;background:#b4b2b2"></div>
+    </div>
+    <div style="padding-top:28px;display:grid;grid-template-columns:176px minmax(0,1fr) minmax(0,1fr);gap:32px;align-items:start">
+      <p class="num">03</p>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <h3 style="font-size:26px;line-height:1.15;letter-spacing:-0.015em">Service of process</h3>
+        <p style="font-size:15px;color:#3f3d3c">Service through the platform is pinned to the exact document version and its checksum, with the cause title and suit number snapshotted at the moment of service.</p>
+      </div>
+      <ul style="display:flex;flex-direction:column;gap:12px;font-size:13px;color:#3f3d3c">
+          <li style="padding-bottom:12px;border-bottom:1px solid #b4b2b2">The served firm sees the record and that one version &mdash; never the matter, the roster or a later version.</li>
+          <li style="padding-bottom:12px;border-bottom:1px solid #b4b2b2">Platform service requires the other firm's opt-in; an originating process requires counsel's undertaking or an order.</li>
+          <li>Acknowledgement by a practitioner is timestamped and named, and a wrong service is withdrawn at once. The inbox and the acknowledgement are live today; the screen a firm serves from is in build.</li>
+      </ul>
+    </div>
+  </section>
+  <section id="exhibits" style="background:#2c4a34;color:#f3f2f2;margin-top:0">
+    <div style="max-width:1240px;margin:0 auto;padding:128px 32px">
+      <div style="width:64px;height:3px;background:#ffb81c;margin-bottom:20px"></div>
+      <p class="kicker" style="color:#ffcb71;margin-bottom:20px">The same screen, two firms</p>
+      <h2 style="font-size:44px;line-height:1.05;color:#f3f2f2;max-width:22ch">Every firm's app carries the firm's own name and colours</h2>
+      <p style="font-size:21px;line-height:1.5;max-width:56ch;margin-top:22px;color:rgba(243,242,242,0.86)">One codebase, one record of the matter &mdash; and a client who opens their lawyer's brand, not ours.</p>
+
+      <div style="display:grid;grid-template-columns:384px 384px minmax(0,1fr);gap:56px;margin-top:64px;align-items:start">
+        <div style="width:384px;height:720px;overflow:hidden;display:flex;flex-direction:column;background:#F7F5F0;border:2px solid #f3f2f2;padding:22px 16px 0;font-family:system-ui,-apple-system,sans-serif">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div>
+              <p style="font-family:Fraunces, Georgia, serif;font-size:23px;font-weight:600;color:#0F2A44;line-height:1.2">Welcome, Adaeze</p>
+              <p style="margin-top:2px;font-size:13.5px;color:#6b6762">Attorneys Klinique</p>
+            </div>
+            <div style="position:relative;border:1px solid #e3e0dc;background:#fff;border-radius:9999px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;color:#0F2A44"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg><span style="position:absolute;top:-5px;right:-5px;background:#0F2A44;color:#fff;border-radius:9999px;font-size:10px;font-weight:600;padding:1px 6px">3</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:20px">
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:12px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#0F2A44"><span style="display:block;margin-bottom:5px;color:#0F2A44"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg></span>Book</div>
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:12px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#0F2A44"><span style="display:block;margin-bottom:5px;color:#0F2A44"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="m16 10.5 5.2-3a.5.5 0 0 1 .8.4v8.2a.5.5 0 0 1-.8.4l-5.2-3"></path><rect x="2" y="6" width="14" height="12" rx="2"></rect></svg></span>Join</div>
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:12px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#0F2A44"><span style="display:block;margin-bottom:5px;color:#0F2A44"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></span>Upload</div>
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:12px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#0F2A44"><span style="display:block;margin-bottom:5px;color:#0F2A44"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg></span>Message</div>
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:12px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#0F2A44"><span style="display:block;margin-bottom:5px;color:#0F2A44"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><rect width="20" height="12" x="2" y="6" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01"></path><path d="M18 12h.01"></path></svg></span>Pay</div>
+          </div>
+          <div style="margin-top:18px;border:1px solid #e3e0dc;background:#fff;border-radius:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #efece8;padding:13px 18px">
+              <p style="font-family:Fraunces, Georgia, serif;font-size:15px;font-weight:600;color:#111827">Next appointment</p>
+              <span style="font-size:13px;color:#0F2A44;text-decoration:underline">All</span>
+            </div>
+            <div style="padding:14px 18px;display:flex;flex-direction:column;gap:7px">
+              <p style="font-size:13.5px;font-weight:500;color:#111827">Tuesday, 22 September 2026 at 11:00</p>
+              <p style="font-size:12.5px;color:#6b6762">AK-0247 &middot; virtual</p>
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="display:inline-flex;align-items:center;gap:5px;border:1px solid #B08D57;background:#FBF7F0;color:#0F2A44;border-radius:9999px;padding:3px 10px;font-size:11.5px;font-weight:500"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Confirmed</span>
+                <span style="font-size:13px;color:#0F2A44;text-decoration:underline">Details</span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:16px;border:1px solid #e3e0dc;background:#fff;border-radius:12px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #efece8;padding:13px 18px">
+              <p style="font-family:Fraunces, Georgia, serif;font-size:15px;font-weight:600;color:#111827">My matters</p>
+              <span style="font-size:13px;color:#0F2A44;text-decoration:underline">All</span>
+            </div>
+            <div style="padding:13px 18px;border-bottom:1px solid #efece8">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <p style="font-size:13.5px;font-weight:500;color:#111827;line-height:1.35">Adeyemi v. Lagos State Lands Bureau</p>
+                <span style="flex:none;border:1px solid #B08D57;color:#896c40;border-radius:9999px;padding:1px 9px;font-size:11px">In court</span>
+              </div>
+              <p style="margin-top:3px;font-size:11.5px;color:#716e68">AK-M-2026-000014 &middot; B. Okafor</p>
+              <p style="margin-top:4px;font-size:11.5px;color:#4b5563">Adjourned for continuation &middot; 14 Sept, 13:42</p>
+            </div>
+            <div style="padding:13px 18px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <p style="font-size:13.5px;font-weight:500;color:#111827;line-height:1.35">Sale of 3 Bedroom, Ikoyi &mdash; title search</p>
+                <span style="flex:none;border:1px solid #B08D57;color:#896c40;border-radius:9999px;padding:1px 9px;font-size:11px">Open</span>
+              </div>
+              <p style="margin-top:3px;font-size:11.5px;color:#716e68">AK-M-2026-000021 &middot; N. Eze</p>
+              <p style="margin-top:4px;font-size:11.5px;color:#4b5563">Search report received &middot; 9 Sept, 16:05</p>
+            </div>
+          </div>
+          <div style="margin:auto -16px 0;border-top:1px solid #e3e0dc;background:#fff;display:flex">
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;font-weight:600;color:#0F2A44"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span>Home</div>
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;color:#716e68"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg></span>Appointments</div>
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;color:#716e68"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg></span>Matters</div>
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;color:#716e68"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg></span>Messages</div>
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;color:#716e68"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>Profile</div>
+          </div>
+        </div>
+        <div style="width:384px;height:720px;overflow:hidden;display:flex;flex-direction:column;background:#F4F1EC;border:2px solid #f3f2f2;padding:22px 16px 0;font-family:system-ui,-apple-system,sans-serif">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div>
+              <p style="font-family:Archivo, system-ui, sans-serif;font-size:23px;font-weight:600;color:#5B2333;line-height:1.2">Welcome, Chinedu</p>
+              <p style="margin-top:2px;font-size:13.5px;color:#6b6762">Bello &amp; Co</p>
+            </div>
+            <div style="position:relative;border:1px solid #e3e0dc;background:#fff;border-radius:2px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;color:#5B2333"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg><span style="position:absolute;top:-5px;right:-5px;background:#5B2333;color:#fff;border-radius:2px;font-size:10px;font-weight:600;padding:1px 6px">3</span></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-top:20px">
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:2px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#5B2333"><span style="display:block;margin-bottom:5px;color:#5B2333"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg></span>Book</div>
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:2px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#5B2333"><span style="display:block;margin-bottom:5px;color:#5B2333"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="m16 10.5 5.2-3a.5.5 0 0 1 .8.4v8.2a.5.5 0 0 1-.8.4l-5.2-3"></path><rect x="2" y="6" width="14" height="12" rx="2"></rect></svg></span>Join</div>
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:2px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#5B2333"><span style="display:block;margin-bottom:5px;color:#5B2333"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg></span>Upload</div>
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:2px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#5B2333"><span style="display:block;margin-bottom:5px;color:#5B2333"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg></span>Message</div>
+            <div style="border:1px solid #e3e0dc;background:#fff;border-radius:2px;padding:12px 2px 10px;text-align:center;font-size:12px;font-weight:500;color:#5B2333"><span style="display:block;margin-bottom:5px;color:#5B2333"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><rect width="20" height="12" x="2" y="6" rx="2"></rect><circle cx="12" cy="12" r="2"></circle><path d="M6 12h.01"></path><path d="M18 12h.01"></path></svg></span>Pay</div>
+          </div>
+          <div style="margin-top:18px;border:1px solid #e3e0dc;background:#fff;border-radius:2px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #efece8;padding:13px 18px">
+              <p style="font-family:Archivo, system-ui, sans-serif;font-size:15px;font-weight:600;color:#111827">Next appointment</p>
+              <span style="font-size:13px;color:#5B2333;text-decoration:underline">All</span>
+            </div>
+            <div style="padding:14px 18px;display:flex;flex-direction:column;gap:7px">
+              <p style="font-size:13.5px;font-weight:500;color:#111827">Thursday, 24 September 2026 at 14:30</p>
+              <p style="font-size:12.5px;color:#6b6762">BC-0113 &middot; virtual</p>
+              <div style="display:flex;align-items:center;gap:12px">
+                <span style="display:inline-flex;align-items:center;gap:5px;border:1px solid #7D8471;background:#F1F3EE;color:#5B2333;border-radius:2px;padding:3px 10px;font-size:11.5px;font-weight:500"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M20 6 9 17l-5-5"></path></svg>Confirmed</span>
+                <span style="font-size:13px;color:#5B2333;text-decoration:underline">Details</span>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:16px;border:1px solid #e3e0dc;background:#fff;border-radius:2px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;border-bottom:1px solid #efece8;padding:13px 18px">
+              <p style="font-family:Archivo, system-ui, sans-serif;font-size:15px;font-weight:600;color:#111827">My matters</p>
+              <span style="font-size:13px;color:#5B2333;text-decoration:underline">All</span>
+            </div>
+            <div style="padding:13px 18px;border-bottom:1px solid #efece8">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <p style="font-size:13.5px;font-weight:500;color:#111827;line-height:1.35">Nwosu &amp; 2 Ors v. Zenith Freight Ltd</p>
+                <span style="flex:none;border:1px solid #7D8471;color:#6a7060;border-radius:2px;padding:1px 9px;font-size:11px">In court</span>
+              </div>
+              <p style="margin-top:3px;font-size:11.5px;color:#716e68">BC-M-2026-000008 &middot; K. Bello</p>
+              <p style="margin-top:4px;font-size:11.5px;color:#4b5563">Written address filed &middot; 11 Sept, 10:20</p>
+            </div>
+            <div style="padding:13px 18px;">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+                <p style="font-size:13.5px;font-weight:500;color:#111827;line-height:1.35">Shareholders agreement &mdash; review</p>
+                <span style="flex:none;border:1px solid #7D8471;color:#6a7060;border-radius:2px;padding:1px 9px;font-size:11px">Open</span>
+              </div>
+              <p style="margin-top:3px;font-size:11.5px;color:#716e68">BC-M-2026-000012 &middot; A. Sani</p>
+              <p style="margin-top:4px;font-size:11.5px;color:#4b5563">Draft returned &middot; 8 Sept, 18:40</p>
+            </div>
+          </div>
+          <div style="margin:auto -16px 0;border-top:1px solid #e3e0dc;background:#fff;display:flex">
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;font-weight:600;color:#5B2333"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></span>Home</div>
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;color:#716e68"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg></span>Appointments</div>
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;color:#716e68"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"></path></svg></span>Matters</div>
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;color:#716e68"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><rect width="20" height="16" x="2" y="4" rx="2"></rect><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path></svg></span>Messages</div>
+            <div style="flex:1;padding:11px 4px 12px;text-align:center;font-size:11px;color:#716e68"><span style="display:block;margin-bottom:4px"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block;margin:0 auto"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>Profile</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:20px;padding-top:4px">
+          <div style="height:3px;background:#ffb81c;width:48px"></div>
+          <p style="font-size:15px;line-height:1.6;color:rgba(243,242,242,0.86)">These two screens are the same component, rendered twice. Colours and typeface come from the firm's own record &mdash; not from a theme we ship.</p>
+          <div style="height:1px;background:rgba(243,242,242,0.28)"></div>
+          <div style="display:flex;flex-direction:column;gap:10px;font-size:13px;color:rgba(243,242,242,0.72)">
+            <div style="display:flex;align-items:baseline;gap:10px"><span style="width:11px;height:11px;background:#0F2A44;border:1px solid rgba(243,242,242,0.5);flex:none;transform:translateY(1px)"></span><span style="font-variant-numeric:tabular-nums">#0F2A44 / #B08D57 &middot; Fraunces</span></div>
+            <div style="display:flex;align-items:baseline;gap:10px"><span style="width:11px;height:11px;background:#5B2333;border:1px solid rgba(243,242,242,0.5);flex:none;transform:translateY(1px)"></span><span style="font-variant-numeric:tabular-nums">#5B2333 / #7D8471 &middot; Archivo</span></div>
+          </div>
+          <div style="height:1px;background:rgba(243,242,242,0.28)"></div>
+          <p style="font-size:13px;line-height:1.6;color:rgba(243,242,242,0.72)">Only the page you are reading is Docket's own.</p>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:384px 384px minmax(0,1fr);gap:56px;margin-top:16px">
+        <p style="font-size:11px;color:rgba(243,242,242,0.72)">Attorneys Klinique &mdash; client home.</p>
+        <p style="font-size:11px;color:rgba(243,242,242,0.72)">Bello &amp; Co &mdash; the same client home.</p>
+        <p style="font-size:11px;line-height:1.6;color:rgba(243,242,242,0.72)">Booking, payment and receipts are live today. The matter timeline, documents, messages and video consultations are in build for the client-portal release.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="timeline" style="max-width:1240px;margin:0 auto;padding:96px 32px 0">
+    <div style="height:4px;background:#2c4a34"></div>
+    <div style="padding-top:32px;display:grid;grid-template-columns:384px minmax(0,1fr);gap:56px;align-items:center">
+      <div>
+        <div style="width:384px;min-height:720px;background:#F7F5F0;border:2px solid #201e1d;padding:20px 16px;font-family:system-ui,-apple-system,sans-serif">
+          <p style="font-family:Fraunces, Georgia, serif;font-size:21px;font-weight:600;color:#0F2A44;line-height:1.2">Adeyemi v. Lagos State Lands Bureau</p>
+          <p style="margin-top:3px;font-size:13px;color:#6b6762">AK-M-2026-000014 &middot; Attorneys Klinique &middot; B. Okafor</p>
+          <div style="margin-top:9px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:11px;color:#4b5563">
+            <span style="border:1px solid #B08D57;color:#896c40;border-radius:9999px;padding:1px 10px;font-weight:500">In court</span>
+            <span>High Court of Lagos State, Ikeja Judicial Division &middot; ID/4471GCM/2026</span>
+          </div>
+          <p style="margin-top:9px;font-size:13px;color:#1f2937">Next court date: <strong style="font-weight:600">6 Oct 2026, 09:00</strong> &middot; Continuation of hearing</p>
+          <div style="display:flex;gap:5px;margin:16px 0 12px"><span style="flex:none;border:1px solid #0F2A44;background:#0F2A44;color:#fff;border-radius:9999px;padding:5px 10px;font-size:13px">Timeline</span><span style="flex:none;border:1px solid #d8d4ce;background:transparent;color:#374151;border-radius:9999px;padding:5px 10px;font-size:13px">Documents</span><span style="flex:none;border:1px solid #d8d4ce;background:transparent;color:#374151;border-radius:9999px;padding:5px 10px;font-size:13px">Messages</span><span style="flex:none;border:1px solid #d8d4ce;background:transparent;color:#374151;border-radius:9999px;padding:5px 10px;font-size:13px">Invoices</span></div>
+          <div style="border:1px solid #e3e0dc;background:#fff;border-radius:12px">
+            <div style="display:flex;gap:11px;padding:14px 18px;border-bottom:1px solid #efece8">
+              <span style="flex:none;color:#896c40;margin-top:2px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"></path></svg></span>
+              <div style="min-width:0;flex:1">
+                <p style="font-size:13px;font-weight:500;color:#111827">Adjourned at the instance of the defendant</p>
+                <p style="margin-top:4px;font-size:13px;color:#374151;line-height:1.45">The court took the claimant's second witness and adjourned for continuation of hearing.</p>
+                <div style="margin-top:7px;display:grid;gap:3px;font-size:11px;color:#4b5563"><div><span style="color:#716e68">Court: </span>High Court of Lagos State, Ikeja Judicial Division</div><div><span style="color:#716e68">Next date: </span>6 Oct 2026, 09:00 &middot; Continuation of hearing</div></div>
+                <p style="margin-top:5px;font-size:11px;color:#716e68">14 Sept 2026, 13:42</p>
+              </div>
+            </div>
+            <div style="display:flex;gap:11px;padding:14px 18px;border-bottom:1px solid #efece8">
+              <span style="flex:none;color:#896c40;margin-top:2px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M16 13H8"></path><path d="M16 17H8"></path><path d="M10 9H8"></path></svg></span>
+              <div style="min-width:0;flex:1">
+                <p style="font-size:13px;font-weight:500;color:#111827">Written address filed</p>
+                <p style="margin-top:4px;font-size:13px;color:#374151;line-height:1.45">Filed at the registry and served on the defendant's counsel through Docket; receipt acknowledged.</p>
+                
+                <p style="margin-top:5px;font-size:11px;color:#716e68">8 Sept 2026, 11:05</p>
+              </div>
+            </div>
+            <div style="display:flex;gap:11px;padding:14px 18px;">
+              <span style="flex:none;color:#896c40;margin-top:2px"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="display:block"><path d="m16 10.5 5.2-3a.5.5 0 0 1 .8.4v8.2a.5.5 0 0 1-.8.4l-5.2-3"></path><rect x="2" y="6" width="14" height="12" rx="2"></rect></svg></span>
+              <div style="min-width:0;flex:1">
+                <p style="font-size:13px;font-weight:500;color:#111827">Consultation completed</p>
+                <p style="margin-top:4px;font-size:13px;color:#374151;line-height:1.45">We agreed to proceed with the certified true copies and to write to the Bureau before the next date.</p>
+                
+                <p style="margin-top:5px;font-size:11px;color:#716e68">2 Sept 2026, 15:00</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p style="margin-top:11px;font-size:11px;color:#5b5959">Attorneys Klinique &mdash; matter timeline. In build for the client-portal release.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:16px;align-items:flex-start">
+        <p class="kicker" style="color:#2c4a34">What the client reads</p>
+        <h2 style="font-size:44px;line-height:1.05;max-width:18ch">The sitting, in language a client can act on</h2>
+        <p style="font-size:21px;line-height:1.5;max-width:46ch;color:#3f3d3c">Docket composes the client entry from the same form the lawyer files the internal note in. One entry, two audiences, nothing retyped.</p>
+        <ul style="display:flex;flex-direction:column;gap:12px;font-size:13px;color:#3f3d3c;margin-top:8px;max-width:52ch">
+          <li style="padding-bottom:12px;border-bottom:1px solid #b4b2b2">Each entry carries the lawyer who posted it and the moment it was posted.</li>
+          <li style="padding-bottom:12px;border-bottom:1px solid #b4b2b2">The next date and what it is for sit above the thread, not inside it.</li>
+          <li>Court, division and suit number come from the directory, so they read the same way on every matter.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="money" style="max-width:1240px;margin:0 auto;padding:96px 32px 0">
+    <div style="height:4px;background:#2c4a34"></div>
+    <div style="padding-top:32px;display:flex;align-items:baseline;justify-content:space-between;gap:32px;flex-wrap:wrap">
+      <h2 style="font-size:44px;line-height:1.05;max-width:none">What Docket costs,<br>and where your client's fee goes</h2>
+      <p style="font-size:13px;color:#5b5959;max-width:40ch"><strong style="font-weight:600;color:#201e1d">Docket is free while it is in build. No card, no trial clock.</strong> Pricing will be published here before any firm is billed. Your client&rsquo;s fee is a separate matter: a booking initialises a checkout against the firm&rsquo;s own subaccount, and Paystack settles to the firm.</p>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin-top:44px;border-top:1px solid #b4b2b2">
+      <div style="padding:24px 28px 24px 0;border-right:1px solid #b4b2b2;display:flex;flex-direction:column;gap:8px">
+        <p class="kicker" style="color:#5b5959">Step 1</p>
+        <h3 style="font-size:21px;line-height:1.2">Slot held</h3>
+        <p style="font-size:13px;color:#3f3d3c">Fifteen minutes, and an invoice issued with VAT where the firm is registered to charge it.</p>
+      </div>
+      <div style="padding:24px 28px;border-right:1px solid #b4b2b2;display:flex;flex-direction:column;gap:8px">
+        <p class="kicker" style="color:#5b5959">Step 2</p>
+        <h3 style="font-size:21px;line-height:1.2">Checkout</h3>
+        <p style="font-size:13px;color:#3f3d3c">Initialised with the firm's subaccount, the subaccount bearing the charge.</p>
+      </div>
+      <div style="padding:24px 28px;border-right:1px solid #b4b2b2;display:flex;flex-direction:column;gap:8px">
+        <p class="kicker" style="color:#5b5959">Step 3</p>
+        <h3 style="font-size:21px;line-height:1.2">Webhook</h3>
+        <p style="font-size:13px;color:#3f3d3c">Signature verified, then re-verified directly with Paystack.</p>
+      </div>
+      <div style="padding:24px 12px 24px 28px;display:flex;flex-direction:column;gap:8px">
+        <p class="kicker" style="color:#5b5959">Step 4</p>
+        <h3 style="font-size:21px;line-height:1.2">Applied once</h3>
+        <p style="font-size:13px;color:#3f3d3c">Idempotent on the provider reference; a repeat changes nothing.</p>
+      </div>
+    </div>
+    <div style="margin-top:0;border-top:1px solid #b4b2b2">
+      <div style="width:64px;height:3px;background:#ffb81c;margin-top:22px"></div>
+      <div style="padding:14px 0 22px;display:flex;align-items:baseline;gap:24px;flex-wrap:wrap">
+        <p class="kicker" style="color:#2c4a34;flex:none">Exception</p>
+        <p style="font-size:13px;color:#3f3d3c;max-width:82ch"><strong style="font-weight:600">Settled elsewhere?</strong> The payment is recorded as failed, audited, and reported to the firm for reconciliation. It confirms nothing, and the client is never told an unpaid consultation is booked.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="guide" style="max-width:1240px;margin:0 auto;padding:96px 32px 0">
+    <div style="height:4px;background:#2c4a34"></div>
+    <div style="padding-top:32px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:56px;align-items:start">
+      <div style="display:flex;flex-direction:column;gap:16px;align-items:flex-start">
+        <p class="kicker" style="color:#2c4a34">Guide</p>
+        <h2 style="font-size:44px;line-height:1.05;max-width:none">Choosing legal software<br>when money must settle<br>to your own account</h2>
+        <p style="font-size:15px;color:#3f3d3c;max-width:44ch">What to ask a vendor about custody of client funds, reconciliation, and what happens when a payment lands in the wrong place &mdash; written for Nigerian practice.</p>
+        <p style="display:inline-flex;align-items:center;padding:13px 22px;border:1px dashed #7d7a7a;color:#5b5959;font-weight:600;font-size:13px;margin-top:8px">The guide is being written</p>
+      </div>
+      <ul style="display:flex;flex-direction:column;font-size:15px;color:#3f3d3c;border-top:1px solid #b4b2b2">
+        <li style="padding:16px 0;border-bottom:1px solid #b4b2b2">Who holds the money between charge and settlement?</li>
+        <li style="padding:16px 0;border-bottom:1px solid #b4b2b2">What is the reconciliation record when a settlement is wrong?</li>
+        <li style="padding:16px 0;border-bottom:1px solid #b4b2b2">Can the vendor read your matters, notes or documents?</li>
+        <li style="padding:16px 0">What survives if you leave &mdash; and in whose format?</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="walkthrough" style="background:#203024;color:#f3f2f2;margin-top:96px">
+    <div style="max-width:1240px;margin:0 auto;padding:112px 32px;display:grid;grid-template-columns:minmax(0,1fr) 480px;gap:72px;align-items:center">
+      <div>
+        <div style="width:64px;height:3px;background:#ffb81c;margin-bottom:20px"></div>
+        <p class="kicker" style="color:#ffcb71;margin-bottom:20px">Book a walkthrough</p>
+        <h2 style="font-size:56px;line-height:1.02;color:#f3f2f2;max-width:15ch">Thirty minutes, your own matters on the screen.</h2>
+        <p style="font-size:21px;line-height:1.55;max-width:44ch;margin-top:24px;color:rgba(243,242,242,0.86)">We open a firm with you, seed your services and post a court update against a real cause title. If it does not fit your practice, you will know inside the half hour.</p>
+        <div style="height:1px;background:rgba(243,242,242,0.28);margin:36px 0 24px;max-width:44ch"></div>
+        <p style="font-size:15px;color:rgba(243,242,242,0.86);max-width:44ch">Free while Docket is in build &mdash; no card, no trial clock.</p>
+      </div>
+      <div style="background:#f3f2f2;color:#201e1d;padding:32px">
+        <p class="kicker" style="color:#2c4a34;margin-bottom:14px">Choose a time &middot; Africa/Lagos</p>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:14px">
+          <div style="border:1px solid #7d7a7a;padding:10px 4px;text-align:center"><span style="display:block;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5b5959">Tue</span><span style="display:block;font-weight:800;font-size:21px;line-height:1.3">22</span></div>
+          <div style="border:1px solid #2c4a34;background:#2c4a34;color:#f3f2f2;padding:10px 4px;text-align:center"><span style="display:block;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;opacity:0.75">Wed</span><span style="display:block;font-weight:800;font-size:21px;line-height:1.3">23</span></div>
+          <div style="border:1px solid #7d7a7a;padding:10px 4px;text-align:center"><span style="display:block;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5b5959">Thu</span><span style="display:block;font-weight:800;font-size:21px;line-height:1.3">24</span></div>
+          <div style="border:1px solid #7d7a7a;padding:10px 4px;text-align:center"><span style="display:block;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5b5959">Fri</span><span style="display:block;font-weight:800;font-size:21px;line-height:1.3">25</span></div>
+          <div style="border:1px solid #7d7a7a;padding:10px 4px;text-align:center"><span style="display:block;font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:#5b5959">Mon</span><span style="display:block;font-weight:800;font-size:21px;line-height:1.3">28</span></div>
+        </div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:24px">
+          <div style="border:1px solid #7d7a7a;padding:12px 15px;font-size:13px">09:30</div>
+          <div style="border:1px solid #2c4a34;background:#2c4a34;color:#f3f2f2;padding:12px 15px;font-size:13px">11:00</div>
+          <div style="border:1px solid #7d7a7a;padding:12px 15px;font-size:13px">14:00</div>
+          <div style="border:1px solid #7d7a7a;padding:12px 15px;font-size:13px">16:30</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div><label for="wa-firm" style="display:block;font-size:13px;color:#5b5959;margin-bottom:5px">Firm name</label><input id="wa-firm" type="text" placeholder="Chambers name" style="width:100%;min-height:44px;padding:8px 11px;font:inherit;font-size:15px;background:#eae9e9;border:1px solid #7d7a7a;color:#201e1d"></div>
+          <div><label for="wa-name" style="display:block;font-size:13px;color:#5b5959;margin-bottom:5px">Your name</label><input id="wa-name" type="text" placeholder="Counsel's name" style="width:100%;min-height:44px;padding:8px 11px;font:inherit;font-size:15px;background:#eae9e9;border:1px solid #7d7a7a;color:#201e1d"></div>
+          <div><label for="wa-role" style="display:block;font-size:13px;color:#5b5959;margin-bottom:5px">Role</label><select id="wa-role" style="width:100%;min-height:44px;padding:8px 11px;font:inherit;font-size:15px;background:#eae9e9;border:1px solid #7d7a7a;color:#201e1d"><option>Principal</option><option>Partner</option><option>Associate</option><option>Practice manager</option></select></div>
+          <div><label for="wa-phone" style="display:block;font-size:13px;color:#5b5959;margin-bottom:5px">Phone</label><input id="wa-phone" type="tel" placeholder="+234 803 000 0000" style="width:100%;min-height:44px;padding:8px 11px;font:inherit;font-size:15px;background:#eae9e9;border:1px solid #7d7a7a;color:#201e1d"></div>
+          <div style="grid-column:1 / -1"><label for="wa-email" style="display:block;font-size:13px;color:#5b5959;margin-bottom:5px">Email</label><input id="wa-email" type="email" placeholder="name@chambers.ng" style="width:100%;min-height:44px;padding:8px 11px;font:inherit;font-size:15px;background:#eae9e9;border:1px solid #7d7a7a;color:#201e1d"></div>
+          <div style="grid-column:1 / -1"><label for="wa-want" style="display:block;font-size:13px;color:#5b5959;margin-bottom:5px">What you want to see</label><textarea id="wa-want" rows="3" placeholder="Service of process on opposing counsel; how the fee settles." style="width:100%;padding:8px 11px;font:inherit;font-size:15px;background:#eae9e9;border:1px solid #7d7a7a;color:#201e1d;resize:vertical"></textarea></div>
+        </div>
+        <button type="button" style="width:100%;margin-top:20px;min-height:52px;background:#ffb81c;color:#201e1d;border:0;font-family:Archivo,sans-serif;font-weight:800;font-size:15px;letter-spacing:-0.01em;cursor:pointer">Request the walkthrough</button>
+        <p style="margin-top:14px;font-size:13px;color:#5b5959">Or register the firm yourself &mdash; the console works the moment you finish.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer id="signin" style="background:#f3f2f2;border-top:4px solid #ffb81c">
+    <div style="max-width:1240px;margin:0 auto;padding:56px 32px;display:grid;grid-template-columns:minmax(0,1.5fr) repeat(3,minmax(0,1fr));gap:40px">
+      <div>
+        <p style="font-family:Archivo,sans-serif;font-weight:800;font-size:21px;letter-spacing:-0.03em">Docket</p>
+        <p class="kicker" style="color:#5b5959;margin-top:6px">Legal practice platform</p>
+        <p style="margin-top:18px;font-size:13px;color:#3f3d3c;max-width:32ch">Built in Lagos for Nigerian practice &mdash; the courts your matters sit in, the fees that must reach your own account, and the client abroad with a matter back home.</p>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <p class="kicker" style="color:#5b5959;margin-bottom:2px">Platform</p>
+        <a href="#booking" style="font-size:13px;color:#201e1d">Booking &amp; payment</a>
+        <a href="#matters" style="font-size:13px;color:#201e1d">Matters &amp; court updates</a>
+        <a href="#service" style="font-size:13px;color:#201e1d">Service of process</a>
+        <a href="#money" style="font-size:13px;color:#201e1d">Pricing</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <p class="kicker" style="color:#5b5959;margin-bottom:2px">Sign in</p>
+        <a href="#signin" style="font-size:13px;color:#201e1d">Client sign in</a>
+        <a href="#signin" style="font-size:13px;color:#201e1d">Staff sign in</a>
+        <a href="#walkthrough" style="font-size:13px;color:#201e1d">Register your firm</a>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <p class="kicker" style="color:#5b5959;margin-bottom:2px">Practice</p>
+        <a href="#guide" style="font-size:13px;color:#201e1d">Guide</a>
+        <a href="#signin" style="font-size:13px;color:#201e1d">Security &amp; NDPA</a>
+        <a href="#signin" style="font-size:13px;color:#201e1d">Contact</a>
+      </div>
+    </div>
+    <div style="border-top:1px solid #b4b2b2">
+      <div style="max-width:1240px;margin:0 auto;padding:20px 32px;display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;font-size:11px;color:#5b5959">
+        <p style="max-width:88ch">&copy; 2026 Docket &middot; a private software company. Not affiliated with, endorsed by, or acting for any court, the Nigerian Bar Association, or any government agency.</p>
+        <p style="display:flex;gap:18px;flex-wrap:wrap"><span>Terms</span><span>Privacy</span><span>Fees settle to the firm's own account</span></p>
+      </div>
+    </div>
+  </footer>
+
+</main>
+</x-dc>
+</body>
+</html>
