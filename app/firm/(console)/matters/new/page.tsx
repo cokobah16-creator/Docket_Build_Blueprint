@@ -57,6 +57,7 @@ export default async function NewMatterPage({
         staff={staff}
         courts={courts}
         currentUserId={ctx.userId}
+        timezone={ctx.timezone}
       />
     </div>
   );

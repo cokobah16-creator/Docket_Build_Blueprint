@@ -55,6 +55,7 @@ export function NewMatterForm({
   staff,
   courts,
   currentUserId,
+  timezone,
 }: {
   firmId: string;
   firmName: string;
@@ -62,6 +63,8 @@ export function NewMatterForm({
   staff: StaffMember[];
   courts: CourtRow[];
   currentUserId: string;
+  /** The viewer's own zone: the database keeps every timestamp in UTC. */
+  timezone: string;
 }) {
   const router = useRouter();
 
@@ -236,7 +239,7 @@ export function NewMatterForm({
               <p className="text-sm text-gray-600">
                 This link signs the client in to their own app and puts them on this matter. It lasts until{" "}
                 {invite.expiresAt
-                  ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(invite.expiresAt))
+                  ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone }).format(new Date(invite.expiresAt))
                   : "it expires"}
                 . Anyone holding it can join the matter, so send it only to the person it is for.
               </p>
