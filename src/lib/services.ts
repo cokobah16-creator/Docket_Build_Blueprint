@@ -23,10 +23,4 @@ export async function activeServices(firmId: string): Promise<ServiceRow[]> {
   }
 }
 
-export function formatMoneyMinor(minor: number, currency: string): string {
-  return new Intl.NumberFormat(currency === "NGN" ? "en-NG" : "en-US", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(minor / 100);
-}
+export { formatMoneyMinor } from "@/lib/money";
