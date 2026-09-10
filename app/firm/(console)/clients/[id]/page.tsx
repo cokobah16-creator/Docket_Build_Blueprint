@@ -290,6 +290,9 @@ export default async function FirmClientPage({
   const hasEmail = Boolean(profile?.email);
   const channel = profile?.preferred_channel ?? "sms";
   const channelUnreachable = channel === "email" && !hasEmail;
+  const addressLine = [profile?.address, profile?.state, profile?.country]
+    .filter((part): part is string => Boolean(part && part.trim()))
+    .join(", ");
 
   return (
     <div className="space-y-5">
@@ -498,7 +501,7 @@ export default async function FirmClientPage({
                         {payable ? (
                           <p className="mt-2 break-all text-xs text-gray-600">
                             {due > 0 ? "Payment link to send them: " : "Receipt link: "}
-                            <a href={`/app/payments/${inv.id}`} className="text-brand underline">{link}</a>
+                            <Link href={`/app/payments/${inv.id}`} className="text-brand underline">{link}</Link>
                           </p>
                         ) : inv.status === "draft" ? (
                           <p className="mt-2 text-xs text-gray-500">
@@ -576,12 +579,10 @@ export default async function FirmClientPage({
                     {channelUnreachable && <span className="text-amber-800"> — but there is no email address on file</span>}
                   </dd>
                 </div>
-                {(profile?.address || profile?.state || profile?.country) && (
+                {addressLine && (
                   <div>
                     <dt className="text-gray-500">Address</dt>
-                    <dd className="whitespace-pre-wrap font-medium text-gray-900">
-                      {[profile.address, profile.state, profile.country].filter(Boolean).join(", ")}
-                    </dd>
+                    <dd className="whitespace-pre-wrap font-medium text-gray-900">{addressLine}</dd>
                   </div>
                 )}
                 {profile && (
