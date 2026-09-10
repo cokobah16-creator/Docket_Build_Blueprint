@@ -1,0 +1,166 @@
+-- Docket — platform-first tests: any firm onboards through create_firm() and gets exactly what
+-- Klinique got; platform admins manage firms but never see matter content. Runs in one
+-- transaction and rolls back.
+begin;
+
+create or replace function t_as(u uuid, aal text default 'aal2') returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', u, 'role', 'authenticated', 'aal', aal)::text, false);
+  perform set_config('role', 'authenticated', false);
+end $$;
+create or replace function t_anon() returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', '{"role":"anon"}', false);
+  perform set_config('role', 'anon', false);
+end $$;
+create or replace function t_reset() returns void language plpgsql as $$
+begin
+  execute 'reset role';
+  perform set_config('request.jwt.claims', '', false);
+end $$;
+create or replace function t_check(name text, ok bool) returns void language plpgsql as $$
+begin
+  if ok then raise notice 'PASS  %', name; else raise exception 'FAIL  %', name; end if;
+end $$;
+
+-- ---------------------------------------------------------------- fixture (as postgres)
+create temp table fx (k text primary key, v uuid);
+grant select on fx to anon, authenticated;
+insert into auth.users (id, email) values
+  (gen_random_uuid(), 'owner_one@ptest'), (gen_random_uuid(), 'owner_two@ptest'),
+  (gen_random_uuid(), 'platform@ptest'),  (gen_random_uuid(), 'stranger@ptest');
+insert into fx select split_part(email, '@', 1), id from auth.users where email like '%@ptest';
+insert into platform_admins (user_id, note) values ((select v from fx where k='platform'), 'test platform admin');
+
+-- ---------------------------------------------------------------- 1. self-serve firm creation
+do $$
+declare o1 uuid := (select v from fx where k='owner_one'); res jsonb; f uuid; ok bool;
+begin
+  perform t_as(o1, 'aal1');                                   -- a brand-new account: no MFA yet
+  res := create_firm('Ubuntu & Partners', 'ubuntu-partners', 'Ubuntu & Partners LP', 'RC1234567', 'Africa/Lagos', 'NGN', null, 'LA');
+  f := (res ->> 'firm_id')::uuid;
+  perform t_check('create_firm returns the new firm',                      f is not null and res ->> 'slug' = 'ubuntu-partners');
+  perform t_check('reference prefix derived from the name',                res ->> 'reference_prefix' = 'UP');
+  perform t_check('creator is the owner',                                  (select role from firm_members where firm_id = f and user_id = o1) = 'owner');
+  perform t_check('owner reads her firm',                                  (select count(*) from firms where id = f) = 1);
+  perform t_check('new firm gets the 15 default matter statuses',          (select count(*) from matter_statuses where firm_id = f) = 15);
+  perform t_check('new firm gets an unpriced, inactive consultation',      (select count(*) from services where firm_id = f and slug = 'legal-consultation' and price_minor = 0 and not is_active) = 1);
+  perform t_check('new firm gets a consultation intake form',              (select count(*) from intake_forms where firm_id = f) = 1);
+  perform t_check('new firm is active on the free plan',                   (select plan || '/' || status from firms where id = f) = 'free/active');
+
+  ok := false;
+  begin
+    update firms set name = 'renamed' where id = f;
+    ok := (select name from firms where id = f) <> 'renamed';          -- RLS filters the row: 0 rows updated
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('owner without MFA cannot change firm settings',         ok);
+  perform t_reset();
+
+  perform t_as(o1, 'aal2');
+  update firms set name = 'Ubuntu & Partners LP' where id = f;
+  perform t_check('owner with MFA edits firm settings',                    (select name from firms where id = f) = 'Ubuntu & Partners LP');
+  perform t_check('firm creation is in the audit trail',                   (select count(*) from audit_log where firm_id = f and action = 'firm.created') = 1);
+  perform t_reset();
+  insert into fx values ('firm_u', f);
+end $$;
+
+-- ---------------------------------------------------------------- 2. slug rules, duplicates, caps, anon
+do $$
+declare o2 uuid := (select v from fx where k='owner_two'); ok bool; res jsonb; i int; s text;
+begin
+  perform t_as(o2, 'aal1');
+  foreach s in array array['www', 'admin', 'Bad Slug', 'a', 'double--dash', 'trailing-', 'ubuntu-partners'] loop
+    ok := false;
+    begin
+      res := create_firm('Test Firm', s);
+    exception when others then ok := sqlerrm like '%slug%';
+    end;
+    perform t_check('slug rejected: ' || s, ok);
+  end loop;
+
+  ok := false;
+  begin
+    res := create_firm('Y Firm', 'y-firm', p_timezone => 'Mars/Olympus');
+  exception when others then ok := sqlerrm like '%timezone%';
+  end;
+  perform t_check('unknown timezone rejected',                             ok);
+
+  ok := false;
+  begin
+    res := create_firm('Z Firm', 'z-firm', p_owner_email => 'owner_one@ptest');
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('ordinary user cannot create a firm for someone else',   ok);
+
+  for i in 1..3 loop
+    res := create_firm('Cap Firm ' || i, 'cap-firm-' || i);
+  end loop;
+  ok := false;
+  begin
+    res := create_firm('Cap Firm 4', 'cap-firm-4');
+  exception when others then ok := sqlerrm like '%maximum%';
+  end;
+  perform t_check('an account owns at most three firms',                  ok);
+  perform t_check('owner two sees only her own firms',                    (select count(*) from firms) = 3 and (select count(*) from firms where slug = 'ubuntu-partners') = 0);
+  perform t_reset();
+
+  perform t_anon();
+  ok := false;
+  begin
+    res := create_firm('Anon Firm', 'anon-firm');
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('anonymous visitors cannot create firms',                ok);
+  perform t_check('new firms appear on the public projection',            (select count(*) from firm_public where slug in ('ubuntu-partners','cap-firm-1')) = 2);
+  perform t_reset();
+end $$;
+
+-- ---------------------------------------------------------------- 3. platform admin: lifecycle yes, content no
+do $$
+declare pa uuid := (select v from fx where k='platform'); st uuid := (select v from fx where k='stranger');
+        o1 uuid := (select v from fx where k='owner_one'); fu uuid := (select v from fx where k='firm_u'); res jsonb; f uuid; ok bool;
+begin
+  -- content the platform must never see
+  insert into matters (firm_id, reference, title, type) values (fu, 'UP-M-2026-000001', 'Confidential v Matter', 'litigation');
+
+  perform t_as(pa, 'aal2');
+  perform t_check('platform admin knows she is one',                       is_platform_admin());
+  perform t_check('platform admin lists every firm',                       (select count(*) from firms) >= 5);
+  perform t_check('platform admin sees firm memberships',                  (select count(*) from firm_members where firm_id = fu) = 1);
+  perform t_check('platform admin sees no matters',                        (select count(*) from matters) = 0);
+  perform t_check('platform admin sees no firm audit trail beyond lifecycle', (select count(*) from audit_log where entity not in ('firms','firm_members','firm')) = 0);
+  update firms set status = 'suspended' where id = fu;
+  perform t_check('platform admin suspends a firm',                        (select status from firms where id = fu) = 'suspended');
+  update firms set status = 'active' where id = fu;
+
+  res := create_firm('Chambers for Owner One', 'chambers-owner-one', p_owner_email => 'OWNER_ONE@ptest');
+  f := (res ->> 'firm_id')::uuid;
+  perform t_check('platform admin opens a firm for an existing account',   (res ->> 'owner_id')::uuid = o1 and (select status from firms where id = f) = 'pending');
+  perform t_check('platform admin is not a member of that firm',           (select count(*) from firm_members where firm_id = f and user_id = pa) = 0);
+  ok := false;
+  begin
+    res := create_firm('Nobody Chambers', 'nobody-chambers', p_owner_email => 'nobody@ptest');
+  exception when others then ok := sqlerrm like '%sign up first%';
+  end;
+  perform t_check('cannot open a firm for an email with no account',       ok);
+  perform t_reset();
+
+  perform t_as(st, 'aal2');
+  perform t_check('ordinary user is not a platform admin',                 not is_platform_admin());
+  perform t_check('ordinary user sees no firms',                           (select count(*) from firms) = 0);
+  ok := false;
+  begin
+    insert into platform_admins (user_id) values (st);
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('nobody can promote themselves to platform admin',       ok);
+  perform t_reset();
+
+  perform t_as(o1, 'aal2');
+  perform t_check('owner one now belongs to both her firms',               (select count(*) from firms) = 2);
+  perform t_reset();
+end $$;
+
+do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
+rollback;
