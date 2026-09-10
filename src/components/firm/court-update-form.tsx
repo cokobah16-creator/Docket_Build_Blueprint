@@ -17,7 +17,7 @@
 //  · Nothing firm-specific: the firm, the courts and the zone all arrive as
 //    props from context.
 
-import { useEffect, useMemo, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { checkNonSittingDay, postCourtUpdate, type NonSittingCheck } from "@/lib/actions/court";
 import { CourtPicker } from "@/components/firm/court-picker";
@@ -69,6 +69,11 @@ function todayIn(tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 }
 
+/** The calendar day a timestamp falls on in a given zone. */
+function dayIn(iso: string, tz: string): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso));
+}
+
 function dayLabel(ymd: string): string {
   return new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${ymd}T12:00:00Z`));
 }
@@ -82,6 +87,7 @@ function chipClass(active: boolean): string {
 
 export function CourtUpdateForm({
   matterId, firmId, timezone, courts, currentCourtId, currentCourtName, judicialDivision, autoFocus = false,
+  sittingAt = null,
 }: {
   matterId: string;
   firmId: string;
@@ -91,12 +97,25 @@ export function CourtUpdateForm({
   currentCourtName: string | null;
   judicialDivision: string | null;
   autoFocus?: boolean;
+  /**
+   * The sitting this form is posting against, when it is opened from the chase
+   * list. post_court_update() closes the court_event whose scheduled day equals
+   * the day of the update, so a backlog sitting posted with today's date closes
+   * nothing and stays on the chase list for ever. Given here, the date starts on
+   * the day the court actually sat.
+   */
+  sittingAt?: string | null;
 }) {
   const router = useRouter();
+  // firm_sittings_due yields a row per court_event, so one matter with two
+  // unreported sittings renders two of these forms. Ids scoped by matter would
+  // collide and the second form's labels would focus the first form's inputs.
+  const uid = useId();
   const today = useMemo(() => todayIn(timezone), [timezone]);
+  const satDefault = useMemo(() => (sittingAt ? dayIn(sittingAt, timezone) : today), [sittingAt, timezone, today]);
 
   const [outcome, setOutcome] = useState("");
-  const [satOn, setSatOn] = useState(today);
+  const [satOn, setSatOn] = useState(satDefault);
   const [instance, setInstance] = useState("");
   const [otherInstance, setOtherInstance] = useState(false);
 
@@ -236,9 +255,9 @@ export function CourtUpdateForm({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[10rem] flex-1">
-          <label htmlFor={`cu_sat_${matterId}`} className="text-sm font-medium text-gray-900">Date of the sitting</label>
+          <label htmlFor={`cu_sat_${uid}`} className="text-sm font-medium text-gray-900">Date of the sitting</label>
           <input
-            id={`cu_sat_${matterId}`} type="date" value={satOn} max={today}
+            id={`cu_sat_${uid}`} type="date" value={satOn} max={today}
             onChange={(e) => setSatOn(e.target.value)} className={field}
           />
         </div>
@@ -281,18 +300,18 @@ export function CourtUpdateForm({
       <div className="space-y-2 rounded-lg border border-gray-200 p-3">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[9rem] flex-1">
-            <label htmlFor={`cu_next_${matterId}`} className="text-sm font-medium text-gray-900">
+            <label htmlFor={`cu_next_${uid}`} className="text-sm font-medium text-gray-900">
               Next date {needsNextDate && <span className="text-red-700">*</span>}
             </label>
             <input
-              id={`cu_next_${matterId}`} type="date" value={nextDate}
+              id={`cu_next_${uid}`} type="date" value={nextDate}
               onChange={(e) => setNextDate(e.target.value)} className={field}
             />
           </div>
           <div className="w-28">
-            <label htmlFor={`cu_time_${matterId}`} className="text-sm font-medium text-gray-900">Time</label>
+            <label htmlFor={`cu_time_${uid}`} className="text-sm font-medium text-gray-900">Time</label>
             <input
-              id={`cu_time_${matterId}`} type="time" value={nextTime}
+              id={`cu_time_${uid}`} type="time" value={nextTime}
               onChange={(e) => setNextTime(e.target.value)} className={field}
             />
           </div>
@@ -350,21 +369,21 @@ export function CourtUpdateForm({
       </div>
 
       <div>
-        <label htmlFor={`cu_note_${matterId}`} className="text-sm font-medium text-gray-900">Note to the client</label>
+        <label htmlFor={`cu_note_${uid}`} className="text-sm font-medium text-gray-900">Note to the client</label>
         <p className="text-xs text-gray-500">Plain language. This is what your client reads in their app.</p>
         <textarea
-          id={`cu_note_${matterId}`} rows={3} maxLength={4000} value={noteToClient}
+          id={`cu_note_${uid}`} rows={3} maxLength={4000} value={noteToClient}
           onChange={(e) => setNoteToClient(e.target.value)} className={field}
         />
       </div>
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-        <label htmlFor={`cu_internal_${matterId}`} className="text-sm font-medium text-amber-900">
+        <label htmlFor={`cu_internal_${uid}`} className="text-sm font-medium text-amber-900">
           Internal note (never shown to the client)
         </label>
         <p className="text-xs text-amber-800">Filed as an internal timeline entry. Clients never see internal entries.</p>
         <textarea
-          id={`cu_internal_${matterId}`} rows={3} maxLength={8000} value={internalNote}
+          id={`cu_internal_${uid}`} rows={3} maxLength={8000} value={internalNote}
           onChange={(e) => setInternalNote(e.target.value)} className={field}
         />
       </div>
@@ -391,34 +410,34 @@ export function CourtUpdateForm({
               label="Court"
             />
             <div>
-              <label htmlFor={`cu_division_${matterId}`} className="text-sm font-medium text-gray-900">Judicial division</label>
+              <label htmlFor={`cu_division_${uid}`} className="text-sm font-medium text-gray-900">Judicial division</label>
               <input
-                id={`cu_division_${matterId}`} type="text" maxLength={120} value={division}
+                id={`cu_division_${uid}`} type="text" maxLength={120} value={division}
                 onChange={(e) => setDivision(e.target.value)} placeholder="Ikeja" className={field}
               />
             </div>
             <div>
-              <label htmlFor={`cu_courtname_${matterId}`} className="text-sm font-medium text-gray-900">
+              <label htmlFor={`cu_courtname_${uid}`} className="text-sm font-medium text-gray-900">
                 Court, as it should read on the update
               </label>
               <input
-                id={`cu_courtname_${matterId}`} type="text" maxLength={200} value={courtName}
+                id={`cu_courtname_${uid}`} type="text" maxLength={200} value={courtName}
                 onChange={(e) => setCourtName(e.target.value)}
                 placeholder={currentCourtName ?? "Leave blank to use the court above"} className={field}
               />
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label htmlFor={`cu_judge_${matterId}`} className="text-sm font-medium text-gray-900">Judge</label>
+                <label htmlFor={`cu_judge_${uid}`} className="text-sm font-medium text-gray-900">Judge</label>
                 <input
-                  id={`cu_judge_${matterId}`} type="text" maxLength={160} value={judge}
+                  id={`cu_judge_${uid}`} type="text" maxLength={160} value={judge}
                   onChange={(e) => setJudge(e.target.value)} placeholder="Hon. Justice…" className={field}
                 />
               </div>
               <div>
-                <label htmlFor={`cu_room_${matterId}`} className="text-sm font-medium text-gray-900">Courtroom</label>
+                <label htmlFor={`cu_room_${uid}`} className="text-sm font-medium text-gray-900">Courtroom</label>
                 <input
-                  id={`cu_room_${matterId}`} type="text" maxLength={80} value={courtroom}
+                  id={`cu_room_${uid}`} type="text" maxLength={80} value={courtroom}
                   onChange={(e) => setCourtroom(e.target.value)} placeholder="Court 4" className={field}
                 />
               </div>

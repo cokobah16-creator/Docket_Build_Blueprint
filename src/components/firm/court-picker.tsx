@@ -11,7 +11,7 @@
 // from a prop alone. The id is generated here and the insert returns nothing,
 // because the select policy cannot see a row inserted by the same statement.
 
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { COURT_LEVEL_LABELS, NG_STATES, NG_STATE_OPTIONS } from "@/lib/nigeria";
 import { Alert } from "@/components/ui/alert";
@@ -40,6 +40,9 @@ export function CourtPicker({
   onChange: (courtId: string | null, court: CourtRow | null) => void;
   label?: string;
 }) {
+  // One picker per sitting can be on the page at once, so ids must be unique or
+  // a label in the second picker focuses the first picker's control.
+  const uid = useId();
   // Courts added here are not in the server-rendered list until the page refreshes.
   const [added, setAdded] = useState<CourtRow[]>([]);
   const all = useMemo(() => [...added, ...courts], [added, courts]);
@@ -152,24 +155,24 @@ export function CourtPicker({
         <div className="mt-1 space-y-2 rounded-lg border border-gray-200 p-3">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
-              <label htmlFor="cp_level" className="text-xs font-medium text-gray-700">Level</label>
-              <select id="cp_level" value={level} onChange={(e) => { setLevel(e.target.value); setState(""); }} className={field}>
+              <label htmlFor={`${uid}_level`} className="text-xs font-medium text-gray-700">Level</label>
+              <select id={`${uid}_level`} value={level} onChange={(e) => { setLevel(e.target.value); setState(""); }} className={field}>
                 <option value="">Every level</option>
                 {levels.map(([key, text]) => <option key={key} value={key}>{text}</option>)}
               </select>
             </div>
             <div>
-              <label htmlFor="cp_state" className="text-xs font-medium text-gray-700">State</label>
-              <select id="cp_state" value={state} onChange={(e) => setState(e.target.value)} className={field}>
+              <label htmlFor={`${uid}_state`} className="text-xs font-medium text-gray-700">State</label>
+              <select id={`${uid}_state`} value={state} onChange={(e) => setState(e.target.value)} className={field}>
                 <option value="">Every state</option>
                 {states.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
               </select>
             </div>
           </div>
           <div>
-            <label htmlFor="cp_q" className="text-xs font-medium text-gray-700">Division or name</label>
+            <label htmlFor={`${uid}_q`} className="text-xs font-medium text-gray-700">Division or name</label>
             <input
-              id="cp_q" type="search" inputMode="search" value={query} onChange={(e) => setQuery(e.target.value)}
+              id={`${uid}_q`} type="search" inputMode="search" value={query} onChange={(e) => setQuery(e.target.value)}
               placeholder="Ikeja, Lagos Judicial Division, FHC…" className={field}
             />
           </div>
@@ -228,41 +231,41 @@ export function CourtPicker({
               </p>
               {error && <Alert kind="error">{error}</Alert>}
               <div>
-                <label htmlFor="cp_new_level" className="text-xs font-medium text-gray-700">Level</label>
-                <select id="cp_new_level" value={draft.level} onChange={(e) => setDraft({ ...draft, level: e.target.value })} className={field}>
+                <label htmlFor={`${uid}_new_level`} className="text-xs font-medium text-gray-700">Level</label>
+                <select id={`${uid}_new_level`} value={draft.level} onChange={(e) => setDraft({ ...draft, level: e.target.value })} className={field}>
                   <option value="">Choose a level</option>
                   {Object.entries(COURT_LEVEL_LABELS).map(([key, text]) => <option key={key} value={key}>{text}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor="cp_new_name" className="text-xs font-medium text-gray-700">Full name, as the registry writes it</label>
-                <input id="cp_new_name" type="text" maxLength={200} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={field} />
+                <label htmlFor={`${uid}_new_name`} className="text-xs font-medium text-gray-700">Full name, as the registry writes it</label>
+                <input id={`${uid}_new_name`} type="text" maxLength={200} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={field} />
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="cp_new_state" className="text-xs font-medium text-gray-700">State</label>
-                  <select id="cp_new_state" value={draft.state_code} onChange={(e) => setDraft({ ...draft, state_code: e.target.value })} className={field}>
+                  <label htmlFor={`${uid}_new_state`} className="text-xs font-medium text-gray-700">State</label>
+                  <select id={`${uid}_new_state`} value={draft.state_code} onChange={(e) => setDraft({ ...draft, state_code: e.target.value })} className={field}>
                     <option value="">Not tied to a state</option>
                     {NG_STATE_OPTIONS.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="cp_new_division" className="text-xs font-medium text-gray-700">Judicial division / district</label>
-                  <input id="cp_new_division" type="text" maxLength={120} value={draft.division} onChange={(e) => setDraft({ ...draft, division: e.target.value })} className={field} />
+                  <label htmlFor={`${uid}_new_division`} className="text-xs font-medium text-gray-700">Judicial division / district</label>
+                  <input id={`${uid}_new_division`} type="text" maxLength={120} value={draft.division} onChange={(e) => setDraft({ ...draft, division: e.target.value })} className={field} />
                 </div>
                 <div>
-                  <label htmlFor="cp_new_city" className="text-xs font-medium text-gray-700">Town</label>
-                  <input id="cp_new_city" type="text" maxLength={120} value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} className={field} />
+                  <label htmlFor={`${uid}_new_city`} className="text-xs font-medium text-gray-700">Town</label>
+                  <input id={`${uid}_new_city`} type="text" maxLength={120} value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} className={field} />
                 </div>
                 <div>
-                  <label htmlFor="cp_new_short" className="text-xs font-medium text-gray-700">Short name</label>
-                  <input id="cp_new_short" type="text" maxLength={40} value={draft.short_name} onChange={(e) => setDraft({ ...draft, short_name: e.target.value })} className={field} />
+                  <label htmlFor={`${uid}_new_short`} className="text-xs font-medium text-gray-700">Short name</label>
+                  <input id={`${uid}_new_short`} type="text" maxLength={40} value={draft.short_name} onChange={(e) => setDraft({ ...draft, short_name: e.target.value })} className={field} />
                 </div>
               </div>
               <div>
-                <label htmlFor="cp_new_hint" className="text-xs font-medium text-gray-700">Suit number format (optional)</label>
+                <label htmlFor={`${uid}_new_hint`} className="text-xs font-medium text-gray-700">Suit number format (optional)</label>
                 <input
-                  id="cp_new_hint" type="text" maxLength={80} value={draft.suit_number_hint}
+                  id={`${uid}_new_hint`} type="text" maxLength={80} value={draft.suit_number_hint}
                   onChange={(e) => setDraft({ ...draft, suit_number_hint: e.target.value })}
                   placeholder="FHC/L/CS/123/2026" className={field}
                 />

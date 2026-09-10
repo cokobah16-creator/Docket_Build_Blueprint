@@ -76,6 +76,19 @@ async function vacate(formData: FormData): Promise<void> {
   const newTime = String(formData.get("newTime") ?? "").trim() || "09:00";
   const newPurpose = String(formData.get("newPurpose") ?? "").trim();
 
+  // zonedInstant() builds a Date from these two strings and toISOString() throws
+  // RangeError on an unreadable one — before vacateCourtEvent's own guard can
+  // turn a bad value into a banner. A date input only ever submits "" or a real
+  // date, but a hand-made POST must get the honest refusal, not a 500.
+  const badDay = newDay !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(newDay);
+  const badTime = newTime !== "" && !/^([01]\d|2[0-3]):[0-5]\d$/.test(newTime);
+  if (badDay || badTime) {
+    const bad = new URLSearchParams();
+    if (firm) bad.set("firm", firm);
+    bad.set("error", "That refixed date could not be read.");
+    redirect(`/firm/sittings?${bad.toString()}`);
+  }
+
   const result = await vacateCourtEvent(
     eventId,
     reason,
@@ -205,6 +218,7 @@ export default async function SittingsPage({
                         currentCourtId={matter?.court_id ?? null}
                         currentCourtName={matter?.court_name ?? s.court ?? null}
                         judicialDivision={matter?.judicial_division ?? null}
+                        sittingAt={s.scheduled_at}
                       />
                       <p className="mt-3 text-xs text-gray-500">
                         <Link href={`/firm/matters/${s.matter_id}`} className="text-brand underline">Open the matter →</Link>
