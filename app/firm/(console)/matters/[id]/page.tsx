@@ -396,7 +396,9 @@ async function InvoicesSection({
     .limit(100);
   const invoices = (data ?? []) as MatterInvoice[];
   const back = `${basePath}?tab=invoices${extraQuery}`;
-  const raiseHref = `/firm/invoices/new?matter=${matter.id}`;
+  // Keep the firm the staff member is working under; the composer resolves its own
+  // context and would otherwise fall back to their first membership.
+  const raiseHref = `/firm/invoices/new?matter=${matter.id}${extraQuery}`;
 
   /** Draft → issued. The client only ever sees issued invoices. */
   const issue = async (formData: FormData) => {
@@ -408,11 +410,22 @@ async function InvoicesSection({
     redirect(refused ? `${back}&error=${encodeURIComponent(refused)}` : `${back}&issued=1`);
   };
 
-  const outstandingTotal = invoices
-    .filter((i) => i.status !== "cancelled" && i.status !== "draft")
-    .reduce((sum, i) => sum + Math.max(0, i.total_minor - i.paid_minor), 0);
-  const currency = invoices[0]?.currency ?? "NGN";
+  // Minor units of naira and minor units of dollars are not the same unit, so a
+  // matter billed in both is totalled once per currency rather than added up and
+  // labelled with whichever invoice happened to come first.
+  const outstandingByCurrency = new Map<string, number>();
+  for (const i of invoices) {
+    if (i.status === "cancelled" || i.status === "draft") continue;
+    const owed = Math.max(0, i.total_minor - i.paid_minor);
+    if (owed <= 0) continue;
+    outstandingByCurrency.set(i.currency, (outstandingByCurrency.get(i.currency) ?? 0) + owed);
+  }
+  const outstandingLabel = Array.from(outstandingByCurrency)
+    .map(([c, minor]) => formatMoneyMinor(minor, c))
+    .join(" · ");
   const fmtDay = (iso: string) => formatWhen(iso, ctx.timezone, { dateStyle: "medium" });
+  /** due_at is a DATE, not an instant: render the day it is, not the day it becomes. */
+  const fmtCalendarDay = (day: string) => formatWhen(`${day}T00:00:00Z`, "UTC", { dateStyle: "medium" });
 
   if (invoices.length === 0) {
     return (
@@ -430,7 +443,7 @@ async function InvoicesSection({
   return (
     <>
       <CardHeader
-        title={outstandingTotal > 0 ? `Invoices · ${formatMoneyMinor(outstandingTotal, currency)} outstanding` : "Invoices"}
+        title={outstandingLabel ? `Invoices · ${outstandingLabel} outstanding` : "Invoices"}
         action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90">Raise an invoice</Link>}
       />
       <ul className="divide-y divide-gray-100">
@@ -451,7 +464,7 @@ async function InvoicesSection({
               </p>
               <p className="text-xs text-gray-500">
                 {inv.issued_at ? `Issued ${fmtDay(inv.issued_at)}` : `Drafted ${fmtDay(inv.created_at)}`}
-                {inv.due_at ? ` · due ${fmtDay(inv.due_at)}` : ""}
+                {inv.due_at ? ` · due ${fmtCalendarDay(inv.due_at)}` : ""}
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 {inv.status === "draft" ? (
@@ -460,7 +473,7 @@ async function InvoicesSection({
                     <Button type="submit" size="sm">Issue it</Button>
                   </form>
                 ) : payable ? (
-                  <CopyButton path={`/app/payments/${inv.id}`} label="Copy the pay-by-link" />
+                  <CopyButton path={`/app/payments/${inv.id}`} label={outstanding > 0 ? "Copy the pay-by-link" : "Copy the receipt link"} />
                 ) : (
                   <p className="text-xs text-gray-500">Cancelled — the record stays on the file.</p>
                 )}

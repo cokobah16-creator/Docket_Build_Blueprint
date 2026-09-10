@@ -19,6 +19,7 @@ import { inviteMatterParty, removeMatterParty, revokeMatterInvite } from "@/lib/
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { CopyButton } from "./matter-tabs";
+import { isE164, normalizeNigerianPhone } from "@/lib/nigeria";
 
 /**
  * Where an invited client lands. accept_invite(token) joins them to the matter
@@ -54,9 +55,22 @@ const ROLE_LABELS: Record<string, string> = {
   co_counsel: "Co-counsel",
 };
 
+/**
+ * wa.me wants a country code and no leading zero, so the number must already be
+ * E.164 before its digits are taken. A local "0803…" stripped to digits gives
+ * WhatsApp "number shared via url is invalid" and the client never gets the link.
+ */
 function digitsOf(phone: string | null): string | null {
-  const digits = (phone ?? "").replace(/\D/g, "");
+  if (!phone || !isE164(phone)) return null;
+  const digits = phone.replace(/\D/g, "");
   return digits.length >= 10 ? digits : null;
+}
+
+/** The number the database will have stored, so the hand-off matches the invite. */
+function asStored(typed: string): string | null {
+  const trimmed = typed.trim();
+  if (!trimmed) return null;
+  return normalizeNigerianPhone(trimmed) ?? (isE164(trimmed) ? trimmed : null);
 }
 
 export function PartiesPanel({
@@ -95,7 +109,7 @@ export function PartiesPanel({
     const result = await inviteMatterParty(matterId, { phone: phone.trim(), email: email.trim(), role });
     setBusy(false);
     if ("error" in result) { setError(result.error); return; }
-    setInvited({ token: result.token, expiresAt: result.expiresAt, phone: phone.trim() || null });
+    setInvited({ token: result.token, expiresAt: result.expiresAt, phone: asStored(phone) });
     setPhone("");
     setEmail("");
     router.refresh();
