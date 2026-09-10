@@ -37,7 +37,7 @@ do $$
 declare o1 uuid := (select v from fx where k='owner_one'); res jsonb; f uuid; ok bool;
 begin
   perform t_as(o1, 'aal1');                                   -- a brand-new account: no MFA yet
-  res := create_firm('Ubuntu & Partners', 'ubuntu-partners', 'Ubuntu & Partners LP', 'RC1234567', 'Africa/Lagos', 'NGN', null, 'LA');
+  res := create_firm('Ubuntu & Partners', 'ubuntu-partners', 'Ubuntu & Partners LP', 'RC1234567', 'Africa/Lagos', 'NGN', null, 'LA', '{}', null, 'scn 445566');
   f := (res ->> 'firm_id')::uuid;
   perform t_check('create_firm returns the new firm',                      f is not null and res ->> 'slug' = 'ubuntu-partners');
   perform t_check('reference prefix derived from the name',                res ->> 'reference_prefix' = 'UP');
@@ -48,6 +48,7 @@ begin
   perform t_check('new firm gets a consultation intake form',              (select count(*) from intake_forms where firm_id = f) = 1);
   perform t_check('new firm is pending verification on the free plan',     (select plan || '/' || status from firms where id = f) = 'free/pending');
   perform t_check('new firm has a versioned policies skeleton',            (select policies -> 'terms' ->> 'version' from firms where id = f) = '0-draft');
+  perform t_check('the registrant has a private practitioner profile with her SCN', (select scn || '|' || is_public::text from lawyer_profiles where firm_id = f and user_id = o1) = 'SCN445566|false');
 
   ok := false;
   begin
@@ -147,6 +148,7 @@ begin
   perform t_check('platform admin knows she is one',                       is_platform_admin());
   perform t_check('platform admin lists every firm (lifecycle view)',      (select count(*) from firm_admin where slug in ('ubuntu-partners','cap-firm-1','cap-firm-2','cap-firm-3')) = 4);
   perform t_check('platform admin has no row-level read of firms itself',  (select count(*) from firms) = 0);
+  perform t_check('verification sees the owners and their SCNs',          (select owners from firm_admin where id = fu) like '%SCN445566%' and (select policies_published from firm_admin where id = fu) = false);
   perform t_check('platform admin sees firm memberships',                  (select count(*) from firm_members where firm_id = fu) = 1);
   perform t_check('platform admin sees no matters',                        (select count(*) from matters) = 0);
   perform t_check('platform admin sees no firm audit trail beyond lifecycle', (select count(*) from audit_log where entity not in ('firms','firm_members','firm')) = 0);
@@ -212,6 +214,8 @@ begin
   perform t_as(o1, 'aal2');
   insert into staff_invites (firm_id, email, role, created_by) values (fu, 'New_Lawyer@ptest', 'lawyer', o1) returning token into tok;
   perform t_check('owner invites a lawyer by email',                       tok is not null);
+  insert into staff_invites (firm_id, email, role, created_by) values (fu, 'partner@ptest', 'owner', o1);
+  perform t_check('an owner may invite another owner (partnerships)',     (select count(*) from staff_invites where firm_id = fu and role = 'owner') = 1);
   perform t_reset();
 
   -- an impostor who edits their profile email to match an invite is still refused: the

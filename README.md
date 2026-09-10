@@ -4,7 +4,7 @@
 
 This repository is the platform: the multi-tenant Postgres schema and row-level security, the server-side business flows (firm creation, booking, payment cascade, court updates, consultation notes, service of process, invites, jobs), the Nigerian reference data (states, courts, holidays), the provider adapters, the payment webhooks, the notification dispatcher, the Next.js app (tenant public sites, client PWA, staff console, platform admin), Klinique's seed data, and test suites that prove isolation between firms and between clients.
 
-**Validated:** all fourteen migrations, the seed and four SQL suites run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`.
+**Validated:** all fifteen migrations, the seed and four SQL suites run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`.
 
 ## Any firm, the same way
 
@@ -33,6 +33,7 @@ supabase/
     20260910000014_review_round_two.sql        views read-only and no TRUNCATE for API roles; rows must belong to their matter's firm; invites admin-only with
                                                identity-provider email; slug/domain platform-only; only active firms are public; SCN uniqueness among verified;
                                                settlement mismatches recorded and reported (never a webhook retry loop)
+    20260910000015_second_firm_walkthrough.sql owner invites by owners; registrant's SCN and profile; no booking on unpublished policies; open_matter()
   seed.sql                           Attorneys Klinique: brand, policies, 14 services, intake form — then seed_firm_defaults()
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
@@ -53,6 +54,8 @@ app/
   (public)/[firm]/…        tenant public site + booking wizard
   app/…                    client PWA
   firm/(auth)/start        self-serve firm registration → create_firm()
+  firm/(auth)/join         staff-invite landing → accept_staff_invite()
+  firm/(console)/inbox     service inbox: acknowledge processes served through Docket
   firm/(auth)/security/mfa TOTP enrolment; firm/(console) staff console
   admin/                   platform admin (platform_admins gate; lifecycle only)
 scripts/db-test-local.sh
@@ -80,7 +83,7 @@ Requires PostgreSQL 16+ (superuser). Never run the stub against Supabase.
 DATABASE_URL=postgres://postgres@localhost:5432/postgres bash scripts/db-test-local.sh
 ```
 
-Each suite ends with `NOTICE:  ALL CHECKS PASSED` (217 `PASS` lines in total). Coverage: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, the hold-release job; self-serve firm creation and its defaults, slug validation, the three-firm cap, platform admins seeing lifecycle rows and no content; the court directory (platform-wide vs firm-private), holidays and vacations, practitioner fields; service of process across firms (record + served document visible to the served firm, nothing else; acknowledgement once; clients see progress).
+Each suite ends with `NOTICE:  ALL CHECKS PASSED` (227 `PASS` lines in total). Coverage: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, the hold-release job; self-serve firm creation and its defaults, slug validation, the three-firm cap, platform admins seeing lifecycle rows and no content; the court directory (platform-wide vs firm-private), holidays and vacations, practitioner fields; service of process across firms (record + served document visible to the served firm, nothing else; acknowledgement once; clients see progress).
 
 ## Rules the code enforces (don't undo them in later slices)
 
@@ -103,20 +106,21 @@ Each suite ends with `NOTICE:  ALL CHECKS PASSED` (217 `PASS` lines in total). C
 | Function | Who | What |
 |---|---|---|
 | `available_slots(firm, lawyer, service, date)` | anon, authenticated | slots in the lawyer's zone minus rules, breaks, exceptions, live appointments, daily cap; 2-hour lead time |
-| `book_appointment(firm, service, lawyer, starts_at, mode, client_tz, intake, intake_form)` | client | validates slot, creates held appointment + issued invoice (VAT from `firms.vat_rate`), stores intake, returns what the payment step needs |
+| `book_appointment(firm, service, lawyer, starts_at, mode, client_tz, intake, intake_form)` | client | refuses inactive firms, unpublished terms/privacy and firms without a settlement account; validates the slot, creates the held appointment + issued invoice (VAT from `firms.vat_rate`), stores intake, returns what the payment step needs (incl. the subaccount) |
 | `cancel_appointment(appointment, reason)` | client (own, future) or staff | cancels and voids the unpaid invoice |
 | `record_payment(provider, ref, invoice_number, amount, currency, status, raw, subaccount)` | service role | idempotent on `provider_ref`; paid → confirms appointment → notifications; a succeeded payment reported against a subaccount other than the firm's (or for a firm with none) is recorded as `failed` with `settlement_mismatch`, audited and reported to the firm — it confirms nothing |
 | `save_consultation_notes(appointment, summary, advice, follow_up, internal, mark_completed)` | staff (MFA) | client-visible + internal notes, timeline echo, marks completed |
 | `accept_invite(token)` | client | joins the matter the invite points at |
-| `create_firm(name, slug, legal_name, rc_number, timezone, currency, prefix, state_code, brand, owner_email)` | authenticated (owner_email: platform admins) | opens a firm, makes the owner, seeds defaults, audits; validates and reserves slugs; three firms per account |
-| `seed_firm_defaults(firm)` | internal | matter statuses, an unpriced inactive consultation, a consultation intake form — idempotent |
+| `create_firm(name, slug, legal_name, rc_number, timezone, currency, prefix, state_code, brand, owner_email, owner_scn)` | authenticated (owner_email: platform admins with MFA) | opens a firm as `pending`, makes the owner and opens their private practitioner profile (with SCN), seeds defaults, audits; validates and reserves slugs (also a check constraint); three firms per account |
+| `seed_firm_defaults(firm)` | internal | matter statuses, an unpriced inactive consultation, a consultation intake form, a `0-draft` policies skeleton — idempotent |
+| `open_matter(firm, title, type, client, cause_title, description, court_id, suit_number, judicial_division, originating_lawyer, handling_lawyer, status_key, note_to_client)` | staff (MFA) | issues the reference, adds the client party and lead lawyer, records court and suit number, posts the first client-visible entry |
+| `accept_staff_invite(token)` | authenticated (identity-provider email must match) | joins the firm in the invited role (only an owner may invite an owner); lawyers get a private profile |
 | `is_platform_admin()`, `is_valid_firm_slug(slug)` | authenticated / anon | gates for `/admin` and the registration form |
 | `is_public_holiday(date, country='NG', state)`, `is_non_sitting_day(date, level, state)` | anon, authenticated | national and state-declared holidays (with observed dates), weekends, published court vacations — `court_vacations` is empty until the operator enters each court's practice-direction dates, so until then only weekends and holidays are refused |
 | `serve_process(matter, counsel, document, title, method, served_at, note, is_originating, substituted_by_order, authority_document, served_on_name, served_on_capacity, served_at_address, server_name, outside_issuing_state, deemed_served_on)` | staff (MFA) | records service on counsel (platform / counsel_address / email / whatsapp / personal / bailiff / courier / registered_post / publication / pasting), pinned to the document version + checksum, snapshots cause title and suit number, enforces opt-in and undertakings, posts a client-visible timeline entry, notifies the served firm's owners/admins and service contact |
 | `acknowledge_service(service, note)` | served firm's owner, admin or lawyer (MFA) | acknowledgement of receipt by a practitioner: timestamps and names, notifies the serving lawyer, internal timeline note, audits both firms |
 | `link_service_to_matter(service, matter, response_due_on, note)` | served firm's staff (MFA) | files the received process against the served firm's own matter with a response date |
 | `revoke_service(service, reason)` | serving firm owner/admin (MFA) or platform admin | withdraws a wrongly served process; the served firm's access ends immediately |
-| `accept_staff_invite(token)` | authenticated (email must match) | joins the firm in the invited role; lawyers get a private profile to complete |
 | `post_court_update(matter, outcome, occurred_at, court_name, adjourned_at_instance_of, next_date, next_purpose, note_to_client, internal_note, court_id, judicial_division, allow_non_sitting, judge, courtroom, purpose_kind)` | staff (MFA) | the 30-second form: composes the title, posts client + internal entries, closes the day's court event (matched in court time), opens the next with `court_id`, judge and courtroom; outcomes: hearing_held, adjourned, ruling_delivered, judgment_delivered, struck_out, stood_down, mention, court_did_not_sit, `hearing_notice` (fixes a date without a sitting), `adjourned_sine_die`; refuses a next date that is a weekend, public holiday or published vacation unless the vacation judge will sit |
 | `vacate_court_event(event, reason, new_date, new_purpose)` | staff (MFA) | the registry vacated a date: reminders and the sittings digest skip it; refixed date opens a new event; client told |
 | `set_firm_status(firm, status, note)` | platform admin (MFA) | the only write platform admins have on a firm: pending → active (stamps `verified_at`, notifies the firm) or suspended |

@@ -91,6 +91,9 @@ export interface FirmAdminRow {
   verified_at: string | null;
   has_settlement_account: boolean;
   member_count: number;
+  /** "Name — SCN; Name — no SCN" for every owner, for verification. */
+  owners: string | null;
+  policies_published: boolean;
   created_at: string;
 }
 

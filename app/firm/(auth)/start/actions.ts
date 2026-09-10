@@ -33,6 +33,7 @@ const schema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional()
     .or(z.literal("")),
+  ownerScn: z.string().trim().max(40).optional().or(z.literal("")),
 });
 
 export type CreateFirmState = { error?: string; fieldErrors?: Record<string, string> };
@@ -48,6 +49,7 @@ export async function createFirm(
     rcNumber: formData.get("rcNumber") ?? "",
     stateCode: formData.get("stateCode") ?? "",
     primaryColour: formData.get("primaryColour") ?? "",
+    ownerScn: formData.get("ownerScn") ?? "",
   });
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -76,6 +78,7 @@ export async function createFirm(
     p_rc_number: parsed.data.rcNumber || null,
     p_state_code: parsed.data.stateCode || null,
     p_brand: brand,
+    p_owner_scn: parsed.data.ownerScn || null,
   });
   if (error) {
     // Postgres messages from create_firm are written for people ("slug x is already taken").

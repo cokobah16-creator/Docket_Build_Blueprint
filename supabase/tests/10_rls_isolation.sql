@@ -29,6 +29,9 @@ insert into firms (slug, name, reference_prefix) values ('firm-a', 'Firm A', 'FA
 insert into fx select 'firm_a', id from firms where slug = 'firm-a';
 insert into fx select 'firm_b', id from firms where slug = 'firm-b';
 update firms set paystack_subaccount = 'ACCT_firm_a' where slug = 'firm-a';   -- fees settle to the firm (migration 12)
+update firms set policies = jsonb_build_object('terms', jsonb_build_object('version', '2026-09', 'text', 'Terms.'),
+                                               'privacy', jsonb_build_object('version', '2026-09', 'text', 'Privacy.'))
+ where slug in ('firm-a', 'firm-b');                                          -- published policies: a client can consent (migration 15)
 
 insert into auth.users (id, email) values
   (gen_random_uuid(), 'lawyer_a@test'), (gen_random_uuid(), 'admin_a@test'), (gen_random_uuid(), 'client_a1@test'),
@@ -53,8 +56,8 @@ values ((select v from fx where k='firm_a'), (select v from fx where k='lawyer_a
         extract(dow from current_date + 7)::int, '09:00', '17:00', '13:00', '14:00', 45, 6);
 
 insert into matters (id, firm_id, reference, title, type, court_name)
-values (gen_random_uuid(), (select v from fx where k='firm_a'), 'FA-M-2026-000001', 'A v B', 'litigation', 'High Court of the FCT, Maitama');
-insert into fx select 'matter_a', id from matters where reference = 'FA-M-2026-000001';
+values (gen_random_uuid(), (select v from fx where k='firm_a'), next_reference((select v from fx where k='firm_a'), 'matter'), 'A v B', 'litigation', 'High Court of the FCT, Maitama');
+insert into fx select 'matter_a', id from matters where title = 'A v B';
 insert into matters (id, firm_id, reference, title, type)
 values (gen_random_uuid(), (select v from fx where k='firm_b'), 'FB-M-2026-000001', 'C v D', 'property');
 insert into fx select 'matter_b', id from matters where reference = 'FB-M-2026-000001';
@@ -150,6 +153,16 @@ declare fa uuid := (select v from fx where k='firm_a'); la uuid := (select v fro
         a1 uuid := (select v from fx where k='client_a1'); a2 uuid := (select v from fx where k='client_a2');
         slot timestamptz; res jsonb; res2 jsonb; ok bool; n_slots int;
 begin
+  update firms set policies = policies || jsonb_build_object('terms', jsonb_build_object('version', '0-draft')) where id = fa;
+  perform t_as(a1, 'aal1');
+  ok := false;
+  begin
+    res := book_appointment(fa, sa, la, now() + interval '3 days');
+  exception when others then ok := sqlerrm like '%not published its terms%';
+  end;
+  perform t_check('no booking while the firm''s terms are unpublished',  ok);
+  perform t_reset();
+  update firms set policies = policies || jsonb_build_object('terms', jsonb_build_object('version', '2026-09', 'text', 'Terms.')) where id = fa;
   perform t_as(a1, 'aal1');
   select count(*) into n_slots from available_slots(fa, la, sa, current_date + 7);
   perform t_check('slots exclude the lunch break (8 hours, 45-min slots, 1-hour break)', n_slots between 8 and 10);
@@ -259,6 +272,44 @@ begin
   perform t_check('expired holds are released by the job',               n = 1 and (select count(*) from appointments where cancellation_reason = 'payment_timeout') = 1);
   n := enqueue_court_reminders();
   perform t_check('court reminder job runs (nothing due yet)',           n = 0);
+end $$;
+
+-- ---------------------------------------------------------------- 7. opening a matter
+do $$
+declare la uuid := (select v from fx where k='lawyer_a'); lb uuid := (select v from fx where k='lawyer_b'); a2 uuid := (select v from fx where k='client_a2');
+        fa uuid := (select v from fx where k='firm_a'); res jsonb; m uuid; ok bool;
+begin
+  perform t_as(la, 'aal2');
+  res := open_matter(fa, 'Estate of Chief Okoro', 'estate', a2, 'In re Okoro', 'Probate and administration',
+                     (select id from courts where level = 'state_high' and state_code = 'LA' and division = 'Ikeja'), 'ID/123PM/2026', 'Ikeja');
+  m := (res ->> 'matter_id')::uuid;
+  perform t_check('staff open a matter with its reference',               res ->> 'reference' like 'FA-M-%' and (select court_name from matters where id = m) like 'High Court of Lagos State, Ikeja%');
+  perform t_check('the opening lawyer leads it and the client is party',  (select is_lead from matter_lawyers where matter_id = m and user_id = la)
+                                                                         and (select role from matter_parties where matter_id = m and user_id = a2) = 'client'
+                                                                         and (select handling_lawyer_id from matters where id = m) = la);
+  perform t_check('the suit number is on the matter''s court numbers',    (select count(*) from matter_court_numbers where matter_id = m and number = 'ID/123PM/2026') = 1);
+  ok := false;
+  begin
+    res := open_matter(fa, 'Self dealing', 'advisory', la);
+  exception when others then ok := sqlerrm like '%cannot be its client%';
+  end;
+  perform t_check('a firm member cannot be made the client',             ok);
+  perform t_reset();
+
+  perform t_as(lb, 'aal2');
+  ok := false;
+  begin
+    res := open_matter(fa, 'Intrusion', 'advisory');
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('another firm cannot open matters here',               ok);
+  perform t_reset();
+
+  perform t_as(a2, 'aal1');
+  perform t_check('the client sees her new matter and its first entry',  (select count(*) from matters where id = m) = 1
+                                                                         and (select count(*) from updates where matter_id = m and title like 'Matter opened:%') = 1
+                                                                         and (select count(*) from notifications where event = 'matter_update' and (payload ->> 'matter_id')::uuid = m) >= 1);
+  perform t_reset();
 end $$;
 
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;

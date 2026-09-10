@@ -143,6 +143,13 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
               <option key={s.code} value={s.code}>{s.name}</option>
             ))}
           </Select>
+          <Input
+            label="Your Supreme Court enrolment number (optional)"
+            name="ownerScn"
+            placeholder="SCN123456"
+            hint="Docket checks it against the Roll before activating the firm. You can add it later on your profile."
+            error={state.fieldErrors?.ownerScn}
+          />
           <Input label="Primary colour (optional)" name="primaryColour" type="color" defaultValue="#1c2b3a" hint="You can refine the brand later in firm settings." />
           <Button type="submit" size="lg" className="w-full" disabled={pending}>
             {pending ? "Creating your firm…" : "Create firm and set up two-factor"}

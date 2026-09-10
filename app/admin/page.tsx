@@ -55,7 +55,7 @@ export default async function AdminPage() {
   // firm_admin is the lifecycle-only projection platform admins may read.
   const { data: firmRows } = await supabase
     .from("firm_admin")
-    .select("id, slug, name, legal_name, rc_number, state_code, plan, status, verified_at, custom_domain, has_settlement_account, member_count, created_at")
+    .select("id, slug, name, legal_name, rc_number, state_code, plan, status, verified_at, custom_domain, has_settlement_account, member_count, owners, policies_published, created_at")
     .order("created_at", { ascending: false });
   const firms = (firmRows ?? []) as FirmAdminRow[];
 
@@ -110,6 +110,8 @@ export default async function AdminPage() {
                         <Badge>{f.status}</Badge>
                         {f.verified_at && <p className="text-xs text-gray-500">verified {new Date(f.verified_at).toLocaleDateString("en-GB")}</p>}
                         {f.rc_number && <p className="text-xs text-gray-500">RC {f.rc_number}</p>}
+                        {f.owners && <p className="text-xs text-gray-500">Owners: {f.owners}</p>}
+                        {!f.policies_published && <p className="text-xs text-amber-700">policies unpublished</p>}
                       </TD>
                       <TD>{f.has_settlement_account ? "subaccount set" : <span className="text-amber-700">no subaccount</span>}</TD>
                       <TD>{new Date(f.created_at).toLocaleDateString("en-GB")}</TD>

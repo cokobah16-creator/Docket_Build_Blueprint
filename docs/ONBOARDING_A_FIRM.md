@@ -1,44 +1,74 @@
 # Onboarding a firm — the runbook
 
 *For the platform operator and for a firm's IT lead. Attorneys Klinique came
-in through `supabase/seed.sql`; every firm after it comes in this way, and
-Klinique's owner accounts are attached exactly as in step 4.*
+in through `supabase/seed.sql` (inserted already active and verified by the
+founders); every firm after it comes in this way. Klinique's first owner is
+attached by the operator (service role: `insert into firm_members (firm_id,
+user_id, role) values (…, 'owner')`); every further owner and lawyer joins by
+invitation as in step 4.*
 
 ## Self-serve (the normal path)
 
 1. **Register** — the owner opens `/firm/start`, creates an account (email +
    password) and enters the firm: name, web address (`{slug}.docket.app`),
-   registered name, RC/BN number, state, primary colour. `create_firm()` makes
-   them owner, seeds the defaults (statuses, an unpriced consultation, an
-   intake form, a versioned policies skeleton) and leaves the firm **pending**.
+   registered name, RC/BN number, state, their own Supreme Court enrolment
+   number, primary colour. `create_firm()` makes them owner, opens their
+   private practitioner profile with the SCN, seeds the defaults (statuses, an
+   unpriced consultation, an intake form, a versioned policies skeleton) and
+   leaves the firm **pending**. Brand JSON accepted by `create_firm(p_brand)`
+   and `firms.brand`: `colours.{primary,accent,surface}` as `#rrggbb`,
+   `fonts.{heading,body}` (letters, digits, spaces), `tagline`, `cta`,
+   `logo_path`, `contact.{email,phone,address,whatsapp}` — anything else is
+   dropped by `validate_brand()`.
 2. **Two-factor** — the owner enrols an authenticator app at
    `/firm/security/mfa`; the console opens. Nothing is public yet.
-3. **Verify and activate** — a platform admin checks the RC/BN number (CAC)
-   and the owner's Supreme Court enrolment number (Roll of Legal
-   Practitioners) and clicks *Verify and activate* in `/admin`
-   (`set_firm_status(firm, 'active')`). The firm now appears on `firm_public`
-   (marked verified), its site resolves, and its owners are notified.
-4. **Lawyers and staff** — the owner creates `staff_invites` (email + role) from
-   the console (slice 4 UI; until then an admin inserts the row); the invitee
-   signs up with that email and calls `accept_staff_invite(token)`. Lawyers get
-   a private profile to complete: title, bio, practice areas, SCN, year of
-   call, NBA branch, stamp-and-seal serial.
+3. **Verify and activate** — a platform admin (in an MFA session — enrol at
+   `/firm/security/mfa` first) checks the RC/BN number (CAC) and the owners'
+   enrolment numbers shown on `/admin` (`firm_admin.owners`) against the Roll,
+   then clicks *Verify and activate* (`set_firm_status(firm, 'active')`). The
+   firm now appears on `firm_public` (marked verified), its site resolves, and
+   its owners are notified. `/admin` also shows whether the policies are
+   published (step 6) and whether a settlement account is set (step 5).
+4. **Lawyers, staff and further owners** — an owner or admin inserts a
+   `staff_invites` row (email + role; only an owner may invite an owner) from
+   the console (slice 4 UI; until then with the API) and sends the invitee the
+   link `/firm/join?token=<token>` — the token is readable only by the firm's
+   owners/admins. The invitee opens it, creates an account with (or signs in
+   with) the invited email and accepts; `accept_staff_invite()` matches the
+   identity provider's email, never a typed one. Lawyers get a private profile
+   to complete: title, bio, practice areas, SCN, year of call, NBA branch,
+   stamp-and-seal serial.
 5. **Settlement** — the operator creates a Paystack **subaccount** for the
    firm's bank account (Paystack dashboard → Subaccounts, or `POST
-   /subaccount`) and stores its code in `firms.paystack_subaccount`. Until it
-   is set, `book_appointment()` refuses prepaid bookings and the checkout
-   action explains why. Every payment initialises with `subaccount` +
-   `bearer: 'subaccount'`; `record_payment()` refuses a settlement elsewhere.
+   /subaccount`) and gives the firm its code; the firm's **owner or admin**
+   stores it in `firms.paystack_subaccount` (platform admins cannot write it).
+   Until it is set, `book_appointment()` refuses prepaid bookings and the
+   checkout action explains why. Every payment initialises with `subaccount` +
+   `bearer: 'subaccount'`; `record_payment()` applies a payment only when
+   Paystack reports that subaccount — anything else is recorded as a flagged
+   failure and reported to the firm.
 6. **Policies and services** — the owner replaces the `0-draft` policies
-   (terms, privacy, cancellation, disclaimer) with real versions, sets the VAT
-   rate, prices the consultation and activates it, adds services, sets each
-   lawyer's availability. Clients cannot be asked to consent to drafts.
+   (terms, privacy, cancellation, disclaimer) with real versions: **bookings
+   are refused until terms and privacy are published**, and clients are never
+   shown drafts. Then: VAT rate, price and activate the consultation, add
+   services, and set each lawyer's availability (`availability_rules`: weekday
+   with 0 = Sunday, start/end, break, `slot_min`, `max_per_day`;
+   `availability_exceptions` for days off). A booking's `starts_at` must be
+   one of `available_slots()`'s values.
 7. **Service of process** — the owner records the firm's address for service
-   (`firms.address_for_service`: chambers, email, phone, contact user) and, if
-   the firm will accept non-originating processes through Docket, sets
+   (`firms.address_for_service` JSON: `chambers`, `email`, `phone`,
+   `contact_user_id` — the contact is told first when something is served)
+   and, if the firm will accept non-originating processes through Docket, sets
    `accepts_platform_service = true`.
-8. **Domain** — optional custom domain mapped through the Vercel Domains API
-   (slice 5) and stored in `firms.custom_domain`.
+8. **Matters** — staff open matters with `open_matter(firm, title, type,
+   client, cause_title, description, court_id, suit_number, judicial_division,
+   originating_lawyer, handling_lawyer, status_key, note_to_client)`: it
+   issues the reference, adds the client as party, the lead lawyer, the court
+   and suit number, and posts the first client-visible entry. Clients without
+   an account are invited with `invites` → `accept_invite(token)`.
+9. **Domain** — optional custom domain mapped by the platform through the
+   Vercel Domains API (slice 5) into `firms.custom_domain` (owners cannot set
+   it themselves).
 
 ## Operator-assisted
 
@@ -74,6 +104,7 @@ content — there is no policy that would let them.
   Government declares them, with `observed_on` if a date is shifted).
 - State-declared holidays (`state_code` set) that bind that state's courts.
 - Each court's annual, Christmas and Easter vacation from its practice
-  direction, with `time_runs`.
+  direction, with `time_runs`. **The table ships empty**: until the operator
+  enters them, `post_court_update()` refuses only weekends and holidays.
 - New judicial divisions of the Court of Appeal, Federal High Court and NICN
   as they are created. `reference_data_coverage` shows how far the data goes.
