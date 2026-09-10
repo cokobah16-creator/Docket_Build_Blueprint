@@ -37,7 +37,10 @@ scripts/db-test-local.sh
 2. `supabase link --project-ref <ref>` then `supabase db push` — migrations apply in order.
 3. `psql "$DATABASE_URL" -f supabase/seed.sql` — creates Attorneys Klinique. Edit `brand`, `policies`, `vat_rate` and service prices before launch (see "Decisions").
 4. `supabase functions deploy paystack-webhook stripe-webhook dispatch-notifications` and set the secrets from `.env.example` with `supabase secrets set`.
-5. Point Paystack's webhook at `/functions/v1/paystack-webhook` and Stripe's at `/functions/v1/stripe-webhook`.
+5. Point Paystack's webhook at `/functions/v1/paystack-webhook` (dashboard only) and Stripe's at `/functions/v1/stripe-webhook`.
+   `scripts/configure-providers.sh` does the Stripe registration, sets the Auth Site URL and redirect allow-list, and can enable
+   phone OTP via Twilio. It needs a Supabase personal access token (`SUPABASE_ACCESS_TOKEN`), `SUPABASE_PROJECT_REF` and `APP_URL`;
+   see the header of the script for the optional Stripe and Twilio variables.
 6. Dashboard → Integrations → Cron: HTTP request to `/functions/v1/dispatch-notifications` every minute (the SQL jobs are already scheduled by migration 4).
 7. Auth → Hooks → **Send SMS**: point at a small Edge Function that forwards OTPs to Termii (`channel: 'dnd'`). Until then Supabase's built-in Twilio provider works for testing.
 8. `supabase gen types typescript --linked > src/lib/db/types.ts` whenever the schema changes.
