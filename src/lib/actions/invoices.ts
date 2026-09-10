@@ -17,9 +17,10 @@
 //  · Nothing is firm-specific: the firm always arrives from the caller's
 //    context, and the currency defaults to the firm's own when none is given.
 //
-// Note on the contract: the item field is named `unitMinor` but carries the
-// amount in MAJOR units (naira/dollars) exactly as the composer collects it —
-// toMinorUnits() below is what turns it into the integer the RPC wants.
+// A note on naming: the item field is `unitMajor` because that is what it holds
+// — the amount as a lawyer types it, in naira or dollars. toMinorUnits() below
+// is the single place it becomes the integer the RPC wants, so a field name can
+// never disagree with its contents.
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -60,7 +61,7 @@ const itemSchema = z.object({
     .positive("Every line needs a quantity above zero.")
     .max(100_000, "That quantity is too large."),
   /** MAJOR units as typed on the screen — converted to minor units below. */
-  unitMinor: z
+  unitMajor: z
     .number({ invalid_type_error: "Every line needs an amount." })
     .finite("Every line needs an amount.")
     .nonnegative("An amount cannot be negative.")
@@ -112,7 +113,7 @@ export async function createInvoice(input: CreateInvoiceInput): Promise<{ error:
   const items = d.items.map((item) => ({
     description: item.description,
     quantity: item.quantity,
-    unit_minor: toMinorUnits(item.unitMinor),
+    unit_minor: toMinorUnits(item.unitMajor),
   }));
   const subtotalMinor = items.reduce((sum, item) => sum + Math.round(item.unit_minor * item.quantity), 0);
   if (subtotalMinor <= 0) return { error: "An invoice must come to more than zero." };

@@ -23,7 +23,7 @@
 // CopyLink at the foot of this file is the one interactive control the invoice
 // screen needs, and lives here so the invoices area keeps to its own files.
 
-import { useMemo, useState, useTransition, type SyntheticEvent } from "react";
+import { useMemo, useRef, useState, useTransition, type SyntheticEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createInvoice } from "@/lib/actions/invoices";
@@ -58,8 +58,10 @@ interface Line {
   unit: string;
 }
 
-function blankLine(): Line {
-  return { key: Math.random().toString(36).slice(2), description: "", quantity: "1", unit: "" };
+/** The first line is keyed the same on the server and in the browser, so nothing
+ *  is re-keyed at hydration; every line added afterwards is keyed in order. */
+function lineWithKey(key: string): Line {
+  return { key, description: "", quantity: "1", unit: "" };
 }
 
 /** Same conversion as the server action: money never goes through raw float × 100. */
@@ -103,7 +105,8 @@ export function InvoiceComposer({
   const [clientFilter, setClientFilter] = useState("");
   const [matterId, setMatterId] = useState(preselectedMatterId ?? "");
   const [currency, setCurrency] = useState<"NGN" | "USD">(defaultCurrency);
-  const [lines, setLines] = useState<Line[]>([blankLine()]);
+  const [lines, setLines] = useState<Line[]>(() => [lineWithKey("line-0")]);
+  const nextLineKey = useRef(0);
   const [dueOn, setDueOn] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -145,12 +148,17 @@ export function InvoiceComposer({
     setLines((current) => current.map((line) => (line.key === key ? { ...line, ...patch } : line)));
   }
 
+  function freshLine(): Line {
+    nextLineKey.current += 1;
+    return lineWithKey(`line-${nextLineKey.current}`);
+  }
+
   function addLine() {
-    setLines((current) => (current.length >= MAX_ITEMS ? current : [...current, blankLine()]));
+    setLines((current) => (current.length >= MAX_ITEMS ? current : [...current, freshLine()]));
   }
 
   function removeLine(key: string) {
-    setLines((current) => (current.length === 1 ? [blankLine()] : current.filter((line) => line.key !== key)));
+    setLines((current) => (current.length === 1 ? [freshLine()] : current.filter((line) => line.key !== key)));
   }
 
   function submit(event: SyntheticEvent, issue: boolean) {
@@ -169,7 +177,7 @@ export function InvoiceComposer({
       return;
     }
 
-    const items: Array<{ description: string; quantity: number; unitMinor: number }> = [];
+    const items: Array<{ description: string; quantity: number; unitMajor: number }> = [];
     for (const line of filled) {
       const description = line.description.trim();
       const quantity = parseAmount(line.quantity);
@@ -186,7 +194,7 @@ export function InvoiceComposer({
         setError(`Give an amount of zero or more for “${description}”.`);
         return;
       }
-      items.push({ description, quantity, unitMinor: unit });
+      items.push({ description, quantity, unitMajor: unit });
     }
     if (totals.subtotal <= 0) {
       setError("An invoice must come to more than zero.");

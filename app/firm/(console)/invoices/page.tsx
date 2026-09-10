@@ -82,7 +82,10 @@ export default async function FirmInvoicesPage({
 
   const [overview, { data: firmRow }, { data: invoiceRows }] = await Promise.all([
     firmOverview(supabase, firmId),
-    supabase.from("firms").select("default_currency, vat_rate").eq("id", firmId).maybeSingle(),
+    // firm_public excludes any firm that is not active, so the firm's own row is
+    // what a pending or suspended firm must be read from — otherwise every money
+    // figure on this screen would silently claim naira.
+    supabase.from("firms").select("default_currency").eq("id", firmId).maybeSingle(),
     supabase
       .from("invoices")
       .select("id, firm_id, number, client_id, matter_id, appointment_id, currency, subtotal_minor, vat_minor, total_minor, paid_minor, status, issued_at, due_at, created_at")
