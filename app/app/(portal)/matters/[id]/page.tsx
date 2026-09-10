@@ -99,7 +99,7 @@ async function TimelineTab({ supabase, matterId, tz }: { supabase: SB; matterId:
 async function DocumentsSection({ supabase, matter, tz }: { supabase: SB; matter: MatterRow; tz: string }) {
   const { data: docRows } = await supabase
     .from("documents")
-    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, created_at")
+    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at")
     .eq("matter_id", matter.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })

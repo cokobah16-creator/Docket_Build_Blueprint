@@ -38,6 +38,9 @@ supabase/
     20260910000017_merge_reconciliation.sql    one available_slots(): the active-firm check and the p_ignore argument in a single signature
     20260910000018_staff_console.sql           manual invoicing (create/issue/cancel), matter invitations (invite/revoke), and the two firm-wide reads
                                                the console runs on — firm_sittings_due (the chase list) and firm_overview (every counter in one trip)
+    20260910000019_console_review.sql          console review: an invoice filed against a matter must name a party to it (issuing posts a client-visible
+                                               fee entry there); firm_overview money is one figure per currency, never kobo added to cents; documents
+                                               gain reviewed_at so "client uploads to review" can reach zero
   seed.sql                           Attorneys Klinique: brand, policies, 14 services, intake form — then seed_firm_defaults()
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
@@ -136,7 +139,7 @@ Each suite ends with `NOTICE:  ALL CHECKS PASSED` (245 `PASS` lines in total). C
 | `save_consultation_notes(appointment, summary, advice, follow_up, internal, mark_completed)` | staff (MFA) | client-visible + internal notes, timeline echo, marks completed |
 | `reschedule_appointment(appointment, starts_at, reason)` | staff (MFA) | re-validates the slot through the engine, resets reminders, notifies the client, audits |
 | `mark_no_show(appointment)` | staff (MFA) | after the start time; audited |
-| `create_invoice(firm, client, items, matter, currency, due_on, issue, note)` | staff (MFA) | numbers from the firm counter, applies `firms.vat_rate`, writes the items; issuing notifies the client and echoes a fee entry to the matter timeline |
+| `create_invoice(firm, client, items, matter, currency, due_on, issue, note)` | staff (MFA) | numbers from the firm counter, applies `firms.vat_rate`, writes the items; issuing notifies the client and echoes a fee entry to the matter timeline. With a matter, the client billed must be a party to it — the fee entry is client-visible on that file |
 | `issue_invoice(invoice, due_on)` | staff (MFA) | draft → issued; the client only ever sees issued invoices |
 | `cancel_invoice(invoice, reason)` | owner/admin (MFA) | refuses a part-paid or paid invoice — a credit note is the remedy |
 | `invite_matter_party(matter, phone, email, role, expires_days)` | staff (MFA) | returns the token so the console can build the WhatsApp/SMS link; refuses someone already on the matter |

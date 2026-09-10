@@ -48,14 +48,25 @@ begin
   perform t_as(la, 'aal2');
   r := open_matter(f, 'Okonkwo v Eze', 'litigation', null, 'Okonkwo v Eze & 3 Ors', 'Land at Asaba');
   insert into fx values ('matter', (r ->> 'matter_id')::uuid);
+  -- A second file for the invoicing tests, so the first can stay clear of parties
+  -- for the invitation flow below.
+  r := open_matter(f, 'Adeyemi v Bello', 'litigation', null, 'Adeyemi v Bello', 'Fees on account');
+  insert into fx values ('billed_matter', (r ->> 'matter_id')::uuid);
   perform t_reset();
 end $$;
+
+-- The client is a party to the billed matter (migration 19: an invoice filed against a
+-- matter has to name someone on it, or the matter's own parties would read it).
+insert into matter_parties (matter_id, firm_id, user_id, role)
+values ((select v from fx where k='billed_matter'), (select v from fx where k='firm'),
+        (select v from fx where k='client'), 'client');
 
 -- ---------------------------------------------------------------- 1. manual invoices
 do $$
 declare la uuid := (select v from fx where k='lawyer'); ad uuid := (select v from fx where k='admin');
         cl uuid := (select v from fx where k='client'); st uuid := (select v from fx where k='stranger');
-        f uuid := (select v from fx where k='firm'); m uuid := (select v from fx where k='matter');
+        f uuid := (select v from fx where k='firm'); m uuid := (select v from fx where k='billed_matter');
+        unrelated uuid := (select v from fx where k='matter');
         r jsonb; inv uuid; ok bool;
 begin
   perform t_as(la, 'aal2');
@@ -71,6 +82,17 @@ begin
                                                                           and (r ->> 'total_minor')::bigint = 22575000);
   perform t_check('issuing writes both invoice items',                   (select count(*) from invoice_items where invoice_id = inv) = 2);
   perform t_check('the matter timeline shows the fee',                   (select count(*) from updates where matter_id = m and kind = 'fee' and visibility = 'client') = 1);
+
+  -- The client is not on the other matter, and an issued invoice would file a
+  -- client-visible fee entry there for its parties to read.
+  ok := false;
+  begin
+    perform create_invoice(f, cl, jsonb_build_array(jsonb_build_object('description','Fees','quantity',1,'unit_minor',100000)),
+                           unrelated, 'NGN', null, true, null);
+  exception when others then ok := sqlerrm like '%must be a party to that matter%'; end;
+  perform t_check('an invoice cannot name a client who is not on the matter', ok);
+  perform t_check('and no entry was filed on that matter',
+                  (select count(*) from updates where matter_id = unrelated and kind = 'fee') = 0);
 
   ok := false;
   begin perform create_invoice(f, cl, '[]'::jsonb); exception when others then ok := sqlerrm like '%at least one item%'; end;
@@ -195,18 +217,38 @@ begin
   -- a sitting whose day has passed with no update posted
   insert into court_events (matter_id, firm_id, scheduled_at, court_name, purpose)
   values (m, f, now() - interval '2 days', 'High Court of Delta State', 'mention');
+  -- and a file the client sent in, which counts until somebody looks at it
+  insert into documents (firm_id, matter_id, name, category, client_visible, uploaded_by)
+  values (f, m, 'Land certificate.pdf', 'client_upload', true, (select v from fx where k='client'));
 
   perform t_as(la, 'aal2');
   perform t_check('a past sitting with no update is due',                (select count(*) from firm_sittings_due where matter_id = m) = 1);
   perform t_check('the overview counts it',                              (select sittings_due from firm_overview where firm_id = f) = 1);
-  perform t_check('the overview counts the open matter',                 (select open_matters from firm_overview where firm_id = f) = 1);
-  perform t_check('the overview totals what is outstanding',             (select outstanding_minor from firm_overview where firm_id = f) > 0);
+  perform t_check('the overview counts the open matters',                (select open_matters from firm_overview where firm_id = f) = 2);
+  -- The only live naira invoice is the draft that was issued (1,075,000) and then
+  -- part-paid by 500,000 in the cancellation test above.
+  perform t_check('the overview totals what is outstanding in naira',
+                  ((select outstanding_by_currency from firm_overview where firm_id = f) ->> 'NGN')::bigint = 575000);
   perform t_check('a firm sees exactly one overview row — its own',      (select count(*) from firm_overview) = 1);
+  perform t_check('a client upload lands on the review counter',         (select client_uploads from firm_overview where firm_id = f) = 1);
+  update documents set reviewed_at = now(), reviewed_by = la where firm_id = f and category = 'client_upload';
+  perform t_check('marking it reviewed takes it off the counter',        (select client_uploads from firm_overview where firm_id = f) = 0);
+
+  -- Money in two currencies is two figures, never one sum: kobo added to cents is
+  -- a number that means nothing.
+  perform create_invoice(f, (select v from fx where k='client'),
+                         jsonb_build_array(jsonb_build_object('description','Opinion for a foreign client','quantity',1,'unit_minor',50000)),
+                         null, 'USD', null, true, null);
+  perform t_check('a second currency is kept apart, not added in',
+                  ((select outstanding_by_currency from firm_overview where firm_id = f) ->> 'USD')::bigint = 53750
+                    and ((select outstanding_by_currency from firm_overview where firm_id = f) ->> 'NGN')::bigint = 575000);
 
   -- posting the update clears the chase list
   u := post_court_update(m, 'mention', now() - interval '2 days', null, null, null, null, 'Matter came up for mention.', null);
   perform t_check('posting the update clears the sitting from the list', (select count(*) from firm_sittings_due where matter_id = m) = 0);
   perform t_check('and from the overview count',                         (select sittings_due from firm_overview where firm_id = f) = 0);
+  perform t_reset();
+
   perform t_reset();
 
   perform t_as(st, 'aal2');

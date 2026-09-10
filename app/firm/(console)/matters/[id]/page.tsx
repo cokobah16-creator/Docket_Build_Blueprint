@@ -306,7 +306,7 @@ async function TimelineSection({ ctx, matter, names }: { ctx: StaffContext; matt
 async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; matter: MatterDetail; names: Record<string, string> }) {
   const { data: docRows } = await ctx.supabase
     .from("documents")
-    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, created_at")
+    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at")
     .eq("matter_id", matter.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })

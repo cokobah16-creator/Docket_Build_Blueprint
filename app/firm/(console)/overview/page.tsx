@@ -12,7 +12,7 @@ import Link from "next/link";
 import {
   staffContext, firmOverview, firmStaff, firmMatters, staffLabel, requestedFirmId,
 } from "@/lib/firm-data";
-import { formatMoneyMinor } from "@/lib/money";
+import { formatMoneyByCurrency, formatMoneyMinor } from "@/lib/money";
 import { zonedDayRange, formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
@@ -172,8 +172,8 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
         { label: "Overdue tasks", value: String(overview.overdue_tasks), href: "/firm/matters" },
         { label: "Client uploads to review", value: String(overview.client_uploads), href: "/firm/matters" },
         { label: "Service to acknowledge", value: String(overview.service_to_acknowledge), href: "/firm/inbox" },
-        { label: "Outstanding", value: formatMoneyMinor(overview.outstanding_minor, currency), href: "/firm/invoices" },
-        { label: "Collected this month", value: formatMoneyMinor(overview.collected_this_month_minor, currency), href: "/firm/invoices" },
+        { label: "Outstanding", value: formatMoneyByCurrency(overview.outstanding_by_currency, currency), href: "/firm/invoices" },
+        { label: "Collected this month", value: formatMoneyByCurrency(overview.collected_this_month_by_currency, currency), href: "/firm/invoices" },
       ]
     : [];
 

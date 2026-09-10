@@ -53,7 +53,7 @@ export default async function ClientDashboard() {
     supabase.from("profiles").select("full_name, timezone").eq("id", user.id).maybeSingle(),
     supabase.from("appointments").select("id, reference, starts_at, ends_at, status, mode, lawyer_id").gte("ends_at", new Date().toISOString()).in("status", ["pending", "awaiting_payment", "confirmed", "rescheduled"]).order("starts_at", { ascending: true }).limit(1).maybeSingle(),
     clientMatters(supabase, 5),
-    supabase.from("documents").select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
+    supabase.from("documents").select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
     supabase.from("invoices").select("id, currency, total_minor, paid_minor, status").in("status", ["issued", "partially_paid", "overdue"]),
     supabase.from("notifications").select("id, firm_id, channel, event, payload, status, read_at, created_at").eq("channel", "in_app").order("created_at", { ascending: false }).limit(5),
   ]);

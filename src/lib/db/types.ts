@@ -360,6 +360,9 @@ export interface DocumentRow {
   client_visible: boolean;
   current_version_id: string | null;
   uploaded_by: string | null;
+  /** When staff marked a client upload as looked at; null keeps it on the review counter. */
+  reviewed_at: string | null;
+  reviewed_by: string | null;
   created_at: string;
 }
 
@@ -426,8 +429,9 @@ export interface FirmOverview {
   upcoming_appointments: number;
   court_dates_30d: number;
   sittings_due: number;
-  outstanding_minor: number;
-  collected_this_month_minor: number;
+  /** Minor units per currency, e.g. { NGN: 22575000, USD: 50000 }. Never one sum. */
+  outstanding_by_currency: Record<string, number>;
+  collected_this_month_by_currency: Record<string, number>;
   unread_messages: number;
   overdue_tasks: number;
   client_uploads: number;

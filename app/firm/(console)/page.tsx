@@ -10,7 +10,7 @@
 
 import Link from "next/link";
 import { staffContext, firmOverview, sittingsDue, firmStaff, staffLabel, requestedFirmId } from "@/lib/firm-data";
-import { formatMoneyMinor } from "@/lib/money";
+import { formatMoneyByCurrency, formatMoneyMinor } from "@/lib/money";
 import { zonedDayRange, formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
@@ -95,7 +95,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
         { label: "Overdue tasks", value: String(overview.overdue_tasks), href: "/firm/matters", hint: "Past their due date" },
         { label: "Client uploads to review", value: String(overview.client_uploads), href: "/firm/matters", hint: "Sent in by clients" },
         { label: "Service to acknowledge", value: String(overview.service_to_acknowledge), href: "/firm/inbox", hint: "Served on your firm" },
-        { label: "Outstanding", value: formatMoneyMinor(overview.outstanding_minor, currency), href: "/firm/invoices", hint: "Issued and unpaid" },
+        { label: "Outstanding", value: formatMoneyByCurrency(overview.outstanding_by_currency, currency), href: "/firm/invoices", hint: "Issued and unpaid" },
       ]
     : [];
 
