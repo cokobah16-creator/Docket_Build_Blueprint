@@ -157,3 +157,37 @@ export interface BookingResult {
   currency: "NGN" | "USD";
   hold_expires_at: string | null;
 }
+
+export interface ConsultationSession {
+  id: string;
+  firm_id: string;
+  appointment_id: string;
+  provider: string;
+  room_name: string | null;
+  room_expires_at: string | null;
+  client_admitted_at: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+}
+
+export interface ConsultationNotes {
+  id: string;
+  appointment_id: string;
+  client_summary: string | null;
+  advice_given: string | null;
+  follow_up: string | null;
+  updated_at: string;
+}
+
+/** Response of the video-session Edge Function (action: join). */
+export interface JoinInfo {
+  room_url: string;
+  token: string | null; // owner only — clients knock and are admitted
+  user_name: string;
+  role: "owner" | "participant";
+  room_name: string;
+  expires_at: string;
+  starts_at: string;
+  ends_at: string;
+  reference: string;
+}

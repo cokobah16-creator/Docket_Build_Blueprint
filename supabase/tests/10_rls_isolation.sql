@@ -207,6 +207,21 @@ begin
   perform t_check('next court event created',                            (select count(*) from court_events where matter_id = ma and outcome_update_id is null) = 1);
   perform t_check('matter next date updated',                            (select next_event_at from matters where id = ma) is not null);
   perform t_check('lawyer sees the internal note',                       (select count(*) from updates where matter_id = ma and visibility = 'internal') = 2);
+  -- reschedule (slice 2): re-validated through the booking engine, reminders reset, client notified
+  declare slot2 timestamptz; r jsonb;
+  begin
+    select s.starts_at into slot2 from available_slots((select v from fx where k='firm_a'), la, (select service_id from appointments where id = ap), current_date + 14, ap) s order by 1 limit 1;
+    update appointments set reminders_sent = '{24h}' where id = ap;
+    r := reschedule_appointment(ap, slot2, 'court clash');
+    perform t_check('appointment rescheduled to a valid slot',              (select status from appointments where id = ap) = 'rescheduled' and (select starts_at from appointments where id = ap) = slot2);
+    perform t_check('reschedule resets reminders',                          (select reminders_sent from appointments where id = ap) = '{}');
+    ok := false;
+    begin
+      perform reschedule_appointment(ap, slot2 + interval '7 minutes');
+    exception when others then ok := sqlerrm like '%not available%';
+    end;
+    perform t_check('reschedule refuses a time the engine would not offer', ok);
+  end;
   perform save_consultation_notes(ap, 'We discussed your land dispute.', 'Obtain a certified true copy of the survey plan.', 'Send documents within 7 days.', 'Client seems to have a weak chain of title.');
   perform t_check('lawyer reads internal consultation notes',            (select count(*) from consultation_internal_notes) = 1);
   perform t_reset();
@@ -216,6 +231,7 @@ begin
   perform t_check('client never sees internal notes',                    (select count(*) from updates where visibility = 'internal') = 0);
   perform t_check('client sees her next court date',                     (select count(*) from court_events) = 1);
   perform t_check('client was notified of the update',                   (select count(*) from notifications where event = 'matter_update' and channel = 'in_app' and (payload ->> 'update_id')::uuid = upd) = 1);
+  perform t_check('client was told about the reschedule',                (select count(*) from notifications where event = 'appointment_rescheduled' and channel = 'in_app') = 1);
   perform t_check('client reads the consultation summary',               (select count(*) from consultation_notes) = 1);
   perform t_check('client cannot read internal consultation notes',      (select count(*) from consultation_internal_notes) = 0);
   perform t_check('appointment marked completed after notes',            (select status from appointments where id = ap) = 'completed');
@@ -232,6 +248,7 @@ begin
   perform t_check('a plain lawyer cannot read the audit log',            (select count(*) from audit_log) = 0);
   perform t_reset();
   perform t_as(ad, 'aal2');
+  perform t_check('reschedule is audited',                                (select count(*) from audit_log where action = 'appointment.rescheduled' and entity_id = ap) = 1);
   perform t_check('firm admin reads firm A audit trail',                 (select count(*) from audit_log) > 5 and (select count(*) from audit_log where firm_id <> (select v from fx where k='firm_a')) = 0);
   perform t_reset();
 end $$;

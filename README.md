@@ -18,7 +18,8 @@ supabase/
   seed.sql                           Attorneys Klinique: brand, policies, 15 matter statuses, 14 services, intake form
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
-    dispatch-notifications/          drains the outbox to email (Resend), SMS (Termii / Twilio), push (VAPID)
+    dispatch-notifications/          drains the outbox to email (Resend), SMS (Termii / Twilio), push (VAPID); pg_cron calls it
+    video-session/                   Daily room + owner token per appointment; the only writer of consultation_sessions
   tests/
     00_local_auth_stub.sql           local-only stand-in for Supabase Auth
     10_rls_isolation.sql             two firms, six users, 52 checks, rolls back
@@ -42,6 +43,12 @@ scripts/db-test-local.sh
 6. Dashboard → Integrations → Cron: HTTP request to `/functions/v1/dispatch-notifications` every minute (the SQL jobs are already scheduled by migration 4).
 7. Auth → Hooks → **Send SMS**: point at a small Edge Function that forwards OTPs to Termii (`channel: 'dnd'`). Until then Supabase's built-in Twilio provider works for testing.
 8. `supabase gen types typescript --linked > src/lib/db/types.ts` whenever the schema changes.
+9. **Slice 2 (video + reminders).** Secrets on the project: `DAILY_API_KEY` (rooms and owner tokens are minted only by the
+   `video-session` Edge Function), `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (web push), `CRON_SECRET`.
+   Migration 9 schedules `dispatch-notifications` every minute through pg_cron + pg_net, reading `dispatch_url` and
+   `cron_secret` from Vault: `select vault.create_secret('https://<ref>.supabase.co/functions/v1/dispatch-notifications', 'dispatch_url');`
+   and `select vault.create_secret('<CRON_SECRET>', 'cron_secret');`. On Vercel set `NEXT_PUBLIC_VAPID_PUBLIC_KEY` so the
+   client can subscribe. Clients knock into the Daily room without a token; only the lawyer holds an owner token and admits.
 
 ## Run the tests locally
 
@@ -67,12 +74,14 @@ Expected tail: `NOTICE:  ALL CHECKS PASSED` after 52 `PASS` lines. The suite cov
 
 | Function | Who | What |
 |---|---|---|
-| `available_slots(firm, lawyer, service, date)` | anon, authenticated | slots in the lawyer's zone minus rules, breaks, exceptions, live appointments, daily cap; 2-hour lead time |
+| `available_slots(firm, lawyer, service, date, ignore?)` | anon, authenticated | slots in the lawyer's zone minus rules, breaks, exceptions, live appointments, daily cap; 2-hour lead time |
 | `book_appointment(firm, service, lawyer, starts_at, mode, client_tz, intake, intake_form)` | client | validates slot, creates held appointment + issued invoice (VAT from `firms.vat_rate`), stores intake, returns what the payment step needs |
 | `cancel_appointment(appointment, reason)` | client (own, future) or staff | cancels and voids the unpaid invoice |
 | `record_payment(provider, ref, invoice_number, amount, currency, status, raw)` | service role | idempotent on `provider_ref`; paid → confirms appointment → notifications |
 | `post_court_update(matter, outcome, occurred_at, court, adjourned_by, next_date, next_purpose, note_to_client, internal_note)` | staff (MFA) | the 30-second form: composes the title, posts client + internal entries, closes today's court event, opens the next, updates the matter |
 | `save_consultation_notes(appointment, summary, advice, follow_up, internal, mark_completed)` | staff (MFA) | client-visible + internal notes, timeline echo, marks completed |
+| `reschedule_appointment(appointment, starts_at, reason)` | staff (MFA) | re-validates the slot through the engine, resets reminders, notifies the client, audits |
+| `mark_no_show(appointment)` | staff (MFA) | after the start time; audited |
 | `accept_invite(token)` | client | joins the matter the invite points at |
 | `release_expired_holds()`, `enqueue_appointment_reminders()`, `enqueue_court_reminders()`, `mark_overdue_invoices()`, `digest_sittings_without_update()` | pg_cron | jobs |
 
