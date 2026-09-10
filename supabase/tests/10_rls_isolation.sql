@@ -264,5 +264,65 @@ begin
   perform t_check('court reminder job runs (nothing due yet)',           n = 0);
 end $$;
 
+-- ---------------------------------------------------------------- 7. client portal (slice 3)
+insert into matter_parties (matter_id, firm_id, user_id, role) values
+  ((select v from fx where k='matter_a'), (select v from fx where k='firm_a'), (select v from fx where k='client_a2'), 'contact'),
+  ((select v from fx where k='matter_b'), (select v from fx where k='firm_b'), (select v from fx where k='client_a2'), 'client');
+do $$
+declare a2 uuid := (select v from fx where k='client_a2'); la uuid := (select v from fx where k='lawyer_a');
+        ma uuid := (select v from fx where k='matter_a'); fa uuid := (select v from fx where k='firm_a');
+        d uuid; v uuid := gen_random_uuid(); ok bool; msg uuid; qs time; qe time;
+begin
+  perform t_as(a2, 'aal1');
+  perform t_check('two-firm client sees both matters in one feed',        (select count(*) from matters) = 2 and (select count(distinct firm_id) from matters) = 2);
+  perform t_check('two-firm client sees only client-visible updates',     (select count(*) from updates) = (select count(*) from updates where visibility = 'client'));
+  perform t_check('two-firm client sees both firms'' status labels',      (select count(distinct firm_id) from matter_statuses) >= 1);
+  perform t_check('two-firm client sees the court date',                  (select count(*) from court_events) = 1);
+  perform t_check('two-firm client cannot see internal documents',        (select count(*) from documents where not client_visible) = 0);
+
+  -- client upload: documents row, then a version; the trigger points current_version_id at it
+  -- no RETURNING: the select policy's stable helper cannot see a row inserted by the same statement,
+  -- so the app generates the id first and inserts with return=minimal (same here)
+  d := gen_random_uuid();
+  insert into documents (id, firm_id, matter_id, name, client_visible, uploaded_by, category)
+  values (d, fa, ma, 'Survey plan.pdf', true, a2, 'client_upload');
+  insert into document_versions (id, document_id, storage_path, mime, size_bytes, uploaded_by)
+  values (v, d, 'documents/' || fa || '/' || d || '/' || v || '.pdf', 'application/pdf', 2048000, a2);
+  perform t_check('client upload becomes the current version',            (select current_version_id from documents where id = d) = v);
+  ok := false;
+  begin
+    insert into documents (firm_id, matter_id, name, client_visible, uploaded_by) values (fa, ma, 'Sneaky.pdf', false, a2);
+  exception when insufficient_privilege or check_violation then ok := true;
+  end;
+  perform t_check('client cannot create a hidden document',               ok);
+
+  -- message from the client; read receipt by the client on the lawyer's reply
+  insert into messages (firm_id, matter_id, sender_id, body) values (fa, ma, a2, 'When is the next hearing?') returning id into msg;
+  perform t_reset();
+  perform t_as(la, 'aal2');
+  perform t_check('lawyer was notified of the client message',            (select count(*) from notifications where event = 'new_message' and channel = 'in_app' and (payload ->> 'message_id')::uuid = msg) = 1);
+  insert into messages (firm_id, matter_id, sender_id, body) values (fa, ma, la, 'Next week Tuesday.');
+  perform t_reset();
+  perform t_as(a2, 'aal1');
+  update messages set read_at = now() where matter_id = ma and sender_id <> a2 and read_at is null;
+  perform t_check('client marks the reply read',                          (select count(*) from messages where matter_id = ma and sender_id = la and read_at is not null) = 1);
+  perform t_check('client cannot mark her own message read for others',   (select count(*) from messages where id = msg and read_at is null) = 1);
+
+  -- quiet hours: a client-visible update during quiet hours defers push/email but not in-app
+  qs := ((now() at time zone 'Africa/Lagos')::time - interval '1 hour');
+  qe := ((now() at time zone 'Africa/Lagos')::time + interval '1 hour');
+  update profiles set quiet_hours_start = qs, quiet_hours_end = qe, email = 'a2@example.com' where id = a2;
+  perform t_reset();
+  perform t_as(la, 'aal2');
+  insert into updates (matter_id, firm_id, kind, visibility, title, posted_by) values (ma, fa, 'note', 'client', 'Quiet-hours note', la);
+  perform t_reset();
+  perform t_as(a2, 'aal1');
+  perform t_check('quiet hours defer push until they end',                (select min(send_after) from notifications where user_id = a2 and event = 'matter_update' and channel = 'push' and (payload ->> 'title') = 'Quiet-hours note') > now() + interval '30 minutes');
+  perform t_check('quiet hours never delay in-app',                       (select count(*) from notifications where user_id = a2 and event = 'matter_update' and channel = 'in_app' and (payload ->> 'title') = 'Quiet-hours note' and status = 'sent') = 1);
+  update notifications set read_at = now() where user_id = a2 and channel = 'in_app' and read_at is null;
+  perform t_check('client marks her in-app notifications read',           (select count(*) from notifications where user_id = a2 and channel = 'in_app' and read_at is null) = 0);
+  perform t_reset();
+end $$;
+
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
 rollback;

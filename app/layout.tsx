@@ -9,11 +9,14 @@ export const metadata: Metadata = {
   },
   description:
     "Book a consultation, meet your lawyer face to face, and track your matter — on your phone.",
+  icons: { icon: "/icon-192.png", apple: "/icon-192.png" },
+  appleWebApp: { capable: true, statusBarStyle: "default", title: "Docket" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
