@@ -48,6 +48,7 @@ export interface FirmPublic {
   custom_domain: string | null;
   timezone: string;
   default_currency: "NGN" | "USD";
+  verified: boolean;
 }
 
 /** firms.policies shape (staff-readable; versions drive consent capture). */
@@ -71,6 +72,113 @@ export interface FirmMember {
   firm_id: string;
   user_id: string;
   role: FirmRole;
+}
+
+export type FirmPlan = "free" | "standard" | "enterprise";
+export type FirmStatus = "pending" | "active" | "suspended";
+
+/** Row of the firm_admin view: the lifecycle-only projection platform admins may read. */
+export interface FirmAdminRow {
+  id: string;
+  slug: string;
+  name: string;
+  legal_name: string | null;
+  rc_number: string | null;
+  plan: FirmPlan;
+  status: FirmStatus;
+  state_code: string | null;
+  custom_domain: string | null;
+  verified_at: string | null;
+  has_settlement_account: boolean;
+  member_count: number;
+  /** "Name — SCN; Name — no SCN" for every owner, for verification. */
+  owners: string | null;
+  policies_published: boolean;
+  created_at: string;
+}
+
+/** Return shape of the create_firm() RPC. */
+export interface CreateFirmResult {
+  firm_id: string;
+  slug: string;
+  owner_id: string;
+  reference_prefix: string;
+  status: FirmStatus;
+}
+
+export type CourtLevel =
+  | "supreme"
+  | "court_of_appeal"
+  | "federal_high"
+  | "fct_high"
+  | "state_high"
+  | "national_industrial"
+  | "sharia_appeal"
+  | "customary_appeal"
+  | "magistrate"
+  | "district"
+  | "customary"
+  | "area"
+  | "sharia"
+  | "tribunal"
+  | "multi_door";
+
+/** Row of public.courts (platform-wide when firm_id is null). */
+export interface CourtRow {
+  id: string;
+  firm_id: string | null;
+  level: CourtLevel;
+  name: string;
+  short_name: string | null;
+  state_code: string | null;
+  division: string | null;
+  city: string | null;
+  suit_number_hint: string | null;
+  is_active: boolean;
+}
+
+export type CounselSide = "opposing" | "co_counsel" | "other";
+export type ServiceMethod =
+  | "platform"
+  | "counsel_address"
+  | "email"
+  | "whatsapp"
+  | "personal"
+  | "bailiff"
+  | "courier"
+  | "registered_post"
+  | "publication"
+  | "pasting"
+  | "substituted"; // legacy value; new rows record the mode and set substituted_by_order
+
+/** Row of the service_inbox view: processes served on (or by) the current user's firm through Docket. */
+export interface ServiceInboxRow {
+  id: string;
+  process_title: string;
+  case_title: string | null;
+  suit_number: string | null;
+  court_name: string | null;
+  method: ServiceMethod;
+  served_at: string;
+  is_originating: boolean;
+  substituted_by_order: boolean;
+  served_on_name: string | null;
+  deemed_served_on: string | null;
+  served_by_name: string | null;
+  served_by_scn: string | null;
+  acknowledged_at: string | null;
+  acknowledged_by_name: string | null;
+  document_id: string;
+  document_version_id: string | null;
+  checksum: string | null;
+  document_name: string;
+  document_mime: string | null;
+  document_size_bytes: number | null;
+  recipient_matter_id: string | null;
+  response_due_on: string | null;
+  serving_firm_id: string;
+  served_firm_id: string;
+  served_for_party: string | null;
 }
 
 export interface ConsentRecord {
@@ -106,6 +214,7 @@ export interface LawyerPublic {
   photo_path: string | null;
   practice_areas: string[];
   category: string | null;
+  year_of_call: number | null;
   full_name: string | null;
   timezone: string;
 }

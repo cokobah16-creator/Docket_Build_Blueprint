@@ -19,7 +19,7 @@ async function fetchFirmPublic(filter: string): Promise<FirmPublic | null> {
   let value: FirmPublic | null = null;
   try {
     const res = await fetch(
-      `${url}/rest/v1/firm_public?select=id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency&${filter}&limit=1`,
+      `${url}/rest/v1/firm_public?select=id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency,verified&${filter}&limit=1`,
       { headers: restHeaders(key) },
     );
     if (res.ok) {
