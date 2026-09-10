@@ -17,8 +17,15 @@ interface Appt {
   lawyer_id: string | null; service_id: string | null; hold_expires_at: string | null;
 }
 
-export default async function AppointmentPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function AppointmentPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ error?: string }>;
+}) {
   const { id } = await params;
+  const { error: actionError } = await searchParams;
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
@@ -45,8 +52,19 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
   const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(appt.starts_at));
   const live = ["awaiting_payment", "pending", "confirmed", "rescheduled"].includes(appt.status);
   const upcoming = new Date(appt.starts_at).getTime() > Date.now();
-  const pay = startPayment.bind(null, appt.id);
-  const cancel = cancelAppointment.bind(null, appt.id);
+  const appointmentId = appt.id;
+  // Form actions must return void; errors come back through the query string.
+  const pay = async () => {
+    "use server";
+    const r = await startPayment(appointmentId);
+    if (r?.error) redirect(`/app/appointments/${appointmentId}?error=${encodeURIComponent(r.error)}`);
+  };
+  const cancel = async () => {
+    "use server";
+    const r = await cancelAppointment(appointmentId);
+    if (r?.error) redirect(`/app/appointments/${appointmentId}?error=${encodeURIComponent(r.error)}`);
+    redirect(`/app/appointments/${appointmentId}`);
+  };
 
   return (
     <div className="space-y-5">
@@ -57,6 +75,8 @@ export default async function AppointmentPage({ params }: { params: Promise<{ id
         </div>
         <StatusPill status={appt.status as Status} />
       </header>
+
+      {actionError && <Alert kind="error">{actionError}</Alert>}
 
       {appt.status === "awaiting_payment" && (
         <Alert kind="warning" title="Payment needed to confirm">
