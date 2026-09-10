@@ -4,11 +4,11 @@
 
 This repository is the platform: the multi-tenant Postgres schema and row-level security, the server-side business flows (firm creation, booking, payment cascade, court updates, consultation notes, service of process, invites, jobs), the Nigerian reference data (states, courts, holidays), the provider adapters, the payment webhooks, the notification dispatcher, the Next.js app (tenant public sites, client PWA, staff console, platform admin), Klinique's seed data, and test suites that prove isolation between firms and between clients.
 
-**Validated:** all eleven migrations, the seed and four SQL suites (143 checks) run clean on PostgreSQL 16.
+**Validated:** all thirteen migrations, the seed and four SQL suites run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`.
 
 ## Any firm, the same way
 
-A firm registers at **`/firm/start`** (account → firm → two-factor), which calls `create_firm()`: the caller becomes owner and `seed_firm_defaults()` installs the matter statuses, an unpriced consultation service and an intake form. A platform admin can open a firm for an existing owner from **`/admin`**. `supabase/seed.sql` is only Klinique's data run through the same function — no firm needs SQL to join.
+A firm registers at **`/firm/start`** (account → firm → two-factor), which calls `create_firm()`: the caller becomes owner and `seed_firm_defaults()` installs the matter statuses, an unpriced consultation service, an intake form and a versioned policies skeleton. The console works immediately; the firm's public site and bookings open when a platform admin **verifies and activates** it from **`/admin`** (RC/BN number, the owner's enrolment number). Owners invite their lawyers with `staff_invites` → `accept_staff_invite()`. A platform admin can also open a firm for an existing owner. `supabase/seed.sql` is only Klinique's data run through the same function — no firm needs SQL to join.
 
 ## What's in the box
 
@@ -24,6 +24,12 @@ supabase/
     20260910000009_platform_firms.sql          create_firm(), seed_firm_defaults(), platform_admins, firms.plan/status
     20260910000010_nigeria_reference.sql       ng_states, courts (hierarchy + suit-number hints), holidays, vacations, SCN/year of call, matters.court_id
     20260910000011_counsel_and_service.sql     matter_counsel, process_service, serve_process(), acknowledge_service(), service_inbox
+    20260910000012_platform_hardening.sql      review fixes: settlement to the firm's Paystack subaccount, pending→verified lifecycle, version-pinned
+                                               exhibit-grade service (opt-in, undertakings, orders, revocation, inbox-only reads), Lagos/FCT divisions,
+                                               matter_court_numbers, state holidays + 2027, staff_invites, SCN uniqueness, court-aware post_court_update
+    20260910000013_security_review.sql         served-firm access pinned to process_service.served_firm_id; uploads never follow service; lawyer_profiles
+                                               member-only; suspension blocks writes; platform admins limited to firm_admin + set_firm_status(); name/SCN
+                                               snapshots; brand validation; vacated/refixed dates, hearing notices, sine die; cause list; verified-only suit hints
   seed.sql                           Attorneys Klinique: brand, policies, 14 services, intake form — then seed_firm_defaults()
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
@@ -71,20 +77,21 @@ Requires PostgreSQL 16+ (superuser). Never run the stub against Supabase.
 DATABASE_URL=postgres://postgres@localhost:5432/postgres bash scripts/db-test-local.sh
 ```
 
-Each suite ends with `NOTICE:  ALL CHECKS PASSED` (143 `PASS` lines in total). Coverage: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, the hold-release job; self-serve firm creation and its defaults, slug validation, the three-firm cap, platform admins seeing lifecycle rows and no content; the court directory (platform-wide vs firm-private), holidays and vacations, practitioner fields; service of process across firms (record + served document visible to the served firm, nothing else; acknowledgement once; clients see progress).
+Each suite ends with `NOTICE:  ALL CHECKS PASSED` (209 `PASS` lines in total). Coverage: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, the hold-release job; self-serve firm creation and its defaults, slug validation, the three-firm cap, platform admins seeing lifecycle rows and no content; the court directory (platform-wide vs firm-private), holidays and vacations, practitioner fields; service of process across firms (record + served document visible to the served firm, nothing else; acknowledgement once; clients see progress).
 
 ## Rules the code enforces (don't undo them in later slices)
 
 - **Staff writes need an MFA-verified session** (`aal2`). Build the TOTP enrolment gate in slice 1 before any staff screen; without it staff can read but not write.
 - **Clients never insert appointments or payments.** They call `book_appointment()` and `cancel_appointment()`; webhooks call `record_payment()` with the service role. The frontend callback page displays state; it never sets it.
 - **Internal notes never reach clients.** `updates.visibility = 'internal'` and `consultation_internal_notes` have no client policy.
-- **Money settles to the firm.** Paystack, on the firm's own account (decision 0002). Docket never holds funds.
+- **Money settles to the firm.** The platform's Paystack account only routes: every prepaid booking needs `firms.paystack_subaccount`, the checkout is initialised with `subaccount` + `bearer: 'subaccount'`, and `record_payment()` refuses a settlement to any other subaccount (decision 0002, migration 12). Docket never holds funds.
 - **`audit_log` is append-only** for every role except the security-definer `audit()` function.
 - **Timestamps are UTC**; render in the viewer's zone (`profiles.timezone`, default `Africa/Lagos`).
 - **Storage paths carry the tenant**: `documents/{firm_id}/{document_id}/{version_id}.{ext}`, `intake-uploads/{firm_id}/{client_id}/…`, `firm-assets/{firm_id}/…` — the storage policies parse them.
 - **No firm is named in code.** Brand, copy, services, policies, courts and statuses are rows; `seed.sql` is data. Platform-wide reference rows (`courts` with `firm_id is null`, `ng_states`, `public_holidays`, `court_vacations`, `platform_admins`) are written with the service role only.
 - **Platform admins never see matter content.** There is no platform policy on matters, documents, messages, updates or invoices — do not add one.
-- **A served firm sees only what was served.** `process_service` + the served document (via `can_access_document`), never the matter, roster or timeline.
+- **A served firm sees only what was served.** Its only read path is the `service_inbox` view (never the `process_service` row, note or proof) and the exact document **version** served (`can_access_document_version`, which the storage policy also uses) — never the matter, roster, timeline or later versions. Platform service needs the other firm's opt-in (`firms.accepts_platform_service`); an originating process needs counsel's undertaking (`matter_counsel.accepts_service`) or an order for substituted service; platform service is timestamped by the platform; a wrong service is withdrawn with `revoke_service()`. The acknowledgement is evidence that supports the affidavit of service — never a substitute for it.
+- **Lifecycle columns are the platform's.** `firms.status`, `plan` and `verified_at` change only through a platform admin (trigger); `lawyer_profiles.scn_verified_at` likewise.
 
 ## Server functions (RPC)
 
@@ -101,8 +108,16 @@ Each suite ends with `NOTICE:  ALL CHECKS PASSED` (143 `PASS` lines in total). C
 | `seed_firm_defaults(firm)` | internal | matter statuses, an unpriced inactive consultation, a consultation intake form — idempotent |
 | `is_platform_admin()`, `is_valid_firm_slug(slug)` | authenticated / anon | gates for `/admin` and the registration form |
 | `is_public_holiday(date)`, `is_non_sitting_day(date, level, state)` | anon, authenticated | weekends, Public Holidays Act dates, published court vacations |
-| `serve_process(matter, counsel, document, title, method, served_at, note)` | staff (MFA) | records service on counsel (platform/email/personal/courier/bailiff/substituted), snapshots suit number and case title, posts a client-visible timeline entry, notifies counsel on Docket |
-| `acknowledge_service(service, note)` | served firm's staff (MFA) | proof of service: timestamps, notifies the serving lawyer, internal timeline note, audits both firms |
+| `serve_process(matter, counsel, document, title, method, served_at, note, is_originating, substituted_by_order, authority_document, served_on_name, served_on_capacity, served_at_address, server_name, outside_issuing_state, deemed_served_on)` | staff (MFA) | records service on counsel (platform / counsel_address / email / whatsapp / personal / bailiff / courier / registered_post / publication / pasting), pinned to the document version + checksum, snapshots cause title and suit number, enforces opt-in and undertakings, posts a client-visible timeline entry, notifies the served firm's owners/admins and service contact |
+| `acknowledge_service(service, note)` | served firm's staff (MFA) | acknowledgement of receipt: timestamps, notifies the serving lawyer, internal timeline note, audits both firms |
+| `link_service_to_matter(service, matter, response_due_on, note)` | served firm's staff (MFA) | files the received process against the served firm's own matter with a response date |
+| `revoke_service(service, reason)` | serving firm owner/admin (MFA) or platform admin | withdraws a wrongly served process; the served firm's access ends immediately |
+| `accept_staff_invite(token)` | authenticated (email must match) | joins the firm in the invited role; lawyers get a private profile to complete |
+| `post_court_update(…, court_id, judicial_division, allow_non_sitting, judge, courtroom, purpose_kind)` | staff (MFA) | writes `court_id`, judge and courtroom to the event and matter; outcomes gain `hearing_notice` (fixes a date without a sitting) and `adjourned_sine_die`; refuses a next date that is a weekend, public holiday or published vacation unless the vacation judge will sit; day-matching in court time |
+| `vacate_court_event(event, reason, new_date, new_purpose)` | staff (MFA) | the registry vacated a date: reminders and the sittings digest skip it; refixed date opens a new event; client told |
+| `set_firm_status(firm, status, note)` | platform admin (MFA) | the only write platform admins have on a firm: pending → active (stamps `verified_at`, notifies the firm) or suspended |
+| `invoice_settlement(invoice)` | the invoice's client, or the firm | the Paystack subaccount the checkout must route to |
+| `firm_admin`, `service_inbox`, `firm_cause_list`, `reference_data_coverage` | views | lifecycle-only tenant list for platform admins; the served firm's only read path; today's sittings by court; how far the reference data reaches |
 | `release_expired_holds()`, `enqueue_appointment_reminders()`, `enqueue_court_reminders()`, `mark_overdue_invoices()`, `digest_sittings_without_update()` | pg_cron | jobs |
 
 ## Decisions still open before launch (blueprint §14)
@@ -111,7 +126,7 @@ Firm domain · platform entity · which entity holds the Paystack account · VAT
 
 ## Platform data the operator maintains
 
-`courts` (platform rows), `court_vacations` (from each court's practice direction), `public_holidays` (movable Eid dates when declared), `platform_admins`. All are written with the service role or SQL; see `docs/DOCKET_PLATFORM_MODEL.md` §2.
+`courts` (platform rows), `court_vacations` (from each court's practice direction, with whether time runs), `public_holidays` (national and state-declared; movable Eid dates when declared; 2026–2027 fixed dates seeded), `platform_admins`. Platform admins with MFA write the first three through the API (`/admin` UI in slice 5); `reference_data_coverage` shows how far the data reaches. See `docs/DOCKET_PLATFORM_MODEL.md` §2.
 
 ## Next slices
 

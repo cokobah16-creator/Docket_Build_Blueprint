@@ -28,6 +28,7 @@ grant select on fx to anon, authenticated;
 insert into firms (slug, name, reference_prefix) values ('firm-a', 'Firm A', 'FA'), ('firm-b', 'Firm B', 'FB');
 insert into fx select 'firm_a', id from firms where slug = 'firm-a';
 insert into fx select 'firm_b', id from firms where slug = 'firm-b';
+update firms set paystack_subaccount = 'ACCT_firm_a' where slug = 'firm-a';   -- fees settle to the firm (migration 12)
 
 insert into auth.users (id, email) values
   (gen_random_uuid(), 'lawyer_a@test'), (gen_random_uuid(), 'admin_a@test'), (gen_random_uuid(), 'client_a1@test'),
@@ -156,6 +157,7 @@ begin
   res := book_appointment(fa, sa, la, slot, 'virtual', 'America/New_York', '{"issue_summary":"land dispute"}'::jsonb, null);
   perform t_check('booking creates a held appointment awaiting payment', res ->> 'status' = 'awaiting_payment' and res ->> 'invoice_number' like 'FA-INV-%');
   perform t_check('booking reference follows the firm prefix',           res ->> 'reference' like 'FA-2026-%' or res ->> 'reference' like 'FA-20%');
+  perform t_check('booking carries the firm''s settlement subaccount',    res ->> 'paystack_subaccount' = 'ACCT_firm_a');
   perform t_check('held slot disappears from availability',              not exists (select 1 from available_slots(fa, la, sa, current_date + 7) s where s.starts_at = slot));
   perform t_check('client sees her own appointment',                     (select count(*) from appointments) = 1);
   perform t_check('intake answers were stored',                          (select count(*) from intake_responses) = 1);
@@ -178,10 +180,16 @@ begin
   perform t_reset();
 
   -- webhook path (service role / postgres)
-  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{"channel":"card"}'::jsonb);
+  ok := false;
+  begin
+    res2 := record_payment('paystack', 'PSK-REF-0', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{}'::jsonb, 'ACCT_someone_else');
+  exception when others then ok := sqlerrm like '%settlement account mismatch%';
+  end;
+  perform t_check('a payment settled to the wrong subaccount is refused',  ok);
+  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{"channel":"card"}'::jsonb, 'ACCT_firm_a');
   perform t_check('payment marks the invoice paid',                      res2 ->> 'invoice_status' = 'paid');
   perform t_check('payment confirms the appointment',                    (select status from appointments where id = (res ->> 'appointment_id')::uuid) = 'confirmed');
-  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{}'::jsonb);
+  res2 := record_payment('paystack', 'PSK-REF-1', res ->> 'invoice_number', (res ->> 'amount_minor')::bigint, 'NGN', 'succeeded', '{}'::jsonb, 'ACCT_firm_a');
   perform t_check('duplicate webhook is ignored',                        (res2 ->> 'duplicate')::bool and (select paid_minor from invoices where number = res ->> 'invoice_number') = (res ->> 'amount_minor')::bigint);
   perform t_check('client was told: confirmed + payment',                (select count(*) from notifications where user_id = a1 and event in ('appointment_confirmed','payment_confirmed') and channel = 'in_app') = 2);
 
@@ -201,7 +209,13 @@ declare la uuid := (select v from fx where k='lawyer_a'); ma uuid := (select v f
         ad uuid := (select v from fx where k='admin_a'); ap uuid := (select v from fx where k='appt_a1'); upd uuid; ok bool;
 begin
   perform t_as(la, 'aal2');
-  upd := post_court_update(ma, 'adjourned', now(), null, 'the defendant', now() + interval '21 days', 'hearing',
+  ok := false;
+  begin
+    upd := post_court_update(ma, 'adjourned', now(), null, 'the defendant', date_trunc('week', now() + interval '21 days') + interval '5 days 12 hours', 'hearing');
+  exception when others then ok := sqlerrm like '%not a sitting day%' or sqlerrm like '%weekend%';
+  end;
+  perform t_check('adjourning to a Saturday is refused unless the vacation judge sits', ok);
+  upd := post_court_update(ma, 'adjourned', now(), null, 'the defendant', date_trunc('week', now() + interval '21 days') + interval '2 days 12 hours', 'hearing',
                            'Court adjourned at the defendant''s request. Nothing needed from you.', 'Opposing counsel absent again — consider costs.');
   perform t_check('court update posted with composed title',             (select title from updates where id = upd) like 'Adjourned at the instance of the defendant to % for hearing');
   perform t_check('next court event created',                            (select count(*) from court_events where matter_id = ma and outcome_update_id is null) = 1);

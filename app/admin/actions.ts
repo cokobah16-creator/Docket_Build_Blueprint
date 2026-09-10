@@ -54,6 +54,9 @@ export async function setFirmStatus(formData: FormData): Promise<void> {
   if (!parsed.success) return;
   const supabase = await supabaseServer();
   if (!supabase) return;
-  await supabase.from("firms").update({ status: parsed.data.status }).eq("id", parsed.data.firmId);
+  // Lifecycle changes go through set_firm_status(): platform admins have no row-level
+  // write on firms, so nothing else about a tenant can be touched from here. Activating
+  // is the verification step (the RPC stamps verified_at and tells the firm).
+  await supabase.rpc("set_firm_status", { p_firm: parsed.data.firmId, p_status: parsed.data.status });
   revalidatePath("/admin");
 }

@@ -3,6 +3,8 @@
 *One app, every matter, any firm. Attorneys Klinique Law Consultancy is tenant #1.*
 *v0.2 — 9 September 2026 — supersedes Docket v0.1 and the Attorneys Klinique master prompt. Prepared for Emeke and Precious.*
 
+> **Platform note (10 September 2026).** Decision 0003 and `docs/DOCKET_PLATFORM_MODEL.md` reframe this document: Docket is the platform, and Attorneys Klinique is its first tenant, not its purpose. Where this blueprint says "Klinique's …" read "the firm's …". Self-serve firm onboarding (§6, listed as Phase 2) is built (migration 9, `/firm/start`), as are the Nigerian court directory (migration 10) and service of process between firms (migrations 11–13); the §12 gates apply to any firm. The schema in §7 is superseded by `supabase/migrations/`.
+
 ---
 
 ## 0. What changed from v0.1

@@ -48,6 +48,7 @@ export interface FirmPublic {
   custom_domain: string | null;
   timezone: string;
   default_currency: "NGN" | "USD";
+  verified: boolean;
 }
 
 /** firms.policies shape (staff-readable; versions drive consent capture). */
@@ -76,16 +77,20 @@ export interface FirmMember {
 export type FirmPlan = "free" | "standard" | "enterprise";
 export type FirmStatus = "pending" | "active" | "suspended";
 
-/** firms columns the platform admin surface reads (lifecycle only). */
+/** Row of the firm_admin view: the lifecycle-only projection platform admins may read. */
 export interface FirmAdminRow {
   id: string;
   slug: string;
   name: string;
   legal_name: string | null;
+  rc_number: string | null;
   plan: FirmPlan;
   status: FirmStatus;
   state_code: string | null;
   custom_domain: string | null;
+  verified_at: string | null;
+  has_settlement_account: boolean;
+  member_count: number;
   created_at: string;
 }
 
@@ -95,6 +100,7 @@ export interface CreateFirmResult {
   slug: string;
   owner_id: string;
   reference_prefix: string;
+  status: FirmStatus;
 }
 
 export type CourtLevel =

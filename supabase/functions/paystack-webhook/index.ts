@@ -47,6 +47,8 @@ Deno.serve(async (req) => {
     p_currency: v.data.currency,
     p_status: 'succeeded',
     p_raw: { id: v.data.id, channel: v.data.channel, paid_at: v.data.paid_at, customer: v.data.customer?.email },
+    // the firm's settlement subaccount as Paystack reports it; record_payment() refuses a mismatch
+    p_subaccount: v.data.subaccount?.subaccount_code ?? null,
   });
   if (error) {
     console.error('record_payment failed', error);

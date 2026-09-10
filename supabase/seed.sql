@@ -7,7 +7,10 @@
 -- seed_firm_defaults() every self-registered firm gets. Nothing here is
 -- referenced by application code.
 
-insert into firms (slug, name, legal_name, reference_prefix, timezone, default_currency, vat_rate, brand, policies)
+-- Status 'active' + verified_at: the launch tenant is verified by the founders themselves. Its owner accounts are
+-- attached at onboarding exactly like any other firm's (docs/ONBOARDING_A_FIRM.md step 4), and its Paystack
+-- subaccount goes into firms.paystack_subaccount before the first booking (step 5).
+insert into firms (slug, name, legal_name, reference_prefix, timezone, default_currency, vat_rate, status, verified_at, brand, policies)
 values (
   'attorneys-klinique',
   'Attorneys Klinique',
@@ -15,7 +18,8 @@ values (
   'AK',
   'Africa/Lagos',
   'NGN',
-  0,   -- Precious to confirm VAT treatment of consultation fees; set to 7.50 if applicable
+  0,   -- the firm confirms VAT treatment of consultation fees; set to 7.50 if applicable
+  'active', now(),
   jsonb_build_object(
     'tagline', 'Professional, trustworthy, discreet legal services',
     'colours', jsonb_build_object('primary', '#0F2A44', 'accent', '#B08D57', 'surface', '#F7F5F0'),

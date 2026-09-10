@@ -34,6 +34,9 @@ Concretely:
 5. **Platform administration never reaches matter content.** Platform admins
    see firm lifecycle rows only; the database enforces it (there is no
    platform policy on matters, documents, messages, updates or invoices).
+6. **A firm is public only after the platform has verified it**, and its fees
+   settle only to its own Paystack subaccount. Both are enforced in the
+   database, not in the app.
 
 ## Why
 

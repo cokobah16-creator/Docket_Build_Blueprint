@@ -150,6 +150,8 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
           <p className="text-sm text-gray-500">
             Free for firms of three lawyers or fewer. By continuing you accept the Docket
             firm terms and act as the data controller for your clients’ information.
+            Fees you charge settle to your own Paystack subaccount — add it in settings
+            before your first booking.
           </p>
         </form>
       </CardBody>

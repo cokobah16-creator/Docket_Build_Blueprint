@@ -37,7 +37,9 @@ export default async function FirmStartPage() {
       <h1 className="mt-1 font-heading text-2xl font-semibold text-brand">Register your firm</h1>
       <p className="mt-1 text-sm text-gray-600">
         Two steps: your account, then your firm. You become the firm’s owner and
-        set up two-factor authentication before the console opens.
+        set up two-factor authentication before the console opens. Your public
+        site and bookings go live once Docket has verified the firm (RC/BN number
+        and the owner’s enrolment number); the console is yours right away.
       </p>
       <div className="mt-6">
         <FirmStart signedIn={Boolean(user)} email={user?.email ?? null} />

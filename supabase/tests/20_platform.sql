@@ -46,7 +46,8 @@ begin
   perform t_check('new firm gets the 15 default matter statuses',          (select count(*) from matter_statuses where firm_id = f) = 15);
   perform t_check('new firm gets an unpriced, inactive consultation',      (select count(*) from services where firm_id = f and slug = 'legal-consultation' and price_minor = 0 and not is_active) = 1);
   perform t_check('new firm gets a consultation intake form',              (select count(*) from intake_forms where firm_id = f) = 1);
-  perform t_check('new firm is active on the free plan',                   (select plan || '/' || status from firms where id = f) = 'free/active');
+  perform t_check('new firm is pending verification on the free plan',     (select plan || '/' || status from firms where id = f) = 'free/pending');
+  perform t_check('new firm has a versioned policies skeleton',            (select policies -> 'terms' ->> 'version' from firms where id = f) = '0-draft');
 
   ok := false;
   begin
@@ -60,6 +61,12 @@ begin
   perform t_as(o1, 'aal2');
   update firms set name = 'Ubuntu & Partners LP' where id = f;
   perform t_check('owner with MFA edits firm settings',                    (select name from firms where id = f) = 'Ubuntu & Partners LP');
+  ok := false;
+  begin
+    update firms set status = 'active' where id = f;
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('owner cannot activate her own firm',                   ok and (select status from firms where id = f) = 'pending');
   perform t_check('firm creation is in the audit trail',                   (select count(*) from audit_log where firm_id = f and action = 'firm.created') = 1);
   perform t_reset();
   insert into fx values ('firm_u', f);
@@ -112,7 +119,7 @@ begin
   exception when insufficient_privilege then ok := true;
   end;
   perform t_check('anonymous visitors cannot create firms',                ok);
-  perform t_check('new firms appear on the public projection',            (select count(*) from firm_public where slug in ('ubuntu-partners','cap-firm-1')) = 2);
+  perform t_check('pending firms are not on the public projection',       (select count(*) from firm_public where slug in ('ubuntu-partners','cap-firm-1')) = 0);
   perform t_reset();
 end $$;
 
@@ -126,17 +133,34 @@ begin
 
   perform t_as(pa, 'aal2');
   perform t_check('platform admin knows she is one',                       is_platform_admin());
-  perform t_check('platform admin lists every firm',                       (select count(*) from firms) >= 5);
+  perform t_check('platform admin lists every firm (lifecycle view)',      (select count(*) from firm_admin where slug in ('ubuntu-partners','cap-firm-1','cap-firm-2','cap-firm-3')) = 4);
+  perform t_check('platform admin has no row-level read of firms itself',  (select count(*) from firms) = 0);
   perform t_check('platform admin sees firm memberships',                  (select count(*) from firm_members where firm_id = fu) = 1);
   perform t_check('platform admin sees no matters',                        (select count(*) from matters) = 0);
   perform t_check('platform admin sees no firm audit trail beyond lifecycle', (select count(*) from audit_log where entity not in ('firms','firm_members','firm')) = 0);
-  update firms set status = 'suspended' where id = fu;
-  perform t_check('platform admin suspends a firm',                        (select status from firms where id = fu) = 'suspended');
-  update firms set status = 'active' where id = fu;
+  perform set_firm_status(fu, 'active', 'RC1234567 checked on CAC portal');
+  perform t_check('platform admin verifies and activates a firm',         (select status from firm_admin where id = fu) = 'active' and (select verified_at from firm_admin where id = fu) is not null);
+  update firms set paystack_subaccount = 'ACCT_evil' where id = fu;
+  perform t_check('platform admin cannot touch a firm''s other columns',   (select has_settlement_account from firm_admin where id = fu) = false);
+  perform set_firm_status(fu, 'suspended', 'test');
+  perform t_check('platform admin suspends a firm',                        (select status from firm_admin where id = fu) = 'suspended');
+  perform t_reset();
+
+  perform t_as(o1, 'aal2');
+  perform t_check('the firm''s owner was told it went live',              (select count(*) from notifications where event = 'firm_activated' and firm_id = fu) >= 1);
+  update firms set name = 'renamed while suspended' where id = fu;
+  perform t_check('a suspended firm''s owner cannot write',                (select name from firms where id = fu) <> 'renamed while suspended');
+  perform t_reset();
+  perform t_anon();
+  perform t_check('a suspended firm is not public',                        (select count(*) from firm_public where id = fu) = 0);
+  perform t_reset();
+
+  perform t_as(pa, 'aal2');
+  perform set_firm_status(fu, 'active');
 
   res := create_firm('Chambers for Owner One', 'chambers-owner-one', p_owner_email => 'OWNER_ONE@ptest');
   f := (res ->> 'firm_id')::uuid;
-  perform t_check('platform admin opens a firm for an existing account',   (res ->> 'owner_id')::uuid = o1 and (select status from firms where id = f) = 'pending');
+  perform t_check('platform admin opens a firm for an existing account',   (res ->> 'owner_id')::uuid = o1 and (select status from firm_admin where id = f) = 'pending');
   perform t_check('platform admin is not a member of that firm',           (select count(*) from firm_members where firm_id = f and user_id = pa) = 0);
   ok := false;
   begin
@@ -159,6 +183,44 @@ begin
 
   perform t_as(o1, 'aal2');
   perform t_check('owner one now belongs to both her firms',               (select count(*) from firms) = 2);
+  perform t_reset();
+
+  perform t_anon();
+  perform t_check('an activated firm is on the public projection, marked verified', (select verified from firm_public where id = fu) = true);
+  perform t_reset();
+end $$;
+
+-- ---------------------------------------------------------------- 4. a firm brings its own lawyers
+do $$
+declare o1 uuid := (select v from fx where k='owner_one'); fu uuid := (select v from fx where k='firm_u'); st uuid := (select v from fx where k='stranger');
+        tok text; res jsonb; ok bool; newbie uuid;
+begin
+  insert into auth.users (id, email) values (gen_random_uuid(), 'new_lawyer@ptest') returning id into newbie;
+
+  perform t_as(o1, 'aal2');
+  insert into staff_invites (firm_id, email, role, created_by) values (fu, 'New_Lawyer@ptest', 'lawyer', o1) returning token into tok;
+  perform t_check('owner invites a lawyer by email',                       tok is not null);
+  perform t_reset();
+
+  perform t_as(st, 'aal2');
+  ok := false;
+  begin
+    res := accept_staff_invite(tok);
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('an invite cannot be accepted by a different email',    ok);
+  perform t_reset();
+
+  perform t_as(newbie, 'aal1');
+  res := accept_staff_invite(tok);
+  perform t_check('invited lawyer joins the firm',                         (res ->> 'role') = 'lawyer' and (select role from firm_members where firm_id = fu and user_id = newbie) = 'lawyer');
+  perform t_check('invited lawyer gets a private profile to complete',    (select is_public from lawyer_profiles where firm_id = fu and user_id = newbie) = false);
+  ok := false;
+  begin
+    res := accept_staff_invite(tok);
+  exception when others then ok := sqlerrm like '%invalid or expired%';
+  end;
+  perform t_check('an invite is single-use',                              ok);
   perform t_reset();
 end $$;
 

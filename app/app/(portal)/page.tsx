@@ -41,6 +41,15 @@ export default async function ClientDashboard() {
   if (firm) {
     const termsVersion = firm.policies.terms?.version;
     const privacyVersion = firm.policies.privacy?.version;
+    // '0-…' versions are the unpublished skeleton every new firm starts with (seed_firm_defaults)
+    if (termsVersion?.startsWith("0-") || privacyVersion?.startsWith("0-")) {
+      return (
+        <Alert kind="info" title={`${firm.name} has not published its terms yet`}>
+          The firm is still completing its setup on Docket. Its terms of service and
+          privacy notice will appear here for your acceptance once published.
+        </Alert>
+      );
+    }
     if (termsVersion && privacyVersion) {
       const { data: consents } = await supabase
         .from("consent_records")

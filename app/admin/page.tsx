@@ -52,16 +52,12 @@ export default async function AdminPage() {
     );
   }
 
+  // firm_admin is the lifecycle-only projection platform admins may read.
   const { data: firmRows } = await supabase
-    .from("firms")
-    .select("id, slug, name, legal_name, plan, status, state_code, custom_domain, created_at")
+    .from("firm_admin")
+    .select("id, slug, name, legal_name, rc_number, state_code, plan, status, verified_at, custom_domain, has_settlement_account, member_count, created_at")
     .order("created_at", { ascending: false });
   const firms = (firmRows ?? []) as FirmAdminRow[];
-
-  const { data: memberRows } = await supabase.from("firm_members").select("firm_id, role");
-  const members = (memberRows ?? []) as Array<{ firm_id: string; role: string }>;
-  const memberCount = new Map<string, number>();
-  for (const m of members) memberCount.set(m.firm_id, (memberCount.get(m.firm_id) ?? 0) + 1);
 
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-10">
@@ -70,7 +66,7 @@ export default async function AdminPage() {
           <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">Docket</p>
           <h1 className="font-heading text-2xl font-semibold text-brand">Platform admin</h1>
         </div>
-        <p className="text-sm text-gray-500">{firms.length} firm{firms.length === 1 ? "" : "s"} · no access to matter content</p>
+        <p className="text-sm text-gray-500">{firms.length} firm{firms.length === 1 ? "" : "s"} · {firms.filter((f) => f.status === "pending").length} awaiting verification · no access to matter content</p>
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -89,6 +85,7 @@ export default async function AdminPage() {
                     <TH>Plan</TH>
                     <TH>Members</TH>
                     <TH>Status</TH>
+                    <TH>Payments</TH>
                     <TH>Created</TH>
                     <TH>
                       <span className="sr-only">Actions</span>
@@ -108,20 +105,23 @@ export default async function AdminPage() {
                       </TD>
                       <TD>{f.state_code ?? "—"}</TD>
                       <TD>{f.plan}</TD>
-                      <TD>{memberCount.get(f.id) ?? 0}</TD>
+                      <TD>{f.member_count}</TD>
                       <TD>
                         <Badge>{f.status}</Badge>
+                        {f.verified_at && <p className="text-xs text-gray-500">verified {new Date(f.verified_at).toLocaleDateString("en-GB")}</p>}
+                        {f.rc_number && <p className="text-xs text-gray-500">RC {f.rc_number}</p>}
                       </TD>
+                      <TD>{f.has_settlement_account ? "subaccount set" : <span className="text-amber-700">no subaccount</span>}</TD>
                       <TD>{new Date(f.created_at).toLocaleDateString("en-GB")}</TD>
                       <TD>
                         <form action={setFirmStatus} className="flex items-center gap-2">
                           <input type="hidden" name="firmId" value={f.id} />
-                          <input type="hidden" name="status" value={f.status === "suspended" ? "active" : "suspended"} />
+                          <input type="hidden" name="status" value={f.status === "active" ? "suspended" : "active"} />
                           <button
                             type="submit"
                             className="text-xs font-medium text-brand underline"
                           >
-                            {f.status === "suspended" ? "Reactivate" : "Suspend"}
+                            {f.status === "pending" ? "Verify and activate" : f.status === "suspended" ? "Reactivate" : "Suspend"}
                           </button>
                         </form>
                       </TD>
