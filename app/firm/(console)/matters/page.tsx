@@ -152,13 +152,13 @@ export default async function FirmMattersPage({
         <Link href={query({ status: null, open: null })} aria-current={!statusId && !openOnly ? "page" : undefined} className={chipClass(!statusId && !openOnly)}>
           All
         </Link>
-        <Link href={query({ status: null, open: openOnly ? null : "1" })} aria-current={openOnly ? "page" : undefined} className={chipClass(openOnly)}>
+        <Link href={query({ open: openOnly ? null : "1" })} aria-current={openOnly ? "page" : undefined} className={chipClass(openOnly)}>
           Open only
         </Link>
         {statuses.map((s) => (
           <Link
             key={s.id}
-            href={query({ status: statusId === s.id ? null : s.id, open: null })}
+            href={query({ status: statusId === s.id ? null : s.id })}
             aria-current={statusId === s.id ? "page" : undefined}
             className={chipClass(statusId === s.id)}
           >

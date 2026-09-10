@@ -30,12 +30,12 @@ const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm f
 
 const TYPE_LABELS: Record<string, string> = { ip: "Intellectual property", debt_recovery: "Debt recovery" };
 function typeLabel(type: string): string {
-  const label = TYPE_LABELS[type] ?? type.replace(/_/g, " ");
-  return label.charAt(0).toUpperCase() + label.slice(1);
+  const text = TYPE_LABELS[type] ?? type.replace(/_/g, " ");
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** Same wording as staffLabel(), reimplemented here: firm-data.ts is server-only. */
-function label(m: StaffMember): string {
+/** Same wording as staffLabel(); reimplemented here because firm-data.ts is server-only. */
+function staffName(m: StaffMember): string {
   return m.full_name?.trim() || m.title?.trim() || m.email || "Colleague";
 }
 
@@ -425,7 +425,7 @@ export function NewMatterForm({
                 <select id="handling" value={handlingLawyerId} onChange={(e) => setHandlingLawyerId(e.target.value)} className={field}>
                   <option value="">Me</option>
                   {staff.map((m) => (
-                    <option key={m.user_id} value={m.user_id}>{label(m)}</option>
+                    <option key={m.user_id} value={m.user_id}>{staffName(m)}</option>
                   ))}
                 </select>
               </div>
@@ -435,7 +435,7 @@ export function NewMatterForm({
                 <select id="originating" value={originatingLawyerId} onChange={(e) => setOriginatingLawyerId(e.target.value)} className={field}>
                   <option value="">Same as the lawyer with conduct</option>
                   {staff.map((m) => (
-                    <option key={m.user_id} value={m.user_id}>{label(m)}</option>
+                    <option key={m.user_id} value={m.user_id}>{staffName(m)}</option>
                   ))}
                 </select>
               </div>
