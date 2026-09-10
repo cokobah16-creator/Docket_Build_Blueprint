@@ -55,7 +55,30 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
   const memberships = (rows ?? []) as FirmMembership[];
   if (memberships.length === 0) return null;
 
-  const chosen = (preferredFirmId && memberships.find((m) => m.firm_id === preferredFirmId)) || memberships[0];
+  // `?firm=` is documented as a slug and middleware resolves it that way, while the
+  // console's own links carry the id. Both have to work, and neither may quietly
+  // select a different firm than the one named: comparing a slug against uuids
+  // matched nothing and fell through to the first membership, so a multi-firm
+  // member could read and write under a firm the URL did not name.
+  let chosen = memberships[0];
+  if (preferredFirmId) {
+    const byId = memberships.find((m) => m.firm_id === preferredFirmId);
+    if (byId) {
+      chosen = byId;
+    } else {
+      const wanted = preferredFirmId.toLowerCase();
+      const { data: firmRows } = await supabase
+        .from("firms")
+        .select("id, slug")
+        .in("id", memberships.map((m) => m.firm_id));
+      const match = ((firmRows ?? []) as Array<{ id: string; slug: string }>).find((f) => f.slug === wanted);
+      const bySlug = match ? memberships.find((m) => m.firm_id === match.id) : undefined;
+      // A firm was named and it is not one of theirs. Refuse rather than act as
+      // another firm behind a URL that says otherwise.
+      if (!bySlug) return null;
+      chosen = bySlug;
+    }
+  }
   const [{ data: profile }, { data: overview }] = await Promise.all([
     supabase.from("profiles").select("timezone").eq("id", user.id).maybeSingle(),
     supabase.from("firm_overview").select("firm_id, name").eq("firm_id", chosen.firm_id).maybeSingle(),
@@ -261,7 +284,15 @@ export async function availabilityFor(supabase: SupabaseClient, firmId: string, 
   return (data ?? []) as AvailabilityRule[];
 }
 
-/** `?firm=` from the current request, so a multi-firm member can switch. */
+/**
+ * Which firm the current request is asking for, so a multi-firm member can switch.
+ *
+ * `?firm=` may be a slug (what middleware resolves and what the docs describe) or
+ * the id (what the console's own links carry). Either is passed straight through:
+ * staffContext() is the one that matches it against the caller's memberships, and
+ * refuses if it names a firm that is not theirs. Failing that, the tenant header
+ * middleware stamped from the host.
+ */
 export async function requestedFirmId(searchParams?: { firm?: string }): Promise<string | undefined> {
   if (searchParams?.firm) return searchParams.firm;
   const h = await headers();

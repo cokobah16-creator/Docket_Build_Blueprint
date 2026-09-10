@@ -61,12 +61,17 @@ export function StaffDocuments({
   const [error, setError] = useState<string | null>(null);
   const [lowData, setLowData] = useState(false);
   const [shared, setShared] = useState<Record<string, boolean>>({});
+  const [reviewed, setReviewed] = useState<Record<string, boolean>>({});
   const [preview, setPreview] = useState<{ doc: StaffDocument; url: string | null; loading: boolean } | null>(null);
   const [versions, setVersions] = useState<Record<string, DocumentVersionRow[]>>({});
 
   useEffect(() => setLowData(isLowData()), []);
 
   const isShared = useCallback((d: StaffDocument) => shared[d.id] ?? d.client_visible, [shared]);
+
+  /** A file the client sent in, which nobody here has marked as looked at yet. */
+  const isClientUpload = useCallback((d: StaffDocument) => d.category === "client_upload" && d.uploaded_by !== userId, [userId]);
+  const isReviewed = useCallback((d: StaffDocument) => reviewed[d.id] ?? Boolean(d.reviewed_at), [reviewed]);
 
   /** New document: row first (the storage policy reads it), then the file, then the version. */
   const upload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
@@ -158,6 +163,26 @@ export function StaffDocuments({
     setShared((s) => ({ ...s, [doc.id]: next }));
     router.refresh();
   }, [isShared, router]);
+
+  /**
+   * Mark a client's upload as looked at. firm_overview counts only unreviewed ones,
+   * so this is what takes it off "Client uploads to review" — without it the counter
+   * only ever climbs and means nothing.
+   */
+  const markReviewed = useCallback(async (doc: StaffDocument) => {
+    const supabase = supabaseBrowser();
+    if (!supabase) { setError("Not configured."); return; }
+    setError(null);
+    setBusy(`Marking ${doc.name} as reviewed…`);
+    const { error: updateError } = await supabase
+      .from("documents")
+      .update({ reviewed_at: new Date().toISOString(), reviewed_by: userId })
+      .eq("id", doc.id);
+    setBusy(null);
+    if (updateError) { setError(updateError.message); return; }
+    setReviewed((r) => ({ ...r, [doc.id]: true }));
+    router.refresh();
+  }, [router, userId]);
 
   const openPreview = useCallback(async (doc: StaffDocument, version: DocumentVersionRow | null, force = false) => {
     const target = version ?? doc.version;
@@ -256,6 +281,14 @@ export function StaffDocuments({
                     Upload a new version
                     <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => uploadVersion(d, e)} disabled={Boolean(busy)} />
                   </label>
+                  {isClientUpload(d) &&
+                    (isReviewed(d) ? (
+                      <span className="text-sm text-gray-500">Reviewed</span>
+                    ) : (
+                      <Button size="sm" variant="ghost" onClick={() => markReviewed(d)} disabled={Boolean(busy)}>
+                        Mark as reviewed
+                      </Button>
+                    ))}
                 </div>
 
                 {rows && (

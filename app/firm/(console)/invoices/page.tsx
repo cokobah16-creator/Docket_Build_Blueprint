@@ -16,7 +16,7 @@
 
 import Link from "next/link";
 import { firmOverview, requestedFirmId, staffContext } from "@/lib/firm-data";
-import { formatMoneyMinor } from "@/lib/money";
+import { formatMoneyByCurrency, formatMoneyMinor } from "@/lib/money";
 import { formatWhen, zonedDayRange } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
@@ -197,8 +197,8 @@ export default async function FirmInvoicesPage({
 
   const tiles = overview
     ? [
-        { label: "Outstanding", value: formatMoneyMinor(overview.outstanding_minor, firmCurrency), hint: "Issued, part-paid and overdue" },
-        { label: "Collected this month", value: formatMoneyMinor(overview.collected_this_month_minor, firmCurrency), hint: "Payments received since the 1st" },
+        { label: "Outstanding", value: formatMoneyByCurrency(overview.outstanding_by_currency, firmCurrency), hint: "Issued, part-paid and overdue" },
+        { label: "Collected this month", value: formatMoneyByCurrency(overview.collected_this_month_by_currency, firmCurrency), hint: "Payments received since the 1st" },
         { label: "Drafts", value: String(counts.draft), hint: "Raised but not sent to the client" },
         { label: "Overdue", value: String(counts.overdue), hint: "Past the day they fell due" },
       ]
@@ -240,8 +240,8 @@ export default async function FirmInvoicesPage({
 
       {overview && mixedCurrencies && (
         <Alert kind="info" title="This firm bills in more than one currency">
-          The two totals above are added up and shown in {firmCurrency}, which is how the firm summary keeps them.
-          The per-currency figures for the invoices listed below are stated under the list.
+          The totals above are kept apart, one figure per currency, because minor units of one currency cannot be
+          added to another&rsquo;s. The per-currency figures for the invoices listed below are stated under the list.
         </Alert>
       )}
 
