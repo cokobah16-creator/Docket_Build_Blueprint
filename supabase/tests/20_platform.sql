@@ -256,5 +256,39 @@ begin
   perform t_reset();
 end $$;
 
+-- ---------------------------------------------------------------- 5. views are read-only, whoever asks
+do $$
+declare vw text; ok bool; st uuid := (select v from fx where k='stranger'); pa uuid := (select v from fx where k='platform');
+begin
+  foreach vw in array array['firm_public','firm_service_directory','firm_admin','lawyer_public','service_inbox',
+                            'reference_data_coverage','firm_cause_list','partner_attribution'] loop
+    perform t_anon();
+    ok := false;
+    begin
+      execute format('update public.%I set id = id', vw);
+    exception when others then ok := sqlstate in ('42501', '55000', '0A000', '42703');   -- no privilege, or not writable at all
+    end;
+    perform t_check('anon cannot write through ' || vw, ok);
+    perform t_reset();
+    perform t_as(pa, 'aal1');
+    ok := false;
+    begin
+      execute format('delete from public.%I', vw);
+    exception when others then ok := sqlstate in ('42501', '55000', '0A000');
+    end;
+    perform t_check('a platform admin without MFA cannot write through ' || vw, ok);
+    perform t_reset();
+  end loop;
+  perform t_check('try_uuid tolerates stray storage names',              try_uuid('not-a-uuid.pdf') is null and try_uuid('8f6c7c0e-5f3a-4a1a-9c1e-2f0e0d1c2b3a') is not null);
+  perform t_as(st, 'aal2');
+  ok := false;
+  begin
+    truncate public.platform_admins;
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('API roles cannot truncate',                           ok);
+  perform t_reset();
+end $$;
+
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
 rollback;

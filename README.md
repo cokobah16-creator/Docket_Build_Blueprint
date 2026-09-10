@@ -4,7 +4,7 @@
 
 This repository is the platform: the multi-tenant Postgres schema and row-level security, the server-side business flows (firm creation, booking, payment cascade, court updates, consultation notes, service of process, invites, jobs), the Nigerian reference data (states, courts, holidays), the provider adapters, the payment webhooks, the notification dispatcher, the Next.js app (tenant public sites, client PWA, staff console, platform admin), Klinique's seed data, and test suites that prove isolation between firms and between clients.
 
-**Validated:** all fifteen migrations, the seed and four SQL suites run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`.
+**Validated:** all sixteen migrations, the seed and four SQL suites run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`.
 
 ## Any firm, the same way
 
@@ -34,6 +34,7 @@ supabase/
                                                identity-provider email; slug/domain platform-only; only active firms are public; SCN uniqueness among verified;
                                                settlement mismatches recorded and reported (never a webhook retry loop)
     20260910000015_second_firm_walkthrough.sql owner invites by owners; registrant's SCN and profile; no booking on unpublished policies; open_matter()
+    20260910000016_storage_guards.sql          storage policies never throw on a stray object name (try_uuid guards every path-segment cast)
   seed.sql                           Attorneys Klinique: brand, policies, 14 services, intake form — then seed_firm_defaults()
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
@@ -83,7 +84,7 @@ Requires PostgreSQL 16+ (superuser). Never run the stub against Supabase.
 DATABASE_URL=postgres://postgres@localhost:5432/postgres bash scripts/db-test-local.sh
 ```
 
-Each suite ends with `NOTICE:  ALL CHECKS PASSED` (227 `PASS` lines in total). Coverage: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, the hold-release job; self-serve firm creation and its defaults, slug validation, the three-firm cap, platform admins seeing lifecycle rows and no content; the court directory (platform-wide vs firm-private), holidays and vacations, practitioner fields; service of process across firms (record + served document visible to the served firm, nothing else; acknowledgement once; clients see progress).
+Each suite ends with `NOTICE:  ALL CHECKS PASSED` (245 `PASS` lines in total). Coverage: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, the hold-release job; self-serve firm creation and its defaults, slug validation, the three-firm cap, platform admins seeing lifecycle rows and no content; the court directory (platform-wide vs firm-private), holidays and vacations, practitioner fields; service of process across firms (record + served document visible to the served firm, nothing else; acknowledgement once; clients see progress).
 
 ## Rules the code enforces (don't undo them in later slices)
 
