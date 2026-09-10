@@ -19,7 +19,7 @@ async function fetchFirmPublic(filter: string): Promise<FirmPublic | null> {
   let value: FirmPublic | null = null;
   try {
     const res = await fetch(
-      `${url}/rest/v1/firm_public?select=id,slug,name,brand,policies,custom_domain,timezone,default_currency&${filter}&limit=1`,
+      `${url}/rest/v1/firm_public?select=id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency&${filter}&limit=1`,
       { headers: restHeaders(key) },
     );
     if (res.ok) {
@@ -36,6 +36,11 @@ async function fetchFirmPublic(filter: string): Promise<FirmPublic | null> {
 export async function firmBySlug(slug: string): Promise<FirmPublic | null> {
   if (!/^[a-z0-9-]{2,64}$/.test(slug)) return null;
   return fetchFirmPublic(`slug=eq.${encodeURIComponent(slug)}`);
+}
+
+export async function firmById(id: string): Promise<FirmPublic | null> {
+  if (!/^[0-9a-f-]{36}$/.test(id)) return null;
+  return fetchFirmPublic(`id=eq.${id}`);
 }
 
 export async function firmByCustomDomain(host: string): Promise<FirmPublic | null> {

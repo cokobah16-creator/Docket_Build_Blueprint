@@ -42,6 +42,7 @@ export interface FirmPublic {
   id: string;
   slug: string;
   name: string;
+  legal_name: string | null;
   brand: FirmBrand;
   policies: FirmPolicies;
   custom_domain: string | null;
@@ -93,4 +94,66 @@ export interface ServiceRow {
   virtual_available: boolean;
   is_active: boolean;
   sort: number;
+}
+
+/** Row of the anon-readable lawyer_public view (public lawyer profiles). */
+export interface LawyerPublic {
+  firm_id: string;
+  id: string; // profiles.id / auth user id
+  slug: string | null;
+  title: string | null;
+  bio: string | null;
+  photo_path: string | null;
+  practice_areas: string[];
+  category: string | null;
+  full_name: string | null;
+  timezone: string;
+}
+
+export interface IntakeQuestion {
+  key: string;
+  type: "text" | "longtext" | "choice" | "file";
+  label: string;
+  options?: string[];
+  required?: boolean;
+  multiple?: boolean;
+  max_files?: number;
+  max_length?: number;
+  help?: string;
+  show_if?: { question: string; equals: string };
+}
+
+export interface IntakeForm {
+  id: string;
+  firm_id: string;
+  service_id: string | null;
+  name: string | null;
+  schema: { questions: IntakeQuestion[] };
+}
+
+export interface ContentRow {
+  id: string;
+  firm_id: string;
+  kind: string;
+  slug: string | null;
+  title: string | null;
+  body: string | null;
+  status: string;
+  published_at: string | null;
+}
+
+export interface AppointmentSlot {
+  starts_at: string;
+  ends_at: string;
+}
+
+export interface BookingResult {
+  appointment_id: string;
+  reference: string;
+  status: "awaiting_payment" | "confirmed";
+  invoice_id: string | null;
+  invoice_number: string | null;
+  amount_minor: number;
+  currency: "NGN" | "USD";
+  hold_expires_at: string | null;
 }
