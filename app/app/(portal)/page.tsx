@@ -97,6 +97,7 @@ export default async function ClientDashboard() {
 
   const quickActions = [
     { label: "Book", href: firm ? `/${firm.slug}/book` : "/app/appointments" },
+    { label: "Join", href: "/app/appointments" },
     { label: "Message", href: "/app/messages" },
     { label: "Pay", href: "/app/appointments" },
   ];
@@ -110,7 +111,7 @@ export default async function ClientDashboard() {
         {firm && <p className="text-sm text-gray-600">{firm.name}</p>}
       </header>
 
-      <nav aria-label="Quick actions" className="grid grid-cols-3 gap-2">
+      <nav aria-label="Quick actions" className="grid grid-cols-4 gap-2">
         {quickActions.map((a) => (
           <Link
             key={a.label}
@@ -141,7 +142,7 @@ export default async function ClientDashboard() {
         ) : (
           <EmptyState
             title="No upcoming consultations"
-            hint="Book one and it appears here once your firm confirms it."
+            hint="Book one and meet your lawyer face to face."
             action={
               firm && (
                 <Link

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     template: "%s · Docket",
   },
   description:
-    "Book a consultation with a Nigerian law firm, pay online, and keep every appointment and receipt in one place — on your phone.",
+    "Book a consultation with a Nigerian law firm, pay online, meet your lawyer face to face, and keep every receipt in one place — on your phone.",
 };
 
 export const viewport: Viewport = {

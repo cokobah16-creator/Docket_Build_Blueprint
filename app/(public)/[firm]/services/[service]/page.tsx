@@ -37,7 +37,7 @@ export default async function ServiceDetailPage({ params }: { params: Params }) 
         <div>
           <dt className="text-xs uppercase tracking-wide text-gray-500">Format</dt>
           <dd className="mt-1 font-medium text-gray-900">
-            In person or by phone
+            {row.virtual_available ? "Virtual or in person" : "In person"}
           </dd>
         </div>
       </dl>

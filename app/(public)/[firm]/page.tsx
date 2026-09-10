@@ -52,8 +52,8 @@ export default async function FirmHome({
           {firm.brand.tagline ?? `Legal help from ${firm.name}`}
         </h1>
         <p className="mt-4 max-w-xl text-lg text-gray-600">
-          Tell us what you need, book a time that works for you, and pay
-          securely — from your phone.
+          Tell us what you need, book a time that works for you, and meet your
+          lawyer face to face — from your phone.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
@@ -79,7 +79,7 @@ export default async function FirmHome({
           {[
             ["Tell us", "Choose a service and answer a few questions so your lawyer can prepare."],
             ["Book & pay", "Pick a time that suits you and pay securely. Your slot is held for 15 minutes."],
-            ["Meet your lawyer", "In person or by phone. You get a reminder before the appointment, and your receipt in your account."],
+            ["Meet & join", "Join the consultation from your phone, or meet your lawyer in person. You get a reminder before the appointment."],
           ].map(([title, body], i) => (
             <li key={title} className="rounded-card border border-gray-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">Step {i + 1}</p>

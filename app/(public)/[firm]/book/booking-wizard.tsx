@@ -31,14 +31,6 @@ const MODE_LABELS: Record<Mode, string> = {
   phone: "Phone call",
 };
 
-// Video consultations are still in build: nothing can start a call yet, so the
-// mode is shown but cannot be booked or paid for.
-const MODE_ENABLED: Record<Mode, boolean> = {
-  virtual: false,
-  in_person: true,
-  phone: true,
-};
-
 const fieldClasses =
   "w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-base text-gray-900 " +
   "placeholder:text-gray-400 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
@@ -147,7 +139,6 @@ export function BookingWizard({
   // --- persistence across the magic-link round trip ----------------------
   useEffect(() => {
     if (!pendingResume) return;
-    let resumeStep = 999; // clamps to the last step (review, or signin if still anonymous)
     try {
       const raw = sessionStorage.getItem(storageKey);
       if (raw) {
@@ -155,15 +146,12 @@ export function BookingWizard({
           serviceId: string | null; mode: Mode | null; lawyerId: string | null;
           date: string | null; slot: AppointmentSlot | null; answers: Answers;
         };
-        // A saved format that is no longer bookable is dropped; the client picks again.
-        const savedMode = saved.mode && MODE_ENABLED[saved.mode] ? saved.mode : null;
-        if (saved.mode && !savedMode) resumeStep = 1; // the format step
-        setServiceId(saved.serviceId); setMode(savedMode); setLawyerId(saved.lawyerId);
+        setServiceId(saved.serviceId); setMode(saved.mode); setLawyerId(saved.lawyerId);
         setDate(saved.date); setSlot(saved.slot); setAnswers(saved.answers ?? {});
       }
     } catch { /* ignore */ }
     setPendingResume(false);
-    setStepIdx(resumeStep);
+    setStepIdx(999); // clamps to the last step (review, or signin if still anonymous)
   }, [pendingResume, storageKey]);
 
   useEffect(() => {
@@ -232,7 +220,6 @@ export function BookingWizard({
 
   async function submit() {
     if (!supabase || !user || !service || !lawyerId || !slot || !mode) return;
-    if (!MODE_ENABLED[mode]) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -331,13 +318,8 @@ export function BookingWizard({
             {(["virtual", "in_person", "phone"] as Mode[])
               .filter((m) => m !== "virtual" || service.virtual_available)
               .map((m) => (
-                <ChoiceCard key={m} selected={mode === m} disabled={!MODE_ENABLED[m]} onClick={() => setMode(m)}>
+                <ChoiceCard key={m} selected={mode === m} onClick={() => setMode(m)}>
                   <p className="font-medium text-gray-900">{MODE_LABELS[m]}</p>
-                  {!MODE_ENABLED[m] && (
-                    <p className="mt-1 text-sm text-gray-600">
-                      In build. Video consultations arrive in the next release.
-                    </p>
-                  )}
                 </ChoiceCard>
               ))}
           </div>
@@ -500,14 +482,13 @@ function Section({ title, hint, children }: { title: string; hint?: string; chil
   );
 }
 
-function ChoiceCard({ selected, onClick, disabled = false, children }: { selected: boolean; onClick: () => void; disabled?: boolean; children: ReactNode }) {
+function ChoiceCard({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      disabled={disabled}
       aria-pressed={selected}
-      className={`rounded-lg border p-4 text-left transition ${disabled ? "cursor-not-allowed border-gray-200 bg-gray-50 opacity-70" : selected ? "border-brand ring-2 ring-brand" : "border-gray-300 bg-white hover:border-brand"}`}
+      className={`rounded-lg border p-4 text-left transition ${selected ? "border-brand ring-2 ring-brand" : "border-gray-300 bg-white hover:border-brand"}`}
     >
       {children}
     </button>

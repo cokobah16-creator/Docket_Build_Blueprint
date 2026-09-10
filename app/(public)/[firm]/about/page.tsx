@@ -27,9 +27,9 @@ export default async function AboutPage({ params }: { params: Promise<{ firm: st
             clients should always know where their matter stands.
           </p>
           <p>
-            Book a consultation, pay online, and see your appointments, invoices and
-            receipts in your account. Updates on your matter, in plain language, arrive
-            in the next release.
+            Book a consultation, pay online, and meet your lawyer face to face from your
+            phone. Updates on your matter, in plain language, arrive in the next
+            release.
           </p>
         </div>
       )}

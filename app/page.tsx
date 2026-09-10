@@ -11,21 +11,21 @@ import { Card, CardBody } from "@/components/ui/card";
 export const metadata = {
   title: "Docket — one sign-in, every firm you instruct",
   description:
-    "The client experience platform for Nigerian law firms: a branded firm site, online booking, Paystack checkout, matters against the real court hierarchy and service of process — for firms, their clients and the courts.",
+    "The client experience platform for Nigerian law firms: a branded firm site, online booking, Paystack checkout, video consultations, matters against the real court hierarchy and service of process — for firms, their clients and the courts.",
 };
 
 const AUDIENCES = [
   {
     title: "For law firms",
     body:
-      "Your own branded site, online booking and Paystack checkout that settles to your firm, and a console with today's list, the service inbox and two-factor on staff writes. Virtual consultations, documents, messaging and invoicing are in build.",
+      "Your own branded site, online booking and Paystack checkout that settles to your firm, video consultations with a waiting room, and a console with today's list, appointments, the service inbox and two-factor on staff writes. Documents, messaging and invoicing are in build.",
     href: "/firm/start",
     cta: "Register your firm",
   },
   {
     title: "For clients",
     body:
-      "Tell the firm what you need, book, pay online, and keep every appointment and receipt in one place. The same sign-in works at any firm on Docket. Your matter timeline and messages arrive in the next release.",
+      "Tell the firm what you need, book, pay online, and meet your lawyer face to face from your phone. Every appointment and receipt stays in one place, and the same sign-in works at any firm on Docket. Your matter timeline and messages arrive in the next release.",
     href: "/app/login",
     cta: "Client sign in",
   },
