@@ -120,15 +120,21 @@ export async function createDocument(input: z.infer<typeof createDocumentSchema>
 /** Step 2: after the browser uploaded the file, record the version (trigger sets current_version_id). */
 export async function finalizeDocumentVersion(input: {
   documentId: string; versionId: string; storagePath: string; mime: string; sizeBytes: number;
+  /** Hex SHA-256 of the uploaded file, computed in the browser. */
+  checksum?: string | null;
 }): Promise<Err> {
   const { supabase, user } = await userClient();
   if (!supabase || !user) return { error: "Sign in first." };
+  // A checksum is recorded only when it is a real one: anything that is not 64
+  // hex characters is dropped rather than filed as if it proved something.
+  const checksum = typeof input.checksum === "string" && /^[0-9a-f]{64}$/.test(input.checksum) ? input.checksum : null;
   const { error } = await supabase.from("document_versions").insert({
     id: input.versionId,
     document_id: input.documentId,
     storage_path: input.storagePath,
     mime: input.mime,
     size_bytes: input.sizeBytes,
+    checksum,
     uploaded_by: user.id,
   });
   if (error) return { error: error.message };

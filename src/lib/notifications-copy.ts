@@ -16,6 +16,7 @@ export function describeNotification(event: string, payload: Record<string, unkn
     case "appointment_cancelled": return { title: "Consultation cancelled", body: `${p.reference ?? ""} · ${when}`, url: appt };
     case "appointment_rescheduled": return { title: "Consultation moved", body: `New time: ${when}`, url: appt };
     case "appointment_completed": return { title: "Consultation completed", body: "Your lawyer's summary is on the appointment page.", url: appt };
+    case "invoice_issued": return { title: `Invoice ${p.invoice_number ?? ""}`, body: firmName, url: p.invoice_id ? `/app/payments/${p.invoice_id}` : "/app/payments" };
     case "payment_confirmed": return { title: "Payment received", body: `Invoice ${p.invoice_number ?? ""}`, url: "/app/payments" };
     case "matter_update": return { title: String(p.title ?? "Update on your matter"), body: firmName, url: `${matter}?tab=timeline` };
     case "court_date_t3": return { title: "Court date in 3 days", body: `${when}${p.purpose ? ` · ${p.purpose}` : ""}`, url: "/app/court-dates" };
@@ -32,6 +33,7 @@ export const PREFERENCE_EVENTS: Array<{ event: string; label: string }> = [
   { event: "appointment_reminder_10m", label: "Reminder: 10 minutes before" },
   { event: "appointment_rescheduled", label: "Consultation moved" },
   { event: "appointment_cancelled", label: "Consultation cancelled" },
+  { event: "invoice_issued", label: "A new invoice" },
   { event: "payment_confirmed", label: "Payment received" },
   { event: "matter_update", label: "Updates on my matters" },
   { event: "court_date_t3", label: "Court date in 3 days" },

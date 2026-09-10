@@ -9,6 +9,7 @@ import { createDocument, finalizeDocumentVersion, markThreadRead, sendMessage } 
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import type { MessageAttachment, MessageRow } from "@/lib/db/types";
+import { sha256Hex } from "@/lib/checksum";
 
 export function MessagesThread({
   firmId, matterId, appointmentId, userId, initial, timezone, senderNames, firmName,
@@ -65,7 +66,7 @@ export function MessagesThread({
     if (!created.ok) { setBusy(null); setError(created.error); return; }
     const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined });
     if (upErr) { setBusy(null); setError(`Upload failed: ${upErr.message}`); return; }
-    const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size });
+    const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
     setBusy(null);
     if (fin?.error) { setError(fin.error); return; }
     setAttachments((a) => [...a, { document_id: created.documentId, name: file.name, mime: file.type || null }]);
