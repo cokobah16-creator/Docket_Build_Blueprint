@@ -46,6 +46,11 @@ export async function startInvoicePayment(invoiceId: string): Promise<Err> {
   }
   if (!email) return { error: "Add an email address on your profile first so we can send your receipt." };
 
+  // Fees settle to the firm's own Paystack subaccount; record_payment() refuses money settled anywhere else.
+  const { data: settlement } = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
+  const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
+  if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
+
   const origin = await siteOrigin();
   let checkoutUrl: string;
   try {
@@ -57,6 +62,7 @@ export async function startInvoicePayment(invoiceId: string): Promise<Err> {
       description: `Invoice ${invoice.number}`,
       callbackUrl: `${origin}${resultPath}`,
       cancelUrl: `${origin}/app/payments/${invoice.id}`,
+      subaccount,
     });
     checkoutUrl = result.checkoutUrl;
   } catch (err) {
