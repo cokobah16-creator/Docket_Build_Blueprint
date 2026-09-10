@@ -73,8 +73,8 @@ nothing in the master prompt is lost. (It also makes "7 partners" a
 configuration, not a constant: partners are simply the firm's `lawyer`/`admin`
 members, so partner #8 is an insert, not a migration.)
 
-**Payments.** Master prompt: Paystack, NGN, multi-currency later. Blueprint
-adds Stripe for USD now. Superset; nothing to reconcile.
+**Payments.** Master prompt: Paystack, NGN, multi-currency later. The blueprint
+proposed Stripe for USD; dropped by decision 0002 — Paystack only. Nothing to reconcile.
 
 ## Gaps found — now closed or scheduled
 
