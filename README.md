@@ -87,6 +87,10 @@ scripts/db-test-local.sh
     and adds `updates`, `messages`, `notifications` and `invoices` to the Realtime publication. Client uploads go
     `documents` row → Storage `documents/{firm}/{document}/{version}.{ext}` → `document_versions` row, all as the user.
     The web manifest and icons are rendered per tenant from `firms.brand`; `/offline.html` is the offline shell.
+11. **Slice 4 (staff console).** Migration 18 adds manual invoicing (`create_invoice` / `issue_invoice` / `cancel_invoice`),
+    matter invitations (`invite_matter_party` / `revoke_matter_invite`) and two firm-wide reads, `firm_overview` and
+    `firm_sittings_due`, so Today and the Overview are one round trip each. `firm_sittings_due` is the console's standing
+    chase list: a court date whose day has passed with no update posted. It clears the moment `post_court_update()` runs.
 
 ## Run the tests locally
 
@@ -125,6 +129,11 @@ Each suite ends with `NOTICE:  ALL CHECKS PASSED` (245 `PASS` lines in total). C
 | `save_consultation_notes(appointment, summary, advice, follow_up, internal, mark_completed)` | staff (MFA) | client-visible + internal notes, timeline echo, marks completed |
 | `reschedule_appointment(appointment, starts_at, reason)` | staff (MFA) | re-validates the slot through the engine, resets reminders, notifies the client, audits |
 | `mark_no_show(appointment)` | staff (MFA) | after the start time; audited |
+| `create_invoice(firm, client, items, matter, currency, due_on, issue, note)` | staff (MFA) | numbers from the firm counter, applies `firms.vat_rate`, writes the items; issuing notifies the client and echoes a fee entry to the matter timeline |
+| `issue_invoice(invoice, due_on)` | staff (MFA) | draft → issued; the client only ever sees issued invoices |
+| `cancel_invoice(invoice, reason)` | owner/admin (MFA) | refuses a part-paid or paid invoice — a credit note is the remedy |
+| `invite_matter_party(matter, phone, email, role, expires_days)` | staff (MFA) | returns the token so the console can build the WhatsApp/SMS link; refuses someone already on the matter |
+| `revoke_matter_invite(invite)` | staff (MFA) | expires an unaccepted invitation |
 | `accept_invite(token)` | client | joins the matter the invite points at |
 | `create_firm(name, slug, legal_name, rc_number, timezone, currency, prefix, state_code, brand, owner_email, owner_scn)` | authenticated (owner_email: platform admins with MFA) | opens a firm as `pending`, makes the owner and opens their private practitioner profile (with SCN), seeds defaults, audits; validates and reserves slugs (also a check constraint); three firms per account |
 | `seed_firm_defaults(firm)` | internal | matter statuses, an unpriced inactive consultation, a consultation intake form, a `0-draft` policies skeleton — idempotent |
