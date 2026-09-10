@@ -99,7 +99,11 @@ export default async function AvailabilityPage({
   const [rules, { data: profileRow }, { data: firmRow }, { data: serviceRows }] = await Promise.all([
     availabilityFor(supabase, firmId, lawyerId),
     supabase.from("profiles").select("timezone").eq("id", lawyerId).maybeSingle(),
-    supabase.from("firms").select("timezone").eq("id", firmId).maybeSingle(),
+    // available_slots() only looks at an active firm — it reads the zone from a
+    // `where f.status = 'active'` row and returns nothing at all when there is
+    // none. Without the status the preview below would explain fourteen empty
+    // days with reasons that never applied.
+    supabase.from("firms").select("timezone, status").eq("id", firmId).maybeSingle(),
     supabase
       .from("services")
       .select("id, firm_id, slug, name, description, price_minor, currency, duration_min, virtual_available, is_active, sort")
@@ -163,6 +167,7 @@ export default async function AvailabilityPage({
   ]);
 
   const exceptions = (exceptionRows ?? []) as AvailabilityException[];
+  const firmActive = (firmRow as { status?: string } | null)?.status === "active";
   const appointments = (apptRows ?? []) as Array<{ id: string; starts_at: string; status: string }>;
 
   // The engine counts a day in the lawyer's zone, so the diary is grouped the same way.
@@ -204,6 +209,8 @@ export default async function AvailabilityPage({
   const previewError = preview.find((d) => d.error)?.error ?? null;
 
   function whyEmpty(day: PreviewDay): string {
+    // The engine never looked at the week, so no reason drawn from the week is true.
+    if (!firmActive) return "The firm is not active, so the booking engine offers nothing at all this week or any other.";
     if (day.blockedAllDay) {
       const reason = day.blockedAllDay.reason?.trim();
       return reason ? `Blocked — ${reason}.` : "Blocked for the whole day.";
@@ -211,6 +218,12 @@ export default async function AvailabilityPage({
     if (!day.hasHours) return `No hours set for a ${WEEKDAYS[day.weekday]}.`;
     if (day.cap !== null && day.booked >= day.cap) {
       return `${day.booked} already booked — that is the daily cap of ${day.cap}, so the day is closed to new bookings.`;
+    }
+    // The engine counts this lawyer's day across every firm they sit in; this page
+    // can only see the appointments of the firm being viewed, so a day that looks
+    // under the cap here may be at the cap there.
+    if (day.cap !== null && day.hasHours) {
+      return `The booking engine counts this lawyer's whole day, including any other firm they sit in, and found no room. This firm has ${day.booked} of the cap of ${day.cap}.`;
     }
     if (day.ymd === todayYmd) return "Nothing left today: a slot is only offered if it starts more than two hours from now.";
     if (day.blockedPart.length > 0) return "What the hours would offer is blocked or already booked.";
@@ -335,7 +348,7 @@ export default async function AvailabilityPage({
                             {first && last
                               ? `${timeFmt.format(new Date(first.starts_at))} – ${timeFmt.format(new Date(last.ends_at))}`
                               : ""}
-                            {day.booked > 0 ? ` · ${day.booked} already booked` : ""}
+                            {day.booked > 0 ? ` · ${day.booked} already booked in this firm` : ""}
                             {day.cap !== null ? ` · cap ${day.cap}` : ""}
                             {day.blockedPart.length > 0 ? " · part of the day is blocked" : ""}
                           </>

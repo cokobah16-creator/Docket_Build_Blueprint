@@ -247,4 +247,7 @@ export async function requestedFirmId(searchParams?: { firm?: string }): Promise
   return h.get("x-firm-id") ?? undefined;
 }
 
-export const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"] as const;
+// Re-exported so the console's server code can keep taking everything from one
+// place. Client components must import it from "@/lib/weekdays" directly: this
+// module reaches for next/headers and cannot be pulled into the client graph.
+export { WEEKDAYS } from "@/lib/weekdays";

@@ -19,7 +19,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { addException, removeException, saveRules } from "@/lib/actions/availability";
-import { WEEKDAYS } from "@/lib/firm-data";
+import { WEEKDAYS } from "@/lib/weekdays";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -133,9 +133,13 @@ function dayProblem(blocks: Block[]): string | null {
     if (!Number.isInteger(slot) || slot < 5 || slot > 240) return "Slot length must be a whole number of minutes between 5 and 240.";
     const cap = Number(b.maxPerDay);
     if (!Number.isInteger(cap) || cap < 1 || cap > 40) return "The daily cap must be a whole number between 1 and 40.";
-    if (minutes(b.endTime) - minutes(b.startTime) < slot) {
-      return `A ${slot}-minute slot does not fit in ${b.startTime}–${b.endTime}, so this block would offer nothing.`;
-    }
+    // No check that the slot step "fits" the block. The step is the distance
+    // between start times; what has to fit is the SERVICE duration, which
+    // available_slots() applies and this screen does not know. A 09:00–09:30
+    // block with a 45-minute step legitimately offers one short consultation,
+    // and the database accepts it, so refusing to save the week here would
+    // refuse a configuration the booking engine is happy with. The fortnight
+    // preview under the editor shows the truthful answer for the real service.
   }
   for (let i = 0; i < blocks.length; i += 1) {
     for (let j = i + 1; j < blocks.length; j += 1) {
