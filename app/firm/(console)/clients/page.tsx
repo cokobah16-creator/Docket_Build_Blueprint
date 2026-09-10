@@ -89,7 +89,7 @@ interface ClientCard {
 }
 
 /** PostgREST returns a to-one embed as an object; tolerate an array all the same. */
-function one<T>(value: T | T[] | null | undefined): T | null {
+function one(value: PersonRow | PersonRow[] | null | undefined): PersonRow | null {
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
 }

@@ -242,7 +242,7 @@ export default async function FirmClientPage({
   const matterIds = parties.map((p) => p.matter_id);
   const serviceIds = Array.from(new Set(appointments.map((a) => a.service_id).filter((s): s is string => Boolean(s))));
 
-  const [{ data: matterRows }, { data: serviceRows }] = await Promise.all([
+  const [{ data: matterRows }, { data: serviceRows }, { data: lastUpdateRow }] = await Promise.all([
     matterIds.length
       ? supabase
           .from("matters")
@@ -254,6 +254,17 @@ export default async function FirmClientPage({
     serviceIds.length
       ? supabase.from("services").select("id, name").in("id", serviceIds)
       : Promise.resolve({ data: [] as Array<{ id: string; name: string }> }),
+    // The last time anything was posted on one of their files. Internal entries
+    // count towards the date — none of their content is rendered here.
+    matterIds.length
+      ? supabase
+          .from("updates")
+          .select("occurred_at")
+          .in("matter_id", matterIds)
+          .order("occurred_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
   ]);
 
   const matters = (matterRows ?? []) as MatterRowLite[];
@@ -280,7 +291,14 @@ export default async function FirmClientPage({
   const seenAppointments = appointments
     .filter((a) => new Date(a.starts_at).getTime() <= nowMs && SEEN_STATUSES.has(a.status))
     .map((a) => a.starts_at);
-  const lastSeen = seenAppointments.length ? seenAppointments.reduce((a, b) => (a > b ? a : b)) : null;
+  const lastConsultation = seenAppointments.length ? seenAppointments.reduce((a, b) => (a > b ? a : b)) : null;
+  const lastPosted = (lastUpdateRow as { occurred_at: string } | null)?.occurred_at ?? null;
+  const lastSeen =
+    lastConsultation && lastPosted
+      ? lastConsultation > lastPosted
+        ? lastConsultation
+        : lastPosted
+      : (lastConsultation ?? lastPosted);
   const nextAppointment = appointments
     .filter((a) => new Date(a.starts_at).getTime() > nowMs && LIVE_STATUSES.has(a.status))
     .map((a) => a.starts_at)
@@ -312,7 +330,7 @@ export default async function FirmClientPage({
           <p className="mt-1 text-sm text-gray-600">
             {lastSeen
               ? `Last seen ${formatWhen(lastSeen, tz, { dateStyle: "full", timeStyle: "short" })}`
-              : "Not seen yet — no consultation of theirs has taken place."}
+              : "Not seen yet — no consultation has taken place and nothing has been posted on their matters."}
             {nextAppointment ? ` · next ${formatWhen(nextAppointment, tz, { dateStyle: "medium", timeStyle: "short" })}` : ""}
           </p>
         </div>
@@ -629,6 +647,14 @@ export default async function FirmClientPage({
           </Card>
         </div>
       </div>
+
+      <p className="text-xs text-gray-500">
+        Everything on this screen is read as you, from {ctx.firmName}&rsquo;s own records: consultations and matters
+        belonging to another firm this person also instructs are not shown. &ldquo;Last seen&rdquo; is the later of their
+        most recent consultation that had already begun and the most recent entry posted on one of their matters.
+        A payment link opens the client&rsquo;s own app: they sign in as themselves to see the invoice and pay it, and
+        the database shows it to nobody else.
+      </p>
     </div>
   );
 }
