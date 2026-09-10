@@ -97,6 +97,17 @@ export default async function FirmInvoicesPage({
   const firmCurrency = (firmRow as { default_currency: string } | null)?.default_currency ?? "NGN";
   const rows = (invoiceRows ?? []) as InvoiceRow[];
 
+  // firm_overview sums every invoice the firm has ever raised, whatever currency
+  // it was raised in. Whether that sum mixes currencies cannot be told from the
+  // page of invoices scanned below — a firm's only dollar invoices may be older
+  // than the window — so ask the database directly.
+  const { data: otherCurrencyRows } = await supabase
+    .from("invoices")
+    .select("currency")
+    .eq("firm_id", firmId)
+    .neq("currency", firmCurrency)
+    .limit(1);
+
   // The people billed and the matters billed on, so every line names them.
   const clientIds = Array.from(new Set(rows.map((r) => r.client_id)));
   const matterIds = Array.from(new Set(rows.map((r) => r.matter_id).filter((id): id is string => Boolean(id))));
@@ -161,7 +172,7 @@ export default async function FirmInvoicesPage({
     }
   }
   for (const inv of invoices) currencies.add(inv.currency);
-  const mixedCurrencies = currencies.size > 1;
+  const mixedCurrencies = currencies.size > 1 || (otherCurrencyRows ?? []).length > 0;
 
   const query = (patch: Record<string, string | null>) => {
     const params = new URLSearchParams();
@@ -175,8 +186,8 @@ export default async function FirmInvoicesPage({
     return qs ? `/firm/invoices?${qs}` : "/firm/invoices";
   };
 
-  const raiseHref = `/firm/invoices/new${sp.firm ? `?firm=${sp.firm}` : ""}`;
-  const detailHref = (id: string) => `/firm/invoices/${id}${sp.firm ? `?firm=${sp.firm}` : ""}`;
+  const raiseHref = `/firm/invoices/new${sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : ""}`;
+  const detailHref = (id: string) => `/firm/invoices/${id}${sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : ""}`;
 
   const chipClass = (active: boolean) =>
     cn(

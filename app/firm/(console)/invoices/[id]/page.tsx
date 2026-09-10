@@ -123,9 +123,12 @@ export default async function FirmInvoicePage({
   const isPaid = inv.status === "paid";
   const payLink = `${origin}/app/payments/${inv.id}`;
 
+  // Raw for params.set(), which encodes for itself; encoded where it is written
+  // into an href by hand.
   const firmParam = sp.firm ?? "";
+  const firmQuery = firmParam ? `?firm=${encodeURIComponent(firmParam)}` : "";
   const invoiceId = inv.id;
-  const listHref = `/firm/invoices${firmParam ? `?firm=${firmParam}` : ""}`;
+  const listHref = `/firm/invoices${firmQuery}`;
 
   /** Draft → issued: the moment the invoice reaches the client and they are told. */
   const issue = async (formData: FormData) => {
@@ -376,7 +379,7 @@ export default async function FirmInvoicePage({
                 <div>
                   <dt className="text-gray-500">Client</dt>
                   <dd className="font-medium text-gray-900">
-                    <Link href={`/firm/clients/${inv.client_id}${firmParam ? `?firm=${firmParam}` : ""}`} className="text-brand underline">
+                    <Link href={`/firm/clients/${inv.client_id}${firmQuery}`} className="text-brand underline">
                       {clientName}
                     </Link>
                   </dd>

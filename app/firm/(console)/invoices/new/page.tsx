@@ -54,7 +54,7 @@ export default async function NewInvoicePage({
   }
 
   const { supabase, firmId } = ctx;
-  const firmQuery = sp.firm ? `?firm=${sp.firm}` : "";
+  const firmQuery = sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : "";
 
   const [{ data: firmRow }, { data: apptRows }, { data: partyRows }, matterRows] = await Promise.all([
     supabase.from("firms").select("default_currency, vat_rate").eq("id", firmId).maybeSingle(),
@@ -110,7 +110,26 @@ export default async function NewInvoicePage({
   // ?matter= arrives from the money tab of a matter; ?client= from anywhere the
   // person is already known. A matter also names its own client, so billing from
   // a file needs no further picking.
-  const preselectedMatterId = matters.some((m) => m.id === sp.matter) ? sp.matter! : null;
+  // The picker holds only the most recently opened matters, but the money tab of
+  // ANY matter links here. Gating the preselection on that list would drop an
+  // older file silently: no client, no matter, and an invoice attached to
+  // nothing — so no client-visible fee entry on the file it was raised for.
+  // Fetch the named matter directly and put it at the top of the list.
+  let preselectedMatterId: string | null = matters.some((m) => m.id === sp.matter) ? sp.matter! : null;
+  if (!preselectedMatterId && sp.matter) {
+    const { data: linked } = await supabase
+      .from("matters")
+      .select("id, reference, title, closed_at")
+      .eq("id", sp.matter)
+      .eq("firm_id", firmId)
+      .is("deleted_at", null)
+      .maybeSingle();
+    const row = linked as { id: string; reference: string; title: string; closed_at: string | null } | null;
+    if (row) {
+      matters.unshift({ id: row.id, reference: row.reference, title: row.title, closed: Boolean(row.closed_at) });
+      preselectedMatterId = row.id;
+    }
+  }
   let preselectedClientId = sp.client && byId.has(sp.client) ? sp.client : null;
   if (!preselectedClientId && preselectedMatterId) {
     const { data: partyRow } = await supabase

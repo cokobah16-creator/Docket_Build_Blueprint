@@ -45,12 +45,21 @@ function firstIssue(error: z.ZodError): string {
   return error.issues[0]?.message ?? "Check the invoice and try again.";
 }
 
-/** invoices.due_at is a calendar day: accept a plain day or an instant, keep the day. */
+/**
+ * invoices.due_at is a calendar day, so this takes a day and nothing else.
+ *
+ * It used to accept an instant and take its UTC day, which for an instant in the
+ * small hours of a Lagos morning is the day before — an invoice quietly falling
+ * due a day early. There is no zone here to resolve that against, and guessing is
+ * worse than refusing, so an instant is refused and the caller sends the day.
+ */
 const dueOnField = z
   .string()
   .trim()
-  .refine((v) => v === "" || !Number.isNaN(Date.parse(v)), { message: "That due date could not be read." })
-  .transform((v) => (v === "" ? null : /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : new Date(v).toISOString().slice(0, 10)))
+  .refine((v) => v === "" || /^\d{4}-\d{2}-\d{2}$/.test(v), {
+    message: "Give the due date as a day, for example 2026-10-01.",
+  })
+  .transform((v) => (v === "" ? null : v))
   .nullish();
 
 const itemSchema = z.object({
