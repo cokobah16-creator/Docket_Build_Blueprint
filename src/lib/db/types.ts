@@ -73,6 +73,79 @@ export interface FirmMember {
   role: FirmRole;
 }
 
+export type FirmPlan = "free" | "standard" | "enterprise";
+export type FirmStatus = "pending" | "active" | "suspended";
+
+/** firms columns the platform admin surface reads (lifecycle only). */
+export interface FirmAdminRow {
+  id: string;
+  slug: string;
+  name: string;
+  legal_name: string | null;
+  plan: FirmPlan;
+  status: FirmStatus;
+  state_code: string | null;
+  custom_domain: string | null;
+  created_at: string;
+}
+
+/** Return shape of the create_firm() RPC. */
+export interface CreateFirmResult {
+  firm_id: string;
+  slug: string;
+  owner_id: string;
+  reference_prefix: string;
+}
+
+export type CourtLevel =
+  | "supreme"
+  | "court_of_appeal"
+  | "federal_high"
+  | "fct_high"
+  | "state_high"
+  | "national_industrial"
+  | "sharia_appeal"
+  | "customary_appeal"
+  | "magistrate"
+  | "district"
+  | "customary"
+  | "area"
+  | "sharia"
+  | "tribunal"
+  | "multi_door";
+
+/** Row of public.courts (platform-wide when firm_id is null). */
+export interface CourtRow {
+  id: string;
+  firm_id: string | null;
+  level: CourtLevel;
+  name: string;
+  short_name: string | null;
+  state_code: string | null;
+  division: string | null;
+  city: string | null;
+  suit_number_hint: string | null;
+  is_active: boolean;
+}
+
+export type CounselSide = "opposing" | "co_counsel" | "other";
+export type ServiceMethod = "platform" | "email" | "personal" | "courier" | "bailiff" | "substituted";
+
+/** Row of the service_inbox view: processes served on the current user's firm. */
+export interface ServiceInboxRow {
+  id: string;
+  process_title: string;
+  case_title: string | null;
+  suit_number: string | null;
+  court_name: string | null;
+  method: ServiceMethod;
+  served_at: string;
+  acknowledged_at: string | null;
+  document_id: string;
+  serving_firm_id: string;
+  served_firm_id: string;
+}
+
 export interface ConsentRecord {
   id: string;
   user_id: string;
@@ -106,6 +179,7 @@ export interface LawyerPublic {
   photo_path: string | null;
   practice_areas: string[];
   category: string | null;
+  year_of_call: number | null;
   full_name: string | null;
   timezone: string;
 }

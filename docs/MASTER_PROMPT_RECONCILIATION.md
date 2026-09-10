@@ -66,12 +66,19 @@ signed URLs, and `document_versions` gives uploader/timestamp/versioning that
 §16 asks the portal to track anyway. Folder-categories, previews and the
 upload UX arrive in slices 3–4.
 
-**One firm vs multi-tenant.** The master prompt describes a Klinique-only
-system; Docket is multi-tenant with Klinique as tenant #1. Multi-tenancy is a
-strict superset — Klinique gets its own branded site, portal and console, and
-nothing in the master prompt is lost. (It also makes "7 partners" a
-configuration, not a constant: partners are simply the firm's `lawyer`/`admin`
-members, so partner #8 is an insert, not a migration.)
+**One firm vs multi-tenant — now platform-first (decision 0003).** The master
+prompt describes a Klinique-only system; Docket is the platform and Klinique
+is its first tenant, the way a clinic is the first customer of an EHR platform.
+Multi-tenancy is a strict superset — Klinique gets its own branded site, portal
+and console, and nothing in the master prompt is lost. (It also makes "7
+partners" a configuration, not a constant: partners are simply the firm's
+`lawyer`/`admin` members, so partner #8 is an insert, not a migration.) Any
+other firm registers at `/firm/start` and receives the same defaults through
+`seed_firm_defaults()`; Klinique's seed calls the same function. Two platform
+primitives the master prompt did not ask for but Klinique gains from other
+firms being on Docket: the shared Nigerian court directory (migration 10) and
+service of court processes on counsel with acknowledgement (migration 11) —
+see `DOCKET_PLATFORM_MODEL.md`.
 
 **Payments.** Master prompt: Paystack, NGN, multi-currency later. The blueprint
 proposed Stripe for USD; dropped by decision 0002 — Paystack only. Nothing to reconcile.

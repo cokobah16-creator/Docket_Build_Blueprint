@@ -40,7 +40,11 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
       <main className="mx-auto max-w-md px-4 py-16">
         <Alert kind="error" title="No firm membership">
           This account is not a member of any firm. Ask a firm owner or admin
-          to add you.
+          to add you — or, if you are setting up a firm on Docket,{" "}
+          <Link href="/firm/start" className="font-medium underline">
+            register your firm
+          </Link>
+          .
         </Alert>
       </main>
     );

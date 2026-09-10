@@ -1,10 +1,14 @@
-# Docket — slice 0 (database, security, adapters)
+# Docket — the client-experience platform for Nigerian law firms
 
-*Implements sections 5–8 of `Docket_Build_Blueprint_v0.2.md`. Attorneys Klinique is tenant #1.*
+*One app, every matter, any firm. Docket is the platform; every law firm on it — Attorneys Klinique first — is a tenant with its own site, portal and console. See `docs/DOCKET_PLATFORM_MODEL.md` and decision 0003.*
 
-This is the foundation every later slice builds on: the multi-tenant Postgres schema, row-level security, the server-side business flows (booking, payment cascade, court updates, consultation notes, invites, jobs), the provider adapters, the payment webhooks, the notification dispatcher, the Klinique seed, and a test suite that proves tenant isolation.
+This repository is the platform: the multi-tenant Postgres schema and row-level security, the server-side business flows (firm creation, booking, payment cascade, court updates, consultation notes, service of process, invites, jobs), the Nigerian reference data (states, courts, holidays), the provider adapters, the payment webhooks, the notification dispatcher, the Next.js app (tenant public sites, client PWA, staff console, platform admin), Klinique's seed data, and test suites that prove isolation between firms and between clients.
 
-**Validated:** all four migrations, the seed and the 52-check test suite run clean on PostgreSQL 16. The TypeScript adapters type-check.
+**Validated:** all eleven migrations, the seed and four SQL suites (143 checks) run clean on PostgreSQL 16.
+
+## Any firm, the same way
+
+A firm registers at **`/firm/start`** (account → firm → two-factor), which calls `create_firm()`: the caller becomes owner and `seed_firm_defaults()` installs the matter statuses, an unpriced consultation service and an intake form. A platform admin can open a firm for an existing owner from **`/admin`**. `supabase/seed.sql` is only Klinique's data run through the same function — no firm needs SQL to join.
 
 ## What's in the box
 
@@ -15,17 +19,33 @@ supabase/
     20260909000002_rls.sql           helpers + policies for every table (staff writes need MFA)
     20260909000003_functions.sql     booking engine, payments, court updates, notes, invites, jobs, triggers
     20260909000004_supabase_storage_cron.sql   storage buckets/policies + pg_cron (no-op on plain Postgres)
-  seed.sql                           Attorneys Klinique: brand, policies, 15 matter statuses, 14 services, intake form
+    20260909000005_partner_attribution.sql     originating/handling partner on matters, partner_attribution view
+    20260909000006–08                          firm_public/lawyer_public projections, hardening, realtime
+    20260910000009_platform_firms.sql          create_firm(), seed_firm_defaults(), platform_admins, firms.plan/status
+    20260910000010_nigeria_reference.sql       ng_states, courts (hierarchy + suit-number hints), holidays, vacations, SCN/year of call, matters.court_id
+    20260910000011_counsel_and_service.sql     matter_counsel, process_service, serve_process(), acknowledge_service(), service_inbox
+  seed.sql                           Attorneys Klinique: brand, policies, 14 services, intake form — then seed_firm_defaults()
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
     dispatch-notifications/          drains the outbox to email (Resend), SMS (Termii / Twilio), push (VAPID)
   tests/
     00_local_auth_stub.sql           local-only stand-in for Supabase Auth
     10_rls_isolation.sql             two firms, six users, 52 checks, rolls back
+    20_platform.sql                  self-serve firm creation, slug rules, caps, platform admin sees lifecycle only
+    30_nigeria.sql                   states, court directory (platform vs firm-private), holidays, practitioner fields
+    40_counsel_service.sql           service of process: served firm sees the record + document and nothing else
 src/lib/providers/
   payments/   PaymentProvider — Paystack (all currencies; decision 0002)
   video/      VideoProvider   — Daily (private rooms, knocking, per-user tokens, no recording)
   messaging/  SmsProvider (Termii, Twilio), EmailProvider (Resend)
+src/lib/nigeria.ts   states, +234 normalisation, suit-number shape, court outcomes
+app/
+  page.tsx                 Docket landing (firms · clients · courts)
+  (public)/[firm]/…        tenant public site + booking wizard
+  app/…                    client PWA
+  firm/(auth)/start        self-serve firm registration → create_firm()
+  firm/(auth)/security/mfa TOTP enrolment; firm/(console) staff console
+  admin/                   platform admin (platform_admins gate; lifecycle only)
 scripts/db-test-local.sh
 .env.example
 ```
@@ -51,7 +71,7 @@ Requires PostgreSQL 16+ (superuser). Never run the stub against Supabase.
 DATABASE_URL=postgres://postgres@localhost:5432/postgres bash scripts/db-test-local.sh
 ```
 
-Expected tail: `NOTICE:  ALL CHECKS PASSED` after 52 `PASS` lines. The suite covers: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, and the hold-release job.
+Each suite ends with `NOTICE:  ALL CHECKS PASSED` (143 `PASS` lines in total). Coverage: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, the hold-release job; self-serve firm creation and its defaults, slug validation, the three-firm cap, platform admins seeing lifecycle rows and no content; the court directory (platform-wide vs firm-private), holidays and vacations, practitioner fields; service of process across firms (record + served document visible to the served firm, nothing else; acknowledgement once; clients see progress).
 
 ## Rules the code enforces (don't undo them in later slices)
 
@@ -62,6 +82,9 @@ Expected tail: `NOTICE:  ALL CHECKS PASSED` after 52 `PASS` lines. The suite cov
 - **`audit_log` is append-only** for every role except the security-definer `audit()` function.
 - **Timestamps are UTC**; render in the viewer's zone (`profiles.timezone`, default `Africa/Lagos`).
 - **Storage paths carry the tenant**: `documents/{firm_id}/{document_id}/{version_id}.{ext}`, `intake-uploads/{firm_id}/{client_id}/…`, `firm-assets/{firm_id}/…` — the storage policies parse them.
+- **No firm is named in code.** Brand, copy, services, policies, courts and statuses are rows; `seed.sql` is data. Platform-wide reference rows (`courts` with `firm_id is null`, `ng_states`, `public_holidays`, `court_vacations`, `platform_admins`) are written with the service role only.
+- **Platform admins never see matter content.** There is no platform policy on matters, documents, messages, updates or invoices — do not add one.
+- **A served firm sees only what was served.** `process_service` + the served document (via `can_access_document`), never the matter, roster or timeline.
 
 ## Server functions (RPC)
 
@@ -74,11 +97,21 @@ Expected tail: `NOTICE:  ALL CHECKS PASSED` after 52 `PASS` lines. The suite cov
 | `post_court_update(matter, outcome, occurred_at, court, adjourned_by, next_date, next_purpose, note_to_client, internal_note)` | staff (MFA) | the 30-second form: composes the title, posts client + internal entries, closes today's court event, opens the next, updates the matter |
 | `save_consultation_notes(appointment, summary, advice, follow_up, internal, mark_completed)` | staff (MFA) | client-visible + internal notes, timeline echo, marks completed |
 | `accept_invite(token)` | client | joins the matter the invite points at |
+| `create_firm(name, slug, legal_name, rc_number, timezone, currency, prefix, state_code, brand, owner_email)` | authenticated (owner_email: platform admins) | opens a firm, makes the owner, seeds defaults, audits; validates and reserves slugs; three firms per account |
+| `seed_firm_defaults(firm)` | internal | matter statuses, an unpriced inactive consultation, a consultation intake form — idempotent |
+| `is_platform_admin()`, `is_valid_firm_slug(slug)` | authenticated / anon | gates for `/admin` and the registration form |
+| `is_public_holiday(date)`, `is_non_sitting_day(date, level, state)` | anon, authenticated | weekends, Public Holidays Act dates, published court vacations |
+| `serve_process(matter, counsel, document, title, method, served_at, note)` | staff (MFA) | records service on counsel (platform/email/personal/courier/bailiff/substituted), snapshots suit number and case title, posts a client-visible timeline entry, notifies counsel on Docket |
+| `acknowledge_service(service, note)` | served firm's staff (MFA) | proof of service: timestamps, notifies the serving lawyer, internal timeline note, audits both firms |
 | `release_expired_holds()`, `enqueue_appointment_reminders()`, `enqueue_court_reminders()`, `mark_overdue_invoices()`, `digest_sittings_without_update()` | pg_cron | jobs |
 
 ## Decisions still open before launch (blueprint §14)
 
-Firm domain · platform entity · which entity holds the Paystack account · VAT treatment (`firms.vat_rate` is 0 until Precious confirms) · service prices (only Legal Consultation is active; the rest are seeded inactive at a placeholder ₦50,000) · first friendly firm for week 11.
+Firm domain · platform entity · which entity holds the Paystack account · VAT treatment (`firms.vat_rate` is 0 until Precious confirms) · service prices (only Legal Consultation is active; the rest are seeded inactive at a placeholder ₦50,000) · first friendly firm for week 11 — which now onboards itself at `/firm/start`.
+
+## Platform data the operator maintains
+
+`courts` (platform rows), `court_vacations` (from each court's practice direction), `public_holidays` (movable Eid dates when declared), `platform_admins`. All are written with the service role or SQL; see `docs/DOCKET_PLATFORM_MODEL.md` §2.
 
 ## Next slices
 
@@ -86,4 +119,4 @@ See `BUILD_PROMPTS.md` — six self-contained prompts for Claude Code that build
 
 ## Source requirements
 
-The original Klinique requirements document lives at `docs/Attorneys_Klinique_Partner_Platform_Prompt.md`; `docs/MASTER_PROMPT_RECONCILIATION.md` maps it section by section onto this architecture — what's covered, what the blueprint deliberately changed (Daily vs Google Meet, Supabase Storage vs Google Drive), and the partnership-pooling additions (originating/handling partner attribution, migration 5; Firm Overview scheduled into slice 4).
+Platform model: `docs/DOCKET_PLATFORM_MODEL.md` and `docs/decisions/0003-platform-first.md`. The original Klinique requirements document lives at `docs/Attorneys_Klinique_Partner_Platform_Prompt.md`; `docs/MASTER_PROMPT_RECONCILIATION.md` maps it section by section onto this architecture — what's covered, what the blueprint deliberately changed (Daily vs Google Meet, Supabase Storage vs Google Drive), and the partnership-pooling additions (originating/handling partner attribution, migration 5; Firm Overview scheduled into slice 4).
