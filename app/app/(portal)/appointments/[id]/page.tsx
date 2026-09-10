@@ -39,11 +39,13 @@ export default async function AppointmentPage({
   const appt = (data ?? null) as Appt | null;
   if (!appt) notFound();
 
-  const [{ data: service }, { data: lawyer }, { data: invoice }] = await Promise.all([
+  const [{ data: service }, { data: lawyer }, { data: invoice }, { data: notesRow }] = await Promise.all([
     appt.service_id ? supabase.from("services").select("name, duration_min").eq("id", appt.service_id).maybeSingle() : Promise.resolve({ data: null }),
     appt.lawyer_id ? supabase.from("lawyer_public").select("full_name, title").eq("id", appt.lawyer_id).maybeSingle() : Promise.resolve({ data: null }),
     appt.invoice_id ? supabase.from("invoices").select("id, number, status, total_minor, currency").eq("id", appt.invoice_id).maybeSingle() : Promise.resolve({ data: null }),
+    supabase.from("consultation_notes").select("client_summary, advice_given, follow_up, updated_at").eq("appointment_id", id).maybeSingle(),
   ]);
+  const notes = notesRow as { client_summary: string | null; advice_given: string | null; follow_up: string | null; updated_at: string } | null;
   const svc = service as { name: string; duration_min: number } | null;
   const law = lawyer as { full_name: string | null; title: string | null } | null;
   const inv = invoice as { id: string; number: string; status: string; total_minor: number; currency: string } | null;
@@ -52,6 +54,11 @@ export default async function AppointmentPage({
   const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(appt.starts_at));
   const live = ["awaiting_payment", "pending", "confirmed", "rescheduled"].includes(appt.status);
   const upcoming = new Date(appt.starts_at).getTime() > Date.now();
+  const roomOpen =
+    appt.mode === "virtual" &&
+    (appt.status === "confirmed" || appt.status === "rescheduled") &&
+    Date.now() <= new Date(appt.ends_at).getTime() + 60 * 60 * 1000;
+  const opensAt = new Date(new Date(appt.starts_at).getTime() - 10 * 60 * 1000);
   const appointmentId = appt.id;
   // Form actions must return void; errors come back through the query string.
   const pay = async () => {
@@ -109,10 +116,45 @@ export default async function AppointmentPage({
         </CardBody>
       </Card>
 
-      {appt.status === "confirmed" && upcoming && (
-        <Alert kind="info">
-          Your join button appears here 10 minutes before the consultation (virtual consultations arrive in the next release).
+      {appt.status === "rescheduled" && upcoming && (
+        <Alert kind="info" title="This appointment was moved">
+          Your new time is shown above. Reminders will be sent again for the new time.
         </Alert>
+      )}
+
+      {roomOpen && (
+        <Card>
+          <CardHeader title="Video consultation" />
+          <CardBody className="space-y-3">
+            <p className="text-sm text-gray-700">
+              The waiting room opens at{" "}
+              <strong>{new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: tz }).format(opensAt)}</strong>, 10 minutes before
+              your consultation. Test your camera and microphone there, then wait for your lawyer to admit you.
+            </p>
+            <Link href={`/app/appointments/${appt.id}/waiting-room`} className="inline-flex w-full items-center justify-center rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-white hover:opacity-90">
+              Go to the waiting room
+            </Link>
+          </CardBody>
+        </Card>
+      )}
+
+      {notes && notes.client_summary && (
+        <Card>
+          <CardHeader title="Your consultation summary" />
+          <CardBody className="space-y-3 text-sm text-gray-800">
+            <p className="whitespace-pre-wrap">{notes.client_summary}</p>
+            {notes.advice_given && (
+              <div><p className="text-xs uppercase tracking-wide text-gray-500">Advice</p><p className="whitespace-pre-wrap">{notes.advice_given}</p></div>
+            )}
+            {notes.follow_up && (
+              <div><p className="text-xs uppercase tracking-wide text-gray-500">Next steps</p><p className="whitespace-pre-wrap">{notes.follow_up}</p></div>
+            )}
+            <p className="text-xs text-gray-500">
+              Written by your lawyer ·{" "}
+              {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: tz }).format(new Date(notes.updated_at))}
+            </p>
+          </CardBody>
+        </Card>
       )}
 
       <div className="flex flex-wrap gap-3">
