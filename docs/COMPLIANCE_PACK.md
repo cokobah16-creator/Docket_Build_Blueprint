@@ -73,7 +73,9 @@ somebody you share a matter or an appointment with. Nothing broader.
 | `updates` | the timeline. `visibility = 'client'` or `'internal'`; `updates_client_select` allows only `visibility = 'client'` rows to a party |
 | `court_events` | sittings, purposes, outcomes — and (migration 38) who entered each, the notice it came from (`source_document_id`, a document on the matter) and its reference |
 | `deadlines`, `court_rules`, `rule_provisions` | a deadline counted from a rule: the triggering event and day, the rule as it read, the calculation, the day due, the confirming lawyer, internal notes. **Firm work product: no client policy** — a client never reads a deadline. The rules themselves are platform reference data, readable by anyone |
-| `tasks` | internal |
+| `tasks` | internal — and (migration 39) which pack template started a task, if any. Audited from 39 |
+| `matter_statuses` | the firm's stages: label and colour are read by the firm's clients. Audited from 39 |
+| `workflow_packs`, `firm_workflow_packs` | Docket's catalogue of stage packs (platform data, versioned, immutable) and which version each firm installed. No client policy |
 | `import_rows.raw` | **what a firm typed about each matter and client in a spreadsheet it imported** (migration 34): names, phone numbers, email addresses, the other side, descriptions — kept verbatim as the reconciliation record, readable by the firm's owners and admins only, never deleted. A subject-access search must include it |
 | `matters.legacy_reference` | the firm's old file number |
 | `matter_adverse_parties` | **the other side, by name and alias** — people who have never used Docket, recorded by the firm for conflict checking. Firm work product: no client policy |

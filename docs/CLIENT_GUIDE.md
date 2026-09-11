@@ -145,7 +145,8 @@ lawyer may also keep private working notes — see below.
 Once your firm opens a matter for you, **`/app/matters`** is where you follow it. Each matter has:
 
 - **A timeline** — everything that has happened, newest first: hearings and what came of them,
-  filings, correspondence, documents, fee entries, changes of status. This is the part that means
+  filings, correspondence, documents, fee entries, changes of status (a *Status* entry says the
+  stage your matter moved to, with a line from your firm where they wrote one). This is the part that means
   you do not have to ring and ask.
 - **Documents** — what your firm has shared with you, and anything you upload.
 - **Messages** — a thread with your firm about that matter.

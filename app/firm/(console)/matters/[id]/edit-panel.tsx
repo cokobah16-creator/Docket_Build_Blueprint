@@ -16,7 +16,7 @@ import { setMatterAccess, setMatterLawyers, updateMatter } from "@/lib/actions/m
 import { CourtPicker } from "@/components/firm/court-picker";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import type { CourtRow, MatterStatus } from "@/lib/db/types";
+import { statusFitsType, type CourtRow, type MatterStatus } from "@/lib/db/types";
 
 const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
 
@@ -49,13 +49,15 @@ function todayIn(tz: string): string {
 }
 
 export function EditPanel({
-  matterId, firmId, timezone, initial, statuses, courts, staff, wallsEnabled, onTeam,
+  matterId, firmId, timezone, initial, statuses, courts, staff, wallsEnabled, onTeam, matterType,
 }: {
   matterId: string;
   firmId: string;
   timezone: string;
   initial: MatterEditInitial;
   statuses: MatterStatus[];
+  /** The matter's type: a stage is offered on the types it names, or on every type (migration 39). */
+  matterType?: string | null;
   courts: CourtRow[];
   staff: Array<{ id: string; label: string }>;
   /** firms.matter_walls: whether restricting is possible at all in this firm. */
@@ -203,10 +205,11 @@ export function EditPanel({
           <label htmlFor="matter-status" className="text-sm font-medium text-gray-900">Status</label>
           <select id="matter-status" value={statusId} onChange={(e) => setStatusId(e.target.value)} className={field}>
             <option value="">No status</option>
-            {statuses.map((s) => (
-              <option key={s.id} value={s.id}>{s.label}</option>
+            {statuses.filter((s) => statusFitsType(s, matterType) || s.id === initial.statusId).map((s) => (
+              <option key={s.id} value={s.id}>{s.label}{s.is_terminal ? " (closes the file)" : ""}</option>
             ))}
           </select>
+          <p className="text-xs text-gray-500">Changing the stage tells the client, closes or reopens the file for a closing stage, and starts the stage&apos;s tasks from your installed packs.</p>
         </div>
 
         <div>

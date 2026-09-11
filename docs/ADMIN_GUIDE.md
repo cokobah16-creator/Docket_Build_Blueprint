@@ -169,6 +169,25 @@ notice with nothing attached shows as exactly that; everything else is *as recor
 Attaching the evidence records you as the lawyer who confirmed the date. The diary is audited:
 a date made, moved, vacated, closed or evidenced leaves a line in your audit trail.
 
+## Your workflow: stages, and the work each starts
+
+**`/firm/admin/workflow`** shows the stages a matter moves through — the label your client reads,
+the order, which matter types each is offered on — and the packs Docket publishes. A **pack** is a
+numbered version of a set of stages and the task templates each stage starts; Docket ships
+*Litigation* (the fifteen stages every firm begins with — installing it recognises yours as they
+are) and *Conveyancing* (for property matters), and publishes new versions as practice suggests.
+Installing a pack **adds** the stages you lack and **never rewrites** the ones you have: your
+wording, colours and order stay, and no matter is moved. Installing a newer version adds only.
+An owner or administrator can also edit a stage's wording, colour, order and the next action it
+suggests; the key underneath never changes.
+
+Changing a matter's stage (on its Details tab) is now one act: the client sees a *Status* entry
+on the timeline, with the line you add; a closing stage closes the file today and leaving it
+reopens the file; the stage's suggested next action is offered where the slot is empty; and every
+task the stage starts in your installed packs is added to the matter's Tasks — once. Setting the
+same stage twice never doubles the list. Tasks a pack started say so, with the stage that started
+them, and are yours to reassign or close like any other.
+
 ## Deadlines
 
 A deadline is counted by Docket, shown day by day, and confirmed by a lawyer. On a matter's

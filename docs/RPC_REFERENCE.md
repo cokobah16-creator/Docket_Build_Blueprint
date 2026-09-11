@@ -239,6 +239,12 @@ suspended one. That is deliberate: a more specific refusal would tell a stranger
 a row.
 
 ### `open_matter(p_firm uuid, p_title text, p_type matter_type, p_client uuid = null, p_cause_title text = null, p_description text = null, p_court_id uuid = null, p_suit_number text = null, p_judicial_division text = null, p_originating_lawyer uuid = null, p_handling_lawyer uuid = null, p_status_key text = 'new_inquiry', p_note_to_client text = null, p_conflict_check uuid = null, p_adverse_parties jsonb = null)`
+Migration 39: `p_status_key`'s default, `new_inquiry`, means the firm's **entry stage** — that key
+where the firm has it, else its first open stage that fits the matter's type, else none for a
+firm with no stages yet. Any other key the firm does not have is refused (it used to open the
+matter with no stage), a stage offered only for other matter types is refused, the stage's
+suggested next action is written, and the stage's task templates from the firm's installed packs
+are started; the result carries `tasks_created`, and `matter.opened` is audited.
 Returns `jsonb`. Issues the reference from the firm's counter, adds the client as a party and the
 lead lawyer, records court and suit number, and posts the first client-visible timeline entry.
 Since migration 32 it also records the other side (`p_adverse_parties`, an array of
@@ -417,6 +423,48 @@ Withdraws a wrongly served process; the served firm's access ends immediately.
 Refuses: `service record not found` · `not permitted` *(42501)*
 
 ---
+
+### Workflow packs (migration 39)
+
+#### `set_matter_status(p_matter uuid, p_status_key text, p_note_to_client text = null)`
+Returns `jsonb` — `status_id`, `tasks_created`, `next_action_set`, `closed`. **Who:** staff who
+can write the matter. A change of stage as one act: the matter moves to the firm's stage with that
+key (an unknown key is refused; a stage the firm's pack offers only for other matter types is
+refused), a `status_change` entry the client reads is posted with the note (none when the stage
+is unchanged), a terminal stage sets `closed_at` to today in the firm's calendar and leaving one
+clears it, the stage's `default_next_action` is written where the next-action slot is empty, and
+every task template the firm's installed packs start on that stage is materialised — once per
+matter (`tasks.template_key` is unique per matter), due at five in the afternoon firm time after
+the template's offset, assigned to the lead lawyer where the template says so. Audits
+`matter.status_changed`. The edit panel's stage select calls this; a bare write of
+`matters.status_id` is still allowed by the policy and does none of it.
+
+Refuses: `not permitted` *(42501)* · `unknown status "…" — use one of the firm's status keys` ·
+`the stage "…" is for … matters, and this is a … matter`
+
+#### `install_workflow_pack(p_firm uuid, p_key text, p_version int = null)`
+Returns `jsonb` — `version`, `statuses_added`, `statuses_recognised`. **Who:** `admin_w`. Installs
+a version of a published pack (the latest when none is given): a stage the firm lacks is added
+with the pack's label, colour, order, matter types and suggested next action; a stage the firm
+already has is **recognised** — stamped with the pack and version and left exactly as it reads,
+so a pack never rewrites the label a client sees or moves a matter. Installing again with a newer
+version adds only; an older version is refused. The firm's ledger (`firm_workflow_packs`) says
+which version it is on. Audits `workflow_pack.installed`.
+
+Refuses: `not permitted` *(42501)* · `no such pack` / `no such pack version` · `this firm is already on version N of "…"`
+
+#### `publish_workflow_pack(p_key text, p_name text, p_matter_types matter_type[], p_definition jsonb, p_note text = null)`
+Returns `int` (the new version). **Who:** a platform admin with MFA. Publishes the next version of
+a pack — `definition` is `{statuses: [{key, label, colour, sort, is_terminal, next_action}],
+task_templates: [{key, title, on_status_key, due_offset_days, assignee: lead|none}]}`, checked
+by `workflow_pack_definition_check()` before anything is written. A version is immutable: the
+table has no update or delete grant. Audits `workflow_pack.published`, which the platform reads.
+Docket ships two packs as data in the migration — `litigation` v1 (the fifteen stages every firm
+starts with, so an existing firm is recognised, not duplicated) and `conveyancing` v1 for
+`property` matters — labelled as defaults and supersedable.
+
+Refuses: `not permitted` *(42501)* · `a pack has at least one stage under "statuses"` ·
+`stage key "…" appears twice` · `template "…" starts on stage "…", which the pack does not have` · the other shape errors, each naming the stage or template
 
 ### The legal diary (migration 38)
 

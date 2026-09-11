@@ -156,6 +156,7 @@ Migrations apply in filename order, which is chronological:
 20260910000036_drafts_and_retries.sql     updates.client_ref (a retry returns the posting already made); a document with no file answers no request; retire_empty_document(); storage_integrity() counts rows without a version
 20260910000037_notifications_reliability.sql notifications: provider, provider_ref, accepted_at, delivered_at, delivery_status, failure_kind, send_attempts, segments, cost; dedupe_key; claim_notifications()/finish_notification(); record_delivery_receipt(); provider_rates + set_provider_rate(); platform_notification_cost, platform_firm_active_matters
 20260910000038_legal_diary.sql            court_events provenance (created_by, source_document_id, source_ref, confirmed_by) and audit; court_rules/rule_provisions; is_time_stopped(), count_deadline(); deadlines + compute/confirm/discharge_deadline(); firm_deadlines; enqueue_deadline_reminders() on cron 06:00
+20260910000039_workflow_packs.sql         workflow_packs (versioned, immutable) + firm_workflow_packs; matter_statuses pack/matter_types/default_next_action; tasks template_key; publish_workflow_pack(), install_workflow_pack(), set_matter_status(); open_matter() re-created (unknown key refused, entry stage); two default packs as data; matter_statuses and tasks audited
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -448,7 +449,13 @@ provider rates on `/admin/health`; nothing the front end reads changes except th
 gaining columns at the end. 38 is additive and safe either side: `firm_cause_list` gains columns
 at the end, every new table and function is new, and the deadline reminders (`docket-deadline-remind`,
 06:00 daily) render through the v9 dispatcher — deploy v9 before the first confirmed deadline
-comes within a week of its day, or the reminder goes out with the generic sentence.
+comes within a week of its day, or the reminder goes out with the generic sentence. 39 is safe
+either side: `open_matter()` keeps its signature (the deployed form resolves to it; the default
+key now means the firm's entry stage, and a firm's own unknown key is refused instead of opening
+the matter with no stage), a direct write of `matters.status_id` — what the deployed edit panel
+does — is still allowed by the policy and simply does not post the status_change entry or start
+the stage's tasks until the front end that calls `set_matter_status()` deploys, and the two
+default packs are catalogue rows nothing reads until a firm installs one.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

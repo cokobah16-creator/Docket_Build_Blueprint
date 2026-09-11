@@ -309,6 +309,39 @@ export interface MatterStatus {
   label: string;
   colour: string | null;
   is_terminal: boolean;
+  /** Migration 39: where the stage came from and which matter types it is offered for (null: every type). */
+  sort?: number;
+  pack_key?: string | null;
+  pack_version?: number | null;
+  matter_types?: MatterType[] | null;
+  default_next_action?: string | null;
+}
+
+/** A stage is offered for a matter type when it names no types, or names this one. */
+export function statusFitsType(s: Pick<MatterStatus, "matter_types">, type: string | null | undefined): boolean {
+  return !s.matter_types || s.matter_types.length === 0 || (!!type && (s.matter_types as string[]).includes(type));
+}
+
+// ---------------------------------------------------------------- workflow packs (migration 39)
+export interface WorkflowPackStatusDef { key: string; label: string; colour?: string; sort?: number; is_terminal?: boolean; next_action?: string }
+export interface WorkflowPackTaskDef { key: string; title: string; on_status_key: string; due_offset_days?: number; assignee?: "lead" | "none" }
+export interface WorkflowPackDefinition { statuses: WorkflowPackStatusDef[]; task_templates?: WorkflowPackTaskDef[] }
+export interface WorkflowPackRow {
+  key: string;
+  version: number;
+  name: string;
+  matter_types: MatterType[] | null;
+  definition: WorkflowPackDefinition;
+  note: string | null;
+  published_by: string | null;
+  published_at: string;
+}
+export interface FirmWorkflowPackRow {
+  firm_id: string;
+  pack_key: string;
+  installed_version: number;
+  installed_at: string;
+  installed_by: string | null;
 }
 
 export interface MatterRow {
@@ -809,6 +842,10 @@ export interface TaskRow {
   due_at: string | null;
   status: string;
   created_at: string;
+  /** Migration 39: a task a pack's stage started, once per matter. */
+  template_key?: string | null;
+  pack_key?: string | null;
+  status_key?: string | null;
 }
 
 export interface InviteRow {
@@ -928,6 +965,7 @@ export const SERVICE_METHODS: Array<{ value: string; label: string; hint?: strin
 
 export const MATTER_TYPES = ["litigation", "property", "corporate", "estate", "family", "employment",
   "debt_recovery", "ip", "regulatory", "immigration", "advisory", "criminal", "arbitration", "other"] as const;
+export type MatterType = (typeof MATTER_TYPES)[number];
 
 // ---------------------------------------------------------------- slice 5: admin surfaces (migration 20)
 

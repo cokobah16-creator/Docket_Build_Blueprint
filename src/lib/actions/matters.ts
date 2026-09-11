@@ -202,6 +202,12 @@ export async function setMatterAccess(matterId: string, firmId: string, access: 
  * Direct update under the matters policy (staff_w). Only the keys the caller
  * actually passed are written, so a form that edits the court never blanks the
  * next action. A key passed as null clears that column.
+ *
+ * A change of STAGE is not a column write (migration 39): set_matter_status() moves the matter,
+ * tells the client, closes or reopens the file for a terminal stage, and starts the stage's work
+ * once. So a statusId in the patch goes through that function — by the stage's key, read under
+ * RLS — and the rest of the patch is written as before. Clearing the stage (null) stays a plain
+ * write: there is no stage to start.
  */
 export async function updateMatter(matterId: string, patch: MatterPatch): Promise<Err> {
   if (!z.string().uuid().safeParse(matterId).success) return { error: "Unknown matter." };
@@ -210,6 +216,21 @@ export async function updateMatter(matterId: string, patch: MatterPatch): Promis
   const d = parsed.data;
   const given = (key: keyof MatterPatch) => Object.prototype.hasOwnProperty.call(patch, key);
 
+  if (given("statusId") && d.statusId) {
+    const supabase = await supabaseServer();
+    if (!supabase) return { error: "Not configured." };
+    const [{ data: current }, { data: status }] = await Promise.all([
+      supabase.from("matters").select("status_id").eq("id", matterId).maybeSingle(),
+      supabase.from("matter_statuses").select("key").eq("id", d.statusId).maybeSingle(),
+    ]);
+    const key = (status as { key: string } | null)?.key;
+    if (!key) return { error: "That stage is not one of this firm's." };
+    if ((current as { status_id: string | null } | null)?.status_id !== d.statusId) {
+      const { error } = await supabase.rpc("set_matter_status", { p_matter: matterId, p_status_key: key });
+      if (error) return { error: error.message };
+    }
+  }
+
   const row: Record<string, string | null> = {};
   if (given("title") && d.title !== undefined) row.title = d.title;
   if (given("causeTitle")) row.cause_title = d.causeTitle || null;
@@ -217,7 +238,7 @@ export async function updateMatter(matterId: string, patch: MatterPatch): Promis
   if (given("nextAction")) row.next_action = d.nextAction || null;
   if (given("nextActionOwnerId")) row.next_action_owner_id = d.nextActionOwnerId || null;
   if (given("nextActionDue")) row.next_action_due = d.nextActionDue || null;
-  if (given("statusId")) row.status_id = d.statusId || null;
+  if (given("statusId") && !d.statusId) row.status_id = null;
   if (given("courtId")) row.court_id = d.courtId || null;
   if (given("courtName")) row.court_name = d.courtName || null;
   if (given("suitNumber")) row.suit_number = d.suitNumber || null;
@@ -226,7 +247,10 @@ export async function updateMatter(matterId: string, patch: MatterPatch): Promis
   if (given("originatingLawyerId")) row.originating_lawyer_id = d.originatingLawyerId || null;
   if (given("closedAt")) row.closed_at = d.closedAt ?? null;
 
-  if (Object.keys(row).length === 0) return { error: "Nothing to change." };
+  if (Object.keys(row).length === 0) {
+    if (given("statusId") && d.statusId) { refreshMatter(matterId); revalidatePath("/app/matters"); return undefined; }
+    return { error: "Nothing to change." };
+  }
 
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
@@ -236,6 +260,22 @@ export async function updateMatter(matterId: string, patch: MatterPatch): Promis
   refreshMatter(matterId);
   revalidatePath("/app/matters");
   return undefined;
+}
+
+/** Move a matter to a stage by key, with an optional line for the client. One act: see set_matter_status(). */
+export async function setMatterStatus(matterId: string, statusKey: string, noteToClient?: string | null): Promise<{ error: string } | { tasksCreated: number; closed: boolean }> {
+  if (!z.string().uuid().safeParse(matterId).success) return { error: "Unknown matter." };
+  if (!/^[a-z0-9_]{2,60}$/.test(statusKey)) return { error: "Unknown stage." };
+  const note = (noteToClient ?? "").trim();
+  if (note.length > 2000) return { error: "Keep the note to 2,000 characters." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { data, error } = await supabase.rpc("set_matter_status", { p_matter: matterId, p_status_key: statusKey, p_note_to_client: note || null });
+  if (error) return { error: error.message };
+  const r = (data ?? {}) as { tasks_created?: number; closed?: boolean };
+  refreshMatter(matterId);
+  revalidatePath("/app/matters");
+  return { tasksCreated: Number(r.tasks_created ?? 0), closed: Boolean(r.closed) };
 }
 
 // ---------------------------------------------------------------- who is on the matter

@@ -795,6 +795,7 @@ async function EditSection({
       firmId={matter.firm_id}
       timezone={ctx.timezone}
       statuses={statuses}
+      matterType={matter.type}
       courts={courts}
       staff={staffOptions}
       wallsEnabled={wallsEnabled}
