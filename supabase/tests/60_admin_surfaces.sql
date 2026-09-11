@@ -252,6 +252,41 @@ begin
   perform t_reset();
 end $$;
 
+-- ---------------------------------------------------------------- 2d. the booking limit is in the function
+-- src/lib/rate-limit.ts allowed ten bookings an hour and the server action asked before calling
+-- book_appointment(); a caller with the anon key could call the RPC directly and never be asked.
+-- Migration 23 puts the same check inside the function, keyed on auth.uid(), before the first
+-- lookup. The bucket is filled through rate_limit_hit() itself — the calls that would have gone
+-- through — and then book_appointment() is shown refusing on that count alone, before it has
+-- looked at the firm or the service; a second person is not refused, because the key is the
+-- caller and nothing the caller sent.
+do $$
+declare cl uuid := (select v from fx where k='client'); la uuid := (select v from fx where k='lawyer');
+        f uuid := (select v from fx where k='firm'); i int; ok bool; msg text;
+begin
+  perform t_as(cl, 'aal1');
+  for i in 1..10 loop
+    perform t_check(format('booking %s of 10 is within the allowance', i),
+                    rate_limit_hit('booking', 10, interval '1 hour'));
+  end loop;
+
+  ok := false; msg := '';
+  begin
+    perform book_appointment(f, gen_random_uuid(), la, now() + interval '2 days');
+  exception when others then msg := sqlerrm; ok := msg like '%more than 10 attempts%'; end;
+  perform t_check('the eleventh booking is refused by the function itself', ok);
+  perform t_check('and refused before it looked at the service', msg not like '%service%');
+  perform t_reset();
+
+  perform t_as(la, 'aal1');
+  ok := false;
+  begin
+    perform book_appointment(f, gen_random_uuid(), la, now() + interval '2 days');
+  exception when others then ok := sqlerrm not like '%more than 10 attempts%'; end;
+  perform t_check('a different person is not refused on the first person''s count', ok);
+  perform t_reset();
+end $$;
+
 -- ---------------------------------------------------------------- 3. roles and removal
 do $$
 declare ow uuid := (select v from fx where k='owner'); o2 uuid := (select v from fx where k='owner2');

@@ -1,8 +1,9 @@
 // Rate limiting, keyed on whoever the caller actually is.
 //
-// The decision lives in Postgres (rate_limit_hit, migration 21) because the three surfaces that
-// need limiting run in three different runtimes and the database is the only thing they share.
-// This module is the Next.js half: it works out the key and asks.
+// The decision lives in Postgres (rate_limit_hit, migration 21) because the surfaces that need
+// limiting run in different runtimes — Next.js server actions here, a Deno Edge Function for the
+// webhook — and the database is the only thing they share. This module is the Next.js half: it
+// works out the key and asks.
 //
 // Postgres cannot see a request's IP — nothing in this codebase passes headers down — so:
 //  · a signed-in caller is keyed on auth.uid() INSIDE the function, where it cannot be forged;
@@ -10,15 +11,37 @@
 //
 // The hash matters. A raw IP is personal data under the NDPR and does not need to be stored to
 // count requests, so only its digest ever reaches the database.
+//
+// WHAT A LIMIT HERE IS, AND IS NOT. A check in a server action bounds the people who use the
+// screen. It does not bound a caller who takes the anon key from the browser and calls the RPC
+// underneath directly — every signed-in user can — so a limit that lives only here is a
+// convenience, not a rule. Each entry below says where the rule actually is:
+//
+//   booking     — INSIDE book_appointment() (migration 23), same bucket, same count. This check is
+//                 the front door; the function refuses on its own. It is the one surface where the
+//                 database bounded nothing else: a direct caller could take every free slot as a
+//                 fifteen-minute hold, and again when the holds released.
+//   checkout    — this action is the only door. Starting a Paystack transaction needs the secret
+//                 key, which never reaches a browser.
+//   firm_start  — create_firm() refuses a fourth firm per account (migration 9). This slows a
+//                 person down; the database already bounds what they can do.
+//   invite      — accept_staff_invite() and accept_invite() consume a single-use token. Same.
+//   webhook_bad — applied in the Edge Function (supabase/functions/paystack-webhook), which has
+//                 its own copy of the number. Change both or neither.
+//   report      — /api/report is a route handler and is the only thing that calls captureException
+//                 for the browser; there is no RPC beneath it to bypass.
+//
+// There is deliberately NO entry for slot browsing. available_slots() is granted to anon and the
+// booking wizard calls it directly, so a limit declared here would never run — and for a while one
+// was declared here and never ran. If slot searches ever need a ceiling, it has to live inside
+// available_slots() itself; a number in this file would be a claim the code does not keep.
 
 import { headers } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** How long a window lasts and how many requests it allows, per surface. */
 export const LIMITS = {
-  /** Anonymous slot browsing on the booking wizard. */
-  slots: { limit: 120, window: "1 minute" },
-  /** Actually taking a slot. Low, and per person. */
+  /** Actually taking a slot. Low, and per person. The rule is in book_appointment() itself. */
   booking: { limit: 10, window: "1 hour" },
   /** Starting a checkout — each one creates a Paystack transaction. */
   checkout: { limit: 20, window: "1 hour" },
