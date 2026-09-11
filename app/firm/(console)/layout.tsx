@@ -97,6 +97,13 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
 
   return (
     <AppShell kind="console" className="min-h-screen">
+      {/* The console's own face. The client shell gets the firm's typefaces
+          from brandFontsUrl(); this one is fixed, and without loading it the
+          headings fall through to the system grotesque. */}
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&display=swap"
+      />
       {/* Desktop chrome. Hidden on a phone, where the tab bar and each screen's
           own heading do this job. */}
       <header className="hidden border-b border-dk-line bg-white md:block">

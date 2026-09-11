@@ -24,8 +24,12 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
   return (
     <AppShell kind="client" style={brandStyle(firm?.brand)}>
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
-      <div className="dk-safe-top dk-safe-bottom mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col justify-center px-4 py-8">
-        {children}
+      {/* Two elements, not one: the inset classes set padding outright and would
+          otherwise swallow the column's own py-8 (see app/globals.css). */}
+      <div className="dk-safe-top dk-safe-bottom">
+        <main className="mx-auto flex min-h-[100dvh] w-full max-w-lg flex-col justify-center px-4 py-8">
+          {children}
+        </main>
       </div>
     </AppShell>
   );

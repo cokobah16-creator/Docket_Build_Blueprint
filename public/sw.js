@@ -1,7 +1,11 @@
 // Docket service worker: web push → notification → open the linked page;
 // offline shell for navigations (network first, offline page as fallback).
 // Nothing else is cached: every screen is private, RLS-scoped data.
-const OFFLINE_CACHE = "docket-offline-v1";
+// Bump this whenever offline.html changes. activate deletes every cache whose
+// name is not this one, so the new page is fetched on the next activation —
+// without the bump an already-installed client keeps serving the old copy for
+// ever, which is how a promise withdrawn from the page stayed on the screen.
+const OFFLINE_CACHE = "docket-offline-v2";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {

@@ -53,7 +53,7 @@ body {
   --dk-app-acc: var(--dk-accent);
   --dk-app-acc-ink: var(--dk-accent-ink);
   --dk-app-on-pri: var(--dk-on-primary);
-  --dk-app-head: var(--dk-font-heading);
+  --dk-app-head: var(--dk-font-heading), Georgia, serif;
   --dk-app-surface: var(--dk-surface);
 }
 
@@ -63,7 +63,7 @@ body {
   --dk-app-acc: #57534e;
   --dk-app-acc-ink: #57534e;
   --dk-app-on-pri: #ffffff;
-  --dk-app-head: Archivo;
+  --dk-app-head: Archivo, "Helvetica Neue", Helvetica, Arial, sans-serif;
   --dk-app-surface: #f5f4f1;
   --dk-app-line: #ddd9d2;
   --dk-app-rule: #f0eeea;
@@ -87,6 +87,11 @@ body {
    Installed to the home screen, the app owns the whole display. The artboard
    models this with fixed top/bottom pads per device; the real thing reads the
    insets. viewport-fit=cover is set in app/layout.tsx. */
+/* These set padding-top / padding-bottom outright, and they are declared after
+   Tailwind's utilities at equal specificity, so they WIN over pt-*/pb-*/py-*
+   on the same element — which silently drops that padding to zero wherever the
+   inset is zero (any browser tab, any device without a notch). Put the inset on
+   its own element and the spacing on a child. */
 .dk-safe-top { padding-top: env(safe-area-inset-top, 0px); }
 .dk-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
 

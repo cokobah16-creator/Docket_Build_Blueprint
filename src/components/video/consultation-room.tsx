@@ -401,7 +401,8 @@ export function ConsultationRoom({
           inRoom ? "flex" : "hidden",
         )}
       >
-        <div className="dk-safe-top flex-none px-4 pt-3">
+        <div className="dk-safe-top flex-none">
+          <div className="px-4 pt-3">
           <div className="flex items-center justify-between gap-3 pb-3">
             <div className="min-w-0">
               <p className="text-[13.5px] font-semibold text-white">
@@ -449,11 +450,13 @@ export function ConsultationRoom({
               </button>
             </div>
           )}
+          </div>
         </div>
 
         <div ref={containerRef} className="min-h-0 flex-1 bg-[#0B0B0C]" />
 
-        <div className="dk-safe-bottom flex-none px-4 pb-3 pt-2.5">
+        <div className="dk-safe-bottom flex-none">
+          <div className="px-4 pb-3 pt-2.5">
           {phase === "lobby" && (
             <p role="status" className="pb-2 text-center text-[12.5px] leading-relaxed text-white/60">
               You are in the waiting room. {counterpartLabel} will let you in shortly — keep this
@@ -516,6 +519,7 @@ export function ConsultationRoom({
               Private room · not recorded
             </p>
           )}
+          </div>
         </div>
       </div>
 

@@ -85,7 +85,7 @@ function scale(colour: string, factor: number): string | null {
  *
  * A firm's accent is chosen to be drawn *as* a colour — a rule, a fill, a
  * border. Set as type on paper it is usually too light: Attorneys Klinique's
- * #B08D57 is 2.6:1 on white, well under the 4.5:1 body-text floor. So the
+ * #B08D57 is 3.1:1 on white, well under the 4.5:1 body-text floor. So the
  * accent is walked down in luminance until it clears 6:1, which is where the
  * hand-picked inks in the PWA artboard sit (#7A5F33 is 5.98:1, #5A6152 is
  * 6.43:1). Used for accent-coloured type only; the accent itself is unchanged

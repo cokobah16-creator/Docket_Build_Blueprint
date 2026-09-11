@@ -59,8 +59,10 @@ const config: Config = {
         heading: ["var(--dk-font-heading)", "Georgia", "serif"],
         body: ["var(--dk-font-body)", "system-ui", "sans-serif"],
         // Headings inside a phone shell: the firm's face in the client app,
-        // Archivo in the console.
-        "app-head": ["var(--dk-app-head)", "Georgia", "serif"],
+        // Archivo in the console. The fallback chain lives in the variable
+        // itself, per shell — appended here it ended every console heading in
+        // Georgia serif, which is the one thing the console must not be.
+        "app-head": ["var(--dk-app-head)"],
         mono: ["ui-monospace", "Menlo", "monospace"],
       },
       boxShadow: {

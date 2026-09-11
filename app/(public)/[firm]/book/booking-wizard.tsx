@@ -162,7 +162,13 @@ export function BookingWizard({
     s.push("review");
     return s;
   }, [lawyers.length, form, user]);
-  const step = steps[Math.min(stepIdx, steps.length - 1)]!;
+  // stepIdx carries a sentinel: the magic-link resume path sets it to 999 to
+  // mean "the last step there is", because the step list is not known when
+  // the redirect is written. Everything that reads it must read the clamped
+  // value — the progress bar and the step counter did not, so a resumed
+  // booking announced "Step 1000 of 6" over a rule filled to 16,667%.
+  const stepAt = Math.min(stepIdx, steps.length - 1);
+  const step = steps[stepAt]!;
 
   // --- session ---------------------------------------------------------------
   useEffect(() => {
@@ -335,7 +341,7 @@ export function BookingWizard({
     return <Alert kind="info">Online booking opens once the firm publishes lawyer availability. Please contact the firm directly.</Alert>;
   }
 
-  const stepNumber = stepIdx + 1;
+  const stepNumber = stepAt + 1;
   const payable = Boolean(service && service.price_minor > 0);
 
   return (
@@ -347,7 +353,7 @@ export function BookingWizard({
           <button
             type="button"
             onClick={back}
-            disabled={stepIdx === 0 || submitting}
+            disabled={stepAt === 0 || submitting}
             aria-label="Back a step"
             className={cn(
               "grid h-11 w-11 flex-none place-items-center rounded-full",

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 
 // Phone buttons. Sizes are tap targets first: the full-width primary is 50px
-// tall, the smallest thing you are asked to hit is 40px, and nothing relies on
+// tall, nothing you are asked to hit is under 44px, and nothing relies on
 // hover, because the device has no pointer.
 
 export type AppButtonVariant = "primary" | "primary-sm" | "ghost" | "ghost-sm";
@@ -81,7 +81,11 @@ export function AppLink({
     <Link
       href={href}
       className={cn(
-        "text-[12.5px] font-medium text-dk-pri underline underline-offset-2",
+        // A standalone action, not a link inside a sentence: "All" is two
+        // characters, so without a height of its own it was a ~20x17 target
+        // sitting in a card header. The negative margin keeps the header's
+        // own height unchanged.
+        "-my-3 inline-flex min-h-[44px] items-center text-[12.5px] font-medium text-dk-pri underline underline-offset-2",
         className,
       )}
     >
