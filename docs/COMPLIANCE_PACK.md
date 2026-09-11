@@ -72,7 +72,9 @@ somebody you share a matter or an appointment with. Nothing broader.
 | `matter_court_numbers` | suit numbers by court |
 | `updates` | the timeline. `visibility = 'client'` or `'internal'`; `updates_client_select` allows only `visibility = 'client'` rows to a party |
 | `court_events` | sittings, purposes, outcomes |
-| `tasks`, `conflict_checks` | internal |
+| `tasks` | internal |
+| `matter_adverse_parties` | **the other side, by name and alias** — people who have never used Docket, recorded by the firm for conflict checking. Firm work product: no client policy |
+| `conflict_checks` | what the firm searched for and what matched (names, and which matter each was found on), the lawyer's decision and its note. Staff who can see the matter read it; never edited or deleted through the API |
 | `process_service` | `served_on_name`, `served_on_capacity`, `served_at_address`, `server_name`, the note and the proof |
 | `documents`, `document_versions` | the filename, who uploaded it, size, mime, checksum, and the storage path |
 | `document_requests` | what the firm asked the client for, why, and by when — `why` is free text a lawyer typed about the client's matter. The client reads their own requests; never deleted |

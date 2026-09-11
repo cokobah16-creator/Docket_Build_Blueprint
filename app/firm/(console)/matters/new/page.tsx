@@ -32,11 +32,13 @@ export default async function NewMatterPage({
   }
 
   const { supabase, firmId } = ctx;
-  const [statuses, staff, courts] = await Promise.all([
+  const [statuses, staff, courts, { data: firmRow }] = await Promise.all([
     matterStatuses(supabase, firmId),
     firmStaff(supabase, firmId),
     courtsFor(supabase, firmId),
+    supabase.from("firms").select("conflict_checks_required").eq("id", firmId).maybeSingle(),
   ]);
+  const conflictChecksRequired = Boolean((firmRow as { conflict_checks_required: boolean } | null)?.conflict_checks_required);
 
   return (
     <div className="space-y-5">
@@ -58,6 +60,7 @@ export default async function NewMatterPage({
         courts={courts}
         currentUserId={ctx.userId}
         timezone={ctx.timezone}
+        conflictChecksRequired={conflictChecksRequired}
       />
     </div>
   );

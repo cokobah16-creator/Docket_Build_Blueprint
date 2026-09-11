@@ -198,7 +198,8 @@ database for them to read it.
 - **Internal entries on the timeline.** Your firm marks each entry as yours to read or internal.
   You see the first kind.
 - **Draft invoices**, until issued.
-- **Other parties' details** beyond what your firm chooses to put on the timeline.
+- **Other parties' details** beyond what your firm chooses to put on the timeline. Your firm's
+  own record of who is on the other side, and its conflict checks, are its working papers.
 
 ---
 

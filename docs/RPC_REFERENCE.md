@@ -203,13 +203,19 @@ the same sentence whether the caller is at another firm, has no second factor, o
 suspended one. That is deliberate: a more specific refusal would tell a stranger which firm owns
 a row.
 
-### `open_matter(p_firm uuid, p_title text, p_type matter_type, p_client uuid = null, p_cause_title text = null, p_description text = null, p_court_id uuid = null, p_suit_number text = null, p_judicial_division text = null, p_originating_lawyer uuid = null, p_handling_lawyer uuid = null, p_status_key text = 'new_inquiry', p_note_to_client text = null)`
+### `open_matter(p_firm uuid, p_title text, p_type matter_type, p_client uuid = null, p_cause_title text = null, p_description text = null, p_court_id uuid = null, p_suit_number text = null, p_judicial_division text = null, p_originating_lawyer uuid = null, p_handling_lawyer uuid = null, p_status_key text = 'new_inquiry', p_note_to_client text = null, p_conflict_check uuid = null, p_adverse_parties jsonb = null)`
 Returns `jsonb`. Issues the reference from the firm's counter, adds the client as a party and the
 lead lawyer, records court and suit number, and posts the first client-visible timeline entry.
+Since migration 32 it also records the other side (`p_adverse_parties`, an array of
+`{name, kind, aliases}`) and attaches a conflict check run before the matter existed
+(`p_conflict_check`, decided, this firm's, not yet on a matter) — so the clearance guard on the
+client link can find it in the same call.
 
 Refuses: `not permitted` *(42501)* · `matter title is required` · `client account not found` ·
 `a member of the firm cannot be its client on a matter` · `handling lawyer is not a member of the firm` ·
-`originating lawyer is not a member of the firm`
+`originating lawyer is not a member of the firm` · `conflict check not found` ·
+`that conflict check belongs to another matter` · `decide the conflict check before opening the matter on it` ·
+`this firm requires a cleared conflict check before a client joins a matter` (the trigger, with the switch on)
 
 ### `post_court_update(p_matter uuid, p_outcome text, p_occurred_at timestamptz = now(), p_court_name text = null, p_adjourned_at_instance_of text = null, p_next_date timestamptz = null, p_next_purpose text = null, p_note_to_client text = null, p_internal_note text = null, p_court_id uuid = null, p_judicial_division text = null, p_allow_non_sitting bool = false, p_judge text = null, p_courtroom text = null, p_purpose_kind text = null)`
 Returns `uuid` (the client-visible update). The thirty-second form after a sitting: composes the
@@ -281,8 +287,34 @@ does not send this invitation itself — there is no account to send it to yet.
 
 Refuses: `matter not found` · `not permitted` *(42501)* ·
 `only a client or a contact can be invited to a matter` ·
+`this firm requires a cleared conflict check before a client is invited to a matter` (the switch on, `p_role = 'client'`) ·
 `give a phone number or an email address to send the invitation to` ·
 `an invitation lasts between 1 and 60 days` · `that person is already on this matter`
+
+### `run_conflict_check(p_firm uuid, p_matter uuid = null, p_names text[] = null)`
+Returns `jsonb` — `check_id`, the normalised `keys` searched, `matches` and `match_count`. **Who:**
+`staff_w(firm)`; with `p_matter`, also `can_see_matter`.
+
+Searches **this firm's own register** — clients on its matters (profile name and company), the
+adverse-party register with aliases, free-text opposing parties, and cause titles (which can only
+contain a name) — for the names given plus everyone `p_matter` itself names, across every other
+matter of the firm, closed ones included. Strengths: `exact`, `contains` (a whole run of words),
+`similar` (trigram ≥ 0.5); keys under four characters match only exactly. A match on a restricted
+matter the caller is not on comes back with `restricted: true`, no `matter_id`, and the lead
+lawyer's id. Records the search as a `conflict_checks` row (undecided) and audits
+`conflict_check.run`. Never another firm's register; never a decision.
+
+Refuses: `not permitted` *(42501)* — a matter of another firm, or one behind a wall ·
+`nothing to check: give at least one name`
+
+### `decide_conflict_check(p_check uuid, p_outcome text, p_note text = null)`
+Returns `void`. The lawyer's decision — `clear`, `conflict` or `waived` — with who and when; a
+waiver carries its reason. Once: a changed mind is a new check. Audits `conflict_check.decided`.
+With `firms.conflict_checks_required` on, the latest decided check on a matter being `clear` or
+`waived` is what lets a client be joined to it (`guard_conflict_clearance()` on `matter_parties`).
+
+Refuses: `not permitted` *(42501)* · `the outcome is clear, conflict or waived` ·
+`this check has already been decided — run a new one` · `a waiver records why: give the note`
 
 ### `revoke_matter_invite(p_invite uuid)`
 Returns `void`. Expires an invitation that has not been accepted.
@@ -565,6 +597,7 @@ that fired them:
 | `validate_policies()` | `firms.policies` | **nothing.** Keeps `privacy`, `terms`, `engagement` and `cancellation`, each with its **own** `version`, plus `title`, `text`, an `https://` `url` and a numeric `free_cancel_hours`; strips `<` and `>`; drops any other document. A top-level `version` is kept but is read by nothing |
 | `validate_notification_templates()` | `firms.notification_templates` | **nothing.** Keeps `{subject, text}` per event key, strips angle brackets, and drops any entry whose `text` is empty |
 | `check_staff_invite_role()` | `staff_invites` | `only an owner may invite another owner` *(42501)* |
+| `guard_conflict_clearance()` | `matter_parties` | `this firm requires a cleared conflict check before a client joins a matter` — only with `firms.conflict_checks_required` on, only for `role = 'client'` |
 | `check_row_firm()` | every matter-linked table | `row does not belong to the firm that owns the matter` · `row does not belong to the firm that owns the appointment` |
 | `check_matter_court()` | `matters` | `court <id> is not available to this firm` |
 | `check_court_visible()` | court-bearing rows | `court <id> is not available to this firm` |

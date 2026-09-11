@@ -149,6 +149,7 @@ Migrations apply in filename order, which is chronological:
 20260910000029_matter_walls.sql           opt-in matter walls: firms.matter_walls, matters.access, can_see_matter()
 20260910000030_document_reads.sql         document_reads as the door to the bytes — APPLY ONLY WITH ITS FRONT END
 20260910000031_document_requests.sql      document_requests: asked, answered once through fulfil_document_request(), withdrawn — never deleted
+20260910000032_conflict_checks.sql        matter_adverse_parties; conflict_checks shaped; run_conflict_check(), decide_conflict_check(); firms.conflict_checks_required
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -394,17 +395,23 @@ or documents stop opening. 29 is safe either side: it is default-off and identic
 policies it replaces until a firm switches walls on. 31 is additive and goes **first** — the matter
 screens that ship with it select from `document_requests`, so the table must exist before they
 deploy — and `dispatch-notifications` must carry the `document_requested` / `document_received`
-renderers (v8) before the first request is made.
+renderers (v8) before the first request is made. 32 is safe either side: it re-creates
+`open_matter()` with two more defaulted parameters (the deployed form passes named arguments and
+resolves to it), pg_trgm goes into the `extensions` schema, and the clearance guard is off until a
+firm switches it on.
 
-| | As of 11 Sep 2026, 13:35 UTC | Reconciled against |
+| | As of 11 Sep 2026, 15:20 UTC | Reconciled against |
 |---|---|---|
 | **App** | `2adae58` (the merge of PR #19), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
-| **Schema** | Migrations **1–28**, all applied: 30 ledger entries (`20260909000001_schema` … `storage_manifest`, plus the two unnumbered `consultations` and `client_portal`). 26–28 applied after the merge; 26 and 27 are additive and every existing caller of `post_court_update()` resolves through the new defaults | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
-| **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v7** · `video-session` **v2** · `storage-manifest` **v1** (new; `storage_manifest_url` in Vault; `docket-storage-manifest` runs `*/10 * * * *`, first six runs succeeded) | MCP `list_edge_functions`; `cron.job`; `cron.job_run_details` |
+| **Schema** | Migrations **1–29 and 31** applied: 32 ledger entries (`20260909000001_schema` … `document_requests`, plus the two unnumbered `consultations` and `client_portal`). **30 is not applied** — it waits for the front end that calls `open_document_version()` (the ordering rule above). 29 (walls, default off) and 31 (additive) went live ahead of their front end; 32 is written and tested, not yet applied | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
+| **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v8** (renders `document_requested` / `document_received`) · `video-session` **v2** · `storage-manifest` **v1** (`storage_manifest_url` in Vault; `docket-storage-manifest` runs `*/10 * * * *`) | MCP `list_edge_functions`; `cron.job`; `cron.job_run_details` |
 
-Migration ledger names are the file names for 1–21 and short names after: `storage_manifest` is
-`20260910000028_storage_manifest.sql`, `structured_client_update` 27, `next_action_work_item` 26,
-`message_reads` 25, `wave_zero_doors` 24, `booking_limit_in_the_rpc` 23, `member_and_message_invariants` 22.
+Migration ledger names are the file names for 1–21 and short names after: `document_requests` is
+`20260910000031_document_requests.sql`, `matter_walls` 29, `storage_manifest` 28, `structured_client_update` 27,
+`next_action_work_item` 26, `message_reads` 25, `wave_zero_doors` 24, `booking_limit_in_the_rpc` 23,
+`member_and_message_invariants` 22.
+
+Previous: app `2adae58` against 1–28 (13:35 UTC).
 
 Previous: app `fe45072` against 1–25 (12:40 UTC); app `6778f3c` against 1–24 (11:30 UTC), when the
 schema was ahead of the app by five migrations with the compat suite as the reason that was safe.

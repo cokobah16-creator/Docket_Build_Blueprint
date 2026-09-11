@@ -452,6 +452,16 @@ export async function updateMatterWalls(firmId: string, enabled: boolean): Promi
   return updateFirm(firmId, { matter_walls: Boolean(enabled) });
 }
 
+/**
+ * firms.conflict_checks_required. On, no client joins a matter — by open_matter(), by
+ * invitation, by direct insert — until the latest decided conflict check on it is clear or
+ * waived; the trigger on matter_parties is the rule. Off, checks are advisory and recorded.
+ */
+export async function updateConflictChecksRequired(firmId: string, enabled: boolean): Promise<SettingsResult> {
+  if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
+  return updateFirm(firmId, { conflict_checks_required: Boolean(enabled) });
+}
+
 export async function updateServiceOfProcess(firmId: string, input: ServiceOfProcessInput): Promise<SettingsResult> {
   if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
 
