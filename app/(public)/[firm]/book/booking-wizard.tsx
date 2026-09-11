@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/cn";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { formatMoneyMinor } from "@/lib/money";
 import type {
@@ -14,11 +15,31 @@ import type {
   ServiceRow,
 } from "@/lib/db/types";
 import { SignInForms } from "@/components/auth/sign-in-forms";
-import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import {
+  BuildingIcon,
+  ChevronLeftIcon,
+  ClockIcon,
+  PhoneIcon,
+  UploadIcon,
+  VideoIcon,
+  type IconProps,
+} from "@/components/ui/icons";
 import { startPayment, saveContactEmail } from "@/lib/actions/booking";
+
+// The booking wizard, on the firm's own site.
+//
+// This screen lives in the public tenant site, not in the phone shell, so it
+// wears `brand-*` (the firm's colours from firms.brand) rather than the
+// `dk-*` app tokens — but it takes the PWA artboard's geometry: a sticky step
+// header with a 3px progress rule, choice cards that gain a primary border and
+// a 1px inset ring when chosen, 42px chips, a 5-column day grid of 56px
+// buttons and a 4-column slot grid of 46px ones.
+//
+// The step list is the real one: it grows a "lawyer" step when the firm
+// publishes more than one, an "intake" step when the service has a form, and a
+// "signin" step for an anonymous visitor. The header counts the steps that
+// actually exist rather than the artboard's fixed five.
 
 type Step = "service" | "mode" | "lawyer" | "date" | "slot" | "intake" | "signin" | "review";
 type Mode = "virtual" | "in_person" | "phone";
@@ -31,9 +52,39 @@ const MODE_LABELS: Record<Mode, string> = {
   phone: "Phone call",
 };
 
+const MODE_ICONS: Record<Mode, (p: IconProps) => React.JSX.Element> = {
+  virtual: VideoIcon,
+  in_person: BuildingIcon,
+  phone: PhoneIcon,
+};
+
+const STEP_NAMES: Record<Step, string> = {
+  service: "Service",
+  mode: "Format",
+  lawyer: "Lawyer",
+  date: "Date",
+  slot: "Time",
+  intake: "Details",
+  signin: "Sign in",
+  review: "Review",
+};
+
+// The artboard draws the format cards as a title with a line of explanation
+// under it. The copy is the one label, split at its dash — nothing new is said.
+function splitLabel(label: string): { title: string; hint: string | null } {
+  const at = label.indexOf(" — ");
+  if (at === -1) return { title: label, hint: null };
+  const rest = label.slice(at + 3);
+  return { title: label.slice(0, at), hint: rest.charAt(0).toUpperCase() + rest.slice(1) };
+}
+
+// 16px, not the artboard's 14: iOS Safari zooms the page when a focused field
+// is smaller than that, which on a booking form is a bug, not a detail.
 const fieldClasses =
-  "w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-base text-gray-900 " +
+  "w-full rounded-[9px] border border-gray-300 bg-white px-3 py-[11px] text-base text-gray-900 " +
   "placeholder:text-gray-400 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+
+const labelClasses = "block text-[12.5px] font-semibold text-gray-700";
 
 function isoDateInTz(d: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
@@ -181,12 +232,14 @@ export function BookingWizard({
   useEffect(() => { if (step === "slot" && date) loadSlots(date); }, [step, date, loadSlots]);
 
   const dates = useMemo(() => {
-    const out: { iso: string; label: string }[] = [];
+    const out: { iso: string; label: string; dow: string; day: string }[] = [];
     for (let i = 0; i < 14; i++) {
       const d = new Date(Date.now() + i * 86_400_000);
       out.push({
         iso: isoDateInTz(d, lawyerTz),
         label: new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: lawyerTz }).format(d),
+        dow: new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: lawyerTz }).format(d),
+        day: new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: lawyerTz }).format(d),
       });
     }
     return out;
@@ -283,108 +336,188 @@ export function BookingWizard({
   }
 
   const stepNumber = stepIdx + 1;
+  const payable = Boolean(service && service.price_minor > 0);
 
   return (
-    <div className="space-y-5">
-      <ol className="flex flex-wrap gap-2 text-xs text-gray-500" aria-label="Progress">
-        {steps.map((s, i) => (
-          <li key={s} className={i === stepIdx ? "font-semibold text-brand" : i < stepIdx ? "text-gray-700" : ""}>
-            {i + 1}. {{ service: "Service", mode: "Format", lawyer: "Lawyer", date: "Date", slot: "Time", intake: "Details", signin: "Sign in", review: "Review" }[s]}
-          </li>
-        ))}
-      </ol>
+    <div>
+      {/* Step header and progress rule. Full-bleed to the column edges, so it
+          runs the width of the page the way it does on the artboard. */}
+      <div className="sticky top-0 z-20 -mx-4 border-b border-[#EBE7E0] bg-white/90 backdrop-blur-xl">
+        <div className="flex min-h-[50px] items-center gap-2.5 px-2.5 py-1.5">
+          <button
+            type="button"
+            onClick={back}
+            disabled={stepIdx === 0 || submitting}
+            aria-label="Back a step"
+            className={cn(
+              "grid h-11 w-11 flex-none place-items-center rounded-full",
+              "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+              "disabled:opacity-40",
+            )}
+          >
+            <span className="grid h-9 w-9 place-items-center rounded-full border border-gray-200 bg-white text-brand">
+              <ChevronLeftIcon size={19} />
+            </span>
+          </button>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold text-gray-900">{STEP_NAMES[step]}</p>
+            <p className="mt-px text-[11px] text-gray-500">
+              Step {stepNumber} of {steps.length} · {firm.name}
+            </p>
+          </div>
+        </div>
+        <div
+          role="progressbar"
+          aria-label="Booking progress"
+          aria-valuemin={1}
+          aria-valuemax={steps.length}
+          aria-valuenow={stepNumber}
+          aria-valuetext={`Step ${stepNumber} of ${steps.length}`}
+          className="h-[3px] w-full bg-gray-200"
+        >
+          <div
+            className="h-full bg-brand transition-[width] duration-[250ms] ease-out"
+            style={{ width: `${(stepNumber / steps.length) * 100}%` }}
+          />
+        </div>
+      </div>
 
-      {error && <Alert kind="error">{error}</Alert>}
+      <div className="flex flex-col gap-[13px] pb-[22px] pt-4">
+        {error && <Alert kind="error">{error}</Alert>}
 
-      {step === "service" && (
-        <Section title="What do you need help with?">
-          <div className="grid gap-3">
+        {step === "service" && (
+          <Section title="What do you need help with?">
             {services.map((s) => (
               <ChoiceCard key={s.id} selected={serviceId === s.id} onClick={() => { setServiceId(s.id); setMode(null); setSlot(null); }}>
-                <p className="font-medium text-gray-900">{s.name}</p>
-                {s.description && <p className="mt-1 text-sm text-gray-600">{s.description}</p>}
-                <p className="mt-1 text-sm font-medium text-brand">
+                <span className="block text-[14.5px] font-semibold text-gray-900">{s.name}</span>
+                {s.description && (
+                  <span className="mt-1 block text-[12.5px] leading-[1.45] text-gray-600">{s.description}</span>
+                )}
+                <span className="mt-1.5 block text-[13px] font-semibold text-brand">
                   {formatMoneyMinor(s.price_minor, s.currency)} · {s.duration_min} minutes
-                </p>
+                </span>
               </ChoiceCard>
             ))}
-          </div>
-        </Section>
-      )}
+          </Section>
+        )}
 
-      {step === "mode" && service && (
-        <Section title="How would you like to meet?">
-          <div className="grid gap-3">
+        {step === "mode" && service && (
+          <Section title="How would you like to meet?">
             {(["virtual", "in_person", "phone"] as Mode[])
               .filter((m) => m !== "virtual" || service.virtual_available)
-              .map((m) => (
-                <ChoiceCard key={m} selected={mode === m} onClick={() => setMode(m)}>
-                  <p className="font-medium text-gray-900">{MODE_LABELS[m]}</p>
-                </ChoiceCard>
-              ))}
-          </div>
-        </Section>
-      )}
+              .map((m) => {
+                const { title, hint } = splitLabel(MODE_LABELS[m]);
+                const Glyph = MODE_ICONS[m];
+                const on = mode === m;
+                return (
+                  <ChoiceCard key={m} selected={on} onClick={() => setMode(m)}>
+                    <span className="flex items-start gap-[11px]">
+                      <span
+                        className={cn(
+                          "grid h-[34px] w-[34px] flex-none place-items-center rounded-lg",
+                          on ? "bg-brand text-brand-on" : "bg-gray-100 text-gray-500",
+                        )}
+                      >
+                        <Glyph size={18} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[14.5px] font-semibold text-gray-900">{title}</span>
+                        {hint && (
+                          <span className="mt-[3px] block text-[12.5px] leading-[1.45] text-gray-600">{hint}</span>
+                        )}
+                      </span>
+                    </span>
+                  </ChoiceCard>
+                );
+              })}
+          </Section>
+        )}
 
-      {step === "lawyer" && (
-        <Section title="Who would you like to see?">
-          <div className="grid gap-3">
+        {step === "lawyer" && (
+          <Section title="Who would you like to see?">
             {lawyers.map((l) => (
               <ChoiceCard key={l.id} selected={lawyerId === l.id} onClick={() => { setLawyerId(l.id); setDate(null); setSlot(null); }}>
-                <p className="font-medium text-gray-900">{lawyerName(l, firm.name)}</p>
-                {l.title && <p className="text-sm text-gray-600">{l.title}</p>}
+                <span className="block text-[14.5px] font-semibold text-gray-900">{lawyerName(l, firm.name)}</span>
+                {l.title && <span className="mt-1 block text-[12.5px] leading-[1.45] text-gray-600">{l.title}</span>}
               </ChoiceCard>
             ))}
-          </div>
-        </Section>
-      )}
+          </Section>
+        )}
 
-      {step === "date" && (
-        <Section title="Pick a day" hint={`Times are shown in your timezone (${visitorTz})${visitorTz !== lawyerTz ? ` and the lawyer's (${lawyerTz})` : ""}.`}>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {dates.map((d) => (
-              <button
-                key={d.iso}
-                type="button"
-                onClick={() => { setDate(d.iso); setSlot(null); }}
-                className={`rounded-lg border px-3 py-3 text-sm ${date === d.iso ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand"}`}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {step === "slot" && (
-        <Section title="Pick a time">
-          {slotsLoading ? (
-            <p className="text-sm text-gray-600">Checking availability…</p>
-          ) : slots.length === 0 ? (
-            <Alert kind="info">No free times on this day. Try another day.</Alert>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {slots.map((s) => (
-                <button
-                  key={s.starts_at}
-                  type="button"
-                  onClick={() => setSlot(s)}
-                  className={`rounded-lg border px-3 py-3 text-sm ${slot?.starts_at === s.starts_at ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand"}`}
-                >
-                  <span className="block font-medium">{fmtTime(s.starts_at, visitorTz)}</span>
-                  {visitorTz !== lawyerTz && (
-                    <span className="block text-xs opacity-80">{fmtTime(s.starts_at, lawyerTz)} lawyer time</span>
-                  )}
-                </button>
-              ))}
+        {step === "date" && (
+          <Section
+            title="Pick a day"
+            hint={`Times are shown in your timezone (${visitorTz})${visitorTz !== lawyerTz ? ` and the lawyer's (${lawyerTz})` : ""}.`}
+          >
+            <div className="grid grid-cols-5 gap-[7px]">
+              {dates.map((d) => {
+                const on = date === d.iso;
+                return (
+                  <button
+                    key={d.iso}
+                    type="button"
+                    aria-pressed={on}
+                    aria-label={d.label}
+                    onClick={() => { setDate(d.iso); setSlot(null); }}
+                    className={cn(
+                      "min-h-[56px] rounded-[9px] border px-1 transition",
+                      "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                      on ? "border-brand bg-brand text-brand-on" : "border-gray-200 bg-white text-gray-900 hover:border-brand",
+                    )}
+                  >
+                    <span className="block text-[10.5px] uppercase tracking-[0.06em] opacity-[0.72]">{d.dow}</span>
+                    <span className="mt-[3px] block text-[17px] font-bold">{d.day}</span>
+                  </button>
+                );
+              })}
             </div>
-          )}
-        </Section>
-      )}
+          </Section>
+        )}
 
-      {step === "intake" && form && (
-        <Section title="A few details for your lawyer" hint="Only what's needed to prepare. Your answers are private to the firm.">
-          <div className="space-y-4">
+        {step === "slot" && (
+          <Section title="Pick a time">
+            {slotsLoading ? (
+              <p className="text-[12.5px] text-gray-600">Checking availability…</p>
+            ) : slots.length === 0 ? (
+              <Alert kind="info">No free times on this day. Try another day.</Alert>
+            ) : (
+              <div className="grid grid-cols-4 gap-[7px]">
+                {slots.map((s) => {
+                  const on = slot?.starts_at === s.starts_at;
+                  return (
+                    <button
+                      key={s.starts_at}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setSlot(s)}
+                      className={cn(
+                        "min-h-[46px] rounded-[9px] border px-1 py-1.5 text-[13px] font-semibold transition",
+                        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                        on ? "border-brand bg-brand text-brand-on" : "border-gray-200 bg-white text-gray-900 hover:border-brand",
+                      )}
+                    >
+                      <span className="block">{fmtTime(s.starts_at, visitorTz)}</span>
+                      {visitorTz !== lawyerTz && (
+                        <span className="block text-[10.5px] font-normal leading-tight opacity-80">
+                          {fmtTime(s.starts_at, lawyerTz)} lawyer time
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-[11.5px] leading-[1.5] text-gray-500">
+              A two-hour lead time, the daily cap and the firm&rsquo;s breaks are already taken out.
+            </p>
+          </Section>
+        )}
+
+        {step === "intake" && form && (
+          <Section
+            title="A few details for your lawyer"
+            hint={`Only what is needed to prepare. Your answers are private to ${firm.name}.`}
+          >
             {visibleQuestions.map((q) => (
               <IntakeField
                 key={q.key}
@@ -395,111 +528,180 @@ export function BookingWizard({
                 onFiles={(list) => setFiles((f) => ({ ...f, [q.key]: list }))}
               />
             ))}
-          </div>
-        </Section>
-      )}
+          </Section>
+        )}
 
-      {step === "signin" && (
-        <Section title="Sign in to hold your slot" hint="We'll remember your choices while you sign in.">
-          {!authChecked ? (
-            <p className="text-sm text-gray-600">Checking your session…</p>
-          ) : (
-            <SignInForms redirectNext={`/${firm.slug}/book?resume=1`} />
-          )}
-        </Section>
-      )}
+        {step === "signin" && (
+          <Section title="Sign in to hold your slot" hint="We'll remember your choices while you sign in.">
+            {!authChecked ? (
+              <p className="text-[12.5px] text-gray-600">Checking your session…</p>
+            ) : (
+              <SignInForms redirectNext={`/${firm.slug}/book?resume=1`} />
+            )}
+          </Section>
+        )}
 
-      {step === "review" && service && slot && mode && (
-        <Section title="Review and confirm">
-          <dl className="space-y-3 text-sm">
-            <Row label="Service" value={service.name} />
-            <Row label="Lawyer" value={lawyerName(lawyer, firm.name)} />
-            <Row label="Format" value={MODE_LABELS[mode]} />
-            <Row label="Date" value={fmtDate(slot.starts_at, visitorTz)} />
-            <Row
-              label="Time"
-              value={
-                visitorTz === lawyerTz
-                  ? `${fmtTime(slot.starts_at, visitorTz)} (${visitorTz})`
-                  : `${fmtTime(slot.starts_at, visitorTz)} your time · ${fmtTime(slot.starts_at, lawyerTz)} lawyer's time`
-              }
-            />
-            <Row label="Duration" value={`${service.duration_min} minutes`} />
-            <Row label="Fee" value={`${formatMoneyMinor(service.price_minor, service.currency)}${service.price_minor > 0 ? " — payable now to confirm" : ""}`} />
-          </dl>
-          {firm.policies.cancellation?.text ? (
-            <p className="mt-4 text-xs text-gray-500">{String(firm.policies.cancellation.text)}</p>
-          ) : null}
-          {firm.policies.disclaimer?.text ? (
-            <p className="mt-2 text-xs text-gray-500">{String(firm.policies.disclaimer.text)}</p>
-          ) : null}
-          {needEmail && (
-            <div className="mt-4">
-              <Input
-                label="Email for your receipt"
-                type="email"
-                autoComplete="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                hint="Required by the payment provider."
-                required
-              />
+        {step === "review" && service && slot && mode && (
+          <Section title={payable ? "Review and pay" : "Review and confirm"}>
+            <div className="rounded-[12px] border border-gray-200 bg-white px-4 py-[15px]">
+              <dl className="flex flex-col gap-3 text-[13.5px]">
+                <Row label="Service" value={service.name} />
+                <Row label="Lawyer" value={lawyerName(lawyer, firm.name)} />
+                <Row label="Format" value={MODE_LABELS[mode]} />
+                <Row label="Date" value={fmtDate(slot.starts_at, visitorTz)} />
+                <Row
+                  label="Time"
+                  value={
+                    visitorTz === lawyerTz
+                      ? `${fmtTime(slot.starts_at, visitorTz)} (${visitorTz})`
+                      : `${fmtTime(slot.starts_at, visitorTz)} your time · ${fmtTime(slot.starts_at, lawyerTz)} lawyer's time`
+                  }
+                />
+                <Row label="Duration" value={`${service.duration_min} minutes`} />
+                <Row
+                  ruled
+                  label="Fee"
+                  value={`${formatMoneyMinor(service.price_minor, service.currency)}${payable ? " — payable now to confirm" : ""}`}
+                />
+              </dl>
             </div>
-          )}
-        </Section>
-      )}
 
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" onClick={back} disabled={stepIdx === 0 || submitting}>
-          Back
-        </Button>
-        {step === "review" ? (
-          <Button size="lg" onClick={submit} disabled={submitting || (needEmail && !contactEmail)}>
-            {submitting ? "Holding your slot…" : service && service.price_minor > 0 ? "Confirm and pay" : "Confirm booking"}
-          </Button>
-        ) : step === "signin" ? null : (
-          <Button size="lg" onClick={next} disabled={!canProceed}>
-            Continue
-          </Button>
+            {payable && (
+              <div className="flex items-start gap-[9px] rounded-[10px] border border-[#E3D9C4] bg-[#FBF7EE] px-[13px] py-[11px]">
+                <ClockIcon size={16} className="mt-px flex-none text-[#7A6A46]" />
+                <p className="text-[12px] leading-[1.45] text-[#5C4F35]">
+                  Your slot is held for <strong className="font-semibold">15 minutes</strong> while you pay. The fee
+                  settles to {firm.name}&rsquo;s own account — Docket never holds it.
+                </p>
+              </div>
+            )}
+
+            {needEmail && (
+              <div className="space-y-1.5">
+                <label htmlFor="booking-contact-email" className={labelClasses}>
+                  Email for your receipt
+                </label>
+                <input
+                  id="booking-contact-email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  aria-describedby="booking-contact-email-hint"
+                  className={fieldClasses}
+                />
+                <p id="booking-contact-email-hint" className="text-[11.5px] text-gray-500">
+                  Required by the payment provider.
+                </p>
+              </div>
+            )}
+
+            {firm.policies.cancellation?.text ? (
+              <p className="text-[11.5px] leading-[1.5] text-gray-500">{String(firm.policies.cancellation.text)}</p>
+            ) : null}
+            {firm.policies.disclaimer?.text ? (
+              <p className="text-[11.5px] leading-[1.5] text-gray-500">{String(firm.policies.disclaimer.text)}</p>
+            ) : null}
+          </Section>
         )}
       </div>
-      <p className="text-xs text-gray-400">Step {stepNumber} of {steps.length}</p>
+
+      {step !== "signin" && (
+        <div className="pb-[22px]">
+          {step === "review" ? (
+            <button
+              type="button"
+              onClick={submit}
+              disabled={submitting || (needEmail && !contactEmail)}
+              className={ctaClasses}
+            >
+              {submitting ? "Holding your slot…" : payable ? "Confirm and pay" : "Confirm booking"}
+            </button>
+          ) : (
+            <button type="button" onClick={next} disabled={!canProceed} className={ctaClasses}>
+              Continue
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 // --- small pieces ----------------------------------------------------------------
 
+const ctaClasses = cn(
+  "inline-flex w-full min-h-[50px] items-center justify-center gap-2 rounded-[10px]",
+  "bg-brand px-5 text-[15px] font-semibold text-brand-on transition",
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+  "disabled:opacity-50",
+);
+
+/** A step: the 20px heading in the firm's face, an optional line of help, then the body. */
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
-    <Card>
-      <CardHeader title={title} />
-      <CardBody>
-        {hint && <p className="mb-4 text-sm text-gray-500">{hint}</p>}
-        {children}
-      </CardBody>
-    </Card>
+    <section className="flex flex-col gap-[13px]">
+      <h2 className="font-heading text-[20px] font-semibold leading-[1.25] tracking-[-0.01em] text-brand">
+        {title}
+      </h2>
+      {hint && <p className="text-[12px] leading-[1.5] text-gray-500">{hint}</p>}
+      {children}
+    </section>
   );
 }
 
+/**
+ * The artboard's choice card: a full-width white panel at an 11px radius that
+ * takes the firm's primary on its border and a 1px inset ring when chosen.
+ * `aria-pressed` carries the choice for anyone who cannot see the ring.
+ */
 function ChoiceCard({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`rounded-lg border p-4 text-left transition ${selected ? "border-brand ring-2 ring-brand" : "border-gray-300 bg-white hover:border-brand"}`}
+      className={cn(
+        "block w-full rounded-[11px] border bg-white px-[15px] py-[14px] text-left transition",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+        selected ? "border-brand ring-1 ring-inset ring-brand" : "border-gray-200 hover:border-brand",
+      )}
     >
       {children}
     </button>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+/** A 42px pill. Selection is a fill plus `aria-pressed`, never the colour alone. */
+function Chip({ selected, onClick, className, children }: {
+  selected: boolean;
+  onClick: () => void;
+  className?: string;
+  children: ReactNode;
+}) {
   return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-gray-500">{label}</dt>
-      <dd className="text-right font-medium text-gray-900">{value}</dd>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={cn(
+        "inline-flex min-h-[42px] items-center justify-center rounded-full border px-3.5 text-[12.5px] font-medium transition",
+        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+        selected ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+        className,
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function Row({ label, value, ruled }: { label: string; value: string; ruled?: boolean }) {
+  return (
+    <div className={cn("flex justify-between gap-4", ruled && "border-t border-gray-100 pt-3")}>
+      <dt className="flex-none text-gray-500">{label}</dt>
+      <dd className="text-right font-semibold text-gray-900">{value}</dd>
     </div>
   );
 }
@@ -514,62 +716,112 @@ function IntakeField({
   onFiles: (list: File[]) => void;
 }) {
   const id = `intake-${q.key}`;
+  const helpId = `${id}-help`;
+
   if (q.type === "text") {
     return (
-      <Input id={id} label={q.label} hint={q.help} required={q.required} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
-    );
-  }
-  if (q.type === "longtext") {
-    return (
-      <div className="space-y-1.5">
-        <label htmlFor={id} className="block text-sm font-medium text-gray-800">{q.label}</label>
-        <textarea id={id} rows={4} maxLength={q.max_length} required={q.required} className={fieldClasses} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
-        {q.help && <p className="text-sm text-gray-500">{q.help}</p>}
+      <div className="space-y-2">
+        <label htmlFor={id} className={labelClasses}>{q.label}</label>
+        <input
+          id={id}
+          required={q.required}
+          aria-describedby={q.help ? helpId : undefined}
+          className={fieldClasses}
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {q.help && <p id={helpId} className="text-[11.5px] text-gray-500">{q.help}</p>}
       </div>
     );
   }
+
+  if (q.type === "longtext") {
+    return (
+      <div className="space-y-2">
+        <label htmlFor={id} className={labelClasses}>{q.label}</label>
+        <textarea
+          id={id}
+          rows={4}
+          maxLength={q.max_length}
+          required={q.required}
+          aria-describedby={q.help ? helpId : undefined}
+          className={cn(fieldClasses, "min-h-[76px] leading-[1.5]")}
+          value={typeof value === "string" ? value : ""}
+          onChange={(e) => onChange(e.target.value)}
+        />
+        {q.help && <p id={helpId} className="text-[11.5px] text-gray-500">{q.help}</p>}
+      </div>
+    );
+  }
+
   if (q.type === "choice" && q.multiple) {
     const selected = Array.isArray(value) ? value : [];
     return (
-      <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-gray-800">{q.label}</legend>
-        {(q.options ?? []).map((opt) => (
-          <label key={opt} className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              className="h-4 w-4"
-              checked={selected.includes(opt)}
-              onChange={(e) => onChange(e.target.checked ? [...selected, opt] : selected.filter((v) => v !== opt))}
-            />
-            {opt}
-          </label>
-        ))}
+      <fieldset className="min-w-0" aria-describedby={q.help ? helpId : undefined}>
+        <legend className={cn(labelClasses, "mb-2")}>{q.label}</legend>
+        <div className="flex flex-wrap gap-[7px]">
+          {(q.options ?? []).map((opt) => (
+            <Chip
+              key={opt}
+              selected={selected.includes(opt)}
+              onClick={() =>
+                onChange(selected.includes(opt) ? selected.filter((v) => v !== opt) : [...selected, opt])
+              }
+            >
+              {opt}
+            </Chip>
+          ))}
+        </div>
+        {q.help && <p id={helpId} className="mt-2 text-[11.5px] text-gray-500">{q.help}</p>}
       </fieldset>
     );
   }
+
   if (q.type === "choice") {
+    const current = typeof value === "string" ? value : "";
+    const options = q.options ?? [];
+    // Two options read as one segmented row on the artboard; more than two wrap.
+    const wide = options.length === 2;
     return (
-      <Select id={id} label={q.label} required={q.required} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)}>
-        <option value="">Select…</option>
-        {(q.options ?? []).map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
-        ))}
-      </Select>
+      <fieldset className="min-w-0" aria-describedby={q.help ? helpId : undefined}>
+        <legend className={cn(labelClasses, "mb-2")}>{q.label}</legend>
+        <div className="flex flex-wrap gap-[7px]">
+          {options.map((opt) => (
+            <Chip
+              key={opt}
+              selected={current === opt}
+              className={wide ? "flex-1" : undefined}
+              onClick={() => onChange(current === opt ? "" : opt)}
+            >
+              {opt}
+            </Chip>
+          ))}
+        </div>
+        {q.help && <p id={helpId} className="mt-2 text-[11.5px] text-gray-500">{q.help}</p>}
+      </fieldset>
     );
   }
+
   return (
-    <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-gray-800">{q.label}</label>
-      <input
-        id={id}
-        type="file"
-        multiple={(q.max_files ?? 1) > 1}
-        accept="application/pdf,image/jpeg,image/png,image/heic,.docx"
-        className="block w-full text-sm text-gray-700"
-        onChange={(e) => onFiles(Array.from<File>(e.target.files ?? []).slice(0, q.max_files ?? 1))}
-      />
-      {files.length > 0 && <p className="text-xs text-gray-500">{files.map((f) => f.name).join(", ")}</p>}
-      <p className="text-xs text-gray-500">PDF or images, up to 25 MB each. Uploaded securely after you sign in.</p>
+    <div className="space-y-2">
+      <label htmlFor={id} className={labelClasses}>{q.label}</label>
+      <div className="flex min-h-[46px] items-center gap-2.5 rounded-[9px] border border-dashed border-[#C3C8D0] bg-white px-3 py-2.5">
+        <UploadIcon size={17} className="flex-none text-brand" />
+        <input
+          id={id}
+          type="file"
+          multiple={(q.max_files ?? 1) > 1}
+          accept="application/pdf,image/jpeg,image/png,image/heic,.docx"
+          className={cn(
+            "block w-full text-[12.5px] text-gray-700",
+            "file:mr-3 file:min-h-[30px] file:rounded-full file:border file:border-gray-300",
+            "file:bg-white file:px-3 file:text-[12.5px] file:font-semibold file:text-brand",
+          )}
+          onChange={(e) => onFiles(Array.from<File>(e.target.files ?? []).slice(0, q.max_files ?? 1))}
+        />
+      </div>
+      {files.length > 0 && <p className="text-[11.5px] text-gray-500">{files.map((f) => f.name).join(", ")}</p>}
+      <p className="text-[11.5px] text-gray-500">PDF or images, up to 25 MB each. Uploaded securely after you sign in.</p>
     </div>
   );
 }
