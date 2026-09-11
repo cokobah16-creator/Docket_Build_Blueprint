@@ -140,6 +140,118 @@ begin
   perform t_reset();
 end $$;
 
+-- ---------------------------------------------------------------- 2b. the table is not a second door
+-- Migration 20 put every rule about members inside set_member_role() and remove_member() and
+-- called those functions "the rule". The table sat open beside them: firm_members_write let an
+-- admin PATCH their own row to owner, DELETE the last owner, or POST an owner with no invitation,
+-- straight through PostgREST. Migration 22 revokes the privilege. These checks ATTEMPT each
+-- attack as exactly the caller who could make it — an admin with an MFA session — and assert the
+-- table refuses. They sit ABOVE section 3 on purpose: section 3 demotes owner2 and removes the
+-- lawyer, so only here are both owners still owners for the final count.
+do $$
+declare ow uuid := (select v from fx where k='owner'); o2 uuid := (select v from fx where k='owner2');
+        ad uuid := (select v from fx where k='admin'); cl uuid := (select v from fx where k='client');
+        f uuid := (select v from fx where k='firm'); ok bool; n int;
+begin
+  perform t_as(ad, 'aal2');
+
+  ok := false;
+  begin
+    update firm_members set role = 'owner' where firm_id = f and user_id = ad;
+  exception when insufficient_privilege then ok := true; end;
+  perform t_check('an admin cannot promote themselves by writing the table', ok);
+
+  ok := false;
+  begin
+    delete from firm_members where firm_id = f and user_id = ow;
+  exception when insufficient_privilege then ok := true; end;
+  perform t_check('an admin cannot delete an owner by writing the table', ok);
+
+  ok := false;
+  begin
+    insert into firm_members (firm_id, user_id, role) values (f, cl, 'owner');
+  exception when insufficient_privilege then ok := true; end;
+  perform t_check('an admin cannot mint an owner with no invitation', ok);
+
+  perform t_reset();
+  select count(*) into n from firm_members where firm_id = f and role = 'owner';
+  perform t_check('and the firm still has both its owners', n = 2);
+  perform t_check('and the admin is still an admin',
+                  (select role from firm_members where firm_id = f and user_id = ad) = 'admin');
+
+  -- The other door: a SECURITY DEFINER function ignores grants, and accept_staff_invite() upserts
+  -- a role. The last-owner trigger is the floor under every writer, so it is exercised as the
+  -- table owner — no policy, no grant, only the trigger between the statement and the row.
+  update firm_members set role = 'lawyer' where firm_id = f and user_id = o2;
+  perform t_check('an owner may be stood down while another owner remains',
+                  (select role from firm_members where firm_id = f and user_id = o2) = 'lawyer');
+
+  ok := false;
+  begin
+    update firm_members set role = 'lawyer' where firm_id = f and user_id = ow;
+  exception when check_violation then ok := sqlerrm like '%last owner%'; end;
+  perform t_check('the last owner cannot be demoted by any writer', ok);
+
+  ok := false;
+  begin
+    delete from firm_members where firm_id = f and user_id = ow;
+  exception when check_violation then ok := sqlerrm like '%last owner%'; end;
+  perform t_check('the last owner cannot be deleted by any writer', ok);
+
+  update firm_members set role = 'owner' where firm_id = f and user_id = o2;   -- restore for section 3
+  perform t_check('an owner may be reinstated', (select count(*) from firm_members where firm_id = f and role = 'owner') = 2);
+end $$;
+
+-- ---------------------------------------------------------------- 2c. a sent message is a record
+-- messages_mark_read is a bare FOR UPDATE policy naming no column, and until migration 22 the only
+-- trigger on messages fired after INSERT. Any participant in a thread — the client included —
+-- could rewrite the body, the attachments or the sender of what the firm said. Messages had no
+-- test coverage at all before this block.
+do $$
+declare la uuid := (select v from fx where k='lawyer'); cl uuid := (select v from fx where k='client');
+        f uuid := (select v from fx where k='firm'); m uuid; msg uuid; ok bool;
+begin
+  insert into matters (firm_id, reference, title, type) values (f, 'AF-M-2026-000099', 'Record v Rewrite', 'litigation')
+  returning id into m;
+  insert into matter_parties (matter_id, firm_id, user_id, role) values (m, f, cl, 'client');
+
+  perform t_as(la, 'aal2');
+  insert into messages (firm_id, matter_id, sender_id, body) values (f, m, la, 'Your hearing is on Monday.')
+  returning id into msg;
+  perform t_reset();
+
+  perform t_as(cl, 'aal1');
+  perform t_check('the client can read the message', (select count(*) from messages where id = msg) = 1);
+
+  ok := false;
+  begin
+    update messages set body = 'Your hearing is cancelled.' where id = msg;
+  exception when insufficient_privilege then ok := sqlerrm like '%cannot be altered%'; end;
+  perform t_check('the client cannot rewrite what the firm said', ok);
+
+  ok := false;
+  begin
+    update messages set sender_id = cl where id = msg;
+  exception when insufficient_privilege then ok := true; end;
+  perform t_check('the client cannot change who said it', ok);
+
+  update messages set read_at = now() where id = msg;
+  perform t_check('but the client can mark it read',
+                  (select read_at is not null from messages where id = msg));
+  perform t_reset();
+
+  perform t_check('and the body is exactly what was sent',
+                  (select body from messages where id = msg) = 'Your hearing is on Monday.');
+
+  perform t_as(la, 'aal2');
+  ok := false;
+  begin
+    update messages set body = 'edited after the fact' where id = msg;
+  exception when insufficient_privilege then ok := true; end;
+  perform t_check('the sender cannot edit their own message either', ok);
+  perform t_reset();
+end $$;
+
 -- ---------------------------------------------------------------- 3. roles and removal
 do $$
 declare ow uuid := (select v from fx where k='owner'); o2 uuid := (select v from fx where k='owner2');
