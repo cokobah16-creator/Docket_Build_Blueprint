@@ -73,7 +73,7 @@ const FLOWS = [
     lede:
       "One entry — the outcome, the next date and its purpose. Docket composes the client entry and the internal note together, closes the day’s sitting and opens the next against the court, the judge and the courtroom.",
     points: [
-      "A next date falling on a weekend, a public holiday, or a vacation published by that court is refused.",
+      "A next date falling on a weekend, a public holiday, or a vacation published by that court is refused, unless the lawyer confirms the vacation judge will sit.",
       "Internal notes carry no client policy at all, so they cannot reach the client.",
       "Timestamps are held in UTC and rendered in the reader’s own zone.",
     ],
@@ -135,8 +135,13 @@ const FOOTER_LINKS = [
       { label: "Staff sign in", href: "/firm/login" },
     ],
   },
-  { heading: "Clients", links: [{ label: "Client sign in", href: "/app/login" }] },
-  { heading: "Firm sites", links: [{ label: "Open a firm site", href: "/?firm=demo" }] },
+  {
+    heading: "Clients",
+    links: [
+      { label: "Client sign in", href: "/app/login" },
+      { label: "Book with a firm", href: "/firm/start" },
+    ],
+  },
 ];
 
 function Kicker({ children, className = "" }: { children: ReactNode; className?: string }) {
@@ -417,8 +422,8 @@ export default function PlatformLanding() {
                 Your own matters, on the screen.
               </h2>
               <p className="mt-6 max-w-[46ch] text-[15px] leading-[1.5] sm:text-[21px]">
-                Register the firm yourself — the console works the moment you finish, and your
-                public booking site comes with it.
+                Register the firm yourself. The console works the moment you finish. Your public
+                booking site goes live once Docket has verified the firm.
               </p>
             </div>
             <div className="flex flex-col gap-4">
