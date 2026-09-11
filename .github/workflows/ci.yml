@@ -1,7 +1,7 @@
 # Docket — continuous integration.
 #
-# Three things can be checked without a Supabase project, a Paystack account or a domain, and
-# all three are checked on every push:
+# Four things can be checked without a Supabase project, a Paystack account or a domain, and
+# all four are checked on every push:
 #
 #   sql        the migrations apply in order against an empty Postgres 16, the seed loads, and
 #              every suite in supabase/tests passes. This is the one that matters: the database
@@ -10,8 +10,11 @@
 #   typecheck  TypeScript, strict, over app/, src/, middleware.ts and the tests.
 #   deno       the three Edge Functions type-check. They are Deno, not Node: tsconfig.json
 #              excludes supabase/functions and the typecheck job never looks at them.
+#   routes     a real `next build`, checked against the content security policy: every route
+#              Next.js prerenders must be one the nonce policy accounts for, or the page ships
+#              as dead HTML. See scripts/check-prerendered-routes.mjs.
 #
-# A fourth, e2e, needs a configured Supabase project and is therefore GATED — see the bottom of
+# A fifth, e2e, needs a configured Supabase project and is therefore GATED — see the bottom of
 # this file for exactly what it needs and why it is skipped without it.
 
 name: CI
@@ -157,6 +160,54 @@ jobs:
         # deployed on its own. `deno check` resolves the npm: imports and their types the same
         # way the Supabase runtime does.
         run: deno check supabase/functions/*/index.ts
+
+  # ---------------------------------------------------------------- the policy vs the build
+  #
+  # src/lib/csp.ts hands every route a nonce-based script-src except a hand-written set of
+  # prerendered shells. A page rendered at BUILD time has no request, so its inline bootstrap
+  # scripts carry no nonce and the strict policy blocks them: the HTML arrives, React never
+  # hydrates, and every control on the page is dead. Which routes those are cannot be read off
+  # the source — only off the route table of a real build — and the set was once wrong by four
+  # routes, among them firm registration, TOTP enrolment and the platform console.
+  routes:
+    name: Prerendered routes match the policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build
+        # PLACEHOLDER SUPABASE VALUES, ON PURPOSE, and they are never contacted. src/lib/env.ts
+        # returns null when these are unset and src/lib/supabase/server.ts then returns early
+        # WITHOUT calling cookies() — so on an unconfigured build a page that reads the session
+        # touches no dynamic API and Next prerenders it. That would make this job's route table
+        # a different shape from a real deployment's and the check meaningless. With the pair
+        # set, every such page reaches cookies() and is dynamic, exactly as in production.
+        # Nothing is fetched from them: the pages that hold them are dynamic by then, so they
+        # do not render during the build.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ci_placeholder_not_a_real_key
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee build.log
+
+      - name: Every prerendered route must be one the policy knows about
+        run: node scripts/check-prerendered-routes.mjs build.log
+
+      - name: Keep the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
 
   # ---------------------------------------------------------------- browser smoke tests
   #
