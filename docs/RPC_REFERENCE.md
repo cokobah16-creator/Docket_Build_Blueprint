@@ -213,6 +213,19 @@ and `cancelled_at` (migration 33), so fulfilment and who-asked-when are the func
 Refuses:
 - `not authenticated` · `not permitted` *(42501)* — also what an unknown request returns
 - `this request was withdrawn` · `this request has already been answered`
+- `that document has no file yet — finish the upload first` (migration 36) — a `documents` row whose
+  bytes never arrived answers nothing
+
+### `retire_empty_document(p_document uuid)`
+Returns `void`. **Who:** whoever made the row, or firm staff who can write the matter (the wall applies).
+
+An upload that stopped between the `documents` row and the bytes leaves a row with no version.
+The screens offer to finish the upload; this retires the row instead (soft-delete, audited
+`document.retired`). A row that has a file is never retired this way — a document with bytes is
+removed only by the firm's ordinary delete, which keeps the versions.
+
+Refuses: `not authenticated` · `not permitted` *(42501)* · `document not found` ·
+`this document has a file and stays`
 - `that document is not on this matter` — a document on another matter, or a deleted one
 
 ---
@@ -240,10 +253,17 @@ Refuses: `not permitted` *(42501)* · `matter title is required` · `client acco
 `the conflict check did not search for <names>: run it again` (migration 33 — the check's keys must cover the client's name and company and every name on the other side) ·
 `this firm requires a cleared conflict check before a client joins a matter` (the trigger, with the switch on)
 
-### `post_court_update(p_matter uuid, p_outcome text, p_occurred_at timestamptz = now(), p_court_name text = null, p_adjourned_at_instance_of text = null, p_next_date timestamptz = null, p_next_purpose text = null, p_note_to_client text = null, p_internal_note text = null, p_court_id uuid = null, p_judicial_division text = null, p_allow_non_sitting bool = false, p_judge text = null, p_courtroom text = null, p_purpose_kind text = null)`
+### `post_court_update(p_matter uuid, p_outcome text, p_occurred_at timestamptz = now(), p_court_name text = null, p_adjourned_at_instance_of text = null, p_next_date timestamptz = null, p_next_purpose text = null, p_note_to_client text = null, p_internal_note text = null, p_court_id uuid = null, p_judicial_division text = null, p_allow_non_sitting bool = false, p_judge text = null, p_courtroom text = null, p_purpose_kind text = null, p_meaning text = null, p_next_step text = null, p_client_action text = null, p_action_required bool = null, p_next_update_by date = null, p_client_ref uuid = null)`
 Returns `uuid` (the client-visible update). The thirty-second form after a sitting: composes the
 title, posts the client entry and the internal note separately, closes the day's court event
-matched **in court time**, and opens the next one.
+matched **in court time**, and opens the next one. The five shaped fields (migration 27) are what
+the client reads by name: what it means, what happens next, what they must do, whether anything is
+required of them, and when to expect the next update.
+
+`p_client_ref` (migration 36) is a reference the form mints once per posting. A second call with
+the same reference on the same matter returns the update already made and makes nothing — so a
+form that lost the reply can send again without a second timeline entry, court event or
+notification. Without a reference, every call is a posting, as before.
 
 Outcomes: `hearing_held`, `adjourned`, `ruling_delivered`, `judgment_delivered`, `struck_out`,
 `stood_down`, `mention`, `court_did_not_sit`, `hearing_notice`, `adjourned_sine_die`.

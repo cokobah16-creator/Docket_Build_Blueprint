@@ -9,7 +9,9 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "reac
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { recordDocumentOpen } from "@/lib/document-open";
-import { createDocument, finalizeDocumentVersion, fulfilDocumentRequest } from "@/lib/actions/portal";
+import { UPLOAD_STOPPED, isAlreadyStored, isNetworkFailure, readDraft, clearDraft, uploadKey, writeDraft, type UploadInProgress } from "@/lib/drafts";
+import { OfflineNote } from "@/components/ui/connection";
+import { createDocument, finalizeDocumentVersion, fulfilDocumentRequest, retireEmptyDocument } from "@/lib/actions/portal";
 import { isLowData } from "@/lib/low-data";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
@@ -29,8 +31,8 @@ function fmtSize(n: number | null | undefined) {
 }
 
 export function DocumentsTab({
-  firmId, matterId, appointmentId, documents, timezone, canUpload = true, requests = [],
-}: { firmId: string; matterId: string | null; appointmentId: string | null; documents: DocumentWithVersion[]; timezone: string; canUpload?: boolean; requests?: DocumentRequestRow[] }) {
+  firmId, matterId, appointmentId, documents, timezone, canUpload = true, requests = [], userId = null,
+}: { firmId: string; matterId: string | null; appointmentId: string | null; documents: DocumentWithVersion[]; timezone: string; canUpload?: boolean; requests?: DocumentRequestRow[]; userId?: string | null }) {
   const router = useRouter();
   // Which request the next upload answers, if any. Set by "Upload this", cleared once used.
   const [forRequest, setForRequest] = useState<string | null>(null);
@@ -53,22 +55,56 @@ export function DocumentsTab({
     const supabase = supabaseBrowser();
     if (!supabase) { setError("Not configured."); return; }
     setBusy(`Uploading ${file.name}…`);
-    const created = await createDocument({ firmId, matterId, appointmentId, name: file.name, mime: file.type || "application/octet-stream", sizeBytes: file.size });
-    if (!created.ok) { setBusy(null); setError(created.error); return; }
-    const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined, upsert: false });
-    if (upErr) { setBusy(null); setError(`Upload failed: ${upErr.message}`); return; }
-    const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
-    if (fin?.error) { setBusy(null); setError(fin.error); return; }
-    // An upload made for a request answers it; the database refuses a second answer or a
-    // document from another matter, and tells whoever asked.
-    if (forRequest) {
-      const answered = await fulfilDocumentRequest(forRequest, created.documentId);
-      setForRequest(null);
-      if (answered?.error) { setBusy(null); setError(`Uploaded, but not linked to the request: ${answered.error}`); router.refresh(); return; }
+    // Three steps that are not one transaction: the row, the bytes, the version. An upload that
+    // stops between them is finished, not restarted: the ids minted for this file are kept on
+    // the device, the same file chosen again reuses them, bytes already in the store count as
+    // uploaded, and a version already recorded counts as done.
+    const key = uploadKey(userId, matterId ?? appointmentId ?? "");
+    const prior = readDraft<UploadInProgress>(key);
+    try {
+      let created: UploadInProgress;
+      if (prior && prior.name === file.name && prior.size === file.size) {
+        created = prior;
+      } else {
+        const made = await createDocument({ firmId, matterId, appointmentId, name: file.name, mime: file.type || "application/octet-stream", sizeBytes: file.size });
+        if (!made.ok) { setError(made.error); return; }
+        created = { name: file.name, size: file.size, documentId: made.documentId, versionId: made.versionId, storagePath: made.storagePath };
+        writeDraft(key, created);
+      }
+      const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined, upsert: false });
+      if (upErr && !isAlreadyStored(upErr.message)) { setError(`Upload failed: ${upErr.message}`); return; }
+      const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
+      if (fin?.error && !/duplicate key|already exists/i.test(fin.error)) { setError(fin.error); return; }
+      clearDraft(key);
+      // An upload made for a request answers it; the database refuses a second answer or a
+      // document from another matter, and tells whoever asked.
+      if (forRequest) {
+        const answered = await fulfilDocumentRequest(forRequest, created.documentId);
+        setForRequest(null);
+        if (answered?.error) { setError(`Uploaded, but not linked to the request: ${answered.error}`); router.refresh(); return; }
+      }
+      router.refresh();
+    } catch (e) {
+      setError(isNetworkFailure(e) ? UPLOAD_STOPPED : (e instanceof Error ? e.message : UPLOAD_STOPPED));
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
-    router.refresh();
-  }, [appointmentId, firmId, forRequest, matterId, router]);
+  }, [appointmentId, firmId, forRequest, matterId, router, userId]);
+
+  const remove = useCallback(async (doc: DocumentWithVersion) => {
+    setError(null);
+    setBusy(`Removing ${doc.name}…`);
+    try {
+      const r = await retireEmptyDocument(doc.id);
+      if (r?.error) { setError(r.error); return; }
+      clearDraft(uploadKey(userId, matterId ?? appointmentId ?? ""));
+      router.refresh();
+    } catch (e) {
+      setError(isNetworkFailure(e) ? "Not removed — the connection dropped." : (e instanceof Error ? e.message : "Not removed."));
+    } finally {
+      setBusy(null);
+    }
+  }, [appointmentId, matterId, router, userId]);
 
   const openPreview = useCallback(async (doc: DocumentWithVersion, force = false) => {
     if (!doc.version) return;
@@ -110,6 +146,7 @@ export function DocumentsTab({
             {busy ?? "Upload a document"}
             <input ref={fileInput} type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
           </label>
+          <div className="basis-full"><OfflineNote /></div>
         </div>
       )}
       {/* What the firm has asked for and has not received. An upload made from here answers it. */}
@@ -162,9 +199,16 @@ export function DocumentsTab({
                     </p>
                   )}
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => openPreview(d)} disabled={!d.version}>
-                  {isImage(d.version?.mime) || isPdf(d.version?.mime) ? "Preview" : "Download"}
-                </Button>
+                {d.version ? (
+                  <Button size="sm" variant="ghost" onClick={() => openPreview(d)}>
+                    {isImage(d.version.mime) || isPdf(d.version.mime) ? "Preview" : "Download"}
+                  </Button>
+                ) : (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-[#92400E]">No file yet — the upload stopped. Choose the same file again to finish it.</span>
+                    {userId && d.uploaded_by === userId && <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>}
+                  </span>
+                )}
               </div>
               {versions[d.id] && (
                 <ul className="mt-2 space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">

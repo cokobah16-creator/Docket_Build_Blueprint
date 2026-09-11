@@ -16,6 +16,7 @@ import { brandFontsUrl, brandStyle } from "@/lib/brand";
 import { BottomNav } from "@/components/ui/bottom-nav";
 import { ToastProvider } from "@/components/ui/toast";
 import { ServiceWorkerRegistrar } from "@/components/portal/sw-registrar";
+import { ConnectionBadge } from "@/components/ui/connection";
 import { Alert } from "@/components/ui/alert";
 import { Screen } from "@/components/portal/screen";
 import { ConsentGate } from "./consent-gate";
@@ -88,6 +89,7 @@ export default async function PortalLayout({ children }: { children: ReactNode }
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
       <ToastProvider>
         <ServiceWorkerRegistrar />
+        <div className="px-4 pt-2 empty:hidden"><ConnectionBadge /></div>
         {gate ? (
           // No tab bar behind the gate: there is nowhere to go until it is answered.
           <div className="mx-auto max-w-lg">{gate}</div>

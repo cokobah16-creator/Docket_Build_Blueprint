@@ -5,6 +5,7 @@
 // does the rest.
 
 import { useRouter } from "next/navigation";
+import { DraftSweeper } from "@/components/ui/connection";
 import { SignInForms } from "@/components/auth/sign-in-forms";
 import { Card, CardBody } from "@/components/ui/card";
 
@@ -12,6 +13,7 @@ export default function ClientLoginPage() {
   const router = useRouter();
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
+      <DraftSweeper />
       <h1 className="font-heading text-2xl font-semibold text-brand">Sign in</h1>
       <p className="mt-1 text-sm text-gray-600">Use the phone number or email your firm has for you.</p>
       <Card className="mt-4">

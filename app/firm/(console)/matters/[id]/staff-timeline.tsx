@@ -18,6 +18,8 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { NOT_SENT, draftKey, isNetworkFailure, useDeviceDraft } from "@/lib/drafts";
+import { OfflineNote, useConnectionState } from "@/components/ui/connection";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { CourtUpdateForm } from "@/components/firm/court-update-form";
 import { Alert } from "@/components/ui/alert";
@@ -75,10 +77,18 @@ export function StaffTimeline({
 }) {
   const router = useRouter();
   const [items, setItems] = useState<StaffUpdate[]>(initial);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [visibility, setVisibility] = useState<"client" | "internal">("client");
-  const [shape, setShape] = useState<ClientUpdateShape>(EMPTY_SHAPE);
+  // The note as typed, kept on this device until it is posted (src/lib/drafts.ts).
+  const draft = useDeviceDraft<{ title: string; body: string; visibility: "client" | "internal"; shape: ClientUpdateShape }>(
+    draftKey(userId, `note:${matterId}`),
+    { title: "", body: "", visibility: "client", shape: EMPTY_SHAPE },
+    (v) => !v.title.trim() && !v.body.trim() && !v.shape.meaning && !v.shape.nextStep && !v.shape.clientAction && !v.shape.nextUpdateBy,
+  );
+  const { title, body, visibility, shape } = draft.value;
+  const setTitle = (t: string) => draft.set((v) => ({ ...v, title: t }));
+  const setBody = (b: string) => draft.set((v) => ({ ...v, body: b }));
+  const setVisibility = (x: "client" | "internal") => draft.set((v) => ({ ...v, visibility: x }));
+  const setShape = (x: ClientUpdateShape | ((s: ClientUpdateShape) => ClientUpdateShape)) => draft.set((v) => ({ ...v, shape: typeof x === "function" ? x(v.shape) : x }));
+  const { online } = useConnectionState();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [noted, setNoted] = useState<"client" | "internal" | null>(null);
@@ -131,16 +141,22 @@ export function StaffTimeline({
       next_update_by: visibility === "client" ? shape.nextUpdateBy || null : null,
     };
     // No .select(): the select policy cannot read a row inserted by the same statement.
-    const { error: insertError } = await supabase.from("updates").insert(row);
+    let insertError: { message: string } | null = null;
+    try {
+      ({ error: insertError } = await supabase.from("updates").insert(row));
+    } catch (e) {
+      setBusy(false);
+      setError(isNetworkFailure(e) ? NOT_SENT : (e instanceof Error ? e.message : NOT_SENT));
+      return;
+    }
     setBusy(false);
     if (insertError) { setError(insertError.message); return; }
 
     setItems((cur) => [{ ...row, payload: {}, created_at: row.occurred_at } as StaffUpdate, ...cur]);
-    setTitle("");
-    setBody("");
-    setShape(EMPTY_SHAPE);
+    draft.clear();
     setNoted(visibility);
     router.refresh();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [body, firmId, matterId, router, shape, title, userId, visibility]);
 
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
@@ -208,7 +224,9 @@ export function StaffTimeline({
                 </span>
               </label>
             </fieldset>
-            <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Add to the timeline"}</Button>
+            <Button type="submit" disabled={busy || !online}>{busy ? "Saving…" : "Add to the timeline"}</Button>
+            {draft.restored && <p className="text-xs text-gray-600">Draft restored — not posted yet.</p>}
+            <OfflineNote />
           </form>
         </details>
       </section>

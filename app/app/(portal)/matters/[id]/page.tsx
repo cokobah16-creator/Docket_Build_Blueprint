@@ -84,7 +84,7 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
 
         <Card>
           {tab === "timeline" && <TimelineTab supabase={supabase} matterId={matter.id} tz={tz} />}
-          {tab === "documents" && <DocumentsSection supabase={supabase} matter={matter} tz={tz} />}
+          {tab === "documents" && <DocumentsSection supabase={supabase} matter={matter} tz={tz} userId={user.id} />}
           {tab === "messages" && <MessagesSection supabase={supabase} matter={matter} userId={user.id} tz={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />}
           {tab === "invoices" && <InvoicesSection supabase={supabase} matterId={matter.id} tz={tz} />}
         </Card>
@@ -105,7 +105,7 @@ async function TimelineTab({ supabase, matterId, tz }: { supabase: SB; matterId:
   return <Timeline matterId={matterId} initial={(data ?? []) as UpdateRow[]} timezone={tz} />;
 }
 
-async function DocumentsSection({ supabase, matter, tz }: { supabase: SB; matter: MatterRow; tz: string }) {
+async function DocumentsSection({ supabase, matter, tz, userId }: { supabase: SB; matter: MatterRow; tz: string; userId: string }) {
   const { data: docRows } = await supabase
     .from("documents")
     .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at")
@@ -129,7 +129,7 @@ async function DocumentsSection({ supabase, matter, tz }: { supabase: SB; matter
     .eq("matter_id", matter.id)
     .order("requested_at", { ascending: false })
     .limit(50);
-  return <DocumentsTab firmId={matter.firm_id} matterId={matter.id} appointmentId={null} documents={withVersion} timezone={tz} requests={(requestRows ?? []) as DocumentRequestRow[]} />;
+  return <DocumentsTab firmId={matter.firm_id} matterId={matter.id} appointmentId={null} documents={withVersion} timezone={tz} requests={(requestRows ?? []) as DocumentRequestRow[]} userId={userId} />;
 }
 
 async function MessagesSection({ supabase, matter, userId, tz, senderNames, firmName }: { supabase: SB; matter: MatterRow; userId: string; tz: string; senderNames: Record<string, string>; firmName: string }) {

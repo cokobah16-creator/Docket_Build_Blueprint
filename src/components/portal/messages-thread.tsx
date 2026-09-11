@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import type { MessageAttachment, MessageRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
+import { NOT_SENT, draftKey, isNetworkFailure, useDeviceDraft } from "@/lib/drafts";
+import { OfflineNote, useConnectionState } from "@/components/ui/connection";
 
 export function MessagesThread({
   firmId, matterId, appointmentId, userId, initial, timezone, senderNames, firmName,
@@ -18,8 +20,18 @@ export function MessagesThread({
   initial: MessageRow[]; timezone: string; senderNames: Record<string, string>; firmName: string;
 }) {
   const [messages, setMessages] = useState<MessageRow[]>(initial);
-  const [body, setBody] = useState("");
-  const [attachments, setAttachments] = useState<MessageAttachment[]>([]);
+  // The draft — the words, the attachments already uploaded, and the id this message will carry
+  // — kept on this device until the send returns. A retry after a lost reply lands once.
+  const draft = useDeviceDraft<{ body: string; attachments: MessageAttachment[]; id: string }>(
+    draftKey(userId, `message:${matterId ?? appointmentId}`),
+    { body: "", attachments: [], id: crypto.randomUUID() },
+    (v) => !v.body.trim() && v.attachments.length === 0,
+  );
+  const body = draft.value.body;
+  const attachments = draft.value.attachments;
+  const setBody = (b: string) => draft.set((v) => ({ ...v, body: b }));
+  const setAttachments = (f: (a: MessageAttachment[]) => MessageAttachment[]) => draft.set((v) => ({ ...v, attachments: f(v.attachments) }));
+  const { online } = useConnectionState();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement | null>(null);
@@ -62,25 +74,36 @@ export function MessagesThread({
     if (!supabase) return;
     setError(null);
     setBusy(`Attaching ${file.name}…`);
-    const created = await createDocument({ firmId, matterId, appointmentId, name: file.name, mime: file.type || "application/octet-stream", sizeBytes: file.size });
-    if (!created.ok) { setBusy(null); setError(created.error); return; }
-    const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined });
-    if (upErr) { setBusy(null); setError(`Upload failed: ${upErr.message}`); return; }
-    const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
-    setBusy(null);
-    if (fin?.error) { setError(fin.error); return; }
-    setAttachments((a) => [...a, { document_id: created.documentId, name: file.name, mime: file.type || null }]);
+    try {
+      const created = await createDocument({ firmId, matterId, appointmentId, name: file.name, mime: file.type || "application/octet-stream", sizeBytes: file.size });
+      if (!created.ok) { setError(created.error); return; }
+      const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined });
+      if (upErr) { setError(`Upload failed: ${upErr.message}`); return; }
+      const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
+      if (fin?.error) { setError(fin.error); return; }
+      setAttachments((a) => [...a, { document_id: created.documentId, name: file.name, mime: file.type || null }]);
+    } catch (e) {
+      setError(isNetworkFailure(e) ? "The attachment did not go through — the connection dropped. Try again when you are back." : (e instanceof Error ? e.message : NOT_SENT));
+    } finally {
+      setBusy(null);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointmentId, firmId, matterId]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setBusy("Sending…");
-    const r = await sendMessage({ firmId, matterId, appointmentId, body, attachments });
-    setBusy(null);
-    if (r?.error) { setError(r.error); return; }
-    setBody("");
-    setAttachments([]);
+    try {
+      const r = await sendMessage({ firmId, matterId, appointmentId, body, attachments, id: draft.value.id });
+      if (r?.error) { setError(r.error); return; }
+      draft.clear();
+      draft.set({ body: "", attachments: [], id: crypto.randomUUID() });
+    } catch (e) {
+      setError(isNetworkFailure(e) ? NOT_SENT : (e instanceof Error ? e.message : NOT_SENT));
+    } finally {
+      setBusy(null);
+    }
   }
 
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
@@ -139,8 +162,10 @@ export function MessagesThread({
             {busy?.startsWith("Attaching") ? busy : "Attach a document"}
             <input type="file" className="sr-only" onChange={attach} disabled={Boolean(busy)} />
           </label>
-          <Button type="submit" disabled={Boolean(busy) || (!body.trim() && attachments.length === 0)}>{busy === "Sending…" ? "Sending…" : "Send"}</Button>
+          <Button type="submit" disabled={Boolean(busy) || !online || (!body.trim() && attachments.length === 0)}>{busy === "Sending…" ? "Sending…" : "Send"}</Button>
         </div>
+        {draft.restored && <p className="text-xs text-gray-600">Draft restored — not sent yet.</p>}
+        <OfflineNote />
       </form>
     </div>
   );

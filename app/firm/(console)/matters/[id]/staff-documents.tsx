@@ -29,6 +29,9 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
 import type { DocumentRequestRow, DocumentRow, DocumentVersionRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
+import { NOT_SENT, UPLOAD_STOPPED, clearDraft, draftKey, isAlreadyStored, isNetworkFailure, readDraft, uploadKey, useDeviceDraft, writeDraft, type UploadInProgress } from "@/lib/drafts";
+import { OfflineNote, useConnectionState } from "@/components/ui/connection";
+import { retireEmptyDocument } from "@/lib/actions/portal";
 
 export type StaffDocument = DocumentRow & { version: DocumentVersionRow | null; version_count: number };
 
@@ -62,20 +65,29 @@ export function StaffDocuments({
 }) {
   const router = useRouter();
   const [askOpen, setAskOpen] = useState(false);
-  const [askTitle, setAskTitle] = useState("");
-  const [askWhy, setAskWhy] = useState("");
-  const [askDue, setAskDue] = useState("");
+  // The request as typed, kept on this device until it is asked (src/lib/drafts.ts).
+  const askDraft = useDeviceDraft<{ title: string; why: string; due: string }>(draftKey(userId, `document-request:${matterId}`), { title: "", why: "", due: "" }, (v) => !v.title.trim() && !v.why.trim() && !v.due);
+  const askTitle = askDraft.value.title, askWhy = askDraft.value.why, askDue = askDraft.value.due;
+  const setAskTitle = (t: string) => askDraft.set((v) => ({ ...v, title: t }));
+  const setAskWhy = (t: string) => askDraft.set((v) => ({ ...v, why: t }));
+  const setAskDue = (t: string) => askDraft.set((v) => ({ ...v, due: t }));
   const [askBusy, setAskBusy] = useState(false);
   const [askError, setAskError] = useState<string | null>(null);
+  const { online } = useConnectionState();
 
   async function ask(e: FormEvent) {
     e.preventDefault();
     setAskError(null); setAskBusy(true);
-    const r = await requestDocument(matterId, firmId, { title: askTitle, why: askWhy || undefined, dueOn: askDue || null });
-    setAskBusy(false);
-    if (r?.error) { setAskError(r.error); return; }
-    setAskTitle(""); setAskWhy(""); setAskDue(""); setAskOpen(false);
-    router.refresh();
+    try {
+      const r = await requestDocument(matterId, firmId, { title: askTitle, why: askWhy || undefined, dueOn: askDue || null });
+      if (r?.error) { setAskError(r.error); return; }
+      askDraft.clear(); setAskOpen(false);
+      router.refresh();
+    } catch (err) {
+      setAskError(isNetworkFailure(err) ? NOT_SENT : (err instanceof Error ? err.message : NOT_SENT));
+    } finally {
+      setAskBusy(false);
+    }
   }
   async function withdraw(id: string) {
     setAskError(null);
@@ -111,42 +123,71 @@ export function StaffDocuments({
     const supabase = supabaseBrowser();
     if (!supabase) { setError("Not configured."); return; }
 
-    const documentId = crypto.randomUUID();
-    const versionId = crypto.randomUUID();
-    const path = storagePathFor(firmId, documentId, versionId, file.name);
+    // The ids for this file are kept on the device while the upload is in flight: the same file
+    // chosen again after a drop finishes this document rather than starting a second one.
+    const key = uploadKey(userId, `matter:${matterId}`);
+    const prior = readDraft<UploadInProgress>(key);
+    const reuse = prior && prior.name === file.name && prior.size === file.size ? prior : null;
+    const documentId = reuse?.documentId ?? crypto.randomUUID();
+    const versionId = reuse?.versionId ?? crypto.randomUUID();
+    const path = reuse?.storagePath ?? storagePathFor(firmId, documentId, versionId, file.name);
 
     setBusy(`Uploading ${file.name}…`);
-    const { error: docError } = await supabase.from("documents").insert({
-      id: documentId,
-      firm_id: firmId,
-      matter_id: matterId,
-      appointment_id: null,
-      name: file.name.slice(0, 200),
-      category: "firm_upload",
-      client_visible: false,
-      uploaded_by: userId,
-    });
-    if (docError) { setBusy(null); setError(docError.message); return; }
+    try {
+      if (!reuse) {
+        const { error: docError } = await supabase.from("documents").insert({
+          id: documentId,
+          firm_id: firmId,
+          matter_id: matterId,
+          appointment_id: null,
+          name: file.name.slice(0, 200),
+          category: "firm_upload",
+          client_visible: false,
+          uploaded_by: userId,
+        });
+        if (docError) { setError(docError.message); return; }
+        writeDraft(key, { name: file.name, size: file.size, documentId, versionId, storagePath: path });
+      }
 
-    // Hash before the upload, from the file the person actually chose.
-    const checksum = await sha256Hex(file);
+      // Hash before the upload, from the file the person actually chose.
+      const checksum = await sha256Hex(file);
 
-    const { error: upError } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || undefined, upsert: false });
-    if (upError) { setBusy(null); setError(`Upload failed: ${upError.message}`); return; }
+      const { error: upError } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || undefined, upsert: false });
+      if (upError && !isAlreadyStored(upError.message)) { setError(`Upload failed: ${upError.message}`); return; }
 
-    const { error: versionError } = await supabase.from("document_versions").insert({
-      id: versionId,
-      document_id: documentId,
-      storage_path: path,
-      mime: file.type || "application/octet-stream",
-      size_bytes: file.size,
-      checksum,
-      uploaded_by: userId,
-    });
-    setBusy(null);
-    if (versionError) { setError(versionError.message); return; }
-    router.refresh();
+      const { error: versionError } = await supabase.from("document_versions").insert({
+        id: versionId,
+        document_id: documentId,
+        storage_path: path,
+        mime: file.type || "application/octet-stream",
+        size_bytes: file.size,
+        checksum,
+        uploaded_by: userId,
+      });
+      if (versionError && versionError.code !== "23505") { setError(versionError.message); return; }
+      clearDraft(key);
+      router.refresh();
+    } catch (err) {
+      setError(isNetworkFailure(err) ? UPLOAD_STOPPED : (err instanceof Error ? err.message : UPLOAD_STOPPED));
+    } finally {
+      setBusy(null);
+    }
   }, [firmId, matterId, router, userId]);
+
+  const remove = useCallback(async (doc: StaffDocument) => {
+    setError(null);
+    setBusy(`Removing ${doc.name}…`);
+    try {
+      const r = await retireEmptyDocument(doc.id);
+      if (r?.error) { setError(r.error); return; }
+      clearDraft(uploadKey(userId, `matter:${matterId}`));
+      router.refresh();
+    } catch (err) {
+      setError(isNetworkFailure(err) ? "Not removed — the connection dropped." : (err instanceof Error ? err.message : "Not removed."));
+    } finally {
+      setBusy(null);
+    }
+  }, [matterId, router, userId]);
 
   /** A further version of a document already on the file; the trigger moves current_version_id. */
   const uploadVersion = useCallback(async (doc: StaffDocument, e: ChangeEvent<HTMLInputElement>) => {
@@ -261,7 +302,7 @@ export function StaffDocuments({
             <input value={askTitle} onChange={(e) => setAskTitle(e.target.value)} required maxLength={200} placeholder="What document" className="rounded-lg border border-gray-300 px-3 py-2 text-sm sm:col-span-2" />
             <input type="date" value={askDue} onChange={(e) => setAskDue(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" aria-label="By when" />
             <input value={askWhy} onChange={(e) => setAskWhy(e.target.value)} maxLength={2000} placeholder="Why it is needed (the client sees this)" className="rounded-lg border border-gray-300 px-3 py-2 text-sm sm:col-span-3" />
-            <div className="sm:col-span-3"><Button type="submit" size="sm" disabled={askBusy || askTitle.trim().length < 2}>{askBusy ? "Asking…" : "Ask"}</Button></div>
+            <div className="sm:col-span-3"><Button type="submit" size="sm" disabled={askBusy || !online || askTitle.trim().length < 2}>{askBusy ? "Asking…" : "Ask"}</Button>{askDraft.restored && <span className="ml-2 text-xs text-gray-600">Draft restored.</span>}<OfflineNote /></div>
           </form>
         )}
         {openRequests.length === 0 ? (
@@ -327,9 +368,16 @@ export function StaffDocuments({
                       )}
                     </p>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => openPreview(d, null)} disabled={!d.version}>
-                    {d.version ? (isImage(d.version.mime) || isPdf(d.version.mime) ? "Preview" : "Download") : "No file yet"}
-                  </Button>
+                  {d.version ? (
+                    <Button size="sm" variant="ghost" onClick={() => openPreview(d, null)}>
+                      {isImage(d.version.mime) || isPdf(d.version.mime) ? "Preview" : "Download"}
+                    </Button>
+                  ) : (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs text-[#92400E]">No file yet — the upload stopped. Choose the same file again to finish it, or remove the entry.</span>
+                      <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>
+                    </span>
+                  )}
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">

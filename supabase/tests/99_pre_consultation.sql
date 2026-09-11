@@ -111,6 +111,9 @@ begin
   -- the client uploads against the consultation and answers the request
   d := gen_random_uuid();
   insert into documents (id, firm_id, appointment_id, name, category, client_visible, uploaded_by) values (d, f, a, 'tenancy.pdf', 'correspondence', true, cl);
+  perform t_reset();
+  insert into document_versions (document_id, storage_path, mime, size_bytes, uploaded_by) values (d, f || '/' || d || '/v.pdf', 'application/pdf', 10, cl);
+  perform t_as(cl, 'aal1');
   perform fulfil_document_request(rq, d);
   r := appointment_readiness(a);
   perform t_check('the upload answers the request and the documents item is satisfied', (select fulfilled_document_id = d from document_requests where id = rq) and exists (select 1 from jsonb_array_elements(r -> 'items') i where i ->> 'kind' = 'documents' and (i ->> 'satisfied')::bool));
@@ -128,7 +131,9 @@ begin
   a2 := (res ->> 'appointment_id')::uuid;
   d2 := gen_random_uuid();
   insert into documents (id, firm_id, appointment_id, name, category, client_visible, uploaded_by) values (d2, f, a2, 'other.pdf', 'correspondence', true, cl);
-  perform t_reset(); perform t_as(l);
+  perform t_reset();
+  insert into document_versions (document_id, storage_path, mime, size_bytes, uploaded_by) values (d2, f || '/' || d2 || '/v.pdf', 'application/pdf', 10, cl);
+  perform t_as(l);
   insert into document_requests (firm_id, appointment_id, title, requested_by) values (f, a, 'Something else', l) returning id into rq;
   perform t_reset(); perform t_as(cl, 'aal1');
   perform t_check('a document on another consultation cannot answer it', t_fails(format('select fulfil_document_request(%L, %L)', rq, d2), 'not on this consultation'));

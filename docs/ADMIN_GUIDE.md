@@ -104,6 +104,19 @@ with the file, and whoever asked is told it arrived.
   is part of the file's history, withdrawn or answered.
 - On a restricted matter, requests are behind the wall like everything else on it.
 
+## When the connection drops
+
+A court update posted from a corridor, a note, a message, a document request: each is kept on the
+device as you type it, and offered back when you open the same form again on that device. A form
+that lost its reply can be sent again safely — Docket recognises the posting it already made and
+does not make a second timeline entry, court event or client notification. While you are offline
+the console says so in the corner and the send buttons wait.
+
+An upload that stopped part-way leaves a document with no file. It is listed, but it answers no
+request and the client cannot open it. **Finish upload** beside it completes it; **Remove** retires
+it if you would rather start again. Drafts live on the device, not in Docket: they are not backed
+up, they are not visible to anyone else, and they are cleared when you sign out.
+
 ## Conflict checks
 
 Docket keeps, per matter, a register of **the other side** — the opposing party, co-parties,

@@ -17,7 +17,9 @@
 //  · Nothing firm-specific: the firm, the courts and the zone all arrive as
 //    props from context.
 
-import { useEffect, useId, useMemo, useState, useTransition, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition, type FormEvent } from "react";
+import { NOT_SENT, clearDraft, draftKey, isNetworkFailure, readDraft, useDraftOwner, writeDraft } from "@/lib/drafts";
+import { OfflineNote, useConnectionState } from "@/components/ui/connection";
 import { useRouter } from "next/navigation";
 import { checkNonSittingDay, postCourtUpdate, type NonSittingCheck } from "@/lib/actions/court";
 import { ClientUpdateFields, EMPTY_SHAPE, type ClientUpdateShape } from "@/components/firm/client-update-fields";
@@ -144,6 +146,47 @@ export function CourtUpdateForm({
   const [error, setError] = useState<string | null>(null);
   const [posted, setPosted] = useState(false);
   const [pending, startTransition] = useTransition();
+  const { online } = useConnectionState();
+
+  // The draft: everything typed, kept on this device until the posting returns (src/lib/drafts.ts).
+  // One key per person and matter (and sitting, when opened from the chase list). The client
+  // reference is minted with the draft and travels with it, so a retry after a lost reply is
+  // the same posting to post_court_update() and not a second one.
+  const owner = useDraftOwner();
+  const key = owner ? draftKey(owner, `court-update:${matterId}:${sittingAt ?? "new"}`) : null;
+  const [restored, setRestored] = useState(false);
+  const [clientRef, setClientRef] = useState<string>(() => crypto.randomUUID());
+  const hydrated = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!key || hydrated.current) return;
+    hydrated.current = true;
+    const d = readDraft<Record<string, unknown>>(key);
+    if (!d) return;
+    const str = (k: string) => (typeof d[k] === "string" ? (d[k] as string) : "");
+    if (str("outcome")) setOutcome(str("outcome"));
+    if (str("satOn")) setSatOn(str("satOn"));
+    setInstance(str("instance")); setOtherInstance(Boolean(d.otherInstance));
+    setNextDate(str("nextDate")); if (str("nextTime")) setNextTime(str("nextTime"));
+    setPurposeKind(str("purposeKind")); setNextPurpose(str("nextPurpose")); setPurposeEdited(Boolean(d.purposeEdited));
+    setAllowNonSitting(Boolean(d.allowNonSitting));
+    setNoteToClient(str("noteToClient")); setInternalNote(str("internalNote"));
+    if (d.shape && typeof d.shape === "object") setShape({ ...EMPTY_SHAPE, ...(d.shape as ClientUpdateShape) });
+    setJudge(str("judge")); setCourtroom(str("courtroom")); setCourtName(str("courtName")); if (str("division")) setDivision(str("division"));
+    if (str("clientRef")) setClientRef(str("clientRef"));
+    setRestored(true);
+  }, [key]);
+  const draftEmpty = !outcome && !instance && !nextDate && !purposeKind && !nextPurpose && !noteToClient && !internalNote && !judge && !courtroom && !courtName
+    && !shape.meaning && !shape.nextStep && !shape.clientAction && !shape.nextUpdateBy;
+  useEffect(() => {
+    if (!key || !hydrated.current) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      if (draftEmpty) clearDraft(key);
+      else writeDraft(key, { outcome, satOn, instance, otherInstance, nextDate, nextTime, purposeKind, nextPurpose, purposeEdited, allowNonSitting, noteToClient, internalNote, shape, judge, courtroom, courtName, division, clientRef });
+    }, 400);
+    return () => { if (timer.current) clearTimeout(timer.current); };
+  }, [key, draftEmpty, outcome, satOn, instance, otherInstance, nextDate, nextTime, purposeKind, nextPurpose, purposeEdited, allowNonSitting, noteToClient, internalNote, shape, judge, courtroom, courtName, division, clientRef]);
 
   const level = court?.level ?? null;
   const stateCode = court?.state_code ?? null;
@@ -158,6 +201,9 @@ export function CourtUpdateForm({
       setChecking(false);
       setCheck(result);
       if (!result.nonSitting) setAllowNonSitting(false);
+    }).catch(() => {
+      // Offline: the calendar could not be asked. The database still refuses a non-sitting day.
+      if (!cancelled) { setChecking(false); setCheck(null); }
     });
     return () => { cancelled = true; };
   }, [nextDate, level, stateCode]);
@@ -179,7 +225,7 @@ export function CourtUpdateForm({
   const needsNextDate = COURT_OUTCOMES.find((o) => o.value === outcome)?.needsNextDate ?? false;
   const missingNextDate = needsNextDate && !nextDate;
   const blockedByCalendar = Boolean(check?.nonSitting) && !allowNonSitting;
-  const canSubmit = Boolean(outcome) && !missingNextDate && !pending;
+  const canSubmit = Boolean(outcome) && !missingNextDate && !pending && online;
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -192,8 +238,11 @@ export function CourtUpdateForm({
     const occurredAt = satOn === today ? new Date().toISOString() : zonedInstant(satOn, "12:00", timezone);
 
     startTransition(async () => {
-      const result = await postCourtUpdate({
+      let result: Awaited<ReturnType<typeof postCourtUpdate>>;
+      try {
+        result = await postCourtUpdate({
         matterId,
+        clientRef,
         outcome,
         occurredAt,
         courtName: courtName.trim() || null,
@@ -213,8 +262,17 @@ export function CourtUpdateForm({
         clientAction: shape.clientAction.trim() || null,
         actionRequired: shape.actionRequired,
         nextUpdateBy: shape.nextUpdateBy || null,
-      });
+        });
+      } catch (e) {
+        // The reply never came: the draft stays on this device, and the same client reference
+        // makes the next attempt the same posting.
+        setError(isNetworkFailure(e) ? NOT_SENT : (e instanceof Error ? e.message : NOT_SENT));
+        return;
+      }
       if ("error" in result) { setError(result.error); return; }
+      if (key) clearDraft(key);
+      setRestored(false);
+      setClientRef(crypto.randomUUID());
       setShape(EMPTY_SHAPE);
       setPosted(true);
       setOutcome("");
@@ -236,7 +294,9 @@ export function CourtUpdateForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      {error && <Alert kind="error" title="The court diary refused this">{error}</Alert>}
+      {error && <Alert kind={error === NOT_SENT ? "warning" : "error"} title={error === NOT_SENT ? "Not sent" : "The court diary refused this"}>{error}</Alert>}
+      {restored && !error && <Alert kind="info" title="Draft restored — not posted">What you typed here before is back. Check it and post it, or clear it.</Alert>}
+      <OfflineNote />
       {posted && (
         <Alert kind="success" title="Posted">
           It is on the matter timeline and your client can see it now. Post another sitting below if you have one.

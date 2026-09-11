@@ -153,6 +153,7 @@ Migrations apply in filename order, which is chronological:
 20260910000033_wave_two_review.sql        the review round: invitations walled, last member by update, fulfilment columns, clearance on every move, a check bound to its names
 20260910000034_onboarding_and_import.sql  matters.legacy_reference; firm_onboarding_steps; firm_readiness(); import_batches/import_rows and process_import_batch()
 20260910000035_pre_consultation_checkin.sql firms.checkin_before_confirm; document_requests and conflict_checks reach a consultation; appointment_readiness(), amend_intake_response(), confirm_appointment(); book_appointment/record_payment/reminders/release learn the hold
+20260910000036_drafts_and_retries.sql     updates.client_ref (a retry returns the posting already made); a document with no file answers no request; retire_empty_document(); storage_integrity() counts rows without a version
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -406,7 +407,11 @@ admit without changing any call the deployed front end makes. 34 is additive and
 nothing the deployed front end reads changes, and the new screens read only the new function
 and tables. 35 is safe either side too: with every firm's `checkin_before_confirm` off, `book_appointment()`
 and `record_payment()` behave exactly as before, and `document_requests.matter_id` becoming nullable
-changes nothing the deployed front end selects.
+changes nothing the deployed front end selects. 36 is safe either side: `post_court_update()` gains one
+trailing defaulted parameter (the deployed form passes named arguments and resolves to it), the new
+column is nullable and unindexed until set, and the one refusal it adds — a document with no file
+cannot answer a request — is a case the deployed front end could only reach by an upload that had
+already failed.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

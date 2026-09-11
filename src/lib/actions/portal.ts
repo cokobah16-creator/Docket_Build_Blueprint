@@ -164,13 +164,17 @@ export async function finalizeDocumentVersion(input: {
 // ---------------------------------------------------------------- messages
 export async function sendMessage(input: {
   firmId: string; matterId: string | null; appointmentId: string | null; body: string; attachments: MessageAttachment[];
+  /** Minted by the composer per message: a retry after a lost reply lands once, on the key. */
+  id?: string | null;
 }): Promise<Err> {
   const { supabase, user } = await userClient();
   if (!supabase || !user) return { error: "Sign in first." };
   const body = input.body.trim();
   if (!body && input.attachments.length === 0) return { error: "Write a message or attach a document." };
   if (body.length > 4000) return { error: "Keep messages under 4,000 characters." };
+  const id = input.id && z.string().uuid().safeParse(input.id).success ? input.id : undefined;
   const { error } = await supabase.from("messages").insert({
+    ...(id ? { id } : {}),
     firm_id: input.firmId,
     matter_id: input.matterId,
     appointment_id: input.appointmentId,
@@ -178,7 +182,22 @@ export async function sendMessage(input: {
     body: body || null,
     attachments: input.attachments.slice(0, 5),
   });
+  // The same message sent twice (a retry whose first reply was lost) is refused by the primary
+  // key: that is success, not a failure to show.
+  if (error && error.code === "23505" && id) return undefined;
   if (error) return { error: error.message };
+  return undefined;
+}
+
+/** Retire a documents row that never received its file: an upload that stopped. retire_empty_document() decides. */
+export async function retireEmptyDocument(documentId: string): Promise<Err> {
+  if (!z.string().uuid().safeParse(documentId).success) return { error: "Unknown document." };
+  const { supabase, user } = await userClient();
+  if (!supabase || !user) return { error: "Sign in first." };
+  const { error } = await supabase.rpc("retire_empty_document", { p_document: documentId });
+  if (error) return { error: error.message };
+  revalidatePath("/app");
+  revalidatePath("/firm");
   return undefined;
 }
 

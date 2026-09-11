@@ -181,7 +181,7 @@ export default async function AppointmentPage({
         {live && firm && (
           <Card>
             <CardHeader title="Documents" />
-            <DocumentsTab firmId={firm.id} matterId={null} appointmentId={appt.id} documents={documents} timezone={tz} requests={requests} />
+            <DocumentsTab firmId={firm.id} matterId={null} appointmentId={appt.id} documents={documents} timezone={tz} requests={requests} userId={user.id} />
           </Card>
         )}
 

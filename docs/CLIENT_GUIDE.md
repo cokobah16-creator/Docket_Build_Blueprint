@@ -34,7 +34,13 @@ any other app.
 There is a **low-data** switch in the app. With it on, documents and images do not download until
 you tap them. It is remembered on that device.
 
-If you lose signal mid-way, the app shows a plain offline page rather than a broken one.
+If you lose signal mid-way, the app shows a plain offline page rather than a broken one, and a
+small **Offline** mark in the corner while it lasts. A message you were typing is kept on that
+device until you send it: open the thread again and it is there, with the files you attached (each
+was uploaded the moment you attached it, so it is already safe). An upload that stopped
+can be finished from the same Documents tab — you will see **Finish upload** beside it — or removed
+if you would rather start again. Nothing is sent twice: a message that did go through before the
+reply was lost is recognised, not repeated.
 
 ---
 
