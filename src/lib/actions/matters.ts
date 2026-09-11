@@ -111,9 +111,13 @@ export async function openMatter(input: OpenMatterInput): Promise<OpenMatterResu
   // so it is left uncounted rather than attributed to somebody made up. The properties are facts
   // about the matter; nothing about the person travels with it. Fired and ignored: telemetry
   // never gets to fail a matter that the database has already opened.
-  if (d.clientId) {
+  // Bound to a const first: inside the after() closure TypeScript can no longer prove that
+  // d.clientId is still the string the `if` tested, because a property is not a narrowing that
+  // survives into a callback.
+  const clientId = d.clientId;
+  if (clientId) {
     after(() =>
-      capture(FUNNEL.matterOpened, d.clientId, {
+      capture(FUNNEL.matterOpened, clientId, {
         firm_id: d.firmId,
         matter_type: d.type,
       }).catch(() => undefined),
