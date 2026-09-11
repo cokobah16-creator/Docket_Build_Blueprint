@@ -235,7 +235,11 @@ begin
   -- policies -> 'terms' ->> 'version' and policies -> 'privacy' ->> 'version', and the portal
   -- compares a client's consent against the same strings. Dropping them would unpublish every
   -- firm on Docket, so each document keeps its own.
-  foreach v_key in array array['privacy','terms','engagement','cancellation'] loop
+  -- The five documents Docket has. 'disclaimer' is not optional decoration: seed_firm_defaults()
+  -- writes it into EVERY firm and it is rendered on the public site footer, on the booking
+  -- wizard's confirm step and on the terms and privacy pages. Leaving it out of this list would
+  -- have made the first settings save strip it off all three, with no way to put it back.
+  foreach v_key in array array['privacy','terms','engagement','cancellation','disclaimer'] loop
     v_doc := v_in -> v_key;
     if v_doc is null or jsonb_typeof(v_doc) <> 'object' then continue; end if;
     v_clean := jsonb_strip_nulls(jsonb_build_object(

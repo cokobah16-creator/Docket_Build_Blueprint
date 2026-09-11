@@ -15,18 +15,10 @@
 // through admin_w(), and that answer is the one that counts.
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
-
-const NAV: Array<{ href: string; label: string }> = [
-  { href: "/firm/admin", label: "Firm" },
-  { href: "/firm/admin/settings", label: "Settings" },
-  { href: "/firm/admin/services", label: "Services" },
-  { href: "/firm/admin/intake", label: "Intake" },
-  { href: "/firm/admin/people", label: "People" },
-  { href: "/firm/admin/audit", label: "Audit" },
-];
+import { AdminNav } from "./admin-nav";
 
 export default async function FirmAdminLayout({ children }: { children: ReactNode }) {
   const ctx = await staffContext(await requestedFirmId());
@@ -67,24 +59,18 @@ export default async function FirmAdminLayout({ children }: { children: ReactNod
     <div className="space-y-5">
       <div>
         <h1 className="font-heading text-xl font-semibold text-gray-900">Firm administration</h1>
+        {/* No firm name here. A layout cannot read ?firm=, so the name it would resolve is the
+            account's default — which for a member of two firms is the wrong one over a form that
+            writes the other. Each screen below names the firm it actually resolved. */}
         <p className="mt-1 text-sm text-gray-600">
-          What {ctx.firmName} is, what it sells, who works here and what it has done.
+          What the firm is, what it sells, who works here and what it has done.
         </p>
       </div>
-      <nav aria-label="Firm administration" className="-mx-4 overflow-x-auto px-4">
-        <ul className="flex items-center gap-1">
-          {NAV.map((item) => (
-            <li key={item.href}>
-              <Link
-                href={item.href}
-                className="block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-black/5 hover:text-brand"
-              >
-                {item.label}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
+      {/* useSearchParams() suspends, and a component that reads it must sit under a boundary or
+          the production build refuses to prerender the tree around it. */}
+      <Suspense fallback={<div className="h-[44px]" />}>
+        <AdminNav />
+      </Suspense>
       {children}
     </div>
   );

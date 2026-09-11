@@ -25,7 +25,8 @@ import { SettingsForms, type PolicyDoc } from "./settings-forms";
 export const metadata = { title: "Firm settings" };
 
 /** The documents validate_policies() knows. Anything else under firms.policies is dropped on a write. */
-const KEPT_POLICY_DOCUMENTS = ["terms", "privacy", "engagement", "cancellation"];
+/** The documents validate_policies() keeps (migration 20). Anything else is dropped on save. */
+const KEPT_POLICY_DOCUMENTS = ["terms", "privacy", "engagement", "cancellation", "disclaimer"];
 
 interface FirmSettingsRow {
   id: string;

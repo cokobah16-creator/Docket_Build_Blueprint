@@ -221,6 +221,7 @@ begin
   update firms set policies = jsonb_build_object(
     'terms',   jsonb_build_object('version','2026-09','text','Terms <script>alert(1)</script> apply.'),
     'privacy', jsonb_build_object('version','2026-09','text','We keep your data.','url','https://example.ng/privacy'),
+    'disclaimer', jsonb_build_object('version','2026-09','text','Booking does not create a lawyer-client relationship.'),
     'nonsense', jsonb_build_object('version','x')) where id = f;
   perform t_check('markup is stripped from policy text',
                   (select policies -> 'terms' ->> 'text' from firms where id = f) not like '%<%');
@@ -228,6 +229,10 @@ begin
                   (select policies -> 'terms' ->> 'version' from firms where id = f) = '2026-09');
   perform t_check('an https url is kept', (select policies -> 'privacy' ->> 'url' from firms where id = f) = 'https://example.ng/privacy');
   perform t_check('an unknown policy document is dropped', (select policies -> 'nonsense' from firms where id = f) is null);
+  -- Every firm is seeded with a disclaimer and three client-facing screens render it. A
+  -- validator that dropped it would silently strip it off all three.
+  perform t_check('the disclaimer every firm is seeded with survives a policy save',
+                  (select policies -> 'disclaimer' ->> 'text' from firms where id = f) like 'Booking does not%');
   perform t_check('and the firm reads as published', firm_policies_published(f));
 end $$;
 

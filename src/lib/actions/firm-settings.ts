@@ -245,16 +245,26 @@ function diffNotes(sent: Json, stored: Json, labels: Record<string, string>): st
   return notes;
 }
 
-/** Reads back the firms row after a write, so a rewritten column can be reported truthfully. */
+/**
+ * Reads one column of the firms row, and says so when it could not.
+ *
+ * The distinction matters more than it looks. updatePolicies() reads the column BEFORE writing,
+ * to carry forward the documents this screen does not edit and to notice a version change. If a
+ * failed read came back as an empty object, those documents would be silently destroyed and the
+ * re-consent confirmation would be skipped — both without a word on screen. So a failure is a
+ * failure here, and every caller has to decide what to do about it.
+ */
 async function readFirmColumn(
   supabase: NonNullable<Awaited<ReturnType<typeof supabaseServer>>>,
   firmId: string,
   column: string,
-): Promise<Json> {
-  const { data } = await supabase.from("firms").select(column).eq("id", firmId).maybeSingle();
+): Promise<{ value: Json; error: string | null }> {
+  const { data, error } = await supabase.from("firms").select(column).eq("id", firmId).maybeSingle();
+  if (error) return { value: {}, error: error.message };
   const row = (data ?? null) as unknown as Record<string, unknown> | null;
-  const value = row?.[column];
-  return value && typeof value === "object" ? (value as Json) : {};
+  if (!row) return { value: {}, error: "This firm could not be read back." };
+  const value = row[column];
+  return { value: value && typeof value === "object" ? (value as Json) : {}, error: null };
 }
 
 /**
@@ -570,7 +580,8 @@ export async function updateBrand(firmId: string, input: BrandInput): Promise<Se
 
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Docket is not configured on this host yet." };
-  const stored = await readFirmColumn(supabase, firmId, "brand");
+  const { value: stored, error: readError } = await readFirmColumn(supabase, firmId, "brand");
+  if (readError) return { notes: ["Saved, but the brand could not be read back to check what the database kept: " + readError] };
   refresh();
 
   const notes = diffNotes(brand, stored, BRAND_LABELS);
@@ -587,7 +598,10 @@ export async function updateBrand(firmId: string, input: BrandInput): Promise<Se
  * compares consent_records.version against these strings by EXACT equality, so a changed
  * version locks every client of this firm out of their portal until they accept again.
  *
- * validate_policies() (migration 20) keeps only privacy, terms, engagement and cancellation.
+ * validate_policies() (migration 20) keeps privacy, terms, engagement, cancellation and
+ * disclaimer. The disclaimer is the one that matters here: every firm is seeded with one and it
+ * is rendered on the public footer, the booking confirm step and the policy pages, so it has to
+ * be resent with every write or the save would strip it off all three.
  * Anything else stored under policies — including the "disclaimer" that seed_firm_defaults()
  * writes for every new firm — is dropped by the trigger on any write to the column. The screen
  * says so before saving; the diff below proves it afterwards.
@@ -627,7 +641,12 @@ export async function updatePolicies(firmId: string, input: PoliciesInput): Prom
 
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Docket is not configured on this host yet." };
-  const before = await readFirmColumn(supabase, firmId, "policies");
+  // Read FIRST. Everything below depends on knowing what is already stored, and guessing would
+  // destroy the documents this screen does not edit.
+  const { value: before, error: beforeError } = await readFirmColumn(supabase, firmId, "policies");
+  if (beforeError) {
+    return { error: `Nothing was saved: this firm's current policies could not be read, and writing without them would delete the documents this screen does not edit. ${beforeError}` };
+  }
 
   const versionOf = (key: string): string => {
     const doc = before[key];
@@ -643,10 +662,11 @@ export async function updatePolicies(firmId: string, input: PoliciesInput): Prom
     };
   }
 
-  // Documents this screen does not edit are sent back unchanged so they survive the write.
-  // "disclaimer" cannot survive it: the trigger does not know that key.
+  // Documents this screen does not edit are sent back unchanged so they survive the write. The
+  // trigger replaces the whole column, so anything not resent here is gone — and the disclaimer
+  // is on three client-facing screens.
   const policies: Json = {};
-  for (const key of ["engagement", "cancellation"]) {
+  for (const key of ["engagement", "cancellation", "disclaimer"]) {
     const doc = before[key];
     if (doc && typeof doc === "object") policies[key] = doc;
   }
@@ -665,13 +685,14 @@ export async function updatePolicies(firmId: string, input: PoliciesInput): Prom
   const result = await updateFirm(firmId, { policies });
   if (result.error) return result;
 
-  const stored = await readFirmColumn(supabase, firmId, "policies");
+  const { value: stored, error: afterError } = await readFirmColumn(supabase, firmId, "policies");
+  if (afterError) return { notes: ["Saved, but the policies could not be read back to check what the database kept: " + afterError] };
   refresh();
 
   const notes: string[] = [];
   for (const key of Object.keys(policies)) {
     if (typeof policies[key] === "object" && !(key in stored)) {
-      notes.push(`The database dropped the “${key}” document entirely — firms.policies keeps only privacy, terms, engagement and cancellation.`);
+      notes.push(`The database dropped the “${key}” document entirely — firms.policies keeps only privacy, terms, engagement, cancellation and disclaimer.`);
     }
   }
   for (const key of Object.keys(before)) {
@@ -739,7 +760,8 @@ export async function updateNotificationTemplates(firmId: string, input: Templat
 
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Docket is not configured on this host yet." };
-  const stored = await readFirmColumn(supabase, firmId, "notification_templates");
+  const { value: stored, error: afterError } = await readFirmColumn(supabase, firmId, "notification_templates");
+  if (afterError) return { notes: ["Saved, but the templates could not be read back to check what the database kept: " + afterError] };
   refresh();
 
   const notes: string[] = [];

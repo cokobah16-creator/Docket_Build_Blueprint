@@ -991,10 +991,19 @@ function TemplatesSection({ firmId, firmName, timezone, templates }: FirmSetting
       title="What your messages say"
       hint="Docket writes every message to your clients in its own words and signs it with your firm's name. Where those words are not yours, replace them here."
     >
-      <Alert kind="warning" title="Nothing you write here reaches a client yet">
-        Docket keeps your wording on the firm, and it is safe there. The part of Docket that
-        actually sends email, SMS and push does not read it yet: every message still goes out in
-        Docket's own words. Write yours now if you want to, but nothing changes for a client today.
+      <Alert kind="warning" title="What you write here is what your client receives">
+        This is not a draft. Whatever you save for an event is the sentence Docket sends for it,
+        by email, SMS and push, to real clients. An empty box means Docket&rsquo;s own words.
+      </Alert>
+
+      <Alert kind="info" title="Putting the details in">
+        A word in braces is replaced when the message goes out. Every message can use{" "}
+        <code>{"{firm}"}</code> for your firm&rsquo;s name and <code>{"{when}"}</code> for the time
+        of the appointment or sitting, in the client&rsquo;s own time zone. Depending on the event
+        you can also use <code>{"{reference}"}</code>, <code>{"{invoice_number}"}</code>,{" "}
+        <code>{"{amount}"}</code> and <code>{"{purpose}"}</code>. A word in braces that Docket does
+        not recognise is left in the message exactly as you typed it, so the client would read it —
+        which is deliberate, because you are the only person who can correct it.
       </Alert>
 
       <Alert kind="info" title="An empty box means Docket's own sentence">
