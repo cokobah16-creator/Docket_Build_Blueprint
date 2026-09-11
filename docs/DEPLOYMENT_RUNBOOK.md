@@ -400,14 +400,14 @@ renderers (v8) before the first request is made. 32 is safe either side: it re-c
 resolves to it), pg_trgm goes into the `extensions` schema, and the clearance guard is off until a
 firm switches it on.
 
-| | As of 11 Sep 2026, 15:20 UTC | Reconciled against |
+| | As of 11 Sep 2026, 15:40 UTC | Reconciled against |
 |---|---|---|
 | **App** | `2adae58` (the merge of PR #19), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
-| **Schema** | Migrations **1–29 and 31** applied: 32 ledger entries (`20260909000001_schema` … `document_requests`, plus the two unnumbered `consultations` and `client_portal`). **30 is not applied** — it waits for the front end that calls `open_document_version()` (the ordering rule above). 29 (walls, default off) and 31 (additive) went live ahead of their front end; 32 is written and tested, not yet applied | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
+| **Schema** | Migrations **1–29, 31 and 32** applied: 33 ledger entries (`20260909000001_schema` … `conflict_checks`, plus the two unnumbered `consultations` and `client_portal`). **30 is not applied** — it waits for the front end that calls `open_document_version()` (the ordering rule above). 29 (walls, default off), 31 (additive) and 32 (default off; `open_matter()` keeps resolving for the deployed form) went live ahead of their front end | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
 | **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v8** (renders `document_requested` / `document_received`) · `video-session` **v2** · `storage-manifest` **v1** (`storage_manifest_url` in Vault; `docket-storage-manifest` runs `*/10 * * * *`) | MCP `list_edge_functions`; `cron.job`; `cron.job_run_details` |
 
-Migration ledger names are the file names for 1–21 and short names after: `document_requests` is
-`20260910000031_document_requests.sql`, `matter_walls` 29, `storage_manifest` 28, `structured_client_update` 27,
+Migration ledger names are the file names for 1–21 and short names after: `conflict_checks` is
+`20260910000032_conflict_checks.sql`, `document_requests` 31, `matter_walls` 29, `storage_manifest` 28, `structured_client_update` 27,
 `next_action_work_item` 26, `message_reads` 25, `wave_zero_doors` 24, `booking_limit_in_the_rpc` 23,
 `member_and_message_invariants` 22.
 
