@@ -2,7 +2,8 @@
 // member; RLS (is_firm_member / staff_w) is the authorization, and the console
 // layout has already proved session + aal2 + membership before any of this runs.
 
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
+import { STAFF_FIRM_COOKIE } from "@/lib/staff-firm";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabase/server";
 import type {
@@ -295,6 +296,11 @@ export async function availabilityFor(supabase: SupabaseClient, firmId: string, 
  */
 export async function requestedFirmId(searchParams?: { firm?: string }): Promise<string | undefined> {
   if (searchParams?.firm) return searchParams.firm;
+  // Set by the middleware on any console visit that carried ?firm=, so the links that follow —
+  // none of which carry it — keep the member on the firm they chose. Validated against their
+  // memberships by staffContext(); a stale or tampered value selects nothing.
+  const remembered = (await cookies()).get(STAFF_FIRM_COOKIE)?.value;
+  if (remembered) return remembered;
   const h = await headers();
   return h.get("x-firm-id") ?? undefined;
 }

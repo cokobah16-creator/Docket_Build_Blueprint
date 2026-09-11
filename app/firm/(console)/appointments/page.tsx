@@ -4,6 +4,7 @@ import { Card, EmptyState } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import { zonedDayRange } from "@/lib/time";
+import { requestedFirmId, staffContext } from "@/lib/firm-data";
 
 export const metadata = { title: "Consultations" };
 
@@ -16,24 +17,23 @@ interface Row {
 
 type View = "today" | "upcoming" | "past";
 
-export default async function FirmAppointments({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const { view: rawView } = await searchParams;
+export default async function FirmAppointments({ searchParams }: { searchParams: Promise<{ view?: string; firm?: string }> }) {
+  const { view: rawView, firm: firmParam } = await searchParams;
   const view: View = rawView === "upcoming" || rawView === "past" ? rawView : "today";
-  const supabase = await supabaseServer();
+  // One firm's diary. RLS would let a member of two firms read both, and this screen used to
+  // show them merged with nothing saying which was which.
+  const ctx = await staffContext(await requestedFirmId({ firm: firmParam }));
+  const supabase = ctx?.supabase ?? null;
 
   let rows: Row[] = [];
-  let tz = "Africa/Lagos";
-  if (supabase) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      const { data: prof } = await supabase.from("profiles").select("timezone").eq("id", user.id).maybeSingle();
-      tz = (prof as { timezone: string } | null)?.timezone ?? tz;
-    }
+  const tz = ctx?.timezone ?? "Africa/Lagos";
+  if (supabase && ctx) {
     const { start: startUtc, end: endUtc } = zonedDayRange(tz);
 
     let q = supabase
       .from("appointments")
-      .select("id, reference, starts_at, ends_at, status, mode, hold_expires_at, client:profiles!appointments_client_id_fkey(full_name, phone), service:services(name)");
+      .select("id, reference, starts_at, ends_at, status, mode, hold_expires_at, client:profiles!appointments_client_id_fkey(full_name, phone), service:services(name)")
+      .eq("firm_id", ctx.firmId);
     if (view === "today") q = q.gte("starts_at", startUtc.toISOString()).lt("starts_at", endUtc.toISOString()).order("starts_at", { ascending: true });
     if (view === "upcoming") q = q.gte("starts_at", endUtc.toISOString()).order("starts_at", { ascending: true }).limit(50);
     if (view === "past") q = q.lt("starts_at", startUtc.toISOString()).order("starts_at", { ascending: false }).limit(50);
@@ -75,7 +75,8 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
       <div>
         <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Consultations</h1>
         <p className="mt-0.5 text-[12.5px] text-[#57534E]">
-          {view === "today" ? "Today" : view === "upcoming" ? "Upcoming" : "Past"} · times in {tz}
+          {view === "today" ? "Today" : view === "upcoming" ? "Upcoming" : "Past"}
+          {ctx && ctx.memberships.length > 1 ? ` · ${ctx.firmName}` : ""} · times in {tz}
         </p>
       </div>
 

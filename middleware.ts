@@ -34,6 +34,7 @@ import {
   newNonce,
 } from "@/lib/csp";
 import { VISITOR_COOKIE } from "@/lib/observability";
+import { STAFF_FIRM_COOKIE, STAFF_FIRM_MAX_AGE } from "@/lib/staff-firm";
 
 const APP_PREFIXES = ["/app", "/firm", "/admin", "/auth", "/api"];
 
@@ -48,6 +49,7 @@ const CLIENT_SPOOFABLE = [
 
 /** One year. Long enough that a returning visitor is still the same person in the funnel. */
 const VISITOR_MAX_AGE = 60 * 60 * 24 * 365;
+
 
 /** The same URL with a different path — the tenant rewrite target. */
 function withPathname(request: NextRequest, pathname: string) {
@@ -122,6 +124,18 @@ export async function middleware(request: NextRequest) {
     "Strict-Transport-Security",
     onTenantDomain ? "max-age=63072000" : "max-age=63072000; includeSubDomains",
   );
+
+  // A console visit that names a firm is remembered for the links that follow — see src/lib/staff-firm.ts.
+  const staffFirm = searchParams.get("firm");
+  if (staffFirm && (pathname === "/firm" || pathname.startsWith("/firm/"))) {
+    response.cookies.set(STAFF_FIRM_COOKIE, staffFirm, {
+      path: "/firm",
+      maxAge: STAFF_FIRM_MAX_AGE,
+      sameSite: "lax",
+      httpOnly: true,
+      secure: true,
+    });
+  }
 
   if (!existingVisitor) {
     response.cookies.set(VISITOR_COOKIE, visitorId, {
