@@ -7,6 +7,8 @@
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SettingRow } from "@/components/ui/switch";
 
 type State = "checking" | "unsupported" | "no-key" | "idle" | "subscribed" | "denied" | "busy" | "error";
 
@@ -76,24 +78,51 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
   }
 
   if (state === "checking" || state === "unsupported" || state === "no-key") return null;
+
+  const hint = "Court updates and consultation reminders on this device.";
   if (state === "subscribed") {
-    return compact ? null : <p className="text-sm text-emerald-800">✓ Notifications are on for this device.</p>;
+    if (compact) return null;
+    return (
+      <SettingRow title="Push notifications" hint={hint} divided={false}>
+        <Badge tone="settled" icon="check">On</Badge>
+      </SettingRow>
+    );
+  }
+  if (compact) {
+    return (
+      <div className="flex items-center gap-3">
+        {state === "denied" ? (
+          <p className="text-[12.5px] text-[#92400E]">Notifications are blocked for this site. Allow them in your browser settings to turn them on.</p>
+        ) : (
+          <Button size="sm" variant="ghost" onClick={enable} disabled={state === "busy"}>
+            {state === "busy" ? "Turning on…" : "Turn on notifications"}
+          </Button>
+        )}
+        {message && <p className="text-[12.5px] text-red-800">{message}</p>}
+      </div>
+    );
   }
   return (
-    <div className={compact ? "flex items-center gap-3" : "space-y-2"}>
-      {!compact && (
-        <p className="text-sm text-gray-700">
-          Get reminders on this device: 24 hours, 1 hour and 10 minutes before each consultation, and when there is an update.
-        </p>
-      )}
-      {state === "denied" ? (
-        <p className="text-sm text-amber-800">Notifications are blocked for this site. Allow them in your browser settings to turn them on.</p>
-      ) : (
-        <Button size={compact ? "sm" : "md"} variant={compact ? "ghost" : "primary"} onClick={enable} disabled={state === "busy"}>
-          {state === "busy" ? "Turning on…" : "Turn on notifications"}
-        </Button>
-      )}
-      {message && <p className="text-sm text-red-800">{message}</p>}
-    </div>
+    <SettingRow
+      title="Push notifications"
+      hint="Reminders 24 hours, 1 hour and 10 minutes before each consultation, and when there is an update."
+      divided={false}
+    >
+      <div className="flex flex-col items-end gap-1.5">
+        {state === "denied" ? (
+          <Badge tone="waiting" icon="alert">Blocked</Badge>
+        ) : (
+          <Button size="sm" onClick={enable} disabled={state === "busy"}>
+            {state === "busy" ? "Turning on…" : "Turn on"}
+          </Button>
+        )}
+        {state === "denied" && (
+          <p className="max-w-[180px] text-right text-[11px] leading-[1.4] text-gray-500">
+            Allow notifications for this site in your browser settings.
+          </p>
+        )}
+        {message && <p className="max-w-[180px] text-right text-[11px] text-red-800">{message}</p>}
+      </div>
+    </SettingRow>
   );
 }

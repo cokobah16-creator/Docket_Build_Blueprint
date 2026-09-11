@@ -1,7 +1,14 @@
 // Paystack — the platform account routes; each firm's fees settle to its own subaccount. Server-side only (secret key).
-import type { PaymentProvider, InitializePaymentArgs, InitializePaymentResult, VerifyPaymentResult } from './types';
+import type { PaymentChannel, PaymentProvider, InitializePaymentArgs, InitializePaymentResult, VerifyPaymentResult } from './types';
 
 const API = 'https://api.paystack.co';
+
+/** Docket's channel names → Paystack's. */
+const CHANNELS: Record<PaymentChannel, string> = {
+  card: 'card',
+  bank_transfer: 'bank_transfer',
+  ussd: 'ussd',
+};
 
 export function paystackProvider(secretKey = process.env.PAYSTACK_SECRET_KEY!): PaymentProvider {
   const headers = { Authorization: `Bearer ${secretKey}`, 'Content-Type': 'application/json' };
@@ -16,6 +23,8 @@ export function paystackProvider(secretKey = process.env.PAYSTACK_SECRET_KEY!): 
           email: a.email, amount: a.amountMinor, currency: a.currency, reference,
           callback_url: a.callbackUrl,
           metadata: { invoice_number: a.invoiceNumber, description: a.description },
+          // the client already chose how to pay in Docket, so open straight on it
+          ...(a.channel ? { channels: [CHANNELS[a.channel]] } : {}),
           // money settles to the firm: route to its subaccount and let it bear the processing fee
           ...(a.subaccount ? { subaccount: a.subaccount, bearer: 'subaccount' } : {}),
         }),

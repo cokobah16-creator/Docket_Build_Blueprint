@@ -8,9 +8,12 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { supabaseServer } from "@/lib/supabase/server";
 import { siteOrigin } from "@/lib/site";
-import { paymentProviderFor, type Currency } from "@/lib/providers/payments";
+import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
 
-export async function startPayment(appointmentId: string): Promise<{ error: string } | undefined> {
+export async function startPayment(
+  appointmentId: string,
+  channel?: PaymentChannel | null,
+): Promise<{ error: string } | undefined> {
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Payments are not configured yet." };
 
@@ -69,6 +72,7 @@ export async function startPayment(appointmentId: string): Promise<{ error: stri
       callbackUrl: `${origin}${resultPath}`,
       cancelUrl: `${origin}/app/appointments/${appt.id}`,
       subaccount,
+      channel: channel ?? null,
     });
     checkoutUrl = result.checkoutUrl;
   } catch (err) {

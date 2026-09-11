@@ -5,4 +5,4 @@ import { paystackProvider } from './paystack';
 export function paymentProviderFor(_currency: Currency): PaymentProvider {
   return paystackProvider();
 }
-export type { PaymentProvider, Currency } from './types';
+export type { PaymentProvider, Currency, PaymentChannel } from './types';

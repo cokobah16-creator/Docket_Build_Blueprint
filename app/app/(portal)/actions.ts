@@ -5,9 +5,11 @@
 // authorization, not this code.
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
+import { SELECTED_FIRM_COOKIE } from "@/lib/portal-firm";
 
 const consentSchema = z.object({
   firmId: z.string().uuid(),
@@ -51,5 +53,8 @@ export async function recordConsent(formData: FormData): Promise<void> {
 export async function signOut(): Promise<void> {
   const supabase = await supabaseServer();
   if (supabase) await supabase.auth.signOut();
+  // The firm selection belongs to the session that made it — the next person
+  // to sign in on this phone must not arrive wearing someone else's firm.
+  (await cookies()).delete({ name: SELECTED_FIRM_COOKIE, path: "/app" });
   redirect("/app/login");
 }

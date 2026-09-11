@@ -11,6 +11,7 @@ import { Alert } from "@/components/ui/alert";
 import { Timeline } from "@/components/portal/timeline";
 import { DocumentsTab, type DocumentWithVersion } from "@/components/portal/documents-tab";
 import { MessagesThread } from "@/components/portal/messages-thread";
+import { Screen, ScreenHeader } from "@/components/portal/screen";
 import { cn } from "@/lib/cn";
 import type { DocumentRow, DocumentVersionRow, MatterRow, MatterStatus, MessageRow, UpdateRow } from "@/lib/db/types";
 
@@ -50,37 +51,39 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm"><Link href="/app/matters" className="text-brand underline">← Matters</Link></p>
-      <header>
-        <h1 className="font-heading text-2xl font-semibold text-brand">{matter.title}</h1>
-        <p className="text-sm text-gray-600">{matter.reference} · {firm?.name ?? "Your firm"}{lawyers.length ? ` · ${lawyers.map((l) => l.full_name ?? l.title).join(", ")}` : ""}</p>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
-          {status && <span className="rounded-full border px-2.5 py-0.5 font-medium" style={status.colour ? { borderColor: status.colour, color: status.colour } : undefined}>{status.label}</span>}
-          {matter.court_name && <span>{matter.court_name}{matter.suit_number ? ` · ${matter.suit_number}` : ""}</span>}
-        </div>
-        {matter.next_event_at && <p className="mt-2 text-sm text-gray-800">Next court date: <strong>{fmt.format(new Date(matter.next_event_at))}</strong>{matter.next_event_note ? ` · ${matter.next_event_note}` : ""}</p>}
-        {matter.next_action && <p className="mt-1 text-sm font-medium text-brand">Next action: {matter.next_action}</p>}
-      </header>
+    <>
+      <ScreenHeader back="/app/matters" backLabel="Back to matters" title={matter.reference} titleAs="mono" />
+      <Screen>
+        <header>
+          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">{matter.title}</h1>
+          <p className="mt-1 text-[13px] text-gray-600">{firm?.name ?? "Your firm"}{lawyers.length ? ` · ${lawyers.map((l) => l.full_name ?? l.title).join(", ")}` : ""}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+            {status && <span className="rounded-full border px-2.5 py-0.5 font-semibold" style={status.colour ? { borderColor: status.colour, color: status.colour } : undefined}>{status.label}</span>}
+            {matter.court_name && <span>{matter.court_name}{matter.suit_number ? <> · <span className="font-mono">{matter.suit_number}</span></> : null}</span>}
+          </div>
+          {matter.next_event_at && <p className="mt-2 text-[13px] text-gray-800">Next court date: <strong>{fmt.format(new Date(matter.next_event_at))}</strong>{matter.next_event_note ? ` · ${matter.next_event_note}` : ""}</p>}
+          {matter.next_action && <p className="mt-1 text-[13px] font-semibold text-brand">Next action: {matter.next_action}</p>}
+        </header>
 
-      {actionError && <Alert kind="error">{actionError}</Alert>}
+        {actionError && <Alert kind="error">{actionError}</Alert>}
 
-      <nav aria-label="Matter sections" className="flex gap-2 overflow-x-auto">
-        {TABS.map(([key, label]) => (
-          <Link key={key} href={`/app/matters/${matter.id}?tab=${key}`} aria-current={tab === key ? "page" : undefined}
-            className={cn("shrink-0 rounded-full border px-3 py-1.5 text-sm", tab === key ? "border-brand bg-brand text-brand-on" : "border-gray-300 text-gray-700")}>
-            {label}
-          </Link>
-        ))}
-      </nav>
+        <nav aria-label="Matter sections" className="-mx-4 flex gap-2 overflow-x-auto px-4">
+          {TABS.map(([key, label]) => (
+            <Link key={key} href={`/app/matters/${matter.id}?tab=${key}`} aria-current={tab === key ? "page" : undefined}
+              className={cn("flex min-h-10 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium", tab === key ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700")}>
+              {label}
+            </Link>
+          ))}
+        </nav>
 
-      <Card>
-        {tab === "timeline" && <TimelineTab supabase={supabase} matterId={matter.id} tz={tz} />}
-        {tab === "documents" && <DocumentsSection supabase={supabase} matter={matter} tz={tz} />}
-        {tab === "messages" && <MessagesSection supabase={supabase} matter={matter} userId={user.id} tz={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />}
-        {tab === "invoices" && <InvoicesSection supabase={supabase} matterId={matter.id} tz={tz} />}
-      </Card>
-    </div>
+        <Card>
+          {tab === "timeline" && <TimelineTab supabase={supabase} matterId={matter.id} tz={tz} />}
+          {tab === "documents" && <DocumentsSection supabase={supabase} matter={matter} tz={tz} />}
+          {tab === "messages" && <MessagesSection supabase={supabase} matter={matter} userId={user.id} tz={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />}
+          {tab === "invoices" && <InvoicesSection supabase={supabase} matterId={matter.id} tz={tz} />}
+        </Card>
+      </Screen>
+    </>
   );
 }
 

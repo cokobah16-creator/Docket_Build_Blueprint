@@ -1,8 +1,11 @@
-export { Button } from "./button";
-export { Input, Select } from "./input";
-export { Card, CardHeader, CardBody, EmptyState } from "./card";
-export { Badge, StatusPill } from "./badge";
+export { Button, buttonClasses } from "./button";
+export { Input, Select, Textarea, choiceCardClasses, chipClasses } from "./input";
+export { Card, CardHeader, CardBody, CardRow, EmptyState } from "./card";
+export { Badge, StatusPill, PILL_TONES } from "./badge";
+export { Icon } from "./icon";
+export type { IconName } from "./icon";
 export { Alert } from "./alert";
+export { Switch, SettingRow } from "./switch";
 export { Table, THead, TBody, TR, TH, TD } from "./table";
 export { Modal } from "./modal";
 export { ToastProvider, useToast } from "./toast";
