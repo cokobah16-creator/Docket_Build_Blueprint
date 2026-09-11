@@ -5,14 +5,39 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { currentFirm } from "@/lib/firm";
-import { clientMatters, firmNamesFor, outstandingByCurrency } from "@/lib/portal-data";
+import { accentInk, readableForeground } from "@/lib/brand";
+import { firmAppHref } from "@/lib/tenant";
+import { clientFirms, clientMatters, firmMeta, firmNamesFor, outstandingByCurrency } from "@/lib/portal-data";
 import { formatMoneyMinor } from "@/lib/money";
 import { Alert } from "@/components/ui/alert";
-import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import {
+  AppCard,
+  AppCardBody,
+  AppCardHeader,
+  AppCardList,
+  AppEmpty,
+  AppButtonLink,
+  AppLink,
+  AppScreen,
+  AppStatusPill,
+  Footnote,
+} from "@/components/app";
+import {
+  BellIcon,
+  CalendarIcon,
+  CardIcon,
+  DocumentIcon,
+  MailIcon,
+  PaperclipIcon,
+  VideoIcon,
+  type IconProps,
+} from "@/components/ui/icons";
 import { NotificationsList } from "@/components/portal/notifications-list";
 import { IosInstallHint } from "@/components/portal/pwa-hints";
+import { OfflineBanner } from "@/components/portal/connection";
+import { FirmSwitcher, type FirmChoice } from "@/components/portal/firm-switcher";
 import { ConsentGate } from "./consent-gate";
+import type { Status } from "@/components/ui/badge";
 import type { DocumentRow, NotificationRow } from "@/lib/db/types";
 
 export const metadata = { title: "Home" };
@@ -49,13 +74,18 @@ export default async function ClientDashboard() {
     }
   }
 
-  const [{ data: profile }, { data: appt }, matters, { data: docRows }, { data: invoiceRows }, { data: notifRows }] = await Promise.all([
+  const [{ data: profile }, { data: appt }, matters, { data: docRows }, { data: invoiceRows }, { data: notifRows }, firms, { count: unreadCount }] = await Promise.all([
     supabase.from("profiles").select("full_name, timezone").eq("id", user.id).maybeSingle(),
     supabase.from("appointments").select("id, reference, starts_at, ends_at, status, mode, lawyer_id").gte("ends_at", new Date().toISOString()).in("status", ["pending", "awaiting_payment", "confirmed", "rescheduled"]).order("starts_at", { ascending: true }).limit(1).maybeSingle(),
     clientMatters(supabase, 5),
     supabase.from("documents").select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at").is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
     supabase.from("invoices").select("id, currency, total_minor, paid_minor, status").in("status", ["issued", "partially_paid", "overdue"]),
     supabase.from("notifications").select("id, firm_id, channel, event, payload, status, read_at, created_at").eq("channel", "in_app").order("created_at", { ascending: false }).limit(5),
+    clientFirms(supabase),
+    // Counted rather than derived from the five rows above: the badge used to
+    // read off that page, so it could never say more than 5 however many were
+    // waiting.
+    supabase.from("notifications").select("id", { count: "exact", head: true }).eq("channel", "in_app").is("read_at", null),
   ]);
   const profileRow = (profile ?? null) as { full_name: string | null; timezone: string } | null;
   const nextAppointment = (appt ?? null) as AppointmentRow | null;
@@ -65,7 +95,17 @@ export default async function ClientDashboard() {
   const firmNames = await firmNamesFor([...notifications.map((n) => n.firm_id ?? ""), ...documents.map((d) => d.firm_id)].filter(Boolean));
   const tz = profileRow?.timezone ?? "Africa/Lagos";
   const displayName = profileRow?.full_name ?? user.email ?? user.phone ?? "there";
-  const unread = notifications.filter((n) => !n.read_at).length;
+  const unread = unreadCount ?? notifications.filter((n) => !n.read_at).length;
+
+  const firmChoices: FirmChoice[] = firms.map((f) => ({
+    id: f.id,
+    name: f.name,
+    meta: firmMeta(f),
+    primary: f.primary,
+    onPrimary: readableForeground(f.primary),
+    href: firmAppHref(f),
+    current: firm?.id === f.id,
+  }));
 
   const now = Date.now();
   const liveNow = nextAppointment && nextAppointment.mode === "virtual" && ["confirmed", "rescheduled"].includes(nextAppointment.status)
@@ -73,109 +113,184 @@ export default async function ClientDashboard() {
   const firstMatter = matters[0] ?? null;
   const owing = Object.entries(outstanding);
 
-  const quickActions = [
-    { label: "Book", href: firm ? `/${firm.slug}/book` : "/app/appointments", icon: "📅" },
-    { label: "Join", href: nextAppointment && liveNow ? `/app/appointments/${nextAppointment.id}/waiting-room` : "/app/appointments", icon: "🎥" },
-    { label: "Upload", href: firstMatter ? `/app/matters/${firstMatter.id}?tab=documents` : "/app/matters", icon: "📎" },
-    { label: "Message", href: firstMatter ? `/app/matters/${firstMatter.id}?tab=messages` : "/app/messages", icon: "✉" },
-    { label: "Pay", href: "/app/payments", icon: "₦" },
+  const quickActions: Array<{ label: string; href: string; Icon: (p: IconProps) => React.JSX.Element }> = [
+    { label: "Book", href: firm ? `/${firm.slug}/book` : "/app/appointments", Icon: CalendarIcon },
+    { label: "Join", href: nextAppointment && liveNow ? `/app/appointments/${nextAppointment.id}/waiting-room` : "/app/appointments", Icon: VideoIcon },
+    { label: "Upload", href: firstMatter ? `/app/matters/${firstMatter.id}?tab=documents` : "/app/matters", Icon: PaperclipIcon },
+    { label: "Message", href: firstMatter ? `/app/matters/${firstMatter.id}?tab=messages` : "/app/messages", Icon: MailIcon },
+    { label: "Pay", href: "/app/payments", Icon: CardIcon },
   ];
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });
+  const dateOnly = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: tz });
 
   return (
-    <div className="space-y-5">
+    <AppScreen className="gap-4">
       <IosInstallHint appName={firm?.name ?? "Docket"} />
+      <OfflineBanner />
+
       <header className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold text-brand">Welcome, {displayName}</h1>
-          {firm && <p className="text-sm text-gray-600">{firm.name}</p>}
+        <div className="min-w-0">
+          <h1 className="font-app-head text-[23px] font-semibold leading-tight tracking-[-0.015em] text-dk-pri">
+            Welcome, {displayName}
+          </h1>
+          {firm && (
+            <div className="mt-0.5">
+              <FirmSwitcher firmName={firm.name} firms={firmChoices} />
+            </div>
+          )}
         </div>
-        <Link href="/app/notifications" aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`} className="relative rounded-full border border-gray-200 bg-white p-2 text-lg">
-          <span aria-hidden="true">🔔</span>
-          {unread > 0 && <span className="absolute -right-1 -top-1 rounded-full bg-brand px-1.5 text-[10px] font-semibold text-brand-on">{unread}</span>}
+        <Link
+          href="/app/notifications"
+          aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
+          className="relative grid h-[42px] w-[42px] flex-none place-items-center rounded-full border border-dk-line bg-white text-dk-pri"
+        >
+          <BellIcon size={20} />
+          {unread > 0 && (
+            <span className="absolute -right-[3px] -top-[3px] grid h-[19px] min-w-[19px] place-items-center rounded-full bg-dk-pri px-[5px] text-[11px] font-bold text-dk-on-pri">
+              {unread}
+            </span>
+          )}
         </Link>
       </header>
 
-      <nav aria-label="Quick actions" className="grid grid-cols-5 gap-2">
-        {quickActions.map((a) => (
-          <Link key={a.label} href={a.href} className="rounded-lg border border-gray-200 bg-white px-1 py-3 text-center text-xs font-medium text-brand hover:bg-black/5">
-            <span aria-hidden="true" className="block text-base">{a.icon}</span>{a.label}
+      <nav aria-label="Quick actions" className="grid grid-cols-5 gap-[7px]">
+        {quickActions.map(({ label, href, Icon }) => (
+          <Link
+            key={label}
+            href={href}
+            className="flex min-h-[64px] flex-col items-center justify-center gap-[5px] rounded-[9px] border border-dk-line bg-white px-0.5 py-2.5 text-[11px] font-semibold text-dk-pri"
+          >
+            <Icon size={21} />
+            {label}
           </Link>
         ))}
       </nav>
 
-      <Card>
-        <CardHeader title="Next appointment" action={<Link href="/app/appointments" className="text-sm text-brand underline">All</Link>} />
+      <AppCard>
+        <AppCardHeader title="Next appointment" action={<AppLink href="/app/appointments">All</AppLink>} />
         {nextAppointment ? (
-          <CardBody className="space-y-2">
-            <p className="text-sm font-medium text-gray-900">{new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(nextAppointment.starts_at))}</p>
-            <p className="text-sm text-gray-600">{nextAppointment.reference} · {nextAppointment.mode.replace("_", " ")}</p>
+          <AppCardBody className="flex flex-col gap-2.5">
+            <p className="text-[14.5px] font-semibold leading-snug text-dk-strong">
+              {new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(nextAppointment.starts_at))}
+            </p>
+            <p className="text-[13px] text-dk-soft">
+              <span className="font-mono">{nextAppointment.reference}</span> · {nextAppointment.mode.replace("_", " ")}
+            </p>
             <div className="flex flex-wrap items-center gap-3">
-              <StatusPill status={nextAppointment.status as Status} />
+              <AppStatusPill status={nextAppointment.status as Status} />
               {liveNow ? (
-                <Link href={`/app/appointments/${nextAppointment.id}/waiting-room`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Join now</Link>
+                <AppButtonLink href={`/app/appointments/${nextAppointment.id}/waiting-room`} variant="primary-sm">
+                  Join now
+                </AppButtonLink>
               ) : (
-                <Link href={`/app/appointments/${nextAppointment.id}`} className="text-sm text-brand underline">Details</Link>
+                <AppLink href={`/app/appointments/${nextAppointment.id}`}>Details</AppLink>
               )}
             </div>
-          </CardBody>
+          </AppCardBody>
         ) : (
-          <EmptyState title="No upcoming consultations" hint="Book one and meet your lawyer face to face." action={firm && <Link href={`/${firm.slug}/book`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Book a Consultation</Link>} />
+          <AppEmpty
+            title="No upcoming consultations"
+            hint="Book one and meet your lawyer face to face."
+            action={firm && <AppButtonLink href={`/${firm.slug}/book`} variant="primary-sm">Book a Consultation</AppButtonLink>}
+          />
         )}
-      </Card>
+      </AppCard>
 
       {owing.length > 0 && (
-        <Card>
-          <CardHeader title="Outstanding balance" action={<Link href="/app/payments" className="text-sm text-brand underline">Pay</Link>} />
-          <CardBody>
-            {owing.map(([cur, minor]) => <p key={cur} className="text-2xl font-semibold text-gray-900">{formatMoneyMinor(minor, cur)}</p>)}
-          </CardBody>
-        </Card>
+        <AppCard>
+          <AppCardHeader title="Outstanding balance" action={<AppLink href="/app/payments">Pay</AppLink>} />
+          <AppCardBody>
+            {owing.map(([cur, minor]) => (
+              <p key={cur} className="font-app-head text-[26px] font-semibold text-dk-pri">
+                {formatMoneyMinor(minor, cur)}
+              </p>
+            ))}
+          </AppCardBody>
+        </AppCard>
       )}
 
-      <Card>
-        <CardHeader title="My matters" action={matters.length > 0 ? <Link href="/app/matters" className="text-sm text-brand underline">All</Link> : undefined} />
+      <AppCard>
+        <AppCardHeader title="My matters" action={matters.length > 0 ? <AppLink href="/app/matters">All</AppLink> : undefined} />
         {matters.length === 0 ? (
-          <EmptyState title="No matters yet" hint="When your firm opens a matter for you, it appears here with its full timeline." />
+          <AppEmpty title="No matters yet" hint="When your firm opens a matter for you, it appears here with its full timeline." />
         ) : (
-          <CardBody className="divide-y divide-gray-100 p-0">
+          <AppCardList>
             {matters.map((m) => (
-              <Link key={m.id} href={`/app/matters/${m.id}`} className="block px-5 py-3 hover:bg-gray-50">
-                <div className="flex items-center justify-between gap-3">
-                  <p className="truncate text-sm font-medium text-gray-900">{m.title}</p>
-                  {m.status && <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs" style={m.status.colour ? { borderColor: m.status.colour, color: m.status.colour } : undefined}>{m.status.label}</span>}
+              <Link key={m.id} href={`/app/matters/${m.id}`} className="block px-[17px] py-[13px]">
+                <div className="flex items-start justify-between gap-2.5">
+                  <p className="text-[14px] font-semibold leading-snug text-dk-strong">{m.title}</p>
+                  {m.status && (
+                    <span
+                      className="flex-none whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[11.5px] font-semibold"
+                      style={
+                        m.status.colour
+                          ? { borderColor: m.status.colour, color: accentInk(m.status.colour) }
+                          : undefined
+                      }
+                    >
+                      {m.status.label}
+                    </span>
+                  )}
                 </div>
-                <p className="text-xs text-gray-500">{m.reference} · {m.firm_name}{m.lawyer_names.length ? ` · ${m.lawyer_names[0]}` : ""}</p>
-                {m.last_update && <p className="mt-1 truncate text-xs text-gray-600">{m.last_update.title} · {fmt.format(new Date(m.last_update.occurred_at))}</p>}
-                {m.next_action && <p className="mt-1 text-xs font-medium text-brand">Next: {m.next_action}</p>}
+                <p className="mt-1 text-[12px] text-dk-muted">
+                  <span className="font-mono">{m.reference}</span> · {m.firm_name}
+                  {m.lawyer_names.length ? ` · ${m.lawyer_names[0]}` : ""}
+                </p>
+                {m.last_update && (
+                  <p className="mt-[3px] truncate text-[12px] text-dk-soft">
+                    {m.last_update.title} · {fmt.format(new Date(m.last_update.occurred_at))}
+                  </p>
+                )}
+                {m.next_action && (
+                  <p className="mt-[5px] text-[12px] font-semibold text-dk-pri">Next: {m.next_action}</p>
+                )}
               </Link>
             ))}
-          </CardBody>
+          </AppCardList>
         )}
-      </Card>
+      </AppCard>
 
-      <Card>
-        <CardHeader title="Recent documents" />
+      <AppCard>
+        <AppCardHeader title="Recent documents" />
         {documents.length === 0 ? (
-          <EmptyState title="No documents have been shared yet" hint="Documents you upload or your lawyer shares will show here." />
+          <AppEmpty title="No documents have been shared yet" hint="Documents you upload or your lawyer shares will show here." />
         ) : (
-          <CardBody className="divide-y divide-gray-100 p-0">
+          <AppCardList>
             {documents.map((d) => (
-              <Link key={d.id} href={d.matter_id ? `/app/matters/${d.matter_id}?tab=documents` : `/app/appointments/${d.appointment_id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-gray-50">
-                <span className="truncate text-sm text-gray-900">📎 {d.name}</span>
-                <span className="shrink-0 text-xs text-gray-500">{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: tz }).format(new Date(d.created_at))}</span>
+              <Link
+                key={d.id}
+                href={
+                  d.matter_id
+                    ? `/app/matters/${d.matter_id}?tab=documents`
+                    : d.appointment_id
+                      ? `/app/appointments/${d.appointment_id}`
+                      : "/app/matters"
+                }
+                className="flex items-center justify-between gap-3 px-[17px] py-3"
+              >
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <DocumentIcon size={17} className="flex-none text-gray-400" />
+                  <span className="truncate text-[13.5px] text-dk-strong">{d.name}</span>
+                </span>
+                <span className="flex-none text-[11.5px] text-dk-muted">
+                  {dateOnly.format(new Date(d.created_at))}
+                </span>
               </Link>
             ))}
-          </CardBody>
+          </AppCardList>
         )}
-      </Card>
+      </AppCard>
 
-      <Card>
-        <CardHeader title="Recent notifications" action={<Link href="/app/notifications" className="text-sm text-brand underline">All</Link>} />
+      <AppCard>
+        <AppCardHeader title="Recent notifications" action={<AppLink href="/app/notifications">All</AppLink>} />
         <NotificationsList rows={notifications} firmNames={firmNames} timezone={tz} compact />
-      </Card>
+      </AppCard>
 
-      <p className="text-center text-xs text-gray-500"><Link href="/app/court-dates" className="underline">Court dates</Link> · <Link href="/app/payments" className="underline">Payments</Link> · <Link href="/app/profile" className="underline">Profile</Link></p>
-    </div>
+      <Footnote className="pt-0.5 text-center">
+        <Link href="/app/court-dates" className="underline">Court dates</Link> ·{" "}
+        <Link href="/app/payments" className="underline">Payments</Link> ·{" "}
+        <Link href="/app/profile" className="underline">Profile</Link>
+      </Footnote>
+    </AppScreen>
   );
 }

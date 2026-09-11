@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
 import { resolveFirm } from "@/lib/tenant";
+import { DEFAULT_TOKENS } from "@/lib/brand";
 
 // Per-tenant web app manifest: name and colours from the firm's brand.
 // Dotted paths skip the middleware, so the firm is resolved from the host here.
@@ -8,8 +9,8 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const h = await headers();
   const firm = await resolveFirm(h.get("x-forwarded-host") ?? h.get("host"), null);
   const name = firm?.name ?? "Docket";
-  const primary = firm?.brand?.colours?.primary ?? "#0F2A44";
-  const surface = firm?.brand?.colours?.surface ?? "#F7F5F0";
+  const primary = firm?.brand?.colours?.primary ?? DEFAULT_TOKENS.primary;
+  const surface = firm?.brand?.colours?.surface ?? DEFAULT_TOKENS.surface;
   return {
     name,
     short_name: name.length > 12 ? name.split(" ")[0] : name,
@@ -23,7 +24,9 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     icons: [
       { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+      // Its own artwork, not the same square again: Android crops a maskable
+      // icon to the centre 40% radius. See src/lib/brand-icon.tsx.
+      { src: "/icon-maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   };
 }

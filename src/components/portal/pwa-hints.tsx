@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { isLowData, setLowData } from "@/lib/low-data";
+import { AppSwitchRow } from "@/components/app";
 
 const DISMISS_KEY = "docket:ios-hint-dismissed";
 
@@ -23,11 +24,18 @@ export function IosInstallHint({ appName }: { appName: string }) {
   }, []);
   if (!show) return null;
   return (
-    <div role="status" className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-      <p className="font-medium">Add {appName} to your home screen</p>
-      <p className="mt-1">Tap the Share button <span aria-hidden="true">⎋</span> in Safari, then <strong>Add to Home Screen</strong>. You get a full-screen app and notifications.</p>
-      <button type="button" className="mt-2 text-xs underline" onClick={() => { try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ } setShow(false); }}>
-        Don't show again
+    <div role="status" className="rounded-[10px] border border-[#D9D2C4] bg-[#FBF7EE] px-3.5 py-3 text-[12.5px] leading-snug text-[#5C4F35]">
+      <p className="font-semibold text-[#3F3520]">Add {appName} to your home screen</p>
+      <p className="mt-0.5">
+        Safari has no install button: tap Share, then <strong>Add to Home Screen</strong>. You
+        get a full-screen app, and notifications that iOS will not deliver to a browser tab.
+      </p>
+      <button
+        type="button"
+        className="mt-2 min-h-[32px] text-[11.5px] font-semibold underline underline-offset-2"
+        onClick={() => { try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ } setShow(false); }}
+      >
+        Don&rsquo;t show again
       </button>
     </div>
   );
@@ -37,12 +45,12 @@ export function LowDataToggle() {
   const [on, setOn] = useState(false);
   useEffect(() => setOn(isLowData()), []);
   return (
-    <label className="flex items-center justify-between gap-4 text-sm text-gray-800">
-      <span>
-        <span className="block font-medium">Low-data mode</span>
-        <span className="block text-xs text-gray-500">Previews and images load only when you tap them. Saved on this device.</span>
-      </span>
-      <input type="checkbox" className="h-5 w-5" checked={on} onChange={(e) => { setLowData(e.target.checked); setOn(e.target.checked); }} />
-    </label>
+    <AppSwitchRow
+      id="low-data"
+      title="Low-data mode"
+      hint="Previews and images load only when you tap them. Saved on this device."
+      checked={on}
+      onChange={(next) => { setLowData(next); setOn(next); }}
+    />
   );
 }

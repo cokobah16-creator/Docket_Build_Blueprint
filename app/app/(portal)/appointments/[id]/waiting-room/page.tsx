@@ -1,10 +1,15 @@
-import Link from "next/link";
+// The waiting room (design/pwa, CLIENT · WAITING ROOM): what the consultation
+// is, whether this device can take it, and the choice to spend less data —
+// all before the room opens.
+
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { currentFirm } from "@/lib/firm";
 import { firmById } from "@/lib/tenant";
+import { DEFAULT_TOKENS } from "@/lib/brand";
 import { ConsultationRoom } from "@/components/video/consultation-room";
 import { Alert } from "@/components/ui/alert";
+import { Footnote, PushedScreen, SubHeader, SubHeaderRef } from "@/components/app";
 
 export const metadata = { title: "Waiting room" };
 
@@ -41,18 +46,39 @@ export default async function WaitingRoomPage({ params }: { params: Promise<{ id
   const lawyerName = law?.full_name ?? "your lawyer";
 
   return (
-    <div className="space-y-5">
-      <header>
-        <p className="text-sm text-gray-600">
-          <Link href={`/app/appointments/${appt.id}`} className="text-brand underline">← Appointment {appt.reference}</Link>
-        </p>
-        <h1 className="mt-2 font-heading text-2xl font-semibold text-brand">{svc?.name ?? "Consultation"}</h1>
-        <dl className="mt-3 space-y-1 text-sm text-gray-700">
-          <div className="flex gap-2"><dt className="w-20 text-gray-500">With</dt><dd className="font-medium">{lawyerName}{law?.title ? ` · ${law.title}` : ""}</dd></div>
-          <div className="flex gap-2"><dt className="w-20 text-gray-500">When</dt><dd className="font-medium">{when} <span className="text-gray-500">({tz})</span></dd></div>
-          {svc && <div className="flex gap-2"><dt className="w-20 text-gray-500">Length</dt><dd className="font-medium">{svc.duration_min} minutes</dd></div>}
+    <PushedScreen
+      header={
+        <SubHeader backHref={`/app/appointments/${appt.id}`} backLabel="Back to the appointment">
+          <SubHeaderRef>{appt.reference}</SubHeaderRef>
+        </SubHeader>
+      }
+    >
+      <div>
+        <h1 className="font-app-head text-[22px] font-semibold leading-tight tracking-[-0.015em] text-dk-pri">
+          {svc?.name ?? "Consultation"}
+        </h1>
+        <dl className="mt-2.5 flex flex-col gap-1.5 text-[13px]">
+          <div className="flex gap-2.5">
+            <dt className="w-[62px] flex-none text-dk-muted">With</dt>
+            <dd className="font-semibold text-dk-strong">
+              {lawyerName}
+              {law?.title ? <span className="font-normal text-dk-muted"> · {law.title}</span> : null}
+            </dd>
+          </div>
+          <div className="flex gap-2.5">
+            <dt className="w-[62px] flex-none text-dk-muted">When</dt>
+            <dd className="font-semibold text-dk-strong">
+              {when} <span className="font-normal text-dk-muted">({tz})</span>
+            </dd>
+          </div>
+          {svc && (
+            <div className="flex gap-2.5">
+              <dt className="w-[62px] flex-none text-dk-muted">Length</dt>
+              <dd className="font-semibold text-dk-strong">{svc.duration_min} minutes</dd>
+            </div>
+          )}
         </dl>
-      </header>
+      </div>
 
       {appt.mode !== "virtual" ? (
         <Alert kind="info">This is an {appt.mode.replace("_", " ")} appointment, so there is no video room.</Alert>
@@ -65,13 +91,14 @@ export default async function WaitingRoomPage({ params }: { params: Promise<{ id
           startsAt={appt.starts_at}
           endsAt={appt.ends_at}
           counterpartLabel={lawyerName}
-          accent={firm?.brand?.colours?.primary ?? "#0F2A44"}
+          accent={firm?.brand?.colours?.primary ?? DEFAULT_TOKENS.primary}
           doneHref={`/app/appointments/${appt.id}`}
         />
       )}
-      <p className="text-xs text-gray-500">
+
+      <Footnote>
         Consultations are private and are not recorded. Use headphones in a quiet place if you can.
-      </p>
-    </div>
+      </Footnote>
+    </PushedScreen>
   );
 }

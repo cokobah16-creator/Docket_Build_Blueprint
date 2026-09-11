@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { Button } from "@/components/ui/button";
+import { AppButton } from "@/components/app";
 
 type State = "checking" | "unsupported" | "no-key" | "idle" | "subscribed" | "denied" | "busy" | "error";
 
@@ -76,24 +76,32 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
   }
 
   if (state === "checking" || state === "unsupported" || state === "no-key") return null;
-  if (state === "subscribed") {
-    return compact ? null : <p className="text-sm text-emerald-800">✓ Notifications are on for this device.</p>;
-  }
+  if (state === "subscribed" && compact) return null;
+
   return (
-    <div className={compact ? "flex items-center gap-3" : "space-y-2"}>
-      {!compact && (
-        <p className="text-sm text-gray-700">
-          Get reminders on this device: 24 hours, 1 hour and 10 minutes before each consultation, and when there is an update.
+    <div className="flex items-start justify-between gap-3.5">
+      <div className="min-w-0">
+        <p className="text-[13.5px] font-semibold text-dk-strong">Push notifications</p>
+        <p className="mt-0.5 text-[12px] leading-snug text-dk-muted">
+          {state === "denied"
+            ? "Blocked for this site. Allow notifications in your browser settings to turn them on."
+            : "Court updates and consultation reminders on this device — 24 hours, 1 hour and 10 minutes before each one."}
         </p>
-      )}
-      {state === "denied" ? (
-        <p className="text-sm text-amber-800">Notifications are blocked for this site. Allow them in your browser settings to turn them on.</p>
+        {message && <p className="mt-1 text-[12px] text-red-800">{message}</p>}
+      </div>
+      {state === "subscribed" ? (
+        <span className="flex-none whitespace-nowrap rounded-full border border-[#A7D8BE] bg-[#ECFDF3] px-2.5 py-1 text-[11.5px] font-semibold text-[#05603A]">
+          On
+        </span>
+      ) : state === "denied" ? (
+        <span className="flex-none whitespace-nowrap rounded-full border border-[#F3DDA4] bg-[#FFFAEB] px-2.5 py-1 text-[11.5px] font-semibold text-[#92400E]">
+          Blocked
+        </span>
       ) : (
-        <Button size={compact ? "sm" : "md"} variant={compact ? "ghost" : "primary"} onClick={enable} disabled={state === "busy"}>
-          {state === "busy" ? "Turning on…" : "Turn on notifications"}
-        </Button>
+        <AppButton variant="ghost-sm" onClick={enable} disabled={state === "busy"}>
+          {state === "busy" ? "Turning on…" : "Turn on"}
+        </AppButton>
       )}
-      {message && <p className="text-sm text-red-800">{message}</p>}
     </div>
   );
 }

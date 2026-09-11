@@ -53,6 +53,71 @@ export async function clientMatters(supabase: SupabaseClient, limit = 50): Promi
   }));
 }
 
+export interface ClientFirm {
+  id: string;
+  slug: string;
+  name: string;
+  custom_domain: string | null;
+  /** The firm's own primary colour, for its mark in the firm list. */
+  primary: string | null;
+  matters: number;
+  consultations: number;
+}
+
+/**
+ * The firms acting for this client, derived from the rows they can actually
+ * see. One sign-in reaches every firm that has opened a matter for them or
+ * taken a booking from them — RLS decides which rows come back, so this is the
+ * client's own answer to "who acts for me", not a list anyone maintains.
+ */
+export async function clientFirms(supabase: SupabaseClient): Promise<ClientFirm[]> {
+  const [{ data: matterRows }, { data: apptRows }] = await Promise.all([
+    supabase.from("matters").select("firm_id").is("deleted_at", null),
+    supabase.from("appointments").select("firm_id"),
+  ]);
+  const counts = new Map<string, { matters: number; consultations: number }>();
+  const seen = (id: string) => {
+    const row = counts.get(id) ?? { matters: 0, consultations: 0 };
+    counts.set(id, row);
+    return row;
+  };
+  for (const m of (matterRows ?? []) as Array<{ firm_id: string }>) {
+    if (m.firm_id) seen(m.firm_id).matters += 1;
+  }
+  for (const a of (apptRows ?? []) as Array<{ firm_id: string }>) {
+    if (a.firm_id) seen(a.firm_id).consultations += 1;
+  }
+
+  const firms = await Promise.all(
+    Array.from(counts.entries()).map(async ([id, n]) => {
+      const firm = await firmById(id);
+      if (!firm) return null;
+      return {
+        id,
+        slug: firm.slug,
+        name: firm.name,
+        custom_domain: firm.custom_domain ?? null,
+        primary: firm.brand?.colours?.primary ?? null,
+        matters: n.matters,
+        consultations: n.consultations,
+      };
+    }),
+  );
+  return firms
+    .filter((f): f is ClientFirm => f !== null)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** "2 matters · 3 consultations", with the zero side left out. */
+export function firmMeta(firm: ClientFirm): string {
+  const parts: string[] = [];
+  if (firm.matters > 0) parts.push(`${firm.matters} ${firm.matters === 1 ? "matter" : "matters"}`);
+  if (firm.consultations > 0) {
+    parts.push(`${firm.consultations} ${firm.consultations === 1 ? "consultation" : "consultations"}`);
+  }
+  return parts.join(" · ");
+}
+
 export async function clientTimezone(supabase: SupabaseClient, userId: string): Promise<string> {
   const { data } = await supabase.from("profiles").select("timezone").eq("id", userId).maybeSingle();
   return (data as { timezone: string } | null)?.timezone ?? "Africa/Lagos";

@@ -62,6 +62,17 @@ export function firmSiteHref(firm: { slug: string; custom_domain?: string | null
 }
 
 /**
+ * The address a firm's client app is served from. Same rule as firmSiteHref:
+ * the tenant comes from the host, so reading a different firm's matters means
+ * going to that firm's address rather than carrying a selection along.
+ */
+export function firmAppHref(firm: { slug: string; custom_domain?: string | null }): string {
+  if (!isProductionDeployment()) return `/app?firm=${encodeURIComponent(firm.slug)}`;
+  if (firm.custom_domain) return `https://${firm.custom_domain}/app`;
+  return `https://${firm.slug}.docket.app/app`;
+}
+
+/**
  * Resolve the request host to a firm:
  *  1. custom domain (firm_public.custom_domain)
  *  2. {slug}.docket.app subdomain

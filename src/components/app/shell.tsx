@@ -44,9 +44,12 @@ export function AppShell({
 }
 
 /**
- * A scrolling screen body. `gap` is the artboard's 16px rhythm on the client
- * home and 14px everywhere else; the bottom padding clears the tab bar and the
- * home indicator beneath it.
+ * A screen body with its own margins, on the artboard's 14px rhythm.
+ *
+ * The shell centres and clears the tab bar; the horizontal and top margins
+ * live here rather than in the layout because a pushed screen does not have
+ * them: its sticky SubHeader runs edge to edge and only the content beneath it
+ * is inset. Those screens use `PushedScreen` instead.
  */
 export function AppScreen({
   className,
@@ -56,13 +59,32 @@ export function AppScreen({
   children: ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "dk-rise mx-auto flex w-full max-w-lg flex-col gap-3.5 px-4 pb-28 pt-3.5",
-        className,
-      )}
-    >
+    <div className={cn("dk-rise flex flex-col gap-3.5 px-4 pt-3.5", className)}>
       {children}
+    </div>
+  );
+}
+
+/**
+ * A screen reached by pushing rather than by a tab: a full-bleed SubHeader,
+ * then an inset body. Pass the header as `header` so it stays outside the
+ * padded column and can stick to the top of the scroller.
+ */
+export function PushedScreen({
+  header,
+  className,
+  children,
+}: {
+  header: ReactNode;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="dk-rise">
+      {header}
+      <div className={cn("flex flex-col gap-3.5 px-4 pb-2 pt-3.5", className)}>
+        {children}
+      </div>
     </div>
   );
 }

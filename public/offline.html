@@ -2,21 +2,65 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Offline · Docket</title>
+<!--
+  The fallback the service worker serves when a navigation cannot reach the
+  network. It is a static file with no request context, so it cannot know which
+  firm the person was reading and must not guess: it wears Docket's own colours
+  (design/home/README.md) rather than a third hardcoded navy that belonged to
+  no tenant.
+
+  It also does not promise delivery. Nothing is queued while offline — there is
+  no outbox and no background sync — so the honest line is that unsent work is
+  still on the device and needs sending again, not that it is safe.
+-->
 <style>
-  body { margin: 0; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; background: #F7F5F0; color: #111; display: flex; min-height: 100vh; align-items: center; justify-content: center; padding: 24px; }
+  :root { color-scheme: light; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: calc(24px + env(safe-area-inset-top)) calc(24px + env(safe-area-inset-right))
+             calc(24px + env(safe-area-inset-bottom)) calc(24px + env(safe-area-inset-left));
+    background: #f3f2f2;
+    color: #201e1d;
+    font-family: Archivo, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
   main { max-width: 420px; text-align: center; }
-  h1 { font-size: 22px; margin: 0 0 8px; color: #0F2A44; }
-  p { color: #444; line-height: 1.5; }
-  button { margin-top: 16px; padding: 12px 20px; border: 0; border-radius: 10px; background: #0F2A44; color: #fff; font-size: 15px; }
+  h1 { margin: 0 0 8px; font-size: 21px; font-weight: 800; letter-spacing: -0.025em; color: #2c4a34; }
+  p { margin: 0; font-size: 15px; line-height: 1.55; color: #3f3d3c; }
+  p + p { margin-top: 10px; font-size: 13px; color: #5b5959; }
+  button {
+    margin-top: 20px;
+    min-height: 48px;
+    padding: 0 22px;
+    border: 0;
+    border-radius: 10px;
+    background: #2c4a34;
+    color: #f3f2f2;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:focus-visible { outline: 2px solid #201e1d; outline-offset: 2px; }
 </style>
 </head>
 <body>
 <main>
   <h1>You are offline</h1>
-  <p>Your matters, documents and messages need a connection. Reconnect and try again — nothing you sent is lost.</p>
-  <button onclick="location.reload()">Try again</button>
+  <p>Your matters, documents and messages are kept by your firm, not on this phone, so they need a connection to read.</p>
+  <p>Anything you were part-way through is still here on the device — you will need to send it again once you are back on.</p>
+  <button type="button" onclick="location.reload()">Try again</button>
 </main>
+<script>
+  // Come back by itself the moment the connection returns, rather than leaving
+  // a dead end behind a button.
+  addEventListener('online', function () { location.reload(); });
+</script>
 </body>
 </html>
