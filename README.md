@@ -52,6 +52,7 @@ supabase/
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
     dispatch-notifications/          drains the outbox to email (Resend), SMS (Termii / Twilio), push (VAPID); pg_cron calls it
+    storage-manifest/                downloads and hashes every stored document on a rolling schedule, so "the bytes exist" is measured; pg_cron calls it
     video-session/                   Daily room + owner token per appointment; the only writer of consultation_sessions
   tests/
     00_local_auth_stub.sql           local-only stand-in for Supabase Auth

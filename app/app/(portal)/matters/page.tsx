@@ -8,7 +8,14 @@ import { Screen, ScreenTitle } from "@/components/portal/screen";
 
 export const metadata = { title: "Matters" };
 
-export default async function MattersPage() {
+// ?for=documents or ?for=messages turns the list into a chooser: the home screen sends a client
+// here when they have more than one matter and tap Upload or Message, so the file they mean is a
+// choice they make, never a guess the screen makes for them.
+type Pick = "documents" | "messages";
+
+export default async function MattersPage({ searchParams }: { searchParams: Promise<{ for?: string }> }) {
+  const { for: forParam } = await searchParams;
+  const pick: Pick | null = forParam === "documents" || forParam === "messages" ? forParam : null;
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
@@ -22,7 +29,12 @@ export default async function MattersPage() {
 
   return (
     <Screen>
-      <ScreenTitle>Matters</ScreenTitle>
+      <ScreenTitle>{pick === "documents" ? "Upload to which matter?" : pick === "messages" ? "Message about which matter?" : "Matters"}</ScreenTitle>
+      {pick && (
+        <p className="-mt-2 text-[13px] text-gray-600">
+          {pick === "documents" ? "The document goes on the matter you choose, and your firm sees it there." : "Your message goes to the lawyers on the matter you choose."}
+        </p>
+      )}
       <Card>
         {matters.length === 0 ? (
           <EmptyState title="No matters yet" hint="When your firm opens a matter for you, it appears here with its timeline, documents, messages and invoices." />
@@ -30,7 +42,7 @@ export default async function MattersPage() {
           <ul>
             {matters.map((m) => (
               <li key={m.id}>
-                <Link href={`/app/matters/${m.id}`} className="block border-t border-gray-100 px-4 py-3.5 first:border-t-0 hover:bg-gray-50">
+                <Link href={pick ? `/app/matters/${m.id}?tab=${pick}` : `/app/matters/${m.id}`} className="block border-t border-gray-100 px-4 py-3.5 first:border-t-0 hover:bg-gray-50">
                   <div className="flex items-start justify-between gap-2.5">
                     <p className="text-sm font-semibold leading-snug text-gray-900">{m.title}</p>
                     {m.status && (
@@ -74,10 +86,12 @@ export default async function MattersPage() {
           </ul>
         )}
       </Card>
-      <p className="text-[11.5px] leading-relaxed text-gray-500">
-        Timeline, documents, messages and invoices sit inside each matter. Court dates are
-        also on <Link href="/app/court-dates" className="underline underline-offset-2">your phone calendar</Link>.
-      </p>
+      {!pick && (
+        <p className="text-[11.5px] leading-relaxed text-gray-500">
+          Timeline, documents, messages and invoices sit inside each matter. Court dates are
+          also on <Link href="/app/court-dates" className="underline underline-offset-2">your phone calendar</Link>.
+        </p>
+      )}
     </Screen>
   );
 }

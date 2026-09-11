@@ -177,13 +177,14 @@ must enrol TOTP before `/admin` will let it do anything, because every platform 
 
 ## 3. The Edge Functions
 
-Three functions, and **two of them must be deployed with `--no-verify-jwt`**, because their callers
+Four functions, and **three of them must be deployed with `--no-verify-jwt`**, because their callers
 hold no Supabase session. There is no `supabase/config.toml` in this repository, so the flag has to
 be on the command line every time.
 
 ```bash
 supabase functions deploy paystack-webhook        --project-ref <ref> --no-verify-jwt
 supabase functions deploy dispatch-notifications  --project-ref <ref> --no-verify-jwt
+supabase functions deploy storage-manifest        --project-ref <ref> --no-verify-jwt
 supabase functions deploy video-session           --project-ref <ref>
 ```
 
@@ -193,6 +194,13 @@ supabase functions deploy video-session           --project-ref <ref>
   reaches `record_payment()`.
 - **`dispatch-notifications`** is called by `pg_cron`, which sends `x-cron-secret` and nothing else.
   That secret is its only credential and is compared as a digest, not as a string.
+- **`storage-manifest`** is called by `pg_cron` every ten minutes with the same `x-cron-secret`
+  (migration 28). It downloads a bounded batch of objects from the `documents` and
+  `intake-uploads` buckets, hashes them against `document_versions.checksum`, and writes
+  `storage_manifest`; `/admin/health` reads the result through `storage_integrity()`. It needs two
+  Vault secrets — `cron_secret`, which the dispatcher already has, and
+  `vault.create_secret('https://<ref>.supabase.co/functions/v1/storage-manifest', 'storage_manifest_url')`
+  — and is a no-op until both exist.
 - **`video-session`** is called by signed-in people and reads the `Authorization` header itself, so
   it keeps JWT verification on.
 
@@ -217,7 +225,9 @@ signed with a different private one.
 
 **Proves it worked:** `curl -X POST https://<ref>.supabase.co/functions/v1/dispatch-notifications`
 with no header returns `unauthorized` (401), and with the right `x-cron-secret` returns
-`{"sent":0,"failed":0,"skipped":0}`.
+`{"sent":0,"failed":0,"skipped":0}`. The same call to `/functions/v1/storage-manifest` returns
+`forbidden` (403) without the header and a JSON count of what it verified with it; within an hour
+`/admin/health` should show every object verified and none missing.
 
 ---
 
@@ -371,15 +381,19 @@ What is running against what. Three things, reconciled against the sources named
 given — not a plan, a reading. Update it on every production deploy and every applied migration;
 a release nobody can name is the state this section exists to end.
 
-| | As of 11 Sep 2026, 11:30 UTC | Reconciled against |
+| | As of 11 Sep 2026, 12:40 UTC | Reconciled against |
 |---|---|---|
-| **App** | `6778f3c` (the merge of PR #16). PR #15's merge `ffcc5b1` **did not build** (duplicate imports from a hand-resolved conflict) and Vercel kept serving the previous production deployment; PR #17 carries the fix | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
-| **Schema** | Migrations **1–24**, all applied: 26 ledger entries (`20260909000001_schema` … `wave_zero_doors`, plus the two unnumbered `consultations` and `client_portal`). The schema is **ahead of the app** by migrations 20–24; `supabase/tests/70_deployed_frontend_compat.sql` and the `compat` CI job are what say that is safe | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
+| **App** | `fe45072` (the merge of PR #18), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
+| **Schema** | Migrations **1–25**, all applied: 27 ledger entries (`20260909000001_schema` … `message_reads`, plus the two unnumbered `consultations` and `client_portal`). Applied in step with the app: 25 went live only after production was READY on the front end that calls `mark_thread_read()` | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
 | **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v7** · `video-session` **v2** | MCP `list_edge_functions` — three functions, not two |
 
-Migration ledger names are the file names for 1–21 and short names after: `wave_zero_doors` is
-`20260910000024_wave_zero_doors.sql`, `booking_limit_in_the_rpc` is 23,
+Migration ledger names are the file names for 1–21 and short names after: `message_reads` is
+`20260910000025_message_reads.sql`, `wave_zero_doors` is 24, `booking_limit_in_the_rpc` is 23,
 `member_and_message_invariants` is 22.
+
+Previous: app `6778f3c` against migrations 1–24 (11 Sep, 11:30 UTC) — the schema was ahead of the
+app by five migrations, with `supabase/tests/70_deployed_frontend_compat.sql` and the `compat` CI
+job as the reason that was safe.
 
 ## Related
 

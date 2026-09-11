@@ -81,14 +81,19 @@ export default async function ClientDashboard() {
   const now = Date.now();
   const liveNow = nextAppointment && nextAppointment.mode === "virtual" && ["confirmed", "rescheduled"].includes(nextAppointment.status)
     && now >= new Date(nextAppointment.starts_at).getTime() - 10 * 60 * 1000 && now <= new Date(nextAppointment.ends_at).getTime() + 60 * 60 * 1000;
-  const firstMatter = matters[0] ?? null;
+  // Upload and Message go straight to the matter only when there is exactly one to go to. With
+  // several, the client chooses on the matters list — it used to pick the newest, silently, so a
+  // client with two files could send a message about one to the other and never know.
+  const only = matters.length === 1 ? matters[0] : null;
+  const pickOr = (tab: "documents" | "messages", fallback: string) =>
+    only ? `/app/matters/${only.id}?tab=${tab}` : matters.length > 1 ? `/app/matters?for=${tab}` : fallback;
   const owing = Object.entries(outstanding);
 
   const quickActions: Array<{ label: string; href: string; icon: IconName }> = [
     { label: "Book", href: firm ? `/${firm.slug}/book` : "/app/appointments", icon: "calendar" },
     { label: "Join", href: nextAppointment && liveNow ? `/app/appointments/${nextAppointment.id}/waiting-room` : "/app/appointments", icon: "video" },
-    { label: "Upload", href: firstMatter ? `/app/matters/${firstMatter.id}?tab=documents` : "/app/matters", icon: "paperclip" },
-    { label: "Message", href: firstMatter ? `/app/matters/${firstMatter.id}?tab=messages` : "/app/messages", icon: "mail" },
+    { label: "Upload", href: pickOr("documents", "/app/matters"), icon: "paperclip" },
+    { label: "Message", href: pickOr("messages", "/app/messages"), icon: "mail" },
     { label: "Pay", href: "/app/payments", icon: "card" },
   ];
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });

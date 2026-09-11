@@ -91,14 +91,17 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
     nowMs <= new Date(a.ends_at).getTime() + 60 * 60 * 1000;
 
   // Counters are ink-black unless the number means something is late or is
-  // waiting on this firm — the only colour the console spends.
+  // waiting on this firm — the only colour the console spends. Each one opens
+  // the exact queue it counts, filtered to what it counts: five of these used
+  // to land on the bare matters list, where nothing said which matter.
   const counters = overview
     ? [
-        { label: "Open matters", value: String(overview.open_matters), href: "/firm/matters", hint: "Every live file", ink: "text-[#141414]" },
-        { label: "Court dates, 30 days", value: String(overview.court_dates_30d), href: "/firm/matters", hint: "The diary sits on each matter", ink: "text-[#141414]" },
-        { label: "Unread messages", value: String(overview.unread_messages), href: "/firm/matters", hint: "Reply from the matter", ink: "text-[#141414]" },
-        { label: "Overdue tasks", value: String(overview.overdue_tasks), href: "/firm/matters", hint: "Past their due date", ink: overview.overdue_tasks > 0 ? "text-[#B42318]" : "text-[#141414]" },
-        { label: "Uploads to review", value: String(overview.client_uploads), href: "/firm/matters", hint: "Sent in by clients", ink: "text-[#141414]" },
+        { label: "Open matters", value: String(overview.open_matters), href: "/firm/matters?open=1", hint: "Every live file", ink: "text-[#141414]" },
+        { label: "Court dates, 30 days", value: String(overview.court_dates_30d), href: "/firm/sittings", hint: "The cause list and the chase list", ink: "text-[#141414]" },
+        // Two facts, kept apart: what the firm owes (shared) and what this person has not read.
+        { label: "Awaiting reply", value: String(overview.threads_awaiting_reply ?? 0), href: "/firm/messages?view=awaiting", hint: overview.unread_messages > 0 ? `${overview.unread_messages} unread by you` : "Nothing unread by you", ink: (overview.threads_awaiting_reply ?? 0) > 0 ? "text-[#92400E]" : "text-[#141414]" },
+        { label: "Overdue tasks", value: String(overview.overdue_tasks), href: "/firm/tasks?view=overdue", hint: (overview.next_actions_overdue ?? 0) > 0 ? `${overview.next_actions_overdue} next ${overview.next_actions_overdue === 1 ? "action" : "actions"} overdue too` : "Past their due date", ink: overview.overdue_tasks > 0 || (overview.next_actions_overdue ?? 0) > 0 ? "text-[#B42318]" : "text-[#141414]" },
+        { label: "Uploads to review", value: String(overview.client_uploads), href: "/firm/uploads", hint: "Sent in by clients", ink: overview.client_uploads > 0 ? "text-[#92400E]" : "text-[#141414]" },
         { label: "Service to acknowledge", value: String(overview.service_to_acknowledge), href: "/firm/inbox", hint: "Served on your firm", ink: overview.service_to_acknowledge > 0 ? "text-[#92400E]" : "text-[#141414]" },
       ]
     : [];

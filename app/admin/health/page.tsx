@@ -1,6 +1,7 @@
 // /admin/health — is anything failing, and where.
 //
 // Three questions, in the order a Docket operator should answer them:
+//   0. Are the documents actually there?  (the manifest — rows without bytes look intact)
 //   1. Did anybody's money go to the wrong account?  (settlement — the serious one)
 //   2. Are clients getting the messages we promised?  (the notification queue)
 //   3. Is anything reaching us that we could not verify?  (webhooks)
@@ -32,7 +33,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import {
-  failedNotifications, notificationHealth, platformContext, settlementHealth, webhookEvents,
+  failedNotifications, notificationHealth, platformContext, settlementHealth, storageIntegrity, webhookEvents,
 } from "@/lib/admin-data";
 import { formatMoneyByCurrency, formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
@@ -118,12 +119,14 @@ export default async function AdminHealthPage({
   // Each reader says whether its QUERY worked. A failed read is rendered as a failure in its own
   // section — an empty list means "nothing there" and a failed one means "we do not know", and
   // the second must never be dressed as the first on a screen an operator acts on.
-  const [queueRead, settlementRead, webhooksRead, failedRead] = await Promise.all([
+  const [queueRead, settlementRead, webhooksRead, failedRead, storageRead] = await Promise.all([
     notificationHealth(ctx.supabase),
     settlementHealth(ctx.supabase, SETTLEMENT_LIMIT),
     webhookEvents(ctx.supabase, { limit: WEBHOOK_LIMIT }),
     failedNotifications(ctx.supabase),
+    storageIntegrity(ctx.supabase),
   ]);
+  const storage = storageRead.summary;
   const queue = queueRead.rows;
   const settlement = settlementRead.rows;
   const webhooks = webhooksRead.rows;
@@ -204,6 +207,64 @@ export default async function AdminHealthPage({
       </Alert>
 
       {/* ============================================================ settlement */}
+      {/* ---------------------------------------------------------------- the documents: bytes vs rows */}
+      <section id="documents" className="space-y-4">
+        <h2 className="font-heading text-lg font-semibold text-gray-900">Are the documents actually there?</h2>
+        <p className="text-sm text-gray-600">
+          A database backup restores the rows that describe documents; the bytes are a separate thing, and a
+          system with rows and no bytes looks intact until a lawyer opens a file. The storage-manifest
+          function downloads every object on a rolling schedule, hashes it and compares it to the version
+          row (migration 28). This is what it found.
+        </p>
+        {storageRead.error && (
+          <Alert kind="error" title="This screen could not read the manifest">
+            {storageRead.error} — until it can, nothing here says the documents are there.
+          </Alert>
+        )}
+        {storage && !storageRead.error && (
+          <>
+            {(storage.row_only_versions > 0 || storage.missing > 0 || storage.mismatch > 0) && (
+              <Alert kind="error" title="The database describes documents the store does not have">
+                {storage.row_only_versions > 0 && <>{storage.row_only_versions} version {storage.row_only_versions === 1 ? "row has" : "rows have"} no object at all. </>}
+                {storage.missing > 0 && <>{storage.missing} {storage.missing === 1 ? "object 404s" : "objects 404"} when fetched. </>}
+                {storage.mismatch > 0 && <>{storage.mismatch} {storage.mismatch === 1 ? "object hashes" : "objects hash"} differently from its version row. </>}
+                To a lawyer each of these reads as "the document is gone". Start with docs/RESTORE_RUNBOOK.md §1.2.
+              </Alert>
+            )}
+            {!storage.last_run_at && (
+              <Alert kind="warning" title="The manifest has never run">
+                No object has been verified. The storage-manifest function is deployed and scheduled in
+                docs/DEPLOYMENT_RUNBOOK.md §3; until it runs, whether the bytes exist is unknown, not fine.
+              </Alert>
+            )}
+            <Card>
+              <CardBody>
+                <dl className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    ["Objects the rows describe", String(storage.objects)],
+                    ["Verified and matching", String(storage.ok)],
+                    ["Never verified", String(storage.unverified)],
+                    ["Verified over a week ago", String(storage.stale)],
+                    ["Fetch errors", String(storage.error)],
+                    ["Last run", storage.last_run_at ? when(storage.last_run_at) : "never"],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-xs uppercase tracking-[0.06em] text-gray-500">{label}</dt>
+                      <dd className="mt-0.5 text-lg font-semibold text-gray-900">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                {!storage.storage_present && (
+                  <p className="mt-3 text-xs text-gray-500">
+                    This database has no storage schema, so the object count and the row-only check are unavailable here.
+                  </p>
+                )}
+              </CardBody>
+            </Card>
+          </>
+        )}
+      </section>
+
       <section id="settlement" className="space-y-4">
         <h2 className="font-heading text-lg font-semibold text-gray-900">Settlement</h2>
 

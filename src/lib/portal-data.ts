@@ -30,7 +30,7 @@ export async function clientMatters(
 ): Promise<MatterSummary[]> {
   let query = supabase
     .from("matters")
-    .select("id, firm_id, reference, title, type, status_id, description, next_action, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
+    .select("id, firm_id, reference, title, type, status_id, description, next_action, next_action_due, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
     .is("deleted_at", null);
   if (firmId) query = query.eq("firm_id", firmId);
   const { data } = await query.order("opened_at", { ascending: false }).limit(limit);

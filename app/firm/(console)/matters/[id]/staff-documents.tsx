@@ -237,7 +237,7 @@ export function StaffDocuments({
             const uploader = d.uploaded_by ? names[d.uploaded_by] ?? null : null;
             const rows = versions[d.id];
             return (
-              <li key={d.id} className="px-4 py-4 sm:px-5">
+              <li key={d.id} id={`doc-${d.id}`} className="scroll-mt-20 px-4 py-4 sm:px-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-gray-900">{d.name}</p>

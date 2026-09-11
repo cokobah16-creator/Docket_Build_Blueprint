@@ -22,7 +22,7 @@ export interface Read<T> {
 }
 import type {
   DomainRequestRow, FailedNotificationRow, FirmAdminRow, NotificationHealthRow,
-  SettlementHealthRow, WebhookEventRow,
+  SettlementHealthRow, StorageIntegrity, WebhookEventRow,
 } from "@/lib/db/types";
 
 export interface PlatformContext {
@@ -141,4 +141,13 @@ export async function deploymentHost(): Promise<string> {
   }
   const h = await headers();
   return h.get("x-forwarded-host") ?? h.get("host") ?? "";
+}
+
+/**
+ * The bytes, measured against the rows: storage_integrity() (migration 28). A failed read is a
+ * failure, not zeros; on this screen zeros would read as "every document is there".
+ */
+export async function storageIntegrity(supabase: SupabaseClient): Promise<{ summary: StorageIntegrity | null; error: string | null }> {
+  const { data, error } = await supabase.rpc("storage_integrity");
+  return { summary: (data ?? null) as StorageIntegrity | null, error: error?.message ?? null };
 }

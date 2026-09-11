@@ -134,6 +134,9 @@ const patchSchema = z.object({
   causeTitle: z.string().trim().max(300).nullish(),
   description: z.string().trim().max(8000).nullish(),
   nextAction: z.string().trim().max(500).nullish(),
+  nextActionOwnerId: z.string().uuid().nullish(),
+  // A calendar day, never an instant: matters.next_action_due is a DATE.
+  nextActionDue: plainDay.nullish(),
   statusId: z.string().uuid().nullish(),
   courtId: z.string().uuid().nullish(),
   courtName: z.string().trim().max(200).nullish(),
@@ -163,6 +166,8 @@ export async function updateMatter(matterId: string, patch: MatterPatch): Promis
   if (given("causeTitle")) row.cause_title = d.causeTitle || null;
   if (given("description")) row.description = d.description || null;
   if (given("nextAction")) row.next_action = d.nextAction || null;
+  if (given("nextActionOwnerId")) row.next_action_owner_id = d.nextActionOwnerId || null;
+  if (given("nextActionDue")) row.next_action_due = d.nextActionDue || null;
   if (given("statusId")) row.status_id = d.statusId || null;
   if (given("courtId")) row.court_id = d.courtId || null;
   if (given("courtName")) row.court_name = d.courtName || null;

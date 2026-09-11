@@ -17,6 +17,7 @@ import { formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
+import { formatDay, isPastDay } from "@/lib/days";
 import type { MatterStatus } from "@/lib/db/types";
 
 export const metadata = { title: "Matters" };
@@ -265,7 +266,17 @@ export default async function FirmMattersPage({
                       </p>
                     )}
 
-                    {m.next_action && <p className="mt-1 text-xs font-medium text-brand">Next action: {m.next_action}</p>}
+                    {m.next_action && (
+                      <p className="mt-1 text-xs font-medium text-brand">
+                        Next action: {m.next_action}
+                        {m.next_action_owner_id && <span className="font-normal text-gray-600"> · {staffById.get(m.next_action_owner_id) ?? "a colleague"}</span>}
+                        {m.next_action_due && (
+                          <span className={cn("font-normal", isPastDay(m.next_action_due, tz) ? "font-semibold text-red-700" : "text-gray-600")}>
+                            {" · "}{isPastDay(m.next_action_due, tz) ? "overdue, was due " : "due "}{formatDay(m.next_action_due)}
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </Link>
                 </li>
               );

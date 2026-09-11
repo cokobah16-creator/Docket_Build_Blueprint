@@ -320,6 +320,10 @@ export interface MatterRow {
   status_id: string | null;
   description: string | null;
   next_action: string | null;
+  /** Who the next action is on — a firm member. Null: nobody yet. */
+  next_action_owner_id: string | null;
+  /** The calendar day it is due by, YYYY-MM-DD. A day, never an instant. */
+  next_action_due: string | null;
   court_name: string | null;
   suit_number: string | null;
   next_event_at: string | null;
@@ -338,6 +342,14 @@ export interface UpdateRow {
   payload: Record<string, unknown>;
   occurred_at: string;
   created_at: string;
+  /** The client update's shape (migration 27). Each null means "not stated". */
+  meaning: string | null;
+  next_step: string | null;
+  client_action: string | null;
+  /** null: not stated · false: "nothing is needed from you", stated · true: client_action says what. */
+  action_required: boolean | null;
+  /** When to expect the next update — a calendar day, YYYY-MM-DD. */
+  next_update_by: string | null;
 }
 
 export interface CourtEventRow {
@@ -390,8 +402,24 @@ export interface MessageRow {
   sender_id: string | null;
   body: string | null;
   attachments: MessageAttachment[];
+  /** First read from across the firm/client line — "seen by the other side". Never who. */
   read_at: string | null;
+  /** False for messages that predate per-reader receipts (migration 25); they count by read_at. */
+  reads_tracked: boolean;
   created_at: string;
+}
+
+/** Row of firm_threads (migration 25): one per thread the caller can read. */
+export interface FirmThread {
+  firm_id: string;
+  matter_id: string | null;
+  appointment_id: string | null;
+  last_message_id: string;
+  last_message_at: string;
+  /** The firm spoke last. Its inverse is "the firm owes the reply". */
+  last_from_firm: boolean;
+  /** Messages from across the line that the CALLER has not read. Per viewer. */
+  unread_for_me: number;
 }
 
 export interface NotificationRow {
@@ -432,10 +460,15 @@ export interface FirmOverview {
   /** Minor units per currency, e.g. { NGN: 22575000, USD: 50000 }. Never one sum. */
   outstanding_by_currency: Record<string, number>;
   collected_this_month_by_currency: Record<string, number>;
+  /** Per viewer since migration 25: what THIS member has not read. Colleagues see different numbers. */
   unread_messages: number;
   overdue_tasks: number;
   client_uploads: number;
   service_to_acknowledge: number;
+  /** Shared: threads whose latest message came from outside the firm — what the firm owes, whoever has read it. */
+  threads_awaiting_reply: number;
+  /** Live matters whose next action's due day has passed, judged in the firm's timezone. */
+  next_actions_overdue: number;
 }
 
 /** Row of firm_sittings_due: a past court date with no update posted. */
@@ -731,3 +764,25 @@ export const FIRM_ROLES: Array<{ value: string; label: string; hint: string }> =
   { value: "lawyer", label: "Lawyer", hint: "Matters, court updates, consultations and their own diary" },
   { value: "staff", label: "Staff", hint: "Matters and consultations, but not the firm's settings" },
 ];
+
+/** storage_integrity() (migration 28): the bytes, measured against the rows. */
+export interface StorageIntegrity {
+  /** False on a database with no storage schema (local); every count below is then from the manifest alone. */
+  storage_present: boolean;
+  /** storage.objects rows in the documents and intake-uploads buckets: what should exist. */
+  objects: number;
+  manifest_rows: number;
+  /** Objects the manifest has never fetched. */
+  unverified: number;
+  ok: number;
+  /** Rows say it exists; the bytes 404. */
+  missing: number;
+  /** The bytes hash differently from document_versions.checksum. */
+  mismatch: number;
+  error: number;
+  /** Verified more than seven days ago. */
+  stale: number;
+  /** document_versions rows with no storage.objects row at all: the "looks intact" failure. */
+  row_only_versions: number;
+  last_run_at: string | null;
+}

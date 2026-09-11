@@ -87,7 +87,10 @@ declare f uuid := (select v from fx where k='firm'); m uuid := (select v from fx
         a uuid := (select v from fx where k='a'); m2 uuid;
 begin
   perform t_as(a);
-  insert into messages (firm_id, matter_id, sender_id, body) values (f, m, a, 'advised') returning id into m2;
+  -- A second later than the client's message: inside one transaction now() is the transaction's
+  -- start, so every insert here shares created_at and "who spoke last" would be decided by uuid.
+  -- In service each message is its own request and the instants differ; the suite must not tie.
+  insert into messages (firm_id, matter_id, sender_id, body, created_at) values (f, m, a, 'advised', now() + interval '1 second') returning id into m2;
   perform t_check('the firm spoke last: nothing owed', (select last_from_firm from firm_threads where matter_id = m));
   perform t_check('Today: no thread awaiting reply', (select threads_awaiting_reply = 0 from firm_overview where firm_id = f));
   perform t_check('a lawyer does not count their own message as unread', (select unread_for_me = 0 from firm_threads where matter_id = m));

@@ -6,6 +6,7 @@
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import type { UpdateRow } from "@/lib/db/types";
+import { UpdateStructure } from "./update-structure";
 
 const KIND_ICON: Record<string, string> = {
   court_sitting: "⚖", consultation: "🎥", appointment: "📅", filing: "📄", correspondence: "✉",
@@ -46,6 +47,7 @@ export function Timeline({ matterId, initial, timezone }: { matterId: string; in
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-gray-900">{u.title}</p>
               {u.body && <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{u.body}</p>}
+              <UpdateStructure update={u} />
               {u.kind === "court_sitting" && (
                 <dl className="mt-2 grid gap-1 text-xs text-gray-600 sm:grid-cols-2">
                   {typeof p.court_name === "string" && p.court_name && <div><dt className="inline text-gray-500">Court: </dt><dd className="inline">{p.court_name}</dd></div>}

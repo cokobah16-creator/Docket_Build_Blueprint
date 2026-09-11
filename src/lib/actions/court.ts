@@ -38,6 +38,13 @@ const postSchema = z.object({
   judge: z.string().trim().max(160).nullish(),
   courtroom: z.string().trim().max(80).nullish(),
   purposeKind: z.string().refine((v) => KINDS.has(v), { message: "Unknown purpose." }).nullish(),
+  // The client update's shape. "unstated" writes null; the function refuses a "required" with
+  // nothing said and a "none" beside something said, so the two cannot contradict each other.
+  meaning: z.string().trim().max(2000).nullish(),
+  nextStep: z.string().trim().max(2000).nullish(),
+  clientAction: z.string().trim().max(2000).nullish(),
+  actionRequired: z.enum(["unstated", "none", "required"]).optional(),
+  nextUpdateBy: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "The next update day must be a calendar day.").nullish(),
 });
 
 export type CourtUpdateInput = z.infer<typeof postSchema>;
@@ -75,6 +82,11 @@ export async function postCourtUpdate(input: CourtUpdateInput): Promise<PostCour
     p_judge: d.judge || null,
     p_courtroom: d.courtroom || null,
     p_purpose_kind: d.purposeKind || null,
+    p_meaning: d.meaning || null,
+    p_next_step: d.nextStep || null,
+    p_client_action: d.actionRequired === "required" ? d.clientAction || null : null,
+    p_action_required: d.actionRequired === "required" ? true : d.actionRequired === "none" ? false : null,
+    p_next_update_by: d.nextUpdateBy || null,
   });
   if (error) return { error: error.message };
   const updateId = typeof data === "string" ? data : null;

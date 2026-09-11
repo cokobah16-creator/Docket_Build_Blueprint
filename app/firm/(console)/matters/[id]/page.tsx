@@ -32,6 +32,9 @@ import { StatusPill, type Status } from "@/components/ui/badge";
 import { CounselRoster } from "@/components/firm/counsel-roster";
 import { MessagesThread } from "@/components/portal/messages-thread";
 import { cn } from "@/lib/cn";
+import { formatDay, todayIn } from "@/lib/days";
+import { relativeLabel } from "@/lib/relative";
+import type { FirmThread } from "@/lib/db/types";
 import type {
   DocumentRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
   ServiceDirectoryRow, TaskRow,
@@ -103,6 +106,8 @@ interface MatterDetail {
   status_id: string | null;
   description: string | null;
   next_action: string | null;
+  next_action_owner_id: string | null;
+  next_action_due: string | null;
   court_id: string | null;
   court_name: string | null;
   suit_number: string | null;
@@ -118,7 +123,7 @@ interface MatterDetail {
 }
 
 const MATTER_COLUMNS =
-  "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, court_id, court_name, " +
+  "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, next_action_owner_id, next_action_due, court_id, court_name, " +
   "suit_number, judicial_division, judge, next_event_at, next_event_note, awaiting_date, opened_at, closed_at, " +
   "originating_lawyer_id, handling_lawyer_id";
 
@@ -176,6 +181,23 @@ export default async function MatterWorkbench({
     : { data: [] as Array<{ id: string; full_name: string | null; phone: string | null; email: string | null }> };
   const profiles = (partyProfiles ?? []) as Array<{ id: string; full_name: string | null; phone: string | null; email: string | null }>;
 
+  // The chart's at-a-glance facts — each one a tile that opens the tab it summarises. Three
+  // small reads, so a lawyer opening an unfamiliar file sees who it is for, what last happened,
+  // whether anyone is waiting on a reply and what is owed, before reading a single tab.
+  const [{ data: latestRows }, { data: threadRows }, { data: owedRows }] = await Promise.all([
+    supabase.from("updates").select("title, occurred_at, action_required").eq("matter_id", matter.id).eq("visibility", "client").order("occurred_at", { ascending: false }).limit(1),
+    supabase.from("firm_threads").select("*").eq("matter_id", matter.id).limit(1),
+    supabase.from("invoices").select("currency, total_minor, paid_minor").eq("matter_id", matter.id).in("status", ["issued", "partially_paid", "overdue"]),
+  ]);
+  const latest = ((latestRows ?? []) as Array<{ title: string; occurred_at: string; action_required: boolean | null }>)[0] ?? null;
+  const thread = ((threadRows ?? []) as FirmThread[])[0] ?? null;
+  const owed = new Map<string, number>();
+  for (const r of (owedRows ?? []) as Array<{ currency: string; total_minor: number; paid_minor: number }>) {
+    // Minor units of one currency are never added to another's.
+    owed.set(r.currency, (owed.get(r.currency) ?? 0) + (r.total_minor - r.paid_minor));
+  }
+  const nowMs = Date.now();
+
   const staffOptions = staff.map((m) => ({ id: m.user_id, label: staffLabel(m) }));
   const names: Record<string, string> = {};
   for (const m of staff) names[m.user_id] = staffLabel(m);
@@ -229,13 +251,78 @@ export default async function MatterWorkbench({
           )}
         </p>
 
-        {matter.next_action && <p className="text-sm font-medium text-brand">Next action: {matter.next_action}</p>}
+        {matter.next_action && (
+          <p className="text-sm font-medium text-brand">
+            Next action: {matter.next_action}
+            {(matter.next_action_owner_id || matter.next_action_due) && (
+              <span className="font-normal text-gray-600">
+                {" · "}
+                {matter.next_action_owner_id ? (names[matter.next_action_owner_id] ?? "a colleague") : <span className="text-amber-800">nobody on it</span>}
+                {matter.next_action_due && (
+                  <>
+                    {" · due "}
+                    <span className={matter.next_action_due < todayIn(ctx.timezone) ? "font-semibold text-red-700" : undefined}>
+                      {matter.next_action_due < todayIn(ctx.timezone) ? "overdue, was " : ""}{formatDay(matter.next_action_due)}
+                    </span>
+                  </>
+                )}
+              </span>
+            )}
+          </p>
+        )}
 
         <p className="text-xs text-gray-600">
           Handling: {handling ?? "not recorded"} · Originating: {originating ?? "not recorded"}
           {leadLawyerId && names[leadLawyerId] ? ` · Conduct: ${names[leadLawyerId]}` : ""}
         </p>
       </header>
+
+      {/* At a glance. Each tile is the fact and the door to it. */}
+      <section aria-label="At a glance" className="grid grid-cols-2 gap-2.5">
+        {(() => {
+          const clients = parties.filter((p) => p.role === "client").map((p) => names[p.user_id] ?? "Client");
+          const contacts = parties.filter((p) => p.role !== "client").length;
+          const tiles: Array<{ label: string; value: string; hint: string; href: string; ink?: string }> = [
+            {
+              label: "For",
+              value: clients.length ? clients.join(", ") : "No client on the file",
+              hint: contacts ? `${contacts} other ${contacts === 1 ? "party" : "parties"} on the matter` : "Who may read it, and who may pay",
+              href: `${basePath}?tab=parties${extraQuery}`,
+              ink: clients.length ? undefined : "text-[#92400E]",
+            },
+            {
+              label: "Latest update",
+              value: latest ? latest.title : "Nothing posted yet",
+              hint: latest
+                ? `${relativeLabel(latest.occurred_at, nowMs)}${latest.action_required === true ? " · the client must act" : latest.action_required === false ? " · nothing needed from the client" : ""}`
+                : "The client's timeline is empty",
+              href: `${basePath}?tab=timeline${extraQuery}`,
+              ink: latest ? undefined : "text-[#92400E]",
+            },
+            {
+              label: "Messages",
+              value: thread ? (thread.unread_for_me > 0 ? `${thread.unread_for_me} unread by you` : "Nothing unread by you") : "No thread yet",
+              hint: thread ? (thread.last_from_firm ? `Last from the firm, ${relativeLabel(thread.last_message_at, nowMs)}` : `Awaiting the firm's reply since ${relativeLabel(thread.last_message_at, nowMs)}`) : "The client has not written",
+              href: `${basePath}?tab=messages${extraQuery}`,
+              ink: thread && (!thread.last_from_firm || thread.unread_for_me > 0) ? "text-[#92400E]" : undefined,
+            },
+            {
+              label: "Owed on this matter",
+              value: owed.size ? Array.from(owed.entries()).filter(([, minor]) => minor !== 0).map(([cur, minor]) => formatMoneyMinor(minor, cur)).join(" + ") || "Nothing" : "Nothing",
+              hint: owed.size ? "Issued, part-paid or overdue" : "No invoice is open",
+              href: `${basePath}?tab=invoices${extraQuery}`,
+              ink: owed.size ? "text-[#B42318]" : undefined,
+            },
+          ];
+          return tiles.map((t) => (
+            <Link key={t.label} href={t.href} className="rounded-[11px] border border-[#DDD9D2] bg-white p-3 hover:border-[#141414]">
+              <p className="text-[10.5px] uppercase leading-snug tracking-[0.06em] text-[#57534E]">{t.label}</p>
+              <p className={cn("mt-1 line-clamp-2 text-[13.5px] font-semibold leading-snug", t.ink ?? "text-[#141414]")}>{t.value}</p>
+              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-[#57534E]">{t.hint}</p>
+            </Link>
+          ));
+        })()}
+      </section>
 
       {sp.error && <Alert kind="error" title="That was refused">{sp.error}</Alert>}
       {sp.issued === "1" && <Alert kind="success">Invoice issued. Your client can see it and pay from their app.</Alert>}
@@ -279,7 +366,7 @@ async function TimelineSection({ ctx, matter, names }: { ctx: StaffContext; matt
   const [{ data: updateRows }, courts] = await Promise.all([
     ctx.supabase
       .from("updates")
-      .select("id, matter_id, firm_id, kind, visibility, title, body, payload, occurred_at, posted_by, created_at")
+      .select("id, matter_id, firm_id, kind, visibility, title, body, payload, occurred_at, posted_by, created_at, meaning, next_step, client_action, action_required, next_update_by")
       .eq("matter_id", matter.id)
       .order("occurred_at", { ascending: false })
       .limit(200),
@@ -617,6 +704,8 @@ async function EditSection({
         causeTitle: matter.cause_title ?? "",
         description: matter.description ?? "",
         nextAction: matter.next_action ?? "",
+        nextActionOwnerId: matter.next_action_owner_id ?? "",
+        nextActionDue: matter.next_action_due ?? "",
         statusId: matter.status_id ?? "",
         courtId: matter.court_id,
         courtName: matter.court_name ?? "",
