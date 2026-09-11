@@ -47,6 +47,29 @@ export function ConsentGate({
   const onPending = useCallback(() => setFailed(false), []);
   const onSettled = useCallback(() => setFailed(true), []);
 
+  // The tab bar is fixed and lives outside this subtree, so z-50 and
+  // aria-modal keep a pointer and a screen reader out of it but do nothing
+  // about a keyboard: five Tab presses still reached "Matters" and the gate
+  // was behind you. `inert` removes it from focus order as well as from the
+  // accessibility tree. The tabIndex pass is the fallback for a browser
+  // without inert, and both are undone when the gate unmounts.
+  useEffect(() => {
+    const bar = document.querySelector<HTMLElement>('nav[aria-label="Primary"]');
+    if (!bar) return;
+    const focusable = Array.from(bar.querySelectorAll<HTMLElement>("a, button, [tabindex]"));
+    const previous = focusable.map((el) => el.getAttribute("tabindex"));
+    bar.setAttribute("inert", "");
+    focusable.forEach((el) => el.setAttribute("tabindex", "-1"));
+    return () => {
+      bar.removeAttribute("inert");
+      focusable.forEach((el, i) => {
+        const before = previous[i];
+        if (before === null) el.removeAttribute("tabindex");
+        else el.setAttribute("tabindex", before);
+      });
+    };
+  }, []);
+
   const linkClass = "font-medium text-dk-pri underline underline-offset-2";
 
   return (
