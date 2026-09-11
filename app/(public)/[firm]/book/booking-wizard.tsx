@@ -686,7 +686,7 @@ function Chip({ selected, onClick, className, children }: {
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "inline-flex min-h-[42px] items-center justify-center rounded-full border px-3.5 text-[12.5px] font-medium transition",
+        "inline-flex min-h-[44px] items-center justify-center rounded-full border px-3.5 text-[12.5px] font-medium transition",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
         selected ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
         className,
@@ -814,7 +814,7 @@ function IntakeField({
           accept="application/pdf,image/jpeg,image/png,image/heic,.docx"
           className={cn(
             "block w-full text-[12.5px] text-gray-700",
-            "file:mr-3 file:min-h-[30px] file:rounded-full file:border file:border-gray-300",
+            "file:mr-3 file:min-h-[44px] file:rounded-full file:border file:border-gray-300",
             "file:bg-white file:px-3 file:text-[12.5px] file:font-semibold file:text-brand",
           )}
           onChange={(e) => onFiles(Array.from<File>(e.target.files ?? []).slice(0, q.max_files ?? 1))}

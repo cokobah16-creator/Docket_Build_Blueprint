@@ -32,7 +32,7 @@ export function IosInstallHint({ appName }: { appName: string }) {
       </p>
       <button
         type="button"
-        className="mt-2 min-h-[32px] text-[11.5px] font-semibold underline underline-offset-2"
+        className="mt-1 inline-flex min-h-[44px] items-center text-[11.5px] font-semibold underline underline-offset-2"
         onClick={() => { try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ } setShow(false); }}
       >
         Don&rsquo;t show again

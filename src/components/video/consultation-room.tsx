@@ -443,7 +443,7 @@ export function ConsultationRoom({
               <button
                 type="button"
                 onClick={admitAll}
-                className="min-h-[40px] flex-none rounded-[9px] bg-white px-4 text-[13px] font-bold text-[#0B0B0C]"
+                className="min-h-[44px] flex-none rounded-[9px] bg-white px-4 text-[13px] font-bold text-[#0B0B0C]"
               >
                 Admit
               </button>
@@ -471,14 +471,14 @@ export function ConsultationRoom({
                   <button
                     type="button"
                     onClick={() => applyAudioOnly(true)}
-                    className="min-h-[32px] font-semibold underline underline-offset-2"
+                    className="inline-flex min-h-[44px] items-center font-semibold underline underline-offset-2"
                   >
                     Switch to audio only
                   </button>
                   <button
                     type="button"
                     onClick={() => setDataDismissed(true)}
-                    className="min-h-[32px] text-white/60"
+                    className="inline-flex min-h-[44px] items-center text-white/60"
                   >
                     Keep video
                   </button>
