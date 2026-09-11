@@ -21,7 +21,6 @@ import { IosInstallHint } from "@/components/portal/pwa-hints";
 import { OfflineBanner } from "@/components/portal/offline-banner";
 import { FirmSwitcher, type FirmChoice } from "@/components/portal/firm-switcher";
 import { Screen } from "@/components/portal/screen";
-import { ConsentGate } from "./consent-gate";
 import { DEFAULT_TOKENS } from "@/lib/brand";
 import type { DocumentRow, NotificationRow } from "@/lib/db/types";
 
@@ -43,32 +42,7 @@ export default async function ClientDashboard() {
   const firms = await clientFirms(supabase);
   const firm = await selectedFirm(supabase, firms);
 
-  if (firm) {
-    const termsVersion = firm.policies.terms?.version;
-    const privacyVersion = firm.policies.privacy?.version;
-    // '0-…' versions are the unpublished skeleton every new firm starts with (seed_firm_defaults)
-    if (termsVersion?.startsWith("0-") || privacyVersion?.startsWith("0-")) {
-      return (
-        <Screen>
-          <Alert kind="info" title={`${firm.name} has not published its terms yet`}>
-            The firm is still completing its setup on Docket. Its terms of service and
-            privacy notice will appear here for your acceptance once published.
-          </Alert>
-        </Screen>
-      );
-    }
-    if (termsVersion && privacyVersion) {
-      const { data: consents } = await supabase.from("consent_records").select("kind, version").eq("firm_id", firm.id).eq("user_id", user.id);
-      const rows = (consents ?? []) as Array<{ kind: string; version: string }>;
-      if (!rows.some((r) => r.kind === "terms" && r.version === termsVersion) || !rows.some((r) => r.kind === "privacy" && r.version === privacyVersion)) {
-        return (
-          <Screen>
-            <ConsentGate firmId={firm.id} firmName={firm.name} termsVersion={termsVersion} privacyVersion={privacyVersion} termsUrl={(firm.policies.terms?.url as string | null) ?? null} privacyUrl={(firm.policies.privacy?.url as string | null) ?? null} />
-          </Screen>
-        );
-      }
-    }
-  }
+  // Consent to this firm's terms is asked for by the layout, on every route, not here.
 
   // Every read below is narrowed to the firm on screen, so the page tells one
   // firm's story rather than merging several. The builders are constructed

@@ -149,7 +149,6 @@ export type Database = {
           entity_id: string | null
           firm_id: string | null
           id: number
-          ip: unknown
           meta: Json
         }
         Insert: {
@@ -160,7 +159,6 @@ export type Database = {
           entity_id?: string | null
           firm_id?: string | null
           id?: number
-          ip?: unknown
           meta?: Json
         }
         Update: {
@@ -171,7 +169,6 @@ export type Database = {
           entity_id?: string | null
           firm_id?: string | null
           id?: number
-          ip?: unknown
           meta?: Json
         }
         Relationships: []

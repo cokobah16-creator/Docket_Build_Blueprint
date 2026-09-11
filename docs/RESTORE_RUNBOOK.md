@@ -24,7 +24,7 @@ deliberately whether that is acceptable. It probably is not.
 
 **Check now, and record the answer with a date:**
 
-- [ ] PITR enabled — yes / no, retention window: ______, checked on ______
+- [x] PITR enabled — **no, by decision, 11 Sep 2026.** No firm has real client files on Docket yet, so the add-on is not bought yet; the RPO below is stated as 24 hours accordingly. **Revisit before the first firm goes live with real matters** — that is the trigger, and it is written here so it is not forgotten
 - [ ] Daily backup retention: ______ days
 - [ ] Storage object backup arrangement: ______ (see §2)
 
@@ -170,7 +170,10 @@ after the first drill** (§4) — an untested objective is a wish.
 | Daily backups only (**the default**) | **up to 24 hours** | The backup is taken once a day; everything since is gone |
 | PITR enabled | **minutes**, to the granularity of the WAL archive interval on your plan | Recovery to a chosen moment rather than to last night |
 
-The objective to commit to is **15 minutes**, which requires PITR. Turn it on.
+**The RPO this platform commits to today is 24 hours.** PITR is off by a dated decision (§0):
+until a firm has real client files here, the add-on is not bought, and this document says what is
+true rather than what is wished. The 15-minute figure returns the day PITR is switched on — and
+only then, with the date beside it.
 
 What 24 hours actually costs, in this system:
 

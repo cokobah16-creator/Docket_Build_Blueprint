@@ -19,6 +19,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { ConsoleNav } from "@/components/firm/console-nav";
+import { requestedFirmId, staffContext } from "@/lib/firm-data";
 
 /** Docket's own working-tool palette — deliberately not a firm's brand. */
 const CONSOLE_TOKENS = {
@@ -54,12 +55,13 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
   if (aal?.currentLevel !== "aal2") redirect("/firm/security/mfa");
 
-  const { data: membershipRows } = await supabase
-    .from("firm_members")
-    .select("firm_id, role");
-  const memberships = (membershipRows ?? []) as Array<{ firm_id: string; role: string }>;
+  // The same resolution every console page makes: the firm named by ?firm=, else the one this
+  // member last chose, else their first membership. The header used to name memberships[0]
+  // whatever the page below it was showing, so a two-firm member read one firm's name over the
+  // other firm's diary.
+  const ctx = await staffContext(await requestedFirmId());
 
-  if (memberships.length === 0) {
+  if (!ctx) {
     return (
       <main className="mx-auto max-w-md px-4 py-16">
         <Alert kind="error" title="No firm membership">
@@ -74,13 +76,20 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
     );
   }
 
-  const role = memberships[0]?.role ?? "staff";
+  const role = ctx.role;
   const { data: overview } = await supabase
     .from("firm_overview")
     .select("name, status")
-    .eq("firm_id", memberships[0].firm_id)
+    .eq("firm_id", ctx.firmId)
     .maybeSingle();
   const firm = (overview ?? null) as { name: string; status: string } | null;
+  // A member of several firms can change which one the console is showing from any screen.
+  // The link carries ?firm= once; the middleware remembers it for every link after.
+  const otherIds = ctx.memberships.filter((m) => m.firm_id !== ctx.firmId).map((m) => m.firm_id);
+  const { data: otherRows } = otherIds.length
+    ? await supabase.from("firms").select("id, name").in("id", otherIds)
+    : { data: [] as Array<{ id: string; name: string }> };
+  const others = (otherRows ?? []) as Array<{ id: string; name: string }>;
 
   return (
     <div style={CONSOLE_TOKENS} className="min-h-screen bg-brand-surface">
@@ -89,7 +98,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
         <header className="sticky top-0 z-30 flex min-h-[50px] items-center justify-between gap-3 border-b border-[#E6E2DB] bg-white/[0.94] px-4 py-2.5 backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-2">
             <Link href="/firm" className="truncate font-heading text-[15px] font-bold tracking-[-0.02em] text-[#141414]">
-              {firm?.name ?? "Staff console"}
+              {firm?.name ?? ctx.firmName}
             </Link>
             <Badge>{role}</Badge>
           </div>
@@ -102,6 +111,21 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
             </Link>
           </div>
         </header>
+
+        {others.length > 0 && (
+          <nav aria-label="Switch firm" className="border-b border-[#E6E2DB] bg-[#FAF9F7] px-4 py-2 text-[12px] text-[#57534E]">
+            Showing <span className="font-semibold text-[#141414]">{ctx.firmName}</span>
+            {" · switch to "}
+            {others.map((f, i) => (
+              <span key={f.id}>
+                {i > 0 && ", "}
+                <Link href={`/firm?firm=${encodeURIComponent(f.id)}`} className="font-medium text-[#141414] underline underline-offset-2">
+                  {f.name}
+                </Link>
+              </span>
+            ))}
+          </nav>
+        )}
 
         {firm?.status === "suspended" && (
           <div className="px-4 pt-4">

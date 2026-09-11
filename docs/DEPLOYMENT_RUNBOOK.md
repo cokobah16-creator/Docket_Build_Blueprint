@@ -140,6 +140,9 @@ Migrations apply in filename order, which is chronological:
 20260910000019_console_review.sql
 20260910000020_admin_surfaces.sql         domains, plans, member roles, health views, retries
 20260910000021_hardening.sql              RLS on ng_states, search_path, rate limiting, FK indexes
+20260910000022_member_and_message_invariants.sqlfirm_members shut to direct writes; last-owner guard; messages immutable
+20260910000023_booking_limit_in_the_rpc.sqlthe booking rate limit inside book_appointment()
+20260910000024_wave_zero_doors.sql        dead grants revoked; notifications read_at-only for the API; push only with a subscription; audit_log.ip dropped
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -359,8 +362,24 @@ verify.
 - **Functions:** `supabase functions deploy <name>` — and remember `--no-verify-jwt` on the two that
   need it, every time.
 - **App:** push to the branch Vercel builds.
-- **Before any of it:** CI runs the migrations, the seed and all seven test suites against a clean
+- **Before any of it:** CI runs the migrations, the seed and all eight test suites against a clean
   Postgres 16. A red `sql` job means a policy changed meaning, and that is the one to stop for.
+
+## Release record
+
+What is running against what. Three things, reconciled against the sources named, on the date
+given — not a plan, a reading. Update it on every production deploy and every applied migration;
+a release nobody can name is the state this section exists to end.
+
+| | As of 11 Sep 2026, 11:30 UTC | Reconciled against |
+|---|---|---|
+| **App** | `6778f3c` (the merge of PR #16). PR #15's merge `ffcc5b1` **did not build** (duplicate imports from a hand-resolved conflict) and Vercel kept serving the previous production deployment; PR #17 carries the fix | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
+| **Schema** | Migrations **1–24**, all applied: 26 ledger entries (`20260909000001_schema` … `wave_zero_doors`, plus the two unnumbered `consultations` and `client_portal`). The schema is **ahead of the app** by migrations 20–24; `supabase/tests/70_deployed_frontend_compat.sql` and the `compat` CI job are what say that is safe | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
+| **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v7** · `video-session` **v2** | MCP `list_edge_functions` — three functions, not two |
+
+Migration ledger names are the file names for 1–21 and short names after: `wave_zero_doors` is
+`20260910000024_wave_zero_doors.sql`, `booking_limit_in_the_rpc` is 23,
+`member_and_message_invariants` is 22.
 
 ## Related
 

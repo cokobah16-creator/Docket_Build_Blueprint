@@ -56,6 +56,12 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
     { href: "/firm/invoices", label: "Invoices", hint: "Issued, part-paid and overdue", count: openInvoices },
     { href: "/firm/availability", label: "Availability", hint: "Hours, breaks and the daily cap", count: null },
     { href: "/firm/overview", label: "Firm overview", hint: "The whole firm at a glance", count: null },
+    // Owners and admins only: the screens under /firm/admin ask admin_w() on every write, so the
+    // link is offered to the people the database will let through. Until now it was reachable by
+    // typing the address and nothing else.
+    ...(ctx.isAdmin
+      ? [{ href: "/firm/admin", label: "Administration", hint: "Settings, services, intake forms, people and the audit log", count: null }]
+      : []),
   ];
 
   return (

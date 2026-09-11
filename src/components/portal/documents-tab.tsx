@@ -108,6 +108,13 @@ export function DocumentsTab({
                       <> · <button type="button" className="underline" onClick={() => loadVersions(d)}>{d.version_count} versions</button></>
                     )}
                   </p>
+                  {/* Only for what the client sent: the firm marks an upload as looked at, and until
+                      now that mark reached a staff counter and never the person waiting on it. */}
+                  {d.category === "client_upload" && (
+                    <p className={d.reviewed_at ? "mt-1 text-xs text-[#15803D]" : "mt-1 text-xs text-[#92400E]"}>
+                      {d.reviewed_at ? `Seen by your firm ${fmt.format(new Date(d.reviewed_at))}` : "Not yet seen by your firm"}
+                    </p>
+                  )}
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => openPreview(d)} disabled={!d.version}>
                   {isImage(d.version?.mime) || isPdf(d.version?.mime) ? "Preview" : "Download"}

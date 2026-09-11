@@ -167,15 +167,19 @@ export async function sendMessage(input: {
   return undefined;
 }
 
-/** Read receipts: mark every message from the other side in this thread as read. */
+/**
+ * Read receipts. mark_thread_read() (migration 25) writes a per-reader receipt for every tracked
+ * message from the other side of the thread, and keeps messages.read_at honest for the client's
+ * "seen by your firm". It replaced a direct update that set read_at firm-wide on mount — so the
+ * first staff member to open a thread marked it read for every colleague, permanently, and that
+ * column was exactly what Today counted as unread. The RPC is the only door: the table's write
+ * grant was removed.
+ */
 export async function markThreadRead(input: { matterId: string | null; appointmentId: string | null }): Promise<void> {
   const { supabase, user } = await userClient();
   if (!supabase || !user) return;
-  let q = supabase.from("messages").update({ read_at: new Date().toISOString() }).is("read_at", null).neq("sender_id", user.id);
-  if (input.matterId) q = q.eq("matter_id", input.matterId);
-  else if (input.appointmentId) q = q.eq("appointment_id", input.appointmentId);
-  else return;
-  await q;
+  if (!input.matterId && !input.appointmentId) return;
+  await supabase.rpc("mark_thread_read", { p_matter: input.matterId, p_appointment: input.appointmentId });
 }
 
 // ---------------------------------------------------------------- notifications
@@ -212,7 +216,8 @@ const profileSchema = z.object({
   fullName: z.string().trim().max(120),
   email: z.string().trim().email().max(200).or(z.literal("")),
   timezone: z.string().min(1).max(64),
-  preferredChannel: z.enum(["in_app", "push", "email", "sms", "whatsapp"]),
+  // No whatsapp: nothing delivers on it yet, and a channel that delivers nothing is not a choice.
+  preferredChannel: z.enum(["in_app", "push", "email", "sms"]),
   quietStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).or(z.literal("")),
   quietEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).or(z.literal("")),
 });
