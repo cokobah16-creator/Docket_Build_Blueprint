@@ -534,8 +534,9 @@ export function IntakeEditor({
                 <p className="text-sm text-gray-500">Nothing to show until the questions read as valid JSON.</p>
               ) : questions.length === 0 ? (
                 <p className="text-sm text-gray-500">
-                  No questions yet, so the wizard skips this step entirely and goes from the time straight to signing
-                  in.
+                  No questions yet. The wizard adds this step for any form that is switched on, so
+                  a form saved in this state puts an empty page in front of a client between the
+                  time and signing in. Only a form that is switched off is skipped.
                 </p>
               ) : (
                 <div className="space-y-4">

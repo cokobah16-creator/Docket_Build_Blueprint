@@ -619,6 +619,18 @@ export async function saveIntakeForm(input: IntakeFormInput): Promise<IntakeSave
   const checked = checkSchema(parsedJson);
   if ("error" in checked) return { error: checked.error };
 
+  // The wizard adds the intake step for ANY form it matches, however many questions it holds
+  // (booking-wizard.tsx pushes the step on the form, not on its contents). So a live form with no
+  // questions is an empty page between choosing a time and signing in — a step that asks nothing
+  // and can only be got past. Switch it off instead.
+  if (input.isActive && checked.questions.length === 0) {
+    return {
+      error:
+        "A form with no questions still puts a step in front of your client, asking nothing. " +
+        "Add at least one question, or save this form switched off.",
+    };
+  }
+
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
 

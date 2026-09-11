@@ -48,11 +48,19 @@ interface AuditRow {
  * write a line — and several firm-facing tables do neither.
  */
 const ROW_AUDITED = [
-  "firms", "firm_members", "services", "appointments", "matters", "matter_parties", "updates",
-  "documents", "document_versions", "invoices", "payments", "consent_records", "matter_counsel",
-  "process_service", "courts", "court_vacations", "public_holidays", "lawyer_profiles",
-  "staff_invites", "matter_court_numbers",
+  "firm_members", "services", "appointments", "matters", "matter_parties", "updates",
+  "documents", "invoices", "consent_records", "matter_counsel", "process_service", "courts",
+  "lawyer_profiles", "staff_invites", "matter_court_numbers",
 ];
+
+/**
+ * Audited by the same trigger, but INVISIBLE on this screen. audit_row_change() takes the firm
+ * from the changed row itself, and none of these tables has a firm_id column, so their lines are
+ * written with no firm attached — which this firm-scoped page filters out, and which the read
+ * policy (has_firm_role on firm_id) would refuse anyway. The most surprising one is `firms`: a
+ * change an owner makes on the settings screen leaves no line anybody can read here.
+ */
+const AUDITED_BUT_UNSCOPED = ["firms", "payments", "document_versions", "court_vacations", "public_holidays"];
 
 /** Firm-facing tables with no trigger at all. A change to one of these leaves no line here. */
 const NOT_AUDITED = [
@@ -398,6 +406,17 @@ export default async function AuditPage({
           <p>
             <span className="font-medium text-gray-900">These tables write a line by themselves</span>{" "}
             whenever a row is added, changed or deleted: {ROW_AUDITED.join(", ")}.
+          </p>
+          <p>
+            <span className="font-medium text-gray-900">These are audited, but not where you can
+            read it.</span>{" "}
+            {AUDITED_BUT_UNSCOPED.join(", ")} have no firm on the row, so the line the database
+            writes is not attached to any firm and this screen cannot show it. The one that will
+            catch you out is <span className="font-medium text-gray-900">firms</span>: changing
+            your own name, brand, policies or settlement account on the Settings screen leaves no
+            line here. Docket&rsquo;s own acts on your firm — creating it, verifying it, suspending
+            it, mapping a domain — do appear, because those are written by a function that names
+            the firm.
           </p>
           <p>
             <span className="font-medium text-gray-900">These do not.</span> A change to{" "}

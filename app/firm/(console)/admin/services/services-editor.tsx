@@ -146,6 +146,7 @@ export function ServicesEditor({
   vatRate,
   hasSettlementAccount,
   firmIsActive,
+  policiesPublished,
   services,
   categories,
 }: {
@@ -156,6 +157,8 @@ export function ServicesEditor({
   vatRate: number;
   hasSettlementAccount: boolean;
   firmIsActive: boolean;
+  /** book_appointment() refuses on unpublished policies before it looks at the service at all. */
+  policiesPublished: boolean;
   services: ServiceView[];
   categories: string[];
 }) {
@@ -273,6 +276,8 @@ export function ServicesEditor({
       out.push({ tone: "warn", text: "Switched off: it is not on the booking page at all, and book_appointment() refuses it with “service unavailable”." });
     } else if (!firmIsActive) {
       out.push({ tone: "warn", text: "Switched on, but the firm is not active on Docket yet, so book_appointment() still refuses every booking with “this firm is not taking bookings”." });
+    } else if (!policiesPublished) {
+      out.push({ tone: "warn", text: "Switched on, but this firm has not published its terms and privacy notice, so book_appointment() refuses every booking before it even looks at the service." });
     } else {
       out.push({ tone: "good", text: "Switched on: a client can pick it on the booking page." });
     }

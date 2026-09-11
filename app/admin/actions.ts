@@ -253,6 +253,17 @@ export async function setFirmDomain(_prev: FirmWriteState, formData: FormData): 
   // for a firm that no longer claims it serves a 404, which is harmless. The reverse — a firm
   // claiming a hostname nothing serves — is the broken site this whole ordering exists to avoid.
   if (domain === "") {
+    // What gets deleted from Vercel comes from the DATABASE, never from the form. The hidden
+    // field is the operator's browser telling us what it believed when the page was rendered, and
+    // a card left open while somebody else remaps that hostname to another firm would, on this
+    // click, take the OTHER firm's live site off the project. Read it, then unmap it.
+    const { data: beforeRow } = await supabase
+      .from("firm_admin")
+      .select("custom_domain")
+      .eq("id", firmId)
+      .maybeSingle();
+    const liveDomain = (beforeRow as { custom_domain: string | null } | null)?.custom_domain ?? null;
+
     const { error } = await supabase.rpc("set_firm_domain", {
       p_firm: firmId,
       p_domain: null,
@@ -261,7 +272,8 @@ export async function setFirmDomain(_prev: FirmWriteState, formData: FormData): 
     if (error) return { error: error.message };
     revalidatePath("/admin");
 
-    if (!currentDomain) return { done: "This firm has no custom domain. It is reached at its Docket address." };
+    if (!liveDomain) return { done: "This firm has no custom domain. It is reached at its Docket address." };
+    const currentDomain = liveDomain;
     const removed = await removeDomain(currentDomain);
     if (!removed.ok) {
       return {
@@ -577,6 +589,24 @@ export async function rejectDomainRequest(
   const found = await openRequest(supabase, parsed.data.requestId);
   if ("error" in found) return { error: found.error };
   const row = found.row;
+
+  // A hostname can be mapped straight onto a firm's card without the queue ever being closed, so
+  // an open request may name a domain that is LIVE for somebody. Taking that off Vercel would
+  // stop a real firm's site resolving. Check before touching the provider.
+  const { data: liveOn } = await supabase!
+    .from("firm_admin")
+    .select("id, name, custom_domain")
+    .eq("custom_domain", row.hostname)
+    .maybeSingle();
+  const live = liveOn as { id: string; name: string } | null;
+  if (live) {
+    return {
+      error:
+        `${row.hostname} is live for ${live.name} right now, so this request is stale rather than ` +
+        `refusable — turning it down here would take that firm's site off the Vercel project. ` +
+        `Unmap it on ${live.name}'s card first if that is what you mean to do.`,
+    };
+  }
 
   let providerNotice = "";
   const removed = await removeDomain(row.hostname);

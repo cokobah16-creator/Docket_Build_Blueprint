@@ -94,6 +94,12 @@ export default async function ServicesPage({
       supabase.from("availability_rules").select("lawyer_id", { count: "exact", head: true }).eq("firm_id", firmId),
     ]);
 
+  // book_appointment() refuses on unpublished policies BEFORE it looks at the service, and
+  // create_firm() leaves policies empty, so this is false for every firm the day it is made.
+  // Without this line a firm can see every tick green and still have nobody able to book.
+  const { data: publishedRow } = await supabase.rpc("firm_policies_published", { f: firmId });
+  const policiesPublished = publishedRow === true;
+
   const firm = (firmRow ?? null) as FirmRecord | null;
   const services = (serviceRows ?? []) as unknown as ServiceRecord[];
   const forms = (formRows ?? []) as Array<{ id: string; service_id: string | null; name: string | null; is_active: boolean }>;
@@ -183,6 +189,15 @@ export default async function ServicesPage({
           : firmStatus === "suspended"
             ? "This firm is suspended. book_appointment() refuses every booking with “this firm is not taking bookings”, and the database refuses every write on this screen."
             : "This firm is still awaiting verification by Docket. book_appointment() refuses every booking with “this firm is not taking bookings” until it is active. Everything on this screen can still be set up now.",
+    },
+    {
+      ok: policiesPublished,
+      label: "The terms and privacy notice are published",
+      detail: policiesPublished
+        ? "book_appointment() checks this before anything about the service."
+        : "book_appointment() refuses every booking with “this firm has not published its terms and privacy notice yet”, whatever the catalogue says. A new firm starts here.",
+      href: "/firm/admin/settings",
+      hrefLabel: "Publish the terms and privacy notice",
     },
     {
       ok: activeServices.length > 0,
@@ -300,6 +315,7 @@ export default async function ServicesPage({
         vatRate={vatRate}
         hasSettlementAccount={hasSettlementAccount}
         firmIsActive={firmStatus === "active"}
+        policiesPublished={policiesPublished}
         services={views}
         categories={categories}
       />
