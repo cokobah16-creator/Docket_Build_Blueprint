@@ -57,6 +57,8 @@ src/lib/providers/
   payments/   PaymentProvider — Paystack (all currencies; decision 0002)
   video/      VideoProvider   — Daily (private rooms, knocking, per-user tokens, no recording)
   messaging/  SmsProvider (Termii, Twilio), EmailProvider (Resend)
+src/components/app/  the phone kit — one set of components (card, row, pill, button, switch, tab bar)
+                     over --dk-app-* tokens that globals.css redefines per shell
 src/lib/nigeria.ts   states, +234 normalisation, suit-number shape, court outcomes
 src/lib/firm-data.ts the console's shared reads (context, overview, chase list, matters, availability)
 src/lib/checksum.ts  SHA-256 of an upload, so a served document's checksum is a real one
@@ -70,6 +72,9 @@ app/
   firm/(auth)/security/mfa TOTP enrolment; firm/(console) staff console
   firm/(console)/          today · overview · sittings · matters · clients · invoices · service inbox · availability
   admin/                   platform admin (platform_admins gate; lifecycle only)
+design/
+  home/       the landing-page artboard, its rules, and verify.mjs (Docket's own green and gold)
+  pwa/        the phone artboard: 19 screens across the two shells, in iPhone and Android frames
 scripts/db-test-local.sh
 .env.example
 ```
@@ -121,6 +126,8 @@ Each suite ends with `NOTICE:  ALL CHECKS PASSED` (245 `PASS` lines in total). C
 - **`audit_log` is append-only** for every role except the security-definer `audit()` function.
 - **Timestamps are UTC**; render in the viewer's zone (`profiles.timezone`, default `Africa/Lagos`).
 - **Storage paths carry the tenant**: `documents/{firm_id}/{document_id}/{version_id}.{ext}`, `intake-uploads/{firm_id}/{client_id}/…`, `firm-assets/{firm_id}/…` — the storage policies parse them.
+- **The client app wears the firm's colours; the console wears none.** A client opening `/app` is dealing with their lawyers, so that shell takes `--pri`, `--acc` and its heading face from `firms.brand`. A lawyer opening `/firm` is holding the same working tool whichever firm they opened it for, so the console is fixed neutral and colour in it means one thing only — something is late, unpaid, or waiting on you. Both are built from `src/components/app/` over the `--dk-app-*` tokens in `app/globals.css`; no console token reads a firm token, so a firm cannot repaint the console by choosing a colour. An accent set as *type* goes through `accentInk()` first — a colour picked to be drawn is usually too light to be read (`design/pwa/README.md`).
+- **Nothing private is cached on the device.** `public/sw.js` is network-first for navigations with an offline page as the fallback, and caches no data behind the sign-in: every screen there is somebody's legal matter. The offline banner and the Profile row say what is actually held rather than showing a saved-at time for a cache that does not exist.
 - **No firm is named in code.** Brand, copy, services, policies, courts and statuses are rows; `seed.sql` is data. Platform-wide reference rows (`courts` with `firm_id is null`, `ng_states`, `public_holidays`, `court_vacations`, `platform_admins`) are written with the service role only.
 - **Platform admins never see matter content.** There is no platform policy on matters, documents, messages, updates or invoices — do not add one.
 - **A served firm sees only what was served.** Its only read path is the `service_inbox` view (never the `process_service` row, note, proof or the serving firm's `documents` row) and the exact document **version** served (`can_access_document_version`, which the storage policy also uses) — never the matter, roster, timeline or later versions. Platform service needs the other firm's opt-in (`firms.accepts_platform_service`); an originating process needs counsel's undertaking (`matter_counsel.accepts_service`) or an order for substituted service; platform service is timestamped by the platform; a wrong service is withdrawn with `revoke_service()`. The in-app acknowledgement is evidence of receipt: where the rules require an affidavit of service (personal, bailiff, substituted service) it supports that affidavit; where counsel has undertaken to accept service, keep the endorsed acknowledgement as the proof the court expects.
