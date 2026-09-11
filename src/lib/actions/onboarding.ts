@@ -3,7 +3,8 @@
 // The checklist's two writes and the import's five, as the signed-in owner or admin.
 //
 // Rules enforced here: the database is the authorization layer — skip_onboarding_step(),
-// resume_onboarding_step() and process_import_batch() ask admin_w(firm) themselves, and the two
+// resume_onboarding_step(), process_import_batch(), preview_import_duplicates() and
+// discard_import_batch() ask admin_w(firm) themselves, and the two
 // table writes (import_batches, import_rows) run under policies that ask the same; no service
 // key is used; refusals are the database's own words. An INSERT never uses .select(): ids are
 // minted here with crypto.randomUUID() and read back separately. Nothing here interprets a CSV
@@ -87,7 +88,11 @@ export async function stageImportRows(batchId: string, firmId: string, rows: Arr
   if (!uuid.safeParse(batchId).success || !uuid.safeParse(firmId).success) return { error: "Unknown import." };
   if (rows.length === 0 || rows.length > 200) return { error: "Stage between 1 and 200 rows at a time." };
   const parsed = z.array(rowSchema).safeParse(rows);
-  if (!parsed.success) return { error: "A row could not be read." };
+  if (!parsed.success) {
+    const at = Number(parsed.error.issues[0]?.path?.[0] ?? 0);
+    const rowNo = rows[at]?.row_no ?? at + 1;
+    return { error: `Row ${rowNo} could not be read — a cell is longer than 8,000 characters.` };
+  }
   const allowed = new Set<string>(IMPORT_FIELDS);
   const clean = parsed.data.map((r) => ({
     id: crypto.randomUUID(),
@@ -100,7 +105,22 @@ export async function stageImportRows(batchId: string, firmId: string, rows: Arr
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
   const { error } = await supabase.from("import_rows").insert(clean);
+  // A chunk is one insert: either it all landed or none of it did. A duplicate (batch, row_no) means
+  // the chunk landed and the reply was lost, so the retry is done.
+  if (error && error.code === "23505") return undefined;
   if (error) return { error: error.message };
+  return undefined;
+}
+
+/** A batch whose staging never finished has filed nothing and can go. One that has begun filing stays. */
+export async function discardImportBatch(batchId: string): Promise<Err> {
+  if (!uuid.safeParse(batchId).success) return { error: "Unknown import." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error } = await supabase.rpc("discard_import_batch", { p_batch: batchId });
+  if (error) return { error: error.message };
+  refresh();
+  revalidatePath(`/firm/admin/import/${batchId}`);
   return undefined;
 }
 
@@ -135,8 +155,11 @@ export interface DuplicateHit { row_no: number; reason: string; reference: strin
 
 /**
  * Before staging: which rows already look like a matter on the books — same old file number,
- * same suit number, or the same cause title. Read under RLS as the signed-in admin, so only this
- * firm's matters are compared. A hit is a warning for the person, not a decision.
+ * same suit number, or the same cause title. preview_import_duplicates() compares in the
+ * database with the values as parameters (never in a URL, so a file of a thousand suit numbers or
+ * a title with a quote in it is like any other), under the signed-in admin's own rights, so only
+ * this firm's matters — and only the ones they can see — are compared. A hit is a warning for
+ * the person, not a decision.
  */
 export async function previewImportDuplicates(
   firmId: string,
@@ -145,23 +168,23 @@ export async function previewImportDuplicates(
   if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
-  const legacy = Array.from(new Set(rows.map((r) => (r.legacy_reference ?? "").trim()).filter(Boolean))).slice(0, 2000);
-  const suits = Array.from(new Set(rows.map((r) => (r.suit_number ?? "").trim()).filter(Boolean))).slice(0, 2000);
-  const causes = Array.from(new Set(rows.map((r) => (r.cause_title ?? "").trim().toLowerCase()).filter(Boolean))).slice(0, 2000);
-  const [byLegacy, bySuit, byCause] = await Promise.all([
-    legacy.length ? supabase.from("matters").select("reference, legacy_reference").eq("firm_id", firmId).is("deleted_at", null).in("legacy_reference", legacy) : Promise.resolve({ data: [] as Array<{ reference: string; legacy_reference: string | null }>, error: null }),
-    suits.length ? supabase.from("matters").select("reference, suit_number").eq("firm_id", firmId).is("deleted_at", null).in("suit_number", suits) : Promise.resolve({ data: [] as Array<{ reference: string; suit_number: string | null }>, error: null }),
-    causes.length ? supabase.from("matters").select("reference, cause_title").eq("firm_id", firmId).is("deleted_at", null).not("cause_title", "is", null).limit(2000) : Promise.resolve({ data: [] as Array<{ reference: string; cause_title: string | null }>, error: null }),
-  ]);
-  const err = byLegacy.error ?? bySuit.error ?? byCause.error;
-  if (err) return { error: err.message };
-  const legacyMap = new Map(((byLegacy.data ?? []) as Array<{ reference: string; legacy_reference: string | null }>).map((m) => [m.legacy_reference ?? "", m.reference]));
-  const suitMap = new Map(((bySuit.data ?? []) as Array<{ reference: string; suit_number: string | null }>).map((m) => [m.suit_number ?? "", m.reference]));
-  const causeMap = new Map(((byCause.data ?? []) as Array<{ reference: string; cause_title: string | null }>).map((m) => [(m.cause_title ?? "").trim().toLowerCase(), m.reference]));
+  if (rows.length > 5000) return { error: "An import carries at most 5,000 rows." };
+  const legacy = Array.from(new Set(rows.map((r) => (r.legacy_reference ?? "").trim()).filter(Boolean)));
+  const suits = Array.from(new Set(rows.map((r) => (r.suit_number ?? "").trim().toLowerCase()).filter(Boolean)));
+  const causes = Array.from(new Set(rows.map((r) => (r.cause_title ?? "").trim().toLowerCase()).filter(Boolean)));
+  if (legacy.length + suits.length + causes.length === 0) return { hits: [] };
+  const { data, error } = await supabase.rpc("preview_import_duplicates", {
+    p_firm: firmId, p_legacy: legacy.length ? legacy : null, p_suits: suits.length ? suits : null, p_causes: causes.length ? causes : null,
+  });
+  if (error) return { error: error.message };
+  const found = (data ?? []) as Array<{ kind: "legacy" | "suit" | "cause"; matched: string | null; reference: string }>;
+  const legacyMap = new Map(found.filter((f) => f.kind === "legacy").map((f) => [f.matched ?? "", f.reference]));
+  const suitMap = new Map(found.filter((f) => f.kind === "suit").map((f) => [(f.matched ?? "").toLowerCase(), f.reference]));
+  const causeMap = new Map(found.filter((f) => f.kind === "cause").map((f) => [(f.matched ?? "").toLowerCase(), f.reference]));
   const hits: DuplicateHit[] = [];
   for (const r of rows) {
     const l = (r.legacy_reference ?? "").trim();
-    const s = (r.suit_number ?? "").trim();
+    const s = (r.suit_number ?? "").trim().toLowerCase();
     const c = (r.cause_title ?? "").trim().toLowerCase();
     if (l && legacyMap.has(l)) hits.push({ row_no: r.row_no, reason: `file ${l} is already on Docket`, reference: legacyMap.get(l)! });
     else if (s && suitMap.has(s)) hits.push({ row_no: r.row_no, reason: `suit ${s} is already on Docket`, reference: suitMap.get(s)! });

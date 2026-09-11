@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { MATTER_TYPES } from "@/lib/db/types";
 import { TemplateDownload } from "./template-download";
 
 export const metadata = { title: "Import template" };
@@ -9,7 +10,7 @@ export const metadata = { title: "Import template" };
 const COLUMNS: Array<[string, string]> = [
   ["title", "Working title — what the firm calls the file. Required."],
   ["cause_title", "The caption on the process: Okonkwo v Eze & 2 Ors."],
-  ["type", "litigation, property, corporate, estate, family, employment, debt_recovery, ip, regulatory, immigration, advisory or other. Blank means other."],
+  ["type", `${MATTER_TYPES.slice(0, -1).join(", ")} or ${MATTER_TYPES[MATTER_TYPES.length - 1]}. Blank means other.`],
   ["status", "One of your firm's status keys or labels (new_inquiry, in_progress, filed, hearing, closed …). Blank means new inquiry. An unknown status refuses the row."],
   ["court", "The court's name. Matched to the directory exactly; otherwise kept as text on the matter."],
   ["suit_number", "As the registry assigned it."],

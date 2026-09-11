@@ -19,7 +19,7 @@ import { useMemo, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { parseCsv, type CsvTable } from "@/lib/csv";
-import { createImportBatch, previewImportDuplicates, processImportBatch, stageImportRows, IMPORT_FIELDS, type DuplicateHit, type ImportField } from "@/lib/actions/onboarding";
+import { createImportBatch, discardImportBatch, previewImportDuplicates, processImportBatch, stageImportRows, IMPORT_FIELDS, type DuplicateHit, type ImportField } from "@/lib/actions/onboarding";
 import { MATTER_TYPES } from "@/lib/db/types";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -48,40 +48,51 @@ const FIELD_LABELS: Record<ImportField, { label: string; hint: string; required?
   next_action: { label: "Next action", hint: "" },
 };
 
-/** Header words a spreadsheet tends to use, to the column they mean. Matched after lower-casing. */
+/**
+ * Header words a spreadsheet tends to use, to the column they mean. Matched after lower-casing,
+ * in this order, each header taken once: the other side's columns are claimed first so that
+ * "Opposing Parties" is never the cause title, and "Opposing Counsel" — the other side's lawyer,
+ * which no column here means — is claimed by nobody. Word-anchored where a looser match would
+ * take the wrong column ("Case Notes" is not a case number).
+ */
 const SYNONYMS: Array<[RegExp, ImportField]> = [
+  [/^(?!.*(counsel|lawyer|solicitor))(?=.*(oppos|defendant|respondent|other side|adverse|against))/, "opposing_party"],
   [/^(working )?title$|^matter( name)?$|^file( name)?$/, "title"],
-  [/cause|parties|caption|versus/, "cause_title"],
+  [/cause|\bparties\b|caption|versus/, "cause_title"],
   [/^type|matter type|category/, "type"],
   [/status|stage/, "status"],
   [/^court/, "court"],
-  [/suit|case no|case number/, "suit_number"],
+  [/suit|\bcase (no|number|#)\b/, "suit_number"],
   [/division|district/, "judicial_division"],
   [/originat/, "originating_lawyer"],
-  [/handling|conduct|lawyer|counsel|fee earner|assigned/, "handling_lawyer"],
+  [/^(?!.*oppos)(?=.*(handling|conduct|lawyer|counsel|fee earner|assigned))/, "handling_lawyer"],
   [/opened|date opened|start|commenced|instructed/, "opened_on"],
   [/closed|concluded|date closed|ended/, "closed_on"],
-  [/file no|file number|ref(erence)?( no)?$|our ref/, "legacy_reference"],
+  [/\bfile (no|number|#)\b|\bref(erence)?( no)?$|our ref/, "legacy_reference"],
   [/client.*(phone|tel|mobile|gsm)|^(phone|tel|mobile|gsm)/, "client_phone"],
   [/client.*(e-?mail)|^e-?mail/, "client_email"],
   [/client/, "client_name"],
-  [/oppos|defendant|respondent|other side|adverse|against/, "opposing_party"],
-  [/desc|note|summary|brief|about/, "description"],
+  [/desc|\bnotes?\b|summary|brief|about/, "description"],
   [/next action|to do|action/, "next_action"],
 ];
 
-function autoMap(headers: string[]): Partial<Record<ImportField, string>> {
-  const out: Partial<Record<ImportField, string>> = {};
-  const taken = new Set<string>();
+/** Columns are addressed by index, never by name: two columns with the same header stay two columns. */
+function autoMap(headers: string[]): Partial<Record<ImportField, number>> {
+  const out: Partial<Record<ImportField, number>> = {};
+  const taken = new Set<number>();
   for (const [re, f] of SYNONYMS) {
-    if (out[f]) continue;
-    const h = headers.find((x) => x && !taken.has(x) && re.test(x.toLowerCase()));
-    if (h) { out[f] = h; taken.add(h); }
+    if (out[f] !== undefined) continue;
+    const i = headers.findIndex((x, ix) => x && !taken.has(ix) && re.test(x.toLowerCase()));
+    if (i >= 0) { out[f] = i; taken.add(i); }
   }
   return out;
 }
 
-const DAY = /^(\d{4}-\d{2}-\d{2}|\d{1,2}[/.-]\d{1,2}[/.-]\d{4})$/;
+// The same shapes import_day() and import_phone_key() accept (migration 34), so a warning here is
+// a refusal there and nothing warned here is filed quietly.
+const DAY = /^(\d{4}-\d{2}-\d{2}([ T].*)?|\d{1,2}[/.-]\d{1,2}[/.-]\d{4})$/;
+const PHONE = /^(\+2340\d{10}|2340\d{10}|\+[1-9]\d{7,14}|\+0\d{10}|0\d{10}|234\d{10}|[1-9]\d{9})$/;
+const CELL_MAX = 8000;
 
 export interface StaffOption { user_id: string; label: string; email: string | null; full_name: string | null }
 
@@ -98,7 +109,10 @@ export function ImportWizard({
   const router = useRouter();
   const [fileName, setFileName] = useState("");
   const [table, setTable] = useState<CsvTable | null>(null);
-  const [mapping, setMapping] = useState<Partial<Record<ImportField, string>>>({});
+  const [mapping, setMapping] = useState<Partial<Record<ImportField, number>>>({});
+  // A batch begun and not yet fully staged: retried into, never recreated, until it is filed or discarded.
+  const [batch, setBatch] = useState<{ id: string; staged: number } | null>(null);
+  const [discarding, setDiscarding] = useState(false);
   const [skips, setSkips] = useState<Set<number>>(new Set());
   const [dupes, setDupes] = useState<Map<number, DuplicateHit>>(new Map());
   const [checking, setChecking] = useState(false);
@@ -124,6 +138,8 @@ export function ImportWizard({
       setMapping(autoMap(t.headers));
       setSkips(new Set());
       setDupes(new Map());
+      setBatch(null);
+      setProgress(null);
       setPhase("map");
     };
     reader.onerror = () => setError("The file could not be read.");
@@ -133,13 +149,12 @@ export function ImportWizard({
   /** The row as the database will see it: mapped columns only, text as typed. */
   const mapped = useMemo(() => {
     if (!table) return [] as Array<{ row_no: number; raw: Record<string, string> }>;
-    const idx = new Map(table.headers.map((h, i) => [h, i]));
     return table.rows.map((cells, i) => {
       const raw: Record<string, string> = {};
       for (const f of IMPORT_FIELDS) {
-        const h = mapping[f];
-        if (!h) continue;
-        const v = cells[idx.get(h) ?? -1] ?? "";
+        const col = mapping[f];
+        if (col === undefined) continue;
+        const v = cells[col] ?? "";
         if (v.trim()) raw[f] = v.trim();
       }
       return { row_no: i + 1, raw };
@@ -155,7 +170,8 @@ export function ImportWizard({
     if (raw.originating_lawyer && !staffKeys.has(raw.originating_lawyer.toLowerCase())) out.push(`"${raw.originating_lawyer}" is not a member of the firm`);
     if (raw.opened_on && !DAY.test(raw.opened_on)) out.push(`"${raw.opened_on}" is not a readable day`);
     if (raw.closed_on && !DAY.test(raw.closed_on)) out.push(`"${raw.closed_on}" is not a readable day`);
-    if (raw.client_phone && !/^[+0-9][0-9 ()-]{6,}$/.test(raw.client_phone)) out.push("the phone number does not look like one");
+    if (raw.client_phone && !PHONE.test(raw.client_phone.replace(/[^0-9+]/g, ""))) out.push(`the phone "${raw.client_phone}" is not readable — use 0803 000 0000 or +234…; the client will not be invited`);
+    for (const [k, v] of Object.entries(raw)) if (v.length > CELL_MAX) { out.push(`${FIELD_LABELS[k as ImportField]?.label ?? k} is longer than 8,000 characters — the row will be refused`); break; }
     if (raw.client_email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw.client_email)) out.push("the email address does not look like one");
     if (raw.client_name && !raw.client_phone && !raw.client_email) out.push("a client is named but has no phone or email — they cannot be invited from here");
     return out;
@@ -163,41 +179,87 @@ export function ImportWizard({
 
   async function toPreview() {
     setError(null);
-    if (!mapping.title) { setError("Say which column is the working title — a matter needs one."); return; }
+    if (mapping.title === undefined) { setError("Say which column is the working title — a matter needs one."); return; }
     setChecking(true);
-    const r = await previewImportDuplicates(firmId, mapped.map((m) => ({ row_no: m.row_no, legacy_reference: m.raw.legacy_reference, suit_number: m.raw.suit_number, cause_title: m.raw.cause_title })));
-    setChecking(false);
-    if ("error" in r) { setError(r.error); return; }
-    const d = new Map(r.hits.map((h) => [h.row_no, h]));
-    setDupes(d);
-    setSkips(new Set(r.hits.map((h) => h.row_no)));
-    setPhase("preview");
+    try {
+      const r = await previewImportDuplicates(firmId, mapped.map((m) => ({ row_no: m.row_no, legacy_reference: m.raw.legacy_reference, suit_number: m.raw.suit_number, cause_title: m.raw.cause_title })));
+      if ("error" in r) { setError(r.error); return; }
+      const d = new Map(r.hits.map((h) => [h.row_no, h]));
+      setDupes(d);
+      setSkips(new Set(r.hits.map((h) => h.row_no)));
+      setPhase("preview");
+    } catch {
+      setError("The check against the books did not come back — the connection may have dropped. Try again.");
+    } finally {
+      setChecking(false);
+    }
   }
 
+  /**
+   * Stage, then file. A batch is created once; if staging stops, the same batch is resumed from
+   * the first chunk that did not land (a chunk is one insert — all of it or none), because
+   * process_import_batch() files nothing until every row is in. If filing stops, the result
+   * page continues it.
+   */
   async function run() {
     if (!table) return;
     setError(null);
-    setPhase("running");
     const total = mapped.length;
-    setProgress({ staged: 0, processed: 0, total });
-    const created = await createImportBatch(firmId, fileName, total);
-    if ("error" in created) { setError(created.error); setPhase("preview"); return; }
-    for (let i = 0; i < mapped.length; i += 200) {
-      const chunk = mapped.slice(i, i + 200).map((m) => ({ ...m, skip: skips.has(m.row_no) }));
-      const staged = await stageImportRows(created.batchId, firmId, chunk);
-      if (staged?.error) { setError(`Staging stopped at row ${i + 1}: ${staged.error}`); setPhase("preview"); return; }
-      setProgress({ staged: Math.min(total, i + 200), processed: 0, total });
+    const overlong = mapped.find((m) => !skips.has(m.row_no) && Object.values(m.raw).some((v) => v.length > CELL_MAX));
+    if (overlong) { setError(`Row ${overlong.row_no} has a cell longer than 8,000 characters — shorten it in the file, or tick the row out.`); return; }
+    setPhase("running");
+    let b = batch;
+    try {
+      if (!b) {
+        const created = await createImportBatch(firmId, fileName, total);
+        if ("error" in created) { setError(created.error); setPhase("preview"); return; }
+        b = { id: created.batchId, staged: 0 };
+        setBatch(b);
+      }
+      setProgress({ staged: b.staged, processed: 0, total });
+      for (let i = b.staged; i < mapped.length; i += 200) {
+        const chunk = mapped.slice(i, i + 200).map((m) => ({ ...m, skip: skips.has(m.row_no) }));
+        const staged = await stageImportRows(b.id, firmId, chunk);
+        if (staged?.error) {
+          setError(`Staging stopped at row ${i + 1} of ${total}: ${staged.error} Nothing is filed until every row is in — retry to continue from there, or discard this batch.`);
+          setPhase("preview"); return;
+        }
+        b = { ...b, staged: Math.min(total, i + 200) };
+        setBatch(b);
+        setProgress({ staged: b.staged, processed: 0, total });
+      }
+    } catch {
+      setError(`The connection dropped while staging${b ? ` — ${b.staged} of ${total} rows are in` : ""}. Nothing is filed until every row is in — retry to continue from there, or discard this batch.`);
+      setPhase("preview"); return;
     }
-    let done = 0;
-    for (let guard = 0; guard < 1000; guard += 1) {
-      const r = await processImportBatch(created.batchId, 50);
-      if ("error" in r) { setError(r.error); break; }
-      done += r.processed;
-      setProgress({ staged: total, processed: done, total });
-      if (r.remaining === 0 || r.processed === 0) break;
+    try {
+      let done = 0;
+      for (let guard = 0; guard < 1000; guard += 1) {
+        const r = await processImportBatch(b.id, 50);
+        if ("error" in r) { setError(r.error); break; }
+        done += r.processed;
+        setProgress({ staged: total, processed: done, total });
+        if (r.remaining === 0 || r.processed === 0) break;
+      }
+    } catch {
+      // Every row is in; the result page shows what was filed and continues the rest.
     }
-    router.push(`/firm/admin/import/${created.batchId}`);
+    router.push(`/firm/admin/import/${b.id}`);
     router.refresh();
+  }
+
+  async function discard() {
+    if (!batch) return;
+    setDiscarding(true); setError(null);
+    try {
+      const r = await discardImportBatch(batch.id);
+      if (r?.error) { setError(r.error); return; }
+      setBatch(null); setProgress(null);
+    } catch {
+      setError("The batch could not be discarded — the connection may have dropped. Try again, or discard it from the imports list.");
+    } finally {
+      setDiscarding(false);
+    }
   }
 
   // ------------------------------------------------------------- render
@@ -247,9 +309,9 @@ export function ImportWizard({
                   {FIELD_LABELS[f].label}{FIELD_LABELS[f].required && <span className="text-red-700"> *</span>}
                 </label>
                 {FIELD_LABELS[f].hint && <p className="text-xs text-gray-500">{FIELD_LABELS[f].hint}</p>}
-                <select id={`map-${f}`} value={mapping[f] ?? ""} onChange={(e) => setMapping((m) => ({ ...m, [f]: e.target.value || undefined }))} className={field}>
+                <select id={`map-${f}`} value={mapping[f] === undefined ? "" : String(mapping[f])} onChange={(e) => setMapping((m) => ({ ...m, [f]: e.target.value === "" ? undefined : Number(e.target.value) }))} className={field}>
                   <option value="">Not imported</option>
-                  {table.headers.map((h, i) => h && <option key={`${h}-${i}`} value={h}>{h}</option>)}
+                  {table.headers.map((h, i) => h && <option key={`${h}-${i}`} value={String(i)}>{h}{table.headers.filter((x) => x === h).length > 1 ? ` (column ${i + 1})` : ""}</option>)}
                 </select>
               </div>
             ))}
@@ -274,9 +336,15 @@ export function ImportWizard({
           {error && <Alert kind="error">{error}</Alert>}
           <p className="text-sm text-gray-700">
             <strong>{inCount}</strong> of {rows.length} rows will be filed{dupes.size > 0 ? `; ${dupes.size} ticked out because they already look like a matter on the books` : ""}
-            {warned > 0 ? `; ${warned} carry a warning and will be refused by the database with its reason unless you tick them out` : ""}.
+            {warned > 0 ? `; ${warned} carry a warning — the database checks the same things and refuses such a row with its reason recorded, unless you tick it out` : ""}.
             Each row is filed on its own: one bad row never stops the rest.
           </p>
+          {batch && phase !== "running" && (
+            <Alert kind="warning" title={`${batch.staged} of ${rows.length} rows are staged in a batch that is not finished`}>
+              Nothing has been filed from it. Retry continues from row {batch.staged + 1} into the same batch; discard it to start again. The columns cannot be changed while it stands.
+              <div className="mt-2"><Button type="button" size="sm" variant="ghost" disabled={discarding} onClick={() => void discard()}>{discarding ? "Discarding…" : "Discard this batch"}</Button></div>
+            </Alert>
+          )}
           {phase === "running" && progress && (
             <Alert kind="info" title="Filing…">
               Staged {progress.staged} of {progress.total}; filed {progress.processed} of {progress.total}. Stay on this page.
@@ -311,8 +379,8 @@ export function ImportWizard({
             </table>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button type="button" size="lg" onClick={() => void run()} disabled={phase === "running" || inCount === 0}>{phase === "running" ? "Filing…" : `File ${inCount} ${inCount === 1 ? "matter" : "matters"}`}</Button>
-            <Button type="button" variant="ghost" disabled={phase === "running"} onClick={() => setPhase("map")}>Back to the columns</Button>
+            <Button type="button" size="lg" onClick={() => void run()} disabled={phase === "running" || discarding || inCount === 0}>{phase === "running" ? "Filing…" : batch ? "Retry from where it stopped" : `File ${inCount} ${inCount === 1 ? "matter" : "matters"}`}</Button>
+            <Button type="button" variant="ghost" disabled={phase === "running" || batch !== null} onClick={() => setPhase("map")}>Back to the columns</Button>
           </div>
         </CardBody>
       </Card>

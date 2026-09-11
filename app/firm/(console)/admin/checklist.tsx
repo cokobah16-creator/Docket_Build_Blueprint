@@ -30,8 +30,8 @@ export function steps(r: FirmReadiness): Step[] {
     { key: "policies", label: "Publish your terms and privacy notice", done: r.policies_published,
       why: "Every booking is refused until both are published. New clients accept them before they use their portal.",
       href: "/firm/admin/settings", action: "Publish the policies", skippable: false },
-    { key: "operations", label: `Confirm the reference prefix (${r.reference_prefix}), VAT and timezone`, done: r.reference_issued,
-      why: r.reference_issued ? "" : "The prefix locks at the first reference issued — check it before the first matter, and before an import.",
+    { key: "operations", label: `The reference prefix (${r.reference_prefix}) is in use`, done: r.reference_issued,
+      why: r.reference_issued ? "" : "It locks at the first reference issued. Check it, the VAT rate and the timezone before the first matter, and before an import.",
       href: "/firm/admin/settings", action: "Open operations", skippable: true },
     { key: "people", label: "Invite your colleagues, and a second owner", done: r.members > 1 && r.owners > 1,
       why: r.members <= 1 ? "You are the only member. Nobody else can act for the firm, and one owner cannot be stood down." : "One owner: if they leave, nobody can appoint another.",
@@ -39,16 +39,18 @@ export function steps(r: FirmReadiness): Step[] {
     { key: "profile", label: "Publish at least one practitioner profile", done: r.public_lawyers > 0,
       why: "The booking page lists nobody to book with until a lawyer publishes their profile from Me.",
       href: "/firm/me", action: "Open Me", skippable: false },
-    { key: "availability", label: "Set a lawyer's working week", done: r.availability_rules > 0,
-      why: "No hours, no times to offer — the wizard shows nothing whatever the catalogue says.",
+    { key: "availability", label: "Set a public lawyer's working week", done: r.public_lawyers_with_hours > 0,
+      why: r.availability_rules > 0 && r.public_lawyers > 0
+        ? "Hours are set and a profile is public, but not on the same lawyer: the booking page lists a lawyer it can offer no time for."
+        : "No hours, no times to offer — the wizard shows nothing whatever the catalogue says.",
       href: "/firm/availability", action: "Set availability", skippable: false },
     { key: "services", label: "Price a service and switch it on", done: r.active_services > 0,
       why: "Nothing is bookable. Every firm starts with one unpriced consultation, switched off.",
       href: "/firm/admin/services", action: "Open the catalogue", skippable: false },
     { key: "settlement", label: "Enter the Paystack settlement account", done: r.settlement_account,
       why: r.needs_settlement
-        ? "A service switched on asks for payment first, and every booking of it is refused until the account is set."
-        : "Not needed yet: nothing switched on asks for payment up front. Needed the day a priced, prepaid service is on.",
+        ? "A priced service is on. Every booking of it raises an invoice, and an invoice is paid through Docket only into this account; a service that asks for payment first is refused at booking until it is set."
+        : "Not needed yet: nothing switched on is priced. Needed the day a priced service is on.",
       href: "/firm/admin/settings", action: "Set the settlement account", skippable: true },
     { key: "intake", label: "Write the booking questions", done: r.intake_forms > 0,
       why: "Without a form a client books with nothing but their name and the time.",
@@ -59,8 +61,10 @@ export function steps(r: FirmReadiness): Step[] {
     { key: "service_of_process", label: "Record the address for service", done: r.address_for_service,
       why: "Other firms cannot serve you through Docket, and the process you serve carries no return address.",
       href: "/firm/admin/settings", action: "Open service of process", skippable: true },
-    { key: "import", label: "Bring your existing matters in", done: r.matters > 0,
-      why: "Nothing is on the books yet. Import a spreadsheet, or open the first matter by hand.",
+    { key: "import", label: "Bring your existing matters in", done: r.imports_processed > 0,
+      why: r.matters > 0
+        ? `${r.matters} ${r.matters === 1 ? "matter is" : "matters are"} on the books, none by import. Import a spreadsheet, or skip this if there is nothing to bring in.`
+        : "Nothing is on the books yet. Import a spreadsheet, or open the first matter by hand and skip this.",
       href: "/firm/admin/import", action: "Import a spreadsheet", skippable: true },
     { key: "domain", label: "Ask for your own web address", done: Boolean(r.custom_domain),
       why: r.domain_request ? `Requested; Docket is ${r.domain_request}.` : `Your site answers at /${r.slug}. Optional.`,

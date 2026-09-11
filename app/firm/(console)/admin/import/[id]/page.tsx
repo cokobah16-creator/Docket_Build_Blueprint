@@ -14,7 +14,7 @@ import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import type { ImportBatchRow, ImportRowRecord } from "@/lib/db/types";
 import { CopyButton } from "../../../matters/[id]/matter-tabs";
-import { ContinueImport, ResultsDownload } from "./results-actions";
+import { ContinueImport, DiscardImport, ResultsDownload } from "./results-actions";
 
 export const metadata = { title: "Import results" };
 
@@ -55,7 +55,12 @@ export default async function ImportResultPage({ params, searchParams }: { param
   const skipped = rows.filter((r) => r.outcome === "skipped").length;
   const failed = rows.filter((r) => r.outcome === "failed").length;
   const pending = rows.filter((r) => !r.processed_at).length;
-  const invited = rows.filter((r) => r.invite_id).length;
+  const begun = rows.some((r) => r.processed_at);
+  // Staged in chunks from the browser; a batch short of its rows has filed nothing and
+  // process_import_batch() refuses it — so it is said, not continued.
+  const unstaged = Math.max(0, batch.row_count - rows.length);
+  const toSend = rows.filter((r) => r.invite_id && !invites.get(r.invite_id)?.accepted_by).length;
+  const accepted = rows.filter((r) => r.invite_id && invites.get(r.invite_id)?.accepted_by).length;
   const notInvited = rows.filter((r) => r.note?.startsWith("client not invited")).length;
 
   const results = rows.map((r) => [r.row_no, r.raw.title ?? "", r.raw.legacy_reference ?? "", r.outcome ?? "pending", r.matter_id ? matters.get(r.matter_id)?.reference ?? "" : "", r.note ?? ""]);
@@ -71,7 +76,14 @@ export default async function ImportResultPage({ params, searchParams }: { param
         </p>
       </header>
 
-      {pending > 0 && (
+      {unstaged > 0 && !begun && (
+        <Alert kind="warning" title={`${rows.length} of ${batch.row_count} rows arrived; the rest never did`}>
+          The file was being staged when the connection dropped, and nothing has been filed from this batch. Open the file again in the
+          import wizard to bring it in, and discard this batch.
+          <div className="mt-2"><DiscardImport batchId={batch.id} /></div>
+        </Alert>
+      )}
+      {unstaged === 0 && pending > 0 && (
         <Alert kind="warning" title={`${pending} ${pending === 1 ? "row is" : "rows are"} still waiting`}>
           The filing stopped before the end. Continue it here; rows already filed are not filed again.
           <div className="mt-2"><ContinueImport batchId={batch.id} /></div>
@@ -83,11 +95,12 @@ export default async function ImportResultPage({ params, searchParams }: { param
         <CardBody>
           <dl className="grid gap-3 sm:grid-cols-3">
             {([
-              ["Rows in the file", rows.length],
+              ["Rows in the file", batch.row_count],
               ["Matters filed", created],
               ["Left out", skipped],
               ["Refused", failed],
-              ["Invitations to send", invited],
+              ["Invitations to send", toSend],
+              ["Accepted", accepted],
               ["Clients not invited", notInvited],
             ] as Array<[string, number]>).map(([k, v]) => (
               <div key={k} className="rounded-lg border border-gray-200 px-3 py-2">
@@ -100,7 +113,7 @@ export default async function ImportResultPage({ params, searchParams }: { param
         </CardBody>
       </Card>
 
-      {invited > 0 && (
+      {toSend + accepted > 0 && (
         <Card>
           <CardHeader title="Send each client their link" />
           <CardBody className="space-y-3">

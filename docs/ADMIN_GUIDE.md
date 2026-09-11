@@ -23,7 +23,14 @@ note; that is kept in the audit trail with your name, and the step can be put ba
 
 Two steps only a practitioner can do themselves: their **profile** on the firm's site (from
 **Me**, with the switch that lets clients book them) and their **working week** (from
-Availability). The booking page lists nobody until at least one profile is public and has hours.
+Availability). Both on the same lawyer: the booking page lists public profiles and offers the
+times on that lawyer's own week, so hours on one colleague and a public profile on another give a
+visitor a name and no time. The checklist counts only lawyers who have both.
+
+**Payment-ready** means invoices can be paid: any priced service that is on raises an invoice at
+booking, and an invoice is paid through Docket only into the settlement account — a service that
+asks for payment first is refused at booking until the account is set, one paid afterwards is
+booked and its invoice waits. Set the step aside only if you truly take every payment in chambers.
 
 ## Bringing existing matters in
 
@@ -31,8 +38,9 @@ Availability). The booking page lists nobody until at least one profile is publi
 each column means, the screen shows what will happen row by row — an unknown status, a lawyer
 who is not a member, an unreadable date, a file that already looks like a matter on the books —
 and then the database files them a batch at a time, each row on its own, so one bad row never
-stops the rest. The result page is the reconciliation: how many filed, left out, refused, clients
-linked, invitations to send; every row with its reason; and a results file to download.
+stops the rest. The result page is the reconciliation: how many filed, left out, refused,
+invitations to send and accepted, clients not invited; every row with its reason; and a results
+file to download.
 
 - **Dates are kept.** `opened_on` and `closed_on` are the days on the file, not today. Your old
   file number is kept beside the Docket reference, and the same number is never imported twice.
@@ -45,6 +53,14 @@ linked, invitations to send; every row with its reason; and a results file to do
   the client sees the timeline as the firm keeps it once they join.
 - **With conflict checks required**, every matter comes in and no invitation is made until a check
   on that matter is cleared; the row says so, and you invite from the matter once it is.
+- **A phone Docket cannot read is said, not guessed.** `0803 000 0000` or `+234…` are read; a
+  number a digit short, or a landline, is kept in the row's note as *client not invited* so you
+  can invite them from the matter with the right number.
+- **If the connection drops while the file is going up**, nothing is filed: the database refuses
+  to file a batch it has not seen whole. The wizard offers **Retry from where it stopped** into
+  the same batch, or **Discard this batch**; an unfinished batch on the imports list says how many
+  rows arrived and offers the same discard. A batch that has begun filing is never discarded — it
+  is the record.
 
 Only an owner or an administrator can import. The columns are listed, with a template, at
 `/firm/admin/import/template`.

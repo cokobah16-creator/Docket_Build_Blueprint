@@ -99,9 +99,12 @@ export default async function ServicesPage({
   // create_firm() leaves policies empty, so this is false for every firm the day it is made.
   // Without this line a firm can see every tick green and still have nobody able to book.
   // One truth with the admin overview: firm_readiness() asks the gates in the engine's order.
-  const { data: readinessRow } = await supabase.rpc("firm_readiness", { p_firm: firmId });
+  const { data: readinessRow, error: readinessError } = await supabase.rpc("firm_readiness", { p_firm: firmId });
   const readiness = (readinessRow ?? null) as FirmReadiness | null;
   const policiesPublished = readiness?.policies_published === true;
+  // A failed read is said, never rendered as "not published": that sentence would be a false
+  // statement about the engine for a firm whose policies are published.
+  const readinessUnread = readiness ? null : (readinessError?.message ?? "firm_readiness() returned nothing.");
 
   const firm = (firmRow ?? null) as FirmRecord | null;
   const services = (serviceRows ?? []) as unknown as ServiceRecord[];
@@ -178,7 +181,10 @@ export default async function ServicesPage({
   const activeServices = views.filter((s) => s.isActive);
   const publicLawyers = readiness?.public_lawyers ?? lawyers.filter((l) => l.is_public).length;
   const availabilityRules = readiness?.availability_rules ?? availability.count ?? 0;
-  const prepaidWithoutAccount = activeServices.some((s) => s.priceMinor > 0 && s.requiresPrepayment);
+  // The engine needs both on the same lawyer; without firm_readiness() only the two counts are known.
+  const bookableLawyers = readiness ? readiness.public_lawyers_with_hours : (availabilityRules > 0 && publicLawyers > 0 ? 1 : 0);
+  const pricedOn = activeServices.some((s) => s.priceMinor > 0);
+  const prepaidOn = activeServices.some((s) => s.priceMinor > 0 && s.requiresPrepayment);
 
   // "Can a client book today?" — every line is a fact the booking engine itself checks, in the
   // order it checks them, each with the place it is fixed. No dead ends.
@@ -195,10 +201,12 @@ export default async function ServicesPage({
     },
     {
       ok: policiesPublished,
-      label: "The terms and privacy notice are published",
-      detail: policiesPublished
-        ? "book_appointment() checks this before anything about the service."
-        : "book_appointment() refuses every booking with “this firm has not published its terms and privacy notice yet”, whatever the catalogue says. A new firm starts here.",
+      label: readinessUnread ? "Whether the terms and privacy notice are published could not be read" : "The terms and privacy notice are published",
+      detail: readinessUnread
+        ? `firm_readiness() failed: ${readinessUnread} Nothing is guessed in its place — reload, and if it persists, the platform's health page says why.`
+        : policiesPublished
+          ? "book_appointment() checks this before anything about the service."
+          : "book_appointment() refuses every booking with “this firm has not published its terms and privacy notice yet”, whatever the catalogue says. A new firm starts here.",
       href: "/firm/admin/settings",
       hrefLabel: "Publish the terms and privacy notice",
     },
@@ -211,25 +219,27 @@ export default async function ServicesPage({
           : "The booking page shows nothing to pick, so nobody can book. Price a service below and switch it on.",
     },
     {
-      ok: availabilityRules > 0 && publicLawyers > 0,
-      label: "A lawyer has hours and a public profile",
+      ok: bookableLawyers > 0,
+      label: "A public lawyer has hours of their own",
       detail:
         availabilityRules === 0
           ? "No lawyer has a working week yet, so the wizard offers no times whatever the catalogue says."
           : publicLawyers === 0
             ? "Hours are set, but no lawyer profile is public, so the booking page lists nobody to book with."
-            : `${availabilityRules} block${availabilityRules === 1 ? "" : "s"} of hours across ${publicLawyers} public profile${publicLawyers === 1 ? "" : "s"}.`,
+            : bookableLawyers === 0
+              ? "Hours are set and a profile is public, but not on the same lawyer: the booking page lists a lawyer whose own week has no hours, so it can offer no time."
+              : `${bookableLawyers} public profile${bookableLawyers === 1 ? "" : "s"} with hours; ${availabilityRules} block${availabilityRules === 1 ? "" : "s"} of hours across ${publicLawyers} public profile${publicLawyers === 1 ? "" : "s"}.`,
       href: "/firm/availability",
       hrefLabel: "Open availability",
     },
     {
-      ok: hasSettlementAccount || !prepaidWithoutAccount,
-      label: "Payment can be taken for a priced service",
+      ok: hasSettlementAccount || !pricedOn,
+      label: "Invoices for a priced service can be paid",
       detail: hasSettlementAccount
-        ? "The firm has a settlement account, so a paid consultation can be checked out."
-        : prepaidWithoutAccount
-          ? "This firm has no settlement account yet. book_appointment() refuses a priced service that asks for payment first with “this firm is not yet set up to receive payments”. Until Docket sets one up, price a service at zero or turn off “payment before the consultation is confirmed”."
-          : "Nothing switched on asks for payment up front, so no settlement account is needed yet.",
+        ? "The firm has a settlement account: invoices settle to it, and a paid consultation can be checked out."
+        : pricedOn
+          ? `This firm has no settlement account yet. Every priced booking raises an invoice, and an invoice is paid through Docket only into that account${prepaidOn ? "; a service that asks for payment first is refused at booking with “this firm is not yet set up to receive payments”" : ""}. Until Docket sets one up, price the service at zero or take payment in chambers.`
+          : "Nothing switched on is priced, so no settlement account is needed yet.",
     },
   ];
 

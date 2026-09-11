@@ -455,6 +455,8 @@ export interface FirmReadiness {
   all_services: number;
   availability_rules: number;
   public_lawyers: number;
+  /** Public profiles whose owner has hours of their own — the only lawyers the booking page can offer a time for. */
+  public_lawyers_with_hours: number;
   members: number;
   owners: number;
   lawyers: number;
@@ -466,6 +468,8 @@ export interface FirmReadiness {
   matters: number;
   clients: number;
   pending_invites: number;
+  /** Import batches processed to the end. */
+  imports_processed: number;
   custom_domain: string | null;
   domain_request: string | null;
   skipped: Record<string, { at: string; by: string | null; note: string | null }>;

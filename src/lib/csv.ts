@@ -32,8 +32,9 @@ export function parseCsv(text: string, opts: { delimiter?: string; maxRows?: num
   const endField = () => { record.push(field); field = ""; };
   const endRecord = () => {
     endField();
-    // A blank line is not a row.
-    if (record.length === 1 && record[0].trim() === "") { record = []; return; }
+    // A blank line is not a row — nor is a line of nothing but separators, which is how a
+    // spreadsheet exports the formatted-but-empty rows under its data.
+    if (record.every((c) => c.trim() === "")) { record = []; return; }
     records.push(record);
     record = [];
   };
@@ -77,11 +78,19 @@ export function parseCsv(text: string, opts: { delimiter?: string; maxRows?: num
   return { headers, rows, warnings };
 }
 
-/** Comma unless the first line has more semicolons or tabs than commas (a spreadsheet export). */
+/**
+ * Comma unless the first line has more semicolons or tabs than commas (a spreadsheet export).
+ * Counted outside quotes: a quoted header such as "Title, working" is one cell, not a comma.
+ */
 export function detectDelimiter(text: string): string {
   const firstLine = text.slice(0, 2000).split(/\r?\n/)[0] ?? "";
-  const count = (ch: string) => firstLine.split(ch).length - 1;
-  const commas = count(","), semis = count(";"), tabs = count("\t");
+  const counts: Record<string, number> = { ",": 0, ";": 0, "\t": 0 };
+  let quoted = false;
+  for (const ch of firstLine) {
+    if (ch === '"') { quoted = !quoted; continue; }
+    if (!quoted && ch in counts) counts[ch] += 1;
+  }
+  const commas = counts[","], semis = counts[";"], tabs = counts["\t"];
   if (tabs > commas && tabs > semis) return "\t";
   if (semis > commas) return ";";
   return ",";

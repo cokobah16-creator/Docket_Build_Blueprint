@@ -203,6 +203,7 @@ export default async function FirmAdminPage({ searchParams }: { searchParams: Pr
           {activeServices === 0 && "You have no service switched on. "}
           {readiness.availability_rules === 0 && "No lawyer has a working week. "}
           {readiness.public_lawyers === 0 && "No practitioner profile is public. "}
+          {readiness.availability_rules > 0 && readiness.public_lawyers > 0 && readiness.public_lawyers_with_hours === 0 && "The lawyer with hours is not the one with a public profile, so the booking page can offer no time. "}
           Until each is done a visitor can read about the firm and no more.
         </Alert>
       )}

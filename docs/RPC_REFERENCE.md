@@ -423,12 +423,17 @@ Refuses: `service record not found` · `not permitted` *(42501)*
 ### `firm_readiness(p_firm uuid)`
 Returns `jsonb`. **Who:** any member of the firm. Where the firm stands, from one place
 (migration 34): `book_appointment()`'s gates in its order — `status`, `policies_published`,
-`active_services`, `availability_rules`, `public_lawyers`, `settlement_account` against
-`needs_settlement` (a priced, prepaid service switched on) — the setup facts (`members`, `owners`,
-`lawyers`, `intake_forms`, `brand_colours`, `brand_logo`, `address_for_service`,
-`reference_prefix`, `reference_issued`, `matters`, `clients`, `pending_invites`, `custom_domain`,
-`domain_request`), the `skipped` steps, and three `gates`: `site_open`, `bookable`,
-`payment_ready`. The admin overview and the services page both read it, so they cannot disagree.
+`active_services`, `availability_rules`, `public_lawyers`, `public_lawyers_with_hours` (public
+profiles whose owner has hours of their own: the booking page lists public profiles and
+`available_slots()` reads the chosen lawyer's rules, so hours on one lawyer and a profile on
+another offer nobody a time), `settlement_account` against `needs_settlement` (any priced service
+switched on — every priced booking raises an invoice, and an invoice is paid through Docket only
+into the account) — the setup facts (`members`, `owners`, `lawyers`, `intake_forms`,
+`brand_colours`, `brand_logo`, `address_for_service`, `reference_prefix`, `reference_issued`,
+`matters`, `clients`, `pending_invites`, `imports_processed`, `custom_domain`, `domain_request`),
+the `skipped` steps, and three `gates`: `site_open`, `bookable` (active, published, a public
+lawyer with hours, a service the settlement state allows), `payment_ready`. The admin overview
+and the services page both read it, so they cannot disagree.
 
 Refuses: `not permitted` *(42501)*
 
@@ -456,9 +461,31 @@ could claim another's file by changing their own number) — an `invites` row is
 matter (30 days, `import_phone_key()` E.164 phone or email), readable by the firm like any
 invitation, unless the number belongs to a member of the firm or the firm requires conflict
 clearance and the matter is not cleared, in which cases the row says so and no invitation is
-made. Two calls on one batch are serialised on the batch row. Audits `matter.imported`.
+made; a phone the helper cannot read is said in the row's note (`client not invited: the phone
+"…" is not readable`) rather than dropped. Two calls on one batch are serialised on the batch row.
+A batch with fewer `import_rows` than its `row_count` — the screen stages in chunks, and a chunk
+that never arrived — is refused whole: nothing is filed from it, and a retry cannot file the file
+twice. Audits `matter.imported`.
 
-Refuses: `not permitted` *(42501)* · `process between 1 and 200 rows at a time`
+Refuses: `not permitted` *(42501)* · `process between 1 and 200 rows at a time` ·
+`this import is not fully staged: <n> of <m> rows arrived — open the file again to import it, and discard this batch`
+
+### `preview_import_duplicates(p_firm uuid, p_legacy text[] = null, p_suits text[] = null, p_causes text[] = null)`
+Returns rows `(kind, matched, reference)` — `legacy`, `suit` or `cause`, the value matched, the
+Docket reference. **Who:** `admin_w`. Before a file is staged: which of its old file numbers, suit
+numbers (lower-cased) and cause titles (lower-cased) already name a matter on the books. Invoker
+rights: the comparison is what this admin can see, so a matter behind a wall is not named. The
+values travel as parameters, never in a URL. At most 15,000 values in one call.
+
+Refuses: `not permitted` *(42501)* · `compare at most 15,000 values at a time`
+
+### `discard_import_batch(p_batch uuid)`
+Returns `void`. **Who:** `admin_w` of the batch's firm. Removes a batch whose staging never
+finished — it has filed nothing, so there is no reconciliation to keep. A batch that has begun
+filing is the record and stays. Audits `import.discarded` with the source name, `row_count` and
+how many rows had arrived.
+
+Refuses: `not permitted` *(42501)* · `this import has already begun filing and stays as the record`
 
 Owner or administrator, with MFA, at a firm that is not suspended.
 
