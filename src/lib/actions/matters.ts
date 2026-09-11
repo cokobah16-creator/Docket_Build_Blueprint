@@ -17,6 +17,7 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isE164, normalizeNigerianPhone } from "@/lib/nigeria";
 import { MATTER_TYPES } from "@/lib/db/types";
+import { FUNNEL, capture } from "@/lib/observability";
 
 type Err = { error: string } | undefined;
 
@@ -99,6 +100,22 @@ export async function openMatter(input: OpenMatterInput): Promise<OpenMatterResu
 
   const result = (data ?? null) as { matter_id?: string; reference?: string } | null;
   if (!result?.matter_id || !result.reference) return { error: "The matter could not be opened. Try again." };
+
+  // The last step of the funnel: a visitor who found the firm's site has become a matter.
+  //
+  // The distinct id is the CLIENT, not the staff member who typed this in. The funnel follows
+  // one person from site_viewed to here, and the browser doing the typing belongs to the lawyer
+  // — using their visitor cookie would file the client's journey under the wrong person. A
+  // matter opened with no client attached is a real matter but not the end of anyone's journey,
+  // so it is left uncounted rather than attributed to somebody made up. The properties are facts
+  // about the matter; nothing about the person travels with it. Fired and ignored: telemetry
+  // never gets to fail a matter that the database has already opened.
+  if (d.clientId) {
+    void capture(FUNNEL.matterOpened, d.clientId, {
+      firm_id: d.firmId,
+      matter_type: d.type,
+    }).catch(() => undefined);
+  }
 
   refreshMatter(result.matter_id);
   return { matterId: result.matter_id, reference: result.reference };
