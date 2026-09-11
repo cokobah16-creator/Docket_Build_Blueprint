@@ -106,6 +106,10 @@ export default async function ConsoleMePage({
     { href: "/firm/inbox", label: "Service inbox", hint: "Process served on this firm", count: overview?.service_to_acknowledge ?? null },
     { href: "/firm/invoices", label: "Invoices", hint: "Issued, part-paid and overdue", count: owingInvoices ?? null },
     { href: "/firm/availability", label: "Availability", hint: "Hours, breaks and the daily cap", count: null },
+    // Not on the artboard's list, which names five. Without it the Overview
+    // screen is reachable from the desktop nav and from nowhere at all on a
+    // phone, and a screen you cannot reach is a bug rather than a decision.
+    { href: "/firm/overview", label: "Overview", hint: "The firm's numbers in one place", count: null },
   ];
 
   return (

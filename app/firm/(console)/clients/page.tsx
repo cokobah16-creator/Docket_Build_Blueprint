@@ -20,6 +20,7 @@ import { formatWhen } from "@/lib/time";
 import { normalizeNigerianPhone } from "@/lib/nigeria";
 import { Alert } from "@/components/ui/alert";
 import {
+  AppButton,
   AppButtonLink,
   AppCard,
   AppCardHeader,
@@ -50,7 +51,7 @@ const INVOICE_SCAN = 1000;
 const UPDATE_SCAN = 1000;
 const SHOW = 200;
 
-/** The artboard's search box: a 46px field with the glyph inside it. */
+/** The input inside the artboard's 46px search box — the box draws the border. */
 const field = "w-full min-w-0 bg-transparent text-[13.5px] text-dk-strong placeholder:text-dk-muted focus:outline-none";
 
 /** Statuses that mean the person actually turned up (or was billed for turning up). */
@@ -348,7 +349,7 @@ export default async function FirmClientsPage({
           </p>
         </div>
         {bookingHref && (
-          <AppButtonLink href={bookingHref} variant="ghost-sm" className="min-h-[44px] self-start">
+          <AppButtonLink href={bookingHref} variant="ghost-sm" className="self-start">
             Booking page
           </AppButtonLink>
         )}
@@ -367,12 +368,9 @@ export default async function FirmClientsPage({
             placeholder="Name, company, phone or email" className={field}
           />
         </div>
-        <button
-          type="submit"
-          className="flex min-h-[46px] flex-none items-center rounded-[9px] border border-dk-field bg-white px-[13px] text-[12.5px] font-semibold text-dk-pri"
-        >
+        <AppButton type="submit" variant="ghost-sm">
           Search
-        </button>
+        </AppButton>
       </form>
 
       <nav aria-label="Filter clients" className="-mx-1 flex gap-[7px] overflow-x-auto px-1 pb-0.5">
@@ -405,7 +403,7 @@ export default async function FirmClientsPage({
               On invoices that are issued, part-paid or overdue
             </p>
           </div>
-          <AppButtonLink href="/firm/invoices" variant="ghost-sm" className="min-h-[44px]">
+          <AppButtonLink href="/firm/invoices" variant="ghost-sm">
             Invoices
           </AppButtonLink>
         </section>
