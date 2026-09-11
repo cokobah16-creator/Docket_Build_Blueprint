@@ -44,12 +44,26 @@ export const CSP_NONCE_HEADER = "x-nonce";
  * database through cookies() or an uncached fetch, is therefore rendered per request, and gets
  * the nonce.
  *
- * THE RIGHT END STATE is for these three pages to opt into dynamic rendering with
- *   export const dynamic = "force-dynamic";
- * and for this list to be emptied. Anything added here without that reason is a hole.
- * Equally: a NEW page that reads no cookies, headers or uncached data will be prerendered too,
- * and will break under the nonce policy unless it opts out of static rendering. Prefer
- * force-dynamic on the page over another entry in this list.
+ * THIS LIST IS ONLY RIGHT IF THE BUILD AGREES WITH IT, and the build is the authority. Run
+ * `npm run build` and read the route table: every row marked ○ (Static) must either be in this
+ * set or be listed under the exception below. The first version of this file was written from
+ * the three routes above and the build prerendered seven — /admin, /firm/start and
+ * /firm/security/mfa were served the strict policy with un-nonced scripts, so the firm
+ * registration form, the TOTP enrolment page and the whole platform console were dead HTML.
+ * All three now carry `export const dynamic = "force-dynamic"`, which is the right answer for
+ * them on their own merits: each decides what to show from the caller's session.
+ *
+ * THE ONE ○ ROUTE THAT CANNOT BE MATCHED HERE is /_not-found. A 404 is served for whatever
+ * path was actually asked for, so the pathname this function is given is never "/_not-found"
+ * and no entry could match it. It is left as it is on purpose: Next's built-in 404 is a
+ * paragraph of static text with no control on it, so a blocked hydration costs a console
+ * violation and nothing a visitor can see. Give Docket its own not-found screen and that
+ * stops being true — make it dynamic at the same time.
+ *
+ * PREFER force-dynamic ON THE PAGE over another entry in this set. A new page that reads no
+ * cookies, headers or uncached data will be prerendered too, and will break under the nonce
+ * policy unless it opts out. An entry added here without the "renders nothing a person
+ * supplied" reason above is a hole in the policy, not a fix.
  */
 const PRERENDERED_SHELLS = new Set(["/", "/app/login", "/firm/login"]);
 
