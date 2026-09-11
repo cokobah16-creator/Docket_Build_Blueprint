@@ -18,7 +18,7 @@ const items: Array<{ href: string; label: string; icon: IconName }> = [
 ];
 
 /** The sections that sit behind Me, so Me stays lit while you are in them. */
-const BEHIND_ME = ["/firm/me", "/firm/sittings", "/firm/matters", "/firm/inbox", "/firm/invoices", "/firm/availability", "/firm/overview", "/firm/security"];
+const BEHIND_ME = ["/firm/me", "/firm/sittings", "/firm/matters", "/firm/messages", "/firm/tasks", "/firm/uploads", "/firm/inbox", "/firm/invoices", "/firm/availability", "/firm/overview", "/firm/security", "/firm/admin"];
 
 function isActive(href: string, pathname: string): boolean {
   if (href === "/firm") return pathname === "/firm";
