@@ -70,7 +70,7 @@ app/
   firm/(auth)/start        self-serve firm registration → create_firm()
   firm/(auth)/join         staff-invite landing → accept_staff_invite()
   firm/(auth)/security/mfa TOTP enrolment; firm/(console) staff console
-  firm/(console)/          today · overview · sittings · matters · clients · invoices · service inbox · availability
+  firm/(console)/          today · overview · sittings · matters · clients · invoices · service inbox · availability · me
   admin/                   platform admin (platform_admins gate; lifecycle only)
 design/
   home/       the landing-page artboard, its rules, and verify.mjs (Docket's own green and gold)
