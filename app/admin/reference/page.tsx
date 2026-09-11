@@ -25,6 +25,8 @@
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { RulesEditor, type RuleView } from "./rules-editor";
+import type { CourtRuleRow, RuleProvisionRow } from "@/lib/db/types";
 import { platformContext } from "@/lib/admin-data";
 import { zonedDayRange } from "@/lib/time";
 import {
@@ -113,7 +115,7 @@ export default async function AdminReferencePage({
   // The year boundary in the operator's own zone, so "this year" means their year.
   const thisYear = Number(zonedDayRange(ctx.timezone).ymd.slice(0, 4));
 
-  const [coverageRes, vacationRes, holidayRes, courtRes] = await Promise.all([
+  const [coverageRes, vacationRes, holidayRes, courtRes, ruleRes, provisionRes] = await Promise.all([
     supabase.from("reference_data_coverage").select("*").maybeSingle(),
     supabase
       .from("court_vacations")
@@ -144,6 +146,8 @@ export default async function AdminReferencePage({
           .is("firm_id", null)
           .order("name", { ascending: true })
           .limit(COURT_LIMIT)),
+    supabase.from("court_rules").select("*").order("effective_from", { ascending: false }).limit(200),
+    supabase.from("rule_provisions").select("*").order("label", { ascending: true }).limit(1000),
   ]);
 
   const coverage = (coverageRes.data ?? null) as CoverageRow | null;
@@ -184,6 +188,8 @@ export default async function AdminReferencePage({
     suitNumberHint: c.suit_number_hint,
     isActive: c.is_active,
   }));
+  const provisions = (provisionRes.data ?? []) as RuleProvisionRow[];
+  const rules: RuleView[] = ((ruleRes.data ?? []) as CourtRuleRow[]).map((r) => ({ ...r, provisions: provisions.filter((p) => p.rule_id === r.id) }));
 
   const holidaysThrough = coverage?.holidays_through_year ?? null;
   const upcomingVacations = Number(coverage?.upcoming_vacations ?? 0);
@@ -305,6 +311,14 @@ export default async function AdminReferencePage({
           {holidays.length === HOLIDAY_LIMIT ? `, capped at the first ${HOLIDAY_LIMIT}` : ""}. Earlier
           years are kept in the database and still answer for dates in the past.
         </p>
+      </section>
+
+      {/* ============================================================ rules of court */}
+      <section id="rules" className="space-y-4">
+        <RulesEditor rules={rules} />
+        {(ruleRes.error || provisionRes.error) && (
+          <p className="text-xs text-red-800">The rules could not be read: {ruleRes.error?.message ?? provisionRes.error?.message}. That is a failed read, not an empty list.</p>
+        )}
       </section>
 
       {/* ============================================================ courts */}

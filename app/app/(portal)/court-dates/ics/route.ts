@@ -15,7 +15,8 @@ export async function GET() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return new Response("Sign in first", { status: 401 });
 
-  const { data: rows } = await supabase.from("court_events").select("id, matter_id, firm_id, scheduled_at, court_name, purpose, outcome_update_id").order("scheduled_at").limit(500);
+  // A vacated date is not exported: the registry took it off, and a calendar that still shows it lies.
+  const { data: rows } = await supabase.from("court_events").select("id, matter_id, firm_id, scheduled_at, court_name, purpose, outcome_update_id, vacated_at").is("vacated_at", null).order("scheduled_at").limit(500);
   const events = (rows ?? []) as CourtEventRow[];
   const matterIds = Array.from(new Set(events.map((e) => e.matter_id)));
   const { data: matterRows } = matterIds.length ? await supabase.from("matters").select("id, reference, title").in("id", matterIds) : { data: [] };

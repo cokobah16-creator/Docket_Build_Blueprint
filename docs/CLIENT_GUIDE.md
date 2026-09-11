@@ -152,6 +152,9 @@ Once your firm opens a matter for you, **`/app/matters`** is where you follow it
 - **Court dates** — when your matter is next in court, for what, and where.
 
 **`/app/court-dates`** gathers every court date across every matter and every firm you work with.
+Each says where it came from: *fixed by the court, notice on file* when your firm has attached the
+court's notice, or *as recorded by your firm*. A date the registry has vacated is taken off the
+list and out of the calendar file; the timeline keeps what happened.
 **Add to calendar (.ics)** on that page downloads those dates as a calendar file you can import
 into your own calendar. It is a **snapshot, not a live feed**: if a date is moved, download it
 again. The app itself always shows the current dates, and tells you three days and one day before.

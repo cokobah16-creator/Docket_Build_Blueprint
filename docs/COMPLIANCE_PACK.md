@@ -71,7 +71,8 @@ somebody you share a matter or an appointment with. Nothing broader.
 | `matter_lawyers`, `matter_counsel` | practitioners on both sides, with contact details for counsel |
 | `matter_court_numbers` | suit numbers by court |
 | `updates` | the timeline. `visibility = 'client'` or `'internal'`; `updates_client_select` allows only `visibility = 'client'` rows to a party |
-| `court_events` | sittings, purposes, outcomes |
+| `court_events` | sittings, purposes, outcomes — and (migration 38) who entered each, the notice it came from (`source_document_id`, a document on the matter) and its reference |
+| `deadlines`, `court_rules`, `rule_provisions` | a deadline counted from a rule: the triggering event and day, the rule as it read, the calculation, the day due, the confirming lawyer, internal notes. **Firm work product: no client policy** — a client never reads a deadline. The rules themselves are platform reference data, readable by anyone |
 | `tasks` | internal |
 | `import_rows.raw` | **what a firm typed about each matter and client in a spreadsheet it imported** (migration 34): names, phone numbers, email addresses, the other side, descriptions — kept verbatim as the reconciliation record, readable by the firm's owners and admins only, never deleted. A subject-access search must include it |
 | `matters.legacy_reference` | the firm's old file number |

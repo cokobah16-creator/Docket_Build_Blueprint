@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { clientTimezone, firmNamesFor } from "@/lib/portal-data";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
-import type { CourtEventRow } from "@/lib/db/types";
+import { courtDateProvenance, type CourtEventRow } from "@/lib/db/types";
 import { Screen } from "@/components/portal/screen";
 
 export const metadata = { title: "Court dates" };
@@ -15,7 +15,8 @@ export default async function CourtDatesPage() {
   if (!user) redirect("/app/login");
 
   const [{ data: rows }, tz] = await Promise.all([
-    supabase.from("court_events").select("id, matter_id, firm_id, scheduled_at, court_name, purpose, outcome_update_id").order("scheduled_at", { ascending: true }).limit(200),
+    // A vacated date is not a date: the registry took it off. It stays on the timeline as history.
+    supabase.from("court_events").select("id, matter_id, firm_id, scheduled_at, court_name, purpose, outcome_update_id, vacated_at, source, source_document_id, source_ref").is("vacated_at", null).order("scheduled_at", { ascending: true }).limit(200),
     clientTimezone(supabase, user.id),
   ]);
   const events = (rows ?? []) as CourtEventRow[];
@@ -38,7 +39,10 @@ export default async function CourtDatesPage() {
           <li key={e.id} className="px-5 py-4">
             <p className="text-sm font-medium text-gray-900">{fmt.format(new Date(e.scheduled_at))}</p>
             <p className="text-sm text-gray-700">{m ? <Link href={`/app/matters/${m.id}`} className="underline">{m.title}</Link> : "Matter"}{e.purpose ? ` · ${e.purpose}` : ""}</p>
-            <p className="text-xs text-gray-500">{e.court_name ?? "Court to be confirmed"} · {firmNames[e.firm_id] ?? "Your firm"}{e.outcome_update_id ? " · update posted" : ""}</p>
+            <p className="text-xs text-gray-500">
+              {e.court_name ?? "Court to be confirmed"} · {firmNames[e.firm_id] ?? "Your firm"}{e.outcome_update_id ? " · update posted" : ""}
+              {courtDateProvenance(e) === "court" ? " · fixed by the court, notice on file" : " · as recorded by your firm"}
+            </p>
           </li>
         );
       })}

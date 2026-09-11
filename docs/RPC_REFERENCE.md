@@ -418,6 +418,56 @@ Refuses: `service record not found` · `not permitted` *(42501)*
 
 ---
 
+### The legal diary (migration 38)
+
+#### `attach_court_event_source(p_event uuid, p_document uuid = null, p_ref text = null, p_source text = null)`
+Returns `void`. **Who:** staff who can write the matter (the wall applies). Attaches the notice or
+cause-list page a court date came from — a document on the same matter — and/or a reference on
+it, marks the date `hearing_notice` (or `cause_list`), and records the caller as the lawyer who
+confirmed it. `firm_cause_list.evidenced` is true only for a court-originated date with a document
+or a reference behind it: a chip is a claim, a document is evidence. Every court date now records
+`created_by` and `created_at` (a trigger; rows older than 38 carry null, not a guess) and is
+audited on creation, movement, vacation, closure and evidence.
+
+Refuses: `not permitted` *(42501)* · `attach a document, a reference, or both` ·
+`the source document must be a document on this matter` · `a source is hearing_notice or cause_list`
+
+#### `count_deadline(p_from date, p_period int, p_unit text, p_mode text, p_level court_level = null, p_state text = null, p_excludes_vacation bool = false, p_rolls_forward bool = true)`
+Returns `jsonb`. **Who:** any signed-in person (it reads only world-readable reference data). The
+count, day by day: `calendar` days from the event, `clear` days (the act on the day after the
+last), `working` days (only days the court sits), or calendar `months`; days inside a vacation
+where time does not run (`court_vacations.time_runs = false`, read here for the first time) are
+skipped when the provision says so; a last day the court does not sit rolls forward. The result
+carries `due_on`, `counted_days`, every `skipped` and `rolled` day with its reason, and
+`coverage` — how many vacation windows and holidays were consulted, whether ANY vacation calendar
+exists for the court, and whether holidays are entered for the year — so an empty calendar is
+said, never assumed. The preview on the screen and the saved row are the same call.
+
+Refuses: `a period is between 1 and 3660` · `the unit is days or months` · `the count is calendar, clear or working`
+
+#### `compute_deadline(p_matter uuid, p_trigger_kind text, p_trigger_on date, p_provision uuid = null, p_due_on date = null, p_title text = null, p_trigger_ref jsonb = '{}', p_supersedes uuid = null, p_note text = null)`
+Returns `uuid`. **Who:** staff who can write the matter. With `p_provision`, counts the deadline
+under that provision of the rules (`court_rules`, `rule_provisions`) — refusing a provision that
+counts from a different event, rules not in force on the day, or rules for another court level or
+state than the matter's — and writes a `proposed` row carrying the jurisdiction as of now, the
+rule, provision and version **as they read** (a later correction to the rule never changes it),
+the whole calculation, and the day due. Without a provision, `p_due_on` and `p_title` are the
+firm's own date, and the row says so (`calculation.count_mode = 'manual'`). `p_supersedes` marks
+an earlier proposed or confirmed deadline on the matter `superseded` by this one. Audits
+`deadline.computed`. `p_note` is internal; no client ever reads a deadline.
+
+Refuses: `not permitted` *(42501)* · `unknown triggering event` · `the provision "…" counts from …, not from …` ·
+`the rules "…" (version …) were not in force on …` · `the rules "…" are for the … and this matter's court is …` ·
+`without a rule, give the day the deadline falls` · `a deadline entered without a rule needs a title` ·
+`a deadline does not fall before its triggering event` · `that deadline is already superseded|discharged`
+
+#### `confirm_deadline(p_deadline uuid)` / `discharge_deadline(p_deadline uuid, p_note text = null)`
+Return `void`. **Who:** confirming is an owner's, admin's or lawyer's act *(42501 otherwise:
+`a deadline is confirmed by a lawyer of the firm`)* and happens once; discharging (with a note) is
+any staff who can write the matter. Both audited (`deadline.confirmed`, `deadline.discharged`).
+The table has no insert, update or delete grant for the API: these three functions and
+`compute_deadline()` are the only doors, and a deadline is never edited.
+
 ## 5. Firm administration
 
 ### `firm_readiness(p_firm uuid)`
@@ -640,6 +690,10 @@ Refuses: `not permitted` *(42501)* · `unknown provider <p>` · `a rate is zero 
 
 ### Reference data
 There is no RPC. A platform admin with MFA writes `courts` (only rows with `firm_id is null`),
+`court_rules` and `rule_provisions` (migration 38: the Rules of Court as entered — name, citation,
+version, in force from and retired on; and each period under them — days or months, calendar,
+clear or working, whether time stops in vacation, whether a last day rolls forward; audited,
+readable by anyone),
 `public_holidays` and `court_vacations` **directly**, under the policies migration 21 split.
 `public_holidays` is keyed by its unique index on `(country, on_date, coalesce(state_code, ''))`,
 not by its id — an upsert must target that, not the primary key.
@@ -689,6 +743,7 @@ number of rows it touched.
 | `release_expired_holds()` | every minute | frees a 15-minute booking hold that was never paid |
 | `enqueue_appointment_reminders()` | every minute | the reminder ladder before a consultation |
 | `enqueue_court_reminders()` | 07:00 daily | reminders for upcoming court dates |
+| `enqueue_deadline_reminders()` | 06:00 daily | `deadline_due_t7` / `_t1` / `_t0` to the matter's lawyers for a **confirmed** deadline, each once (migration 38) |
 | `mark_overdue_invoices()` | 00:15 daily | `issued` past its due date becomes `overdue` |
 | `digest_sittings_without_update()` | 07:30 daily | the chase list: a court date whose day has passed with no update posted |
 
@@ -712,7 +767,8 @@ one of them.
 | `firm_admin` | platform admins | the platform's **whole** read of firms: lifecycle, plan, RC number, state, `has_settlement_account`, member count, owners with their enrolment numbers, `policies_published` |
 | `firm_overview` | firm members | the console's one-round-trip summary. Money is kept **per currency** in a jsonb object; minor units of two currencies are never added |
 | `firm_sittings_due` | firm members | court dates whose day has passed with no update posted. Clears when `post_court_update()` runs |
-| `firm_cause_list` | firm members | today's sittings by court |
+| `firm_cause_list` | firm members | today's sittings by court — and (38) where each came from: `source_document_id`, `source_ref`, `created_by`, `confirmed_by`, `evidenced` |
+| `firm_deadlines` | staff who can see the matter | every deadline with its matter beside it (reference, cause title, court). No client policy exists on `deadlines`: a client reads none of it |
 | `service_inbox` | the served firm | the served firm's **only** read path — never the `process_service` row, the serving firm's note, its proof, or its `documents` row |
 | `partner_attribution` | firm members | originating and handling partner attribution |
 | `reference_data_coverage` | any signed-in user | how far the reference data reaches: holidays through which year, upcoming vacations, vacations through which date, platform court count |

@@ -155,6 +155,7 @@ Migrations apply in filename order, which is chronological:
 20260910000035_pre_consultation_checkin.sql firms.checkin_before_confirm; document_requests and conflict_checks reach a consultation; appointment_readiness(), amend_intake_response(), confirm_appointment(); book_appointment/record_payment/reminders/release learn the hold
 20260910000036_drafts_and_retries.sql     updates.client_ref (a retry returns the posting already made); a document with no file answers no request; retire_empty_document(); storage_integrity() counts rows without a version
 20260910000037_notifications_reliability.sql notifications: provider, provider_ref, accepted_at, delivered_at, delivery_status, failure_kind, send_attempts, segments, cost; dedupe_key; claim_notifications()/finish_notification(); record_delivery_receipt(); provider_rates + set_provider_rate(); platform_notification_cost, platform_firm_active_matters
+20260910000038_legal_diary.sql            court_events provenance (created_by, source_document_id, source_ref, confirmed_by) and audit; court_rules/rule_provisions; is_time_stopped(), count_deadline(); deadlines + compute/confirm/discharge_deadline(); firm_deadlines; enqueue_deadline_reminders() on cron 06:00
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -444,7 +445,10 @@ records nothing new — while v9 calls `claim_notifications()`, which exists onl
 deployed ahead of 37 sends nothing and answers 500 every minute. Apply 37, deploy
 `dispatch-notifications` v9 and `delivery-receipts`, set the three receipt secrets, then enter the
 provider rates on `/admin/health`; nothing the front end reads changes except the two health views
-gaining columns at the end.
+gaining columns at the end. 38 is additive and safe either side: `firm_cause_list` gains columns
+at the end, every new table and function is new, and the deadline reminders (`docket-deadline-remind`,
+06:00 daily) render through the v9 dispatcher — deploy v9 before the first confirmed deadline
+comes within a week of its day, or the reminder goes out with the generic sentence.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

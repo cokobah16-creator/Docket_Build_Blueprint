@@ -19,7 +19,8 @@ import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { CourtUpdateForm } from "@/components/firm/court-update-form";
 import { cn } from "@/lib/cn";
-import type { CauseListRow, SittingDue } from "@/lib/db/types";
+import { formatDay, todayIn } from "@/lib/days";
+import { courtDateProvenance, type CauseListRow, type FirmDeadlineRow, type SittingDue } from "@/lib/db/types";
 
 export const metadata = { title: "Sittings" };
 
@@ -123,7 +124,7 @@ export default async function SittingsPage({
   const { supabase, firmId, timezone: tz } = ctx;
   const nowIso = new Date().toISOString();
 
-  const [due, courts, { data: causeRows }, staff] = await Promise.all([
+  const [due, courts, { data: causeRows }, staff, { data: deadlineRows }] = await Promise.all([
     sittingsDue(supabase, firmId, 50),
     courtsFor(supabase, firmId),
     supabase
@@ -134,9 +135,20 @@ export default async function SittingsPage({
       .order("scheduled_at", { ascending: true })
       .limit(100),
     firmStaff(supabase, firmId),
+    supabase
+      .from("firm_deadlines")
+      .select("*")
+      .eq("firm_id", firmId)
+      .in("status", ["proposed", "confirmed"])
+      .order("due_on", { ascending: true })
+      .limit(100),
   ]);
 
   const upcoming = (causeRows ?? []) as CauseListRow[];
+  const deadlines = (deadlineRows ?? []) as FirmDeadlineRow[];
+  const today = todayIn(tz);
+  const overdueDeadlines = deadlines.filter((d) => d.status === "confirmed" && d.due_on < today);
+  const proposedDeadlines = deadlines.filter((d) => d.status === "proposed");
   const staffById = new Map(staff.map((m) => [m.user_id, staffLabel(m)]));
 
   const matterIds = Array.from(new Set(due.map((d) => d.matter_id)));
@@ -232,6 +244,37 @@ export default async function SittingsPage({
         )}
       </Card>
 
+      <Card className={cn(overdueDeadlines.length > 0 && "border-red-300")}>
+        <CardHeader title={`Deadlines (${deadlines.length})`} />
+        {deadlines.length === 0 ? (
+          <EmptyState
+            title="No deadline is open"
+            hint="A deadline is counted from a sitting or a service on a matter's Deadlines tab, from the rules the platform has entered, and confirmed by a lawyer."
+          />
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {proposedDeadlines.length > 0 && (
+              <li className="px-4 py-2 text-xs font-medium text-amber-800 sm:px-5">{proposedDeadlines.length} proposed and not yet confirmed by a lawyer.</li>
+            )}
+            {deadlines.map((d) => (
+              <li key={d.id} className={cn("px-4 py-3 sm:px-5", d.status === "confirmed" && d.due_on < today && "bg-red-50")}>
+                <p className="text-sm font-medium text-gray-900">
+                  {formatDay(d.due_on)} · {d.title}
+                  {d.status === "proposed" ? <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">proposed</span> : null}
+                  {d.status === "confirmed" && d.due_on < today ? <span className="ml-2 text-xs font-semibold text-red-700">past</span> : null}
+                </p>
+                <p className="text-xs text-gray-600">
+                  {d.cause_title} · {d.reference}
+                  {d.rule_name ? ` · ${d.rule_name} (${d.rule_version})` : " · the firm's own date"}
+                  {d.calculation?.coverage && !d.calculation.coverage.any_vacation_calendar ? " · counted with no vacation calendar entered" : ""}
+                </p>
+                <Link href={`/firm/matters/${d.matter_id}?tab=deadlines`} className="text-xs text-brand underline">Open the deadlines →</Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Card>
+
       <Card>
         <CardHeader title={`In the diary (${upcoming.length})`} />
         {upcoming.length === 0 ? (
@@ -257,7 +300,7 @@ export default async function SittingsPage({
                         {row.courtroom ? ` · ${row.courtroom}` : ""}
                         {row.judge ? ` · ${row.judge}` : ""}
                         {row.purpose || row.purpose_kind ? ` · ${row.purpose ?? (row.purpose_kind ?? "").replace(/_/g, " ")}` : ""}
-                        {row.source === "hearing_notice" ? " · from a hearing notice" : ""}
+                        {courtDateProvenance(row) === "court" ? " · from the court, notice on file" : courtDateProvenance(row) === "claimed" ? " · marked as from a hearing notice, nothing attached" : ""}
                       </p>
                       <div className="mt-1 flex flex-wrap items-center gap-3">
                         <Link href={`/firm/matters/${row.matter_id}`} className="text-xs text-brand underline">Open the matter →</Link>

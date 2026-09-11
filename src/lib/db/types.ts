@@ -362,6 +362,110 @@ export interface CourtEventRow {
   court_name: string | null;
   purpose: string | null;
   outcome_update_id: string | null;
+  /** Migration 13/38: where the date came from, and whether that is evidenced. */
+  vacated_at?: string | null;
+  source?: "firm" | "hearing_notice" | "cause_list";
+  source_document_id?: string | null;
+  source_ref?: string | null;
+}
+
+/** A court-originated date is evidenced by a document or a reference; a chip alone is a claim. */
+export function courtDateProvenance(e: { source?: string | null; source_document_id?: string | null; source_ref?: string | null }): "court" | "firm" | "claimed" {
+  if (!e.source || e.source === "firm") return "firm";
+  return e.source_document_id || e.source_ref ? "court" : "claimed";
+}
+
+// ---------------------------------------------------------------- the legal diary (migration 38)
+export const DEADLINE_TRIGGERS = ["judgment_delivered", "ruling_delivered", "order_made", "service_effected", "hearing_held", "filing", "other"] as const;
+export type DeadlineTrigger = (typeof DEADLINE_TRIGGERS)[number];
+export const DEADLINE_TRIGGER_LABELS: Record<DeadlineTrigger, string> = {
+  judgment_delivered: "Judgment delivered", ruling_delivered: "Ruling delivered", order_made: "Order made",
+  service_effected: "Service effected", hearing_held: "Hearing held", filing: "A filing", other: "Another event",
+};
+
+export interface CourtRuleRow {
+  id: string;
+  level: CourtLevel | null;
+  state_code: string | null;
+  name: string;
+  citation: string | null;
+  version: string;
+  effective_from: string;
+  retired_on: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface RuleProvisionRow {
+  id: string;
+  rule_id: string;
+  key: string;
+  label: string;
+  citation: string | null;
+  trigger_kind: DeadlineTrigger;
+  period: number;
+  unit: "days" | "months";
+  count_mode: "calendar" | "clear" | "working";
+  excludes_vacation: boolean;
+  rolls_forward: boolean;
+  note: string | null;
+}
+
+/** What count_deadline() returns: the day due and everything the count did and relied on. */
+export interface DeadlineCalculation {
+  from?: string;
+  period?: number;
+  unit?: string;
+  count_mode: "calendar" | "clear" | "working" | "manual";
+  excludes_vacation?: boolean;
+  rolls_forward?: boolean;
+  level?: string | null;
+  state_code?: string | null;
+  due_on: string;
+  counted_days?: number;
+  skipped?: Array<{ day: string; reason: string }>;
+  rolled?: Array<{ day: string; reason: string }>;
+  coverage?: { vacation_rows_in_range: number; holiday_rows_in_range: number; any_vacation_calendar: boolean; holidays_entered_for_year: boolean };
+}
+
+export interface DeadlineRow {
+  id: string;
+  firm_id: string;
+  matter_id: string;
+  title: string;
+  trigger_kind: DeadlineTrigger;
+  trigger_on: string;
+  trigger_ref: Record<string, unknown>;
+  court_id: string | null;
+  jurisdiction: { court_id?: string | null; court_name?: string | null; level?: string | null; state_code?: string | null; division?: string | null };
+  rule_id: string | null;
+  provision_id: string | null;
+  rule_name: string | null;
+  rule_citation: string | null;
+  rule_version: string | null;
+  provision_label: string | null;
+  provision_citation: string | null;
+  calculation: DeadlineCalculation;
+  due_on: string;
+  status: "proposed" | "confirmed" | "discharged" | "superseded";
+  computed_by: string | null;
+  computed_at: string;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  discharged_by: string | null;
+  discharged_at: string | null;
+  discharge_note: string | null;
+  superseded_by: string | null;
+  note: string | null;
+  reminders_sent: string[];
+}
+
+/** firm_deadlines: a deadline with its matter beside it. */
+export interface FirmDeadlineRow extends DeadlineRow {
+  reference: string;
+  cause_title: string;
+  court: string | null;
 }
 
 export interface DocumentRow {
@@ -655,6 +759,14 @@ export interface CauseListRow {
   purpose_kind: string | null;
   purpose: string | null;
   source: string;
+  /** Migration 38 */
+  source_document_id?: string | null;
+  source_ref?: string | null;
+  created_by?: string | null;
+  created_at?: string | null;
+  confirmed_by?: string | null;
+  confirmed_at?: string | null;
+  evidenced?: boolean;
 }
 
 export interface MatterCounselRow {

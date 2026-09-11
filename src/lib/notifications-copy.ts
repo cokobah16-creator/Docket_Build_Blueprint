@@ -25,6 +25,9 @@ export function describeNotification(event: string, payload: Record<string, unkn
     case "matter_update": return { title: String(p.title ?? "Update on your matter"), body: firmName, url: `${matter}?tab=timeline` };
     case "court_date_t3": return { title: "Court date in 3 days", body: `${when}${p.purpose ? ` · ${p.purpose}` : ""}`, url: "/app/court-dates" };
     case "court_date_t1": return { title: "Court date tomorrow", body: `${when}${p.court_name ? ` · ${p.court_name}` : ""}`, url: "/app/court-dates" };
+    case "deadline_due_t7": return { title: `${p.title ?? "A deadline"} in a week`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
+    case "deadline_due_t1": return { title: `${p.title ?? "A deadline"} tomorrow`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
+    case "deadline_due_t0": return { title: `${p.title ?? "A deadline"} today`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
     case "new_message": return { title: `New message from ${firmName}`, body: "Open the thread.", url: p.matter_id ? `${matter}?tab=messages` : p.appointment_id ? `/app/messages/appointment/${p.appointment_id}` : "/app/messages" };
     default: return { title: event.replace(/_/g, " "), body: "", url: "/app" };
   }

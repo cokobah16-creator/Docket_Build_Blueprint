@@ -158,6 +158,44 @@ another firm never searches yours.
 
 Docket never decides a conflict. It finds the names and keeps the record of who decided what.
 
+## Where a court date came from
+
+Every court date now records who entered it and when. A date that came from the court — a hearing
+notice, the cause list — should carry its evidence: on the matter's **Deadlines** tab, beside each
+open date, **Attach the notice or reference** takes the notice as a document on the matter and/or
+the reference on it (the cause-list date and item, say). A date with evidence attached shows as
+*from the court, notice on file*, on the sittings page and to the client; one marked as from a
+notice with nothing attached shows as exactly that; everything else is *as recorded by the firm*.
+Attaching the evidence records you as the lawyer who confirmed the date. The diary is audited:
+a date made, moved, vacated, closed or evidenced leaves a line in your audit trail.
+
+## Deadlines
+
+A deadline is counted by Docket, shown day by day, and confirmed by a lawyer. On a matter's
+**Deadlines** tab, **Add a deadline** asks for the triggering event (a judgment, a ruling, an
+order, service, a hearing, a filing — or pick a sitting from the timeline and both are filled in),
+the day it happened on the court's calendar, and the rule. The rules offered are the ones Docket's
+platform has entered for that court's level and state, in force on that day, counting from that
+event; **Count it** shows the day due and everything the count did — days not counted because the
+court does not sit or because time stopped for a vacation, days rolled past, and what reference
+data it relied on. If no vacation calendar is entered for the court, the count says so in words
+rather than pretending: check the practice direction. Without a rule, give the day yourself and
+the row says it is the firm's own date.
+
+- **A deadline is proposed until a lawyer confirms it.** Anyone on the matter can count one; an
+  owner, admin or lawyer confirms it, once, and the reminders (a week out, the day before, the
+  day) go to the matter's lawyers only from then.
+- **Nothing is edited.** A recount is a new row that supersedes the old one, which stays with its
+  own calculation. A deadline that no longer applies is discharged with a note.
+- **The rule is kept as it read.** A later correction to the rule on Docket never changes a
+  deadline already counted; its name, citation and version are on the row.
+- **The client never sees a deadline.** Court dates reach the client; deadlines, and the notes on
+  them, are the firm's work product.
+
+Docket counts; it does not decide. The rules on Docket are those the platform has entered from
+the Rules of Court, with their citation and version, and a court's own practice can differ — the
+confirming lawyer is confirming the day, not the arithmetic.
+
 ## Before anything else: your second factor
 
 **Every change a firm makes to itself requires two-factor authentication.** Not as policy — the
