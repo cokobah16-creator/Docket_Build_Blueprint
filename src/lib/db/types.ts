@@ -384,7 +384,10 @@ export interface DocumentRow {
 export interface DocumentRequestRow {
   id: string;
   firm_id: string;
-  matter_id: string;
+  /** Null for a request on a consultation (migration 35). */
+  matter_id: string | null;
+  /** Set for a request on a consultation; null for one on a matter. */
+  appointment_id: string | null;
   title: string;
   why: string | null;
   /** YYYY-MM-DD or null — a calendar day. */
@@ -497,6 +500,27 @@ export interface ImportRowRecord {
   invite_id: string | null;
   note: string | null;
   processed_at: string | null;
+}
+
+/** One item appointment_readiness() computed (migration 35). A client never sees a conflict item's substance. */
+export interface ReadinessItem {
+  kind: "payment" | "intake" | "documents" | "consent" | "conflict";
+  label: string;
+  satisfied: boolean;
+  detail: string;
+  /** intake: the required questions still unanswered */
+  missing?: Array<{ key: string; label: string }>;
+  /** documents: the open requests */
+  open?: Array<{ id: string; title: string; due_on: string | null }>;
+  ref?: string | null;
+}
+export interface AppointmentReadiness {
+  appointment_id: string;
+  status: string;
+  held: boolean;
+  checkin_required: boolean;
+  ready: boolean;
+  items: ReadinessItem[];
 }
 
 export interface DocumentVersionRow {

@@ -11,6 +11,9 @@ import { PayPanel } from "@/components/portal/pay-panel";
 import { selectedFirm } from "@/lib/portal-firm";
 import type { PaymentChannel } from "@/lib/providers/payments";
 import { cancelAppointment, startPayment } from "@/lib/actions/booking";
+import { DocumentsTab } from "@/components/portal/documents-tab";
+import { BeforeCard } from "./before-card";
+import type { AppointmentReadiness, DocumentRequestRow, DocumentVersionRow, DocumentRow, IntakeForm } from "@/lib/db/types";
 
 export const metadata = { title: "Appointment" };
 
@@ -43,13 +46,29 @@ export default async function AppointmentPage({
   const appt = (data ?? null) as Appt | null;
   if (!appt) notFound();
 
-  const [{ data: service }, { data: lawyer }, { data: invoice }, { data: notesRow }, firm] = await Promise.all([
+  const [{ data: service }, { data: lawyer }, { data: invoice }, { data: notesRow }, firm, { data: readinessRow }, { data: docRows }, { data: requestRows }] = await Promise.all([
     appt.service_id ? supabase.from("services").select("name, duration_min").eq("id", appt.service_id).maybeSingle() : Promise.resolve({ data: null }),
     appt.lawyer_id ? supabase.from("lawyer_public").select("full_name, title").eq("id", appt.lawyer_id).maybeSingle() : Promise.resolve({ data: null }),
     appt.invoice_id ? supabase.from("invoices").select("id, number, status, total_minor, currency").eq("id", appt.invoice_id).maybeSingle() : Promise.resolve({ data: null }),
     supabase.from("consultation_notes").select("client_summary, advice_given, follow_up, updated_at").eq("appointment_id", id).maybeSingle(),
     selectedFirm(supabase),
+    // What is still needed before the consultation, computed by the database (migration 35).
+    supabase.rpc("appointment_readiness", { p_appointment: id }),
+    supabase.from("documents").select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at").eq("appointment_id", id).is("deleted_at", null).order("created_at", { ascending: false }).limit(100),
+    supabase.from("document_requests").select("id, firm_id, matter_id, appointment_id, title, why, due_on, requested_by, requested_at, fulfilled_document_id, fulfilled_at, cancelled_at").eq("appointment_id", id).order("requested_at", { ascending: false }).limit(50),
   ]);
+  const readiness = (readinessRow ?? null) as AppointmentReadiness | null;
+  const docs = (docRows ?? []) as DocumentRow[];
+  const requests = (requestRows ?? []) as DocumentRequestRow[];
+  const { data: versionRows } = docs.length
+    ? await supabase.from("document_versions").select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at").in("document_id", docs.map((d) => d.id))
+    : { data: [] as DocumentVersionRow[] };
+  const versions = (versionRows ?? []) as DocumentVersionRow[];
+  const documents = docs.map((d) => ({ ...d, version: versions.find((v) => v.id === d.current_version_id) ?? null, version_count: versions.filter((v) => v.document_id === d.id).length }));
+  // The questions still to answer come from the form the readiness item names.
+  const intakeItem = readiness?.items.find((i) => i.kind === "intake");
+  const { data: formRow } = intakeItem?.ref ? await supabase.from("intake_forms").select("id, firm_id, service_id, name, schema").eq("id", intakeItem.ref).maybeSingle() : { data: null };
+  const questions = ((formRow as IntakeForm | null)?.schema?.questions ?? []);
   const notes = notesRow as { client_summary: string | null; advice_given: string | null; follow_up: string | null; updated_at: string } | null;
   const svc = service as { name: string; duration_min: number } | null;
   const law = lawyer as { full_name: string | null; title: string | null } | null;
@@ -103,6 +122,21 @@ export default async function AppointmentPage({
           />
         )}
 
+        {appt.status === "pending" && (
+          <Alert kind="info" title="Booked and held">
+            The time is yours. {firm?.name ?? "Your firm"} confirms it once what it asked for is in — see below.
+          </Alert>
+        )}
+
+        {readiness && live && (readiness.held || readiness.items.some((i) => !i.satisfied)) && (
+          <Card>
+            <CardHeader title="Before your consultation" />
+            <CardBody>
+              <BeforeCard appointmentId={appt.id} readiness={readiness} questions={questions} />
+            </CardBody>
+          </Card>
+        )}
+
         <Card>
           <CardHeader title="Details" />
           <CardBody>
@@ -141,6 +175,13 @@ export default async function AppointmentPage({
                 Go to the waiting room
               </Link>
             </CardBody>
+          </Card>
+        )}
+
+        {live && firm && (
+          <Card>
+            <CardHeader title="Documents" />
+            <DocumentsTab firmId={firm.id} matterId={null} appointmentId={appt.id} documents={documents} timezone={tz} requests={requests} />
           </Card>
         )}
 

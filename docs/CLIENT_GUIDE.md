@@ -75,6 +75,15 @@ From your firm's website, choose **Book**. The steps are:
 6. **Sign in**, if you have not already — right there, without losing your place.
 7. **Confirm.**
 
+### Before your consultation
+
+Some firms hold a booking until they confirm it. If yours does, the appointment page says
+**Booked and held** and lists what is still needed: paying the fee, answering any question the
+firm's form requires, sending a document the firm asked for, accepting the firm's terms and
+privacy notice. Each has its action on the page. Anything the firm has to do on its own side is
+shown only as that. You are reminded two days before if something is still missing; the firm
+confirms the booking from its side, and you are told when it does.
+
 ### Paying
 
 If the consultation is paid in advance, your slot is **held for fifteen minutes** while you pay.

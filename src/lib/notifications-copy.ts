@@ -9,6 +9,10 @@ export function describeNotification(event: string, payload: Record<string, unkn
   const matter = p.matter_id ? `/app/matters/${p.matter_id}` : "/app/matters";
   switch (event) {
     case "appointment_confirmed": return { title: "Consultation confirmed", body: `${p.reference ?? ""} · ${when}`, url: appt };
+    case "appointment_held": return { title: "Booking held", body: `${when} · see what is still needed`, url: appt };
+    case "appointment_checkin_due": return { title: "Before your consultation", body: `${when} · not yet confirmed`, url: appt };
+    case "appointment_awaiting_confirmation": return { title: "A held consultation needs confirming", body: when, url: `/firm/appointments/${p.appointment_id ?? ""}` };
+    case "document_requested": return { title: "A document is needed", body: String(p.title ?? ""), url: p.appointment_id ? `/app/appointments/${p.appointment_id}` : `${matter}?tab=documents` };
     case "appointment_reminder_24h": return { title: "Consultation tomorrow", body: when, url: appt };
     case "appointment_reminder_1h": return { title: "Consultation in 1 hour", body: when, url: appt };
     case "appointment_reminder_10m": return { title: "Consultation in 10 minutes", body: "Join the waiting room.", url: `${appt}/waiting-room` };
@@ -28,6 +32,8 @@ export function describeNotification(event: string, payload: Record<string, unkn
 
 export const PREFERENCE_EVENTS: Array<{ event: string; label: string }> = [
   { event: "appointment_confirmed", label: "Consultation confirmed" },
+  { event: "appointment_held", label: "Booking held: what is still needed" },
+  { event: "appointment_checkin_due", label: "Reminder: before your consultation" },
   { event: "appointment_reminder_24h", label: "Reminder: 24 hours before" },
   { event: "appointment_reminder_1h", label: "Reminder: 1 hour before" },
   { event: "appointment_reminder_10m", label: "Reminder: 10 minutes before" },

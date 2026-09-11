@@ -48,6 +48,28 @@ linked, invitations to send; every row with its reason; and a results file to do
 Only an owner or an administrator can import. The columns are listed, with a template, at
 `/firm/admin/import/template`.
 
+## Before a consultation
+
+**Settings → Before a consultation** is off by default: a booking is confirmed the moment it is
+made or paid, as it always was. Switched on, every booking is **held** — the time is the
+client's, the slot is taken — until you confirm it, and the database refuses the confirmation
+until what you asked for is in:
+
+- the fee, where the service is paid;
+- the questions your intake form marks required (a client who skipped one answers it in their
+  app, on the consultation, without redoing the rest);
+- any document you asked for **on the consultation** (the consultation page → Ask the client for
+  a document; the client sees the request and uploads against it);
+- your terms and privacy notice, at their current versions;
+- and, where you require conflict clearance before taking a client on, a cleared check on the
+  consultation (run it from the consultation page; the client sees only that you have checks to
+  finish, never what they found).
+
+The consultation page shows every item and its state, and **Confirm the consultation**. The
+client is told the booking is held, is reminded two days out of anything still missing, and the
+lawyer is told a day out that it is theirs to confirm. A held booking nobody confirms by the time
+it is due is released; a fee already paid on it is **not** refunded by Docket — refund it yourself.
+
 ## Matter walls
 
 By default every member of your firm can open every matter — the stance most partnerships want,
@@ -483,6 +505,8 @@ The remedy is with Docket, not in the console. Your data is untouched throughout
 | Price and activate services | `/firm/admin/services` |
 | Write the booking questions | `/firm/admin/intake` |
 | Invite, promote or remove colleagues | `/firm/admin/people` |
+| Hold bookings until you confirm them | `/firm/admin/settings` → Before a consultation |
+| Ask a client for a document before a consultation | the consultation → Before the consultation |
 | See the checklist and set a step aside | `/firm/admin` |
 | Bring existing matters in from a spreadsheet | `/firm/admin/import` |
 | Publish your own profile so clients can book you | `/firm/me` |

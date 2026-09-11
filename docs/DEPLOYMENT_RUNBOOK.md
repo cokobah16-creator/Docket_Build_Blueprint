@@ -152,6 +152,7 @@ Migrations apply in filename order, which is chronological:
 20260910000032_conflict_checks.sql        matter_adverse_parties; conflict_checks shaped; run_conflict_check(), decide_conflict_check(); firms.conflict_checks_required
 20260910000033_wave_two_review.sql        the review round: invitations walled, last member by update, fulfilment columns, clearance on every move, a check bound to its names
 20260910000034_onboarding_and_import.sql  matters.legacy_reference; firm_onboarding_steps; firm_readiness(); import_batches/import_rows and process_import_batch()
+20260910000035_pre_consultation_checkin.sql firms.checkin_before_confirm; document_requests and conflict_checks reach a consultation; appointment_readiness(), amend_intake_response(), confirm_appointment(); book_appointment/record_payment/reminders/release learn the hold
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -403,7 +404,9 @@ resolves to it), pg_trgm goes into the `extensions` schema, and the clearance gu
 firm switches it on. 33 is safe either side for the same reasons: it tightens what 29, 31 and 32
 admit without changing any call the deployed front end makes. 34 is additive and safe either side:
 nothing the deployed front end reads changes, and the new screens read only the new function
-and tables.
+and tables. 35 is safe either side too: with every firm's `checkin_before_confirm` off, `book_appointment()`
+and `record_payment()` behave exactly as before, and `document_requests.matter_id` becoming nullable
+changes nothing the deployed front end selects.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

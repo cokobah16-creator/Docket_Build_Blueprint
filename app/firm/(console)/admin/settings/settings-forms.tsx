@@ -40,7 +40,7 @@ import {
   updatePolicies,
   updateServiceOfProcess,
   withdrawDomainRequest,
-  type SettingsResult, updateMatterWalls, updateConflictChecksRequired } from "@/lib/actions/firm-settings";
+  type SettingsResult, updateMatterWalls, updateConflictChecksRequired, updateCheckinBeforeConfirm } from "@/lib/actions/firm-settings";
 
 const FIELD =
   "w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-base text-gray-900 " +
@@ -77,6 +77,8 @@ export interface FirmSettingsProps {
   matterWalls: boolean;
   /** firms.conflict_checks_required: must a check be cleared before a client joins a matter? */
   conflictChecksRequired: boolean;
+  /** firms.checkin_before_confirm: is a booking held until the firm confirms it? */
+  checkinBeforeConfirm: boolean;
   brand: FirmBrand;
   policies: { terms: PolicyDoc; privacy: PolicyDoc };
   /** Documents stored under firms.policies that validate_policies() will drop on the next write. */
@@ -210,6 +212,7 @@ export function SettingsForms(props: FirmSettingsProps) {
       <ServiceSection {...props} />
       <WallsSection {...props} />
       <ConflictsSection {...props} />
+      <CheckinSection {...props} />
       <BrandSection {...props} />
       <PoliciesSection {...props} />
       <DomainSection {...props} />
@@ -471,6 +474,41 @@ function ConflictsSection({ firmId, conflictChecksRequired }: FirmSettingsProps)
             </span>
             <span className="mt-1 block text-gray-600">
               Docket never decides a conflict: it finds the names and records who decided what, and when.
+            </span>
+          </span>
+        </label>
+        <SaveButton pending={pending} />
+      </form>
+      <Outcome result={result} />
+    </Section>
+  );
+}
+
+function CheckinSection({ firmId, checkinBeforeConfirm }: FirmSettingsProps) {
+  const { pending, result, run } = useSave();
+  const [enabled, setEnabled] = useState(checkinBeforeConfirm);
+
+  return (
+    <Section
+      title="Before a consultation"
+      hint="Off, a booking is confirmed the moment it is made or paid. On, it is held until you confirm it, and the database refuses the confirmation until what you asked for is in."
+    >
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          run(() => updateCheckinBeforeConfirm(firmId, enabled));
+        }}
+      >
+        <label className="flex min-h-[44px] items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />
+          <span className="text-sm text-gray-800">
+            <span className="font-medium">Hold every booking until the firm confirms it.</span>
+            <span className="mt-1 block text-gray-600">
+              The client is told the booking is held and shown what is still missing: the fee, the questions your form requires,
+              any document you ask for on the consultation, your terms and privacy notice, and — where you require conflict
+              clearance before taking a client on — your own check. A held booking keeps its slot; if nobody confirms it by the
+              time it is due, it is released. A paid booking that is released is not refunded by Docket.
             </span>
           </span>
         </label>

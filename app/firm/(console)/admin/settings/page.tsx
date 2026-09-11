@@ -44,6 +44,7 @@ interface FirmSettingsRow {
   accepts_platform_service: boolean;
   matter_walls: boolean;
   conflict_checks_required: boolean;
+  checkin_before_confirm: boolean;
   address_for_service: Record<string, unknown> | null;
   brand: FirmBrand | null;
   policies: Record<string, unknown> | null;
@@ -104,7 +105,7 @@ export default async function FirmSettingsPage({ searchParams }: { searchParams:
     supabase
       .from("firms")
       .select(
-        "id, slug, name, legal_name, rc_number, tin, state_code, reference_prefix, timezone, default_currency, vat_rate, paystack_subaccount, accepts_platform_service, matter_walls, conflict_checks_required, address_for_service, brand, policies, notification_templates, status, custom_domain",
+        "id, slug, name, legal_name, rc_number, tin, state_code, reference_prefix, timezone, default_currency, vat_rate, paystack_subaccount, accepts_platform_service, matter_walls, conflict_checks_required, checkin_before_confirm, address_for_service, brand, policies, notification_templates, status, custom_domain",
       )
       .eq("id", firmId)
       .maybeSingle(),
@@ -183,6 +184,7 @@ export default async function FirmSettingsPage({ searchParams }: { searchParams:
       settlement={{ paystackSubaccount: firm.paystack_subaccount ?? "" }}
       matterWalls={Boolean(firm.matter_walls)}
       conflictChecksRequired={Boolean(firm.conflict_checks_required)}
+      checkinBeforeConfirm={Boolean(firm.checkin_before_confirm)}
       serviceOfProcess={{
         accepts: firm.accepts_platform_service,
         chambers: asText(address.chambers),

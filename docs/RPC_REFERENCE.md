@@ -174,6 +174,24 @@ Refuses:
 - `not authenticated` *(42501)* · `a member of the firm cannot join its own matter as a party — the invitation is for the client` *(42501)*
 - `invite invalid or expired` — one sentence for a wrong token, a used token and an expired one, on purpose
 
+### `appointment_readiness(p_appointment uuid)`
+Returns `jsonb` — `held`, `checkin_required`, `ready`, and `items` (`payment`, `intake` with the
+required questions still unanswered, `documents` with the open requests, `consent` against the
+firm's current terms and privacy versions, and `conflict` only where the firm requires clearance
+before taking a client on). **Who:** the client of the consultation, or a member of the firm.
+Computed from real rows every time (migration 35); nothing is stored as done. A client sees the
+conflict item only as "the firm's own checks", never its substance. A required question shown on
+a condition (`show_if`) is not counted, nor is a file question.
+
+Refuses: `not permitted` *(42501)*
+
+### `amend_intake_response(p_appointment uuid, p_answers jsonb)`
+Returns `jsonb` (`response_id`, `readiness`). **Who:** the client of a live consultation. Inserts a
+new `intake_responses` row carrying the earlier answers plus these — answers stay insert-once, and
+the latest row is the one that counts. Audits `intake.amended`.
+
+Refuses: `not permitted` *(42501)* · `this consultation is <status>` · `answers must be an object`
+
 ### `invoice_settlement(p_invoice uuid)`
 Returns `jsonb` — the Paystack subaccount the checkout must route to, and the invoice's state.
 
@@ -248,6 +266,14 @@ appointment completed.
 
 Refuses: `appointment not found` · `not permitted` *(42501)*
 
+### `confirm_appointment(p_appointment uuid)`
+Returns `jsonb`. **Who:** `staff_w`. Moves a **held** booking (`status = 'pending'`, migration 35)
+to `confirmed`, audits `appointment.confirmed`, tells the client. With `firms.checkin_before_confirm`
+on it refuses until `appointment_readiness()` says ready — and so does `guard_appointment_confirm()`
+on any direct update, whoever writes.
+
+Refuses: `not permitted` *(42501)* · `this consultation is <status>, not held` · `not ready: <items>`
+
 ### `reschedule_appointment(p_appointment uuid, p_starts_at timestamptz, p_reason text = null)`
 Returns `jsonb`. Re-validates the new time through `available_slots()` (ignoring this
 appointment), resets the reminder flags, notifies the client, audits.
@@ -296,7 +322,7 @@ Refuses: `matter not found` · `not permitted` *(42501)* ·
 `give a phone number or an email address to send the invitation to` ·
 `an invitation lasts between 1 and 60 days` · `that person is already on this matter`
 
-### `run_conflict_check(p_firm uuid, p_matter uuid = null, p_names text[] = null)`
+### `run_conflict_check(p_firm uuid, p_matter uuid = null, p_names text[] = null, p_appointment uuid = null)`
 Returns `jsonb` — `check_id`, the normalised `keys` searched, `matches` and `match_count`. **Who:**
 `staff_w(firm)`; with `p_matter`, also `can_see_matter`.
 
@@ -307,7 +333,9 @@ matter of the firm, closed ones included. Strengths: `exact`, `contains` (a whol
 `similar` (trigram ≥ 0.5); keys under four characters match only exactly. A match on a restricted
 matter the caller is not on comes back with `restricted: true`, no `matter_id`, and the lead
 lawyer's id. Records the search as a `conflict_checks` row (undecided) and audits
-`conflict_check.run`. Never another firm's register; never a decision.
+`conflict_check.run`. Never another firm's register; never a decision. With `p_appointment` (migration
+35) the search includes the person who booked, and the check is recorded on the consultation, where
+`appointment_readiness()` reads it.
 
 Refuses: `not permitted` *(42501)* — a matter of another firm, or one behind a wall ·
 `nothing to check: give at least one name`
@@ -640,6 +668,7 @@ that fired them:
 | `validate_policies()` | `firms.policies` | **nothing.** Keeps `privacy`, `terms`, `engagement` and `cancellation`, each with its **own** `version`, plus `title`, `text`, an `https://` `url` and a numeric `free_cancel_hours`; strips `<` and `>`; drops any other document. A top-level `version` is kept but is read by nothing |
 | `validate_notification_templates()` | `firms.notification_templates` | **nothing.** Keeps `{subject, text}` per event key, strips angle brackets, and drops any entry whose `text` is empty |
 | `check_staff_invite_role()` | `staff_invites` | `only an owner may invite another owner` *(42501)* |
+| `guard_appointment_confirm()` | `appointments` | `this firm confirms a consultation only once what it asked for is in — <items>` — only with `firms.checkin_before_confirm` on |
 | `guard_conflict_clearance()` | `matter_parties` | `this firm requires a cleared conflict check before a client joins a matter` — only with `firms.conflict_checks_required` on, only for `role = 'client'`, on insert and on any update that moves the row (migration 33) |
 | `check_row_firm()` on `import_rows` | `import_rows` | `row does not belong to the firm that owns the matter` |
 | `guard_document_request()` | `document_requests` | `a withdrawn request stays withdrawn — ask again with a new request` · `an answered request cannot be withdrawn` |
