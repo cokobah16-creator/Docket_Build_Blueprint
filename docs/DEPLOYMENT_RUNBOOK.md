@@ -359,7 +359,7 @@ verify.
 - **Functions:** `supabase functions deploy <name>` — and remember `--no-verify-jwt` on the two that
   need it, every time.
 - **App:** push to the branch Vercel builds.
-- **Before any of it:** CI runs the migrations, the seed and all six test suites against a clean
+- **Before any of it:** CI runs the migrations, the seed and all seven test suites against a clean
   Postgres 16. A red `sql` job means a policy changed meaning, and that is the one to stop for.
 
 ## Related

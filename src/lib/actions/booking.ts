@@ -33,7 +33,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { siteOrigin } from "@/lib/site";
-import { paymentProviderFor, type Currency } from "@/lib/providers/payments";
+import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
 import { allow, tooFast } from "@/lib/rate-limit";
 import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
 import type { BookingResult } from "@/lib/db/types";
@@ -113,7 +113,6 @@ export async function bookAppointment(input: BookAppointmentInput): Promise<Book
 
   return { booking };
 }
-import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
 
 export async function startPayment(
   appointmentId: string,
