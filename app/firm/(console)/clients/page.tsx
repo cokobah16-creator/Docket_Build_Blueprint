@@ -19,8 +19,17 @@ import { formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
 import { normalizeNigerianPhone } from "@/lib/nigeria";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, EmptyState } from "@/components/ui/card";
+import {
+  AppButtonLink,
+  AppCard,
+  AppCardHeader,
+  AppCardList,
+  AppEmpty,
+  AppLink,
+  Footnote,
+  ScreenTitle,
+} from "@/components/app";
+import { SearchIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 
 export const metadata = { title: "Clients" };
@@ -41,7 +50,8 @@ const INVOICE_SCAN = 1000;
 const UPDATE_SCAN = 1000;
 const SHOW = 200;
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+/** The artboard's search box: a 46px field with the glyph inside it. */
+const field = "w-full min-w-0 bg-transparent text-[13.5px] text-dk-strong placeholder:text-dk-muted focus:outline-none";
 
 /** Statuses that mean the person actually turned up (or was billed for turning up). */
 const SEEN_STATUSES = new Set(["confirmed", "rescheduled", "completed"]);
@@ -322,39 +332,50 @@ export default async function FirmClientsPage({
 
   const chipClass = (active: boolean) =>
     cn(
-      "flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm",
-      active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+      "flex min-h-[44px] shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
+      active ? "border-dk-pri bg-dk-pri text-dk-on-pri" : "border-dk-field bg-white text-dk-soft",
     );
 
   const bookingHref = firm ? `/${firm.slug}/book` : null;
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div className="dk-rise flex flex-col gap-3.5">
+      <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold text-brand">Clients</h1>
-          <p className="text-sm text-gray-600">
+          <ScreenTitle>Clients</ScreenTitle>
+          <p className="mt-[3px] text-[12.5px] leading-snug text-dk-soft">
             {ctx.firmName} · {everyone.length} {everyone.length === 1 ? "person" : "people"} the firm acts for · times in {tz}
           </p>
         </div>
         {bookingHref && (
-          <Link
-            href={bookingHref}
-            className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
-          >
+          <AppButtonLink href={bookingHref} variant="ghost-sm" className="min-h-[44px] self-start">
             Booking page
-          </Link>
+          </AppButtonLink>
         )}
       </header>
 
-      {everyone.length > 0 && totalOutstanding.size > 0 && (
-        <Alert kind="info" title="Outstanding across these clients">
-          {moneyLabel(totalOutstanding)} on invoices that are issued, part-paid or overdue.{" "}
-          <Link href="/firm/invoices" className="font-medium underline">Go to invoices</Link>.
-        </Alert>
-      )}
+      <form method="get" action="/firm/clients" className="flex items-center gap-2">
+        {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
+        {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
+        <label htmlFor="q" className="sr-only">
+          Search by name, company, phone or email
+        </label>
+        <div className="flex min-h-[46px] flex-1 items-center gap-2.5 rounded-[10px] border border-dk-line bg-white px-[13px]">
+          <SearchIcon size={17} className="flex-none text-dk-soft" />
+          <input
+            id="q" name="q" type="search" inputMode="search" defaultValue={search} maxLength={80}
+            placeholder="Name, company, phone or email" className={field}
+          />
+        </div>
+        <button
+          type="submit"
+          className="flex min-h-[46px] flex-none items-center rounded-[9px] border border-dk-field bg-white px-[13px] text-[12.5px] font-semibold text-dk-pri"
+        >
+          Search
+        </button>
+      </form>
 
-      <nav aria-label="Filter clients" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+      <nav aria-label="Filter clients" className="-mx-1 flex gap-[7px] overflow-x-auto px-1 pb-0.5">
         {FILTERS.map(([key, label]) => (
           <Link
             key={key}
@@ -366,42 +387,44 @@ export default async function FirmClientsPage({
             {key === "no_email" && missingEmail > 0 ? ` (${missingEmail})` : ""}
           </Link>
         ))}
+        {filtered && (
+          <Link href="/firm/clients" className={chipClass(false)}>
+            Clear
+          </Link>
+        )}
       </nav>
 
-      <Card>
-        <form method="get" action="/firm/clients" className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-end">
-          {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
-          {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
-          <div>
-            <label htmlFor="q" className="text-sm font-medium text-gray-900">Search</label>
-            <input
-              id="q" name="q" type="search" inputMode="search" defaultValue={search} maxLength={80}
-              placeholder="Name, company, phone or email" className={field}
-            />
+      {everyone.length > 0 && totalOutstanding.size > 0 && (
+        <section className="flex items-center justify-between gap-3 rounded-[11px] border border-dk-line bg-white px-[15px] py-3.5 shadow-card">
+          <div className="min-w-0">
+            <p className="text-[10.5px] uppercase tracking-[0.06em] text-dk-soft">Outstanding across these clients</p>
+            <p className="mt-1 font-app-head text-[20px] font-bold leading-none text-[#92400E]">
+              {moneyLabel(totalOutstanding)}
+            </p>
+            <p className="mt-1.5 text-[11px] leading-[1.35] text-dk-soft">
+              On invoices that are issued, part-paid or overdue
+            </p>
           </div>
-          <div className="flex items-center gap-3">
-            <button type="submit" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">
-              Search
-            </button>
-            {filtered && <Link href="/firm/clients" className="text-sm text-brand underline">Clear</Link>}
-          </div>
-        </form>
-      </Card>
+          <AppButtonLink href="/firm/invoices" variant="ghost-sm" className="min-h-[44px]">
+            Invoices
+          </AppButtonLink>
+        </section>
+      )}
 
-      <Card>
-        <CardHeader
+      <AppCard>
+        <AppCardHeader
           title={filtered ? `Matching clients (${matched.length})` : `All clients (${matched.length})`}
-          action={<Link href="/firm/matters/new" className="text-sm text-brand underline">Open a matter →</Link>}
+          action={<AppLink href="/firm/matters/new">Open a matter</AppLink>}
         />
         {shown.length === 0 ? (
           filtered ? (
-            <EmptyState
+            <AppEmpty
               title="Nobody matches"
               hint="Try part of a name, a company, an email address, or the last few digits of a phone number."
-              action={<Link href="/firm/clients" className="text-sm text-brand underline">Clear the search</Link>}
+              action={<AppLink href="/firm/clients">Clear the search</AppLink>}
             />
           ) : (
-            <EmptyState
+            <AppEmpty
               title="No clients yet"
               hint={
                 bookingHref
@@ -411,79 +434,87 @@ export default async function FirmClientsPage({
               action={
                 bookingHref ? (
                   <div className="flex flex-wrap items-center justify-center gap-3">
-                    <Link
-                      href={bookingHref}
-                      className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
-                    >
+                    <AppButtonLink href={bookingHref} variant="primary-sm">
                       Open the booking page
-                    </Link>
-                    <Link href="/firm/matters/new" className="text-sm text-brand underline">Open a matter instead</Link>
+                    </AppButtonLink>
+                    <AppLink href="/firm/matters/new">Open a matter instead</AppLink>
                   </div>
                 ) : (
-                  <Link href="/firm/matters/new" className="text-sm text-brand underline">Open a matter</Link>
+                  <AppLink href="/firm/matters/new">Open a matter</AppLink>
                 )
               }
             />
           )
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <AppCardList>
             {shown.map((c) => {
               const owed = moneyLabel(c.outstanding);
               return (
-                <li key={c.id}>
-                  <Link
-                    href={`/firm/clients/${c.id}${sp.firm ? `?firm=${sp.firm}` : ""}`}
-                    className="block px-5 py-4 hover:bg-gray-50"
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900">
-                          {c.name}
-                          {c.clientType === "business" && <Badge className="ml-2">business</Badge>}
-                        </p>
-                        {c.company && c.company.trim() !== c.name && (
-                          <p className="mt-0.5 text-xs text-gray-600">{c.company}</p>
-                        )}
-                      </div>
-                      {owed && (
-                        <p className="shrink-0 text-sm font-semibold text-amber-800">{owed} due</p>
+                <Link
+                  key={c.id}
+                  href={`/firm/clients/${c.id}${sp.firm ? `?firm=${sp.firm}` : ""}`}
+                  className="block px-[15px] py-[13px]"
+                >
+                  <div className="flex items-start justify-between gap-2.5">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className="truncate text-[13.5px] font-semibold text-dk-strong">{c.name}</span>
+                      {c.clientType === "business" && (
+                        <span className="flex-none rounded-[4px] bg-dk-rule px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.03em] text-dk-soft">
+                          business
+                        </span>
                       )}
                     </div>
-
-                    <p className="mt-1 text-xs text-gray-600">
-                      {c.phone ?? "no phone on file"}
-                      {" · "}
-                      {c.email ? c.email : <span className="font-medium text-amber-800">no email — receipts cannot be sent</span>}
-                    </p>
-
-                    <p className="mt-1 text-xs text-gray-600">
-                      {c.matters === 0
-                        ? "No matter"
-                        : `${c.matters} ${c.matters === 1 ? "matter" : "matters"}${c.openMatters > 0 ? ` (${c.openMatters} open)` : ""}`}
-                      {" · "}
-                      {c.appointments === 0
-                        ? "no consultations"
-                        : `${c.appointments} ${c.appointments === 1 ? "consultation" : "consultations"}`}
-                      {" · "}
-                      {c.lastSeen
-                        ? `last seen ${formatWhen(c.lastSeen, tz, { dateStyle: "medium" })} (${sinceLabel(c.lastSeen, nowMs)})`
-                        : "not seen yet"}
-                    </p>
-
-                    {c.nextAt && (
-                      <p className="mt-1 text-xs font-medium text-brand">
-                        Next consultation {formatWhen(c.nextAt, tz, { dateStyle: "medium", timeStyle: "short" })}
-                      </p>
+                    {owed && (
+                      <span className="flex-none whitespace-nowrap text-[12.5px] font-bold text-[#92400E]">
+                        {owed} due
+                      </span>
                     )}
-                  </Link>
-                </li>
+                  </div>
+
+                  {c.company && c.company.trim() !== c.name && (
+                    <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">{c.company}</p>
+                  )}
+
+                  {/* A missing email is called out in its own ink and in its own
+                      words: a receipt cannot be sent without one. */}
+                  <p
+                    className={cn(
+                      "mt-1 text-[11.5px] leading-[1.45]",
+                      c.email ? "text-dk-soft" : "font-semibold text-[#92400E]",
+                    )}
+                  >
+                    {c.phone ?? "no phone on file"}
+                    {" · "}
+                    {c.email ? c.email : "no email — receipts cannot be sent"}
+                  </p>
+
+                  <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">
+                    {c.matters === 0
+                      ? "No matter"
+                      : `${c.matters} ${c.matters === 1 ? "matter" : "matters"}${c.openMatters > 0 ? ` (${c.openMatters} open)` : ""}`}
+                    {" · "}
+                    {c.appointments === 0
+                      ? "no consultations"
+                      : `${c.appointments} ${c.appointments === 1 ? "consultation" : "consultations"}`}
+                    {" · "}
+                    {c.lastSeen
+                      ? `last seen ${formatWhen(c.lastSeen, tz, { dateStyle: "medium" })} (${sinceLabel(c.lastSeen, nowMs)})`
+                      : "not seen yet"}
+                  </p>
+
+                  {c.nextAt && (
+                    <p className="mt-1 text-[11.5px] font-semibold leading-[1.45] text-dk-strong">
+                      Next consultation {formatWhen(c.nextAt, tz, { dateStyle: "medium", timeStyle: "short" })}
+                    </p>
+                  )}
+                </Link>
               );
             })}
-          </ul>
+          </AppCardList>
         )}
-      </Card>
+      </AppCard>
 
-      <p className="text-xs text-gray-500">
+      <Footnote>
         &ldquo;Last seen&rdquo; is the later of the most recent consultation that had already begun and was not cancelled,
         and the most recent entry posted on one of their matters. Outstanding is what is left on invoices that are issued,
         part-paid or overdue, in the currency each was billed in.
@@ -491,7 +522,7 @@ export default async function FirmClientsPage({
         {capped
           ? ` This screen reads up to ${APPOINTMENT_SCAN} of each of consultations, matter parties, matters, invoices and timeline entries, and at least one of those windows is full: an older client may not appear, and an older invoice or entry may not be counted.`
           : ""}
-      </p>
+      </Footnote>
     </div>
   );
 }

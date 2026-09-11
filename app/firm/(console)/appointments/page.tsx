@@ -1,7 +1,13 @@
+// Consultations: one card of rows, the day's or the next fifty, in the
+// viewer's own zone. The artboard's lawyer list (design/pwa) — when and who on
+// the first line, the reference, the service and the mode on the second, and a
+// note in its own ink on the third saying the one thing about this booking that
+// is worth knowing before you tap it.
+
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { Card, CardBody, EmptyState } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import { AppCard, AppCardList, AppEmpty, AppStatusPill, ScreenTitle } from "@/components/app";
+import type { Status } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import { zonedDayRange } from "@/lib/time";
 
@@ -14,6 +20,26 @@ interface Row {
 }
 
 type View = "today" | "upcoming" | "past";
+
+/**
+ * The third line. Everything here is read off the row itself — the room window
+ * is the same ten-minutes-before rule the console and the client app both keep,
+ * and nothing is claimed that the query did not fetch.
+ */
+function noteFor(a: Row, nowMs: number): { text: string; ink: string } | null {
+  const live =
+    a.mode === "virtual" &&
+    (a.status === "confirmed" || a.status === "rescheduled") &&
+    nowMs >= new Date(a.starts_at).getTime() - 10 * 60 * 1000 &&
+    nowMs <= new Date(a.ends_at).getTime() + 60 * 60 * 1000;
+  if (live) return { text: "Room open now", ink: "text-[#15803D]" };
+  if (a.status === "pending" || a.status === "awaiting_payment")
+    return { text: "Not confirmed until the fee is paid", ink: "text-[#92400E]" };
+  if (a.mode === "virtual" && (a.status === "confirmed" || a.status === "rescheduled"))
+    return { text: "Room opens ten minutes before the start", ink: "text-dk-soft" };
+  if (a.client?.phone) return { text: a.client.phone, ink: "text-dk-soft" };
+  return null;
+}
 
 export default async function FirmAppointments({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const { view: rawView } = await searchParams;
@@ -41,48 +67,76 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
   }
 
   const tabs: Array<[View, string]> = [["today", "Today"], ["upcoming", "Upcoming"], ["past", "Past"]];
+  const viewLabel = tabs.find(([key]) => key === view)?.[1] ?? "Today";
+  const nowMs = Date.now();
+  const when = new Intl.DateTimeFormat("en-GB", {
+    dateStyle: view === "today" ? undefined : "medium",
+    timeStyle: "short",
+    timeZone: tz,
+  });
 
   return (
-    <div className="space-y-5">
-      <h1 className="font-heading text-2xl font-semibold text-brand">Appointments</h1>
-      <nav aria-label="Appointment views" className="flex gap-2">
+    <div className="dk-rise flex flex-col gap-3.5">
+      <header>
+        <ScreenTitle>Consultations</ScreenTitle>
+        <p className="mt-[3px] text-[12.5px] leading-snug text-dk-soft">
+          {viewLabel} · times in {tz}
+        </p>
+      </header>
+
+      <nav aria-label="Appointment views" className="-mx-1 flex gap-[7px] overflow-x-auto px-1 pb-0.5">
         {tabs.map(([key, label]) => (
           <Link
             key={key}
             href={`/firm/appointments?view=${key}`}
             aria-current={view === key ? "page" : undefined}
-            className={cn("rounded-full border px-3 py-1.5 text-sm", view === key ? "border-brand bg-brand text-brand-on" : "border-gray-300 text-gray-700 hover:border-brand")}
+            className={cn(
+              "flex min-h-[44px] flex-none items-center rounded-full border px-3.5 text-[12.5px] font-medium",
+              view === key
+                ? "border-dk-pri bg-dk-pri text-dk-on-pri"
+                : "border-dk-field bg-white text-dk-soft",
+            )}
           >
             {label}
           </Link>
         ))}
       </nav>
-      <Card>
+
+      <AppCard>
         {rows.length === 0 ? (
-          <EmptyState title={view === "today" ? "Nothing booked for today" : view === "upcoming" ? "No upcoming appointments" : "No past appointments"} hint="Confirmed bookings from the public site appear here." />
+          <AppEmpty
+            title={view === "today" ? "Nothing booked for today" : view === "upcoming" ? "No upcoming consultations" : "No past consultations"}
+            hint="Confirmed bookings from the public site appear here."
+          />
         ) : (
-          <CardBody className="divide-y divide-gray-100 p-0">
+          <AppCardList>
             {rows.map((a) => {
-              const liveVirtual = a.mode === "virtual" && (a.status === "confirmed" || a.status === "rescheduled");
+              const note = noteFor(a, nowMs);
               return (
-                <Link key={a.id} href={`/firm/appointments/${a.id}`} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-gray-50">
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
-                      {new Intl.DateTimeFormat("en-GB", { dateStyle: view === "today" ? undefined : "medium", timeStyle: "short", timeZone: tz }).format(new Date(a.starts_at))}
-                      {" · "}{a.client?.full_name ?? "Client"}
-                    </p>
-                    <p className="truncate text-xs text-gray-500">{a.reference} · {a.service?.name ?? "Consultation"} · {a.mode.replace("_", " ")}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {liveVirtual && <span className="hidden text-xs font-medium text-brand sm:inline">Room →</span>}
-                    <StatusPill status={a.status as Status} />
-                  </div>
+                <Link
+                  key={a.id}
+                  href={`/firm/appointments/${a.id}`}
+                  className="flex items-start justify-between gap-3 px-[15px] py-[13px]"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[13.5px] font-semibold leading-snug text-dk-strong">
+                      {when.format(new Date(a.starts_at))} · {a.client?.full_name ?? "Client"}
+                    </span>
+                    <span className="mt-[3px] block text-[11.5px] leading-[1.45] text-dk-soft">
+                      <span className="font-mono">{a.reference}</span> · {a.service?.name ?? "Consultation"} ·{" "}
+                      {a.mode.replace("_", " ")}
+                    </span>
+                    {note && (
+                      <span className={cn("mt-0.5 block text-[11.5px] leading-[1.45]", note.ink)}>{note.text}</span>
+                    )}
+                  </span>
+                  <AppStatusPill status={a.status as Status} />
                 </Link>
               );
             })}
-          </CardBody>
+          </AppCardList>
         )}
-      </Card>
+      </AppCard>
     </div>
   );
 }
