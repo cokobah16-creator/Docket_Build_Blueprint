@@ -88,7 +88,15 @@ function dayLabel(ymd: string): string {
   );
 }
 
-export default async function AdminReferencePage() {
+export default async function AdminReferencePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ court?: string }>;
+}) {
+  const sp = await searchParams;
+  // Trimmed and length-capped before it reaches an ilike pattern; PostgREST escapes the value
+  // itself, and % and _ in a search term are the user's own wildcards, which is fine here.
+  const courtSearch = (sp.court ?? "").trim().slice(0, 80);
   const ctx = await platformContext();
   if (!ctx) {
     // The layout has already said which of the four things went wrong; this only stops the page
@@ -117,12 +125,24 @@ export default async function AdminReferencePage() {
       .gte("on_date", `${thisYear}-01-01`)
       .order("on_date", { ascending: true })
       .limit(HOLIDAY_LIMIT),
-    supabase
-      .from("courts")
-      .select("id, name, level, state_code, division, city, short_name, is_active", { count: "exact" })
-      .is("firm_id", null)
-      .order("created_at", { ascending: false })
-      .limit(COURT_LIMIT),
+    // Migrations 10 and 12 seed roughly 180 platform courts in two transactions, so created_at is
+    // identical across most of them and "most recent" is an arbitrary slice. Since marking a court
+    // closed is only possible from here — courts_update requires firm_id to be non-null, so no firm
+    // can touch a platform row — the whole directory has to be reachable. A name search does that.
+    (courtSearch
+      ? supabase
+          .from("courts")
+          .select("id, name, level, state_code, division, city, short_name, is_active", { count: "exact" })
+          .is("firm_id", null)
+          .or(`name.ilike.%${courtSearch}%,short_name.ilike.%${courtSearch}%,division.ilike.%${courtSearch}%,city.ilike.%${courtSearch}%`)
+          .order("name", { ascending: true })
+          .limit(COURT_LIMIT)
+      : supabase
+          .from("courts")
+          .select("id, name, level, state_code, division, city, short_name, is_active", { count: "exact" })
+          .is("firm_id", null)
+          .order("name", { ascending: true })
+          .limit(COURT_LIMIT)),
   ]);
 
   const coverage = (coverageRes.data ?? null) as CoverageRow | null;
@@ -283,11 +303,11 @@ export default async function AdminReferencePage() {
 
       {/* ============================================================ courts */}
       <section id="courts" className="space-y-4">
-        <PlatformCourtEditor courts={courts} totalCourts={totalPlatformCourts} />
+        <PlatformCourtEditor courts={courts} totalCourts={totalPlatformCourts} search={courtSearch} />
         <p className="text-xs text-gray-500">
-          Showing the {COURT_LIMIT} most recently added platform courts of {totalPlatformCourts}. The
-          rest of the directory is not listed here — it is long, and a firm reaches all of it from its
-          own console.
+          {courtSearch
+            ? `${courts.length} of ${totalPlatformCourts} platform courts match “${courtSearch}”.`
+            : `Showing ${courts.length} platform courts of ${totalPlatformCourts}, by name. Search above to reach any of the others — this screen is the only place a platform court can be corrected or closed.`}
         </p>
       </section>
 

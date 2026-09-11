@@ -354,10 +354,31 @@ create or replace view public.platform_notification_health with (security_invoke
 grant select on public.platform_notification_health to authenticated;
 revoke insert, update, delete, truncate, references, trigger on public.platform_notification_health from anon, authenticated;
 
+-- A failed message, individually, so it can be put back in the queue. The health view above is
+-- grouped and carries no id, and notifications_select is user_id = auth.uid(), so without this a
+-- platform operator could see that forty reminders failed and have no way to reach any of them.
+-- Still no payload and still no recipient: an id, what it was, what went wrong, and when.
+create or replace view public.platform_failed_notifications with (security_invoker = false) as
+  select n.id, n.firm_id, f.name as firm_name, f.slug as firm_slug,
+         n.channel, n.event, n.attempts, n.error, n.created_at, n.send_after
+    from public.notifications n
+    left join public.firms f on f.id = n.firm_id
+   where public.is_platform_admin() and n.status = 'failed';
+grant select on public.platform_failed_notifications to authenticated;
+revoke insert, update, delete, truncate, references, trigger on public.platform_failed_notifications from anon, authenticated;
+
+-- payments has never had a timestamp of its own: paid_at is written ONLY when a charge succeeds
+-- (record_payment), so every row a settlement-health screen can hold has paid_at null and there
+-- is nothing to order by. A failed payment with no recency is a failed payment nobody finds.
+-- Existing rows take the migration's own timestamp, which is the closest honest answer available.
+alter table public.payments
+  add column if not exists created_at timestamptz not null default now();
+create index if not exists payments_created_at_idx on public.payments (created_at desc);
+
 create or replace view public.platform_settlement_health with (security_invoker = false) as
   select p.id as payment_id, i.firm_id, f.name as firm_name, f.slug as firm_slug,
          i.number as invoice_number, p.amount_minor, p.currency, p.status,
-         p.provider_ref, p.paid_at,
+         p.provider_ref, p.paid_at, p.created_at,
          p.raw ->> 'reported_subaccount' as reported_subaccount,
          p.raw ->> 'expected_subaccount' as expected_subaccount,
          (p.raw ->> 'settlement_mismatch') is not null as settlement_mismatch

@@ -31,11 +31,13 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
-import { notificationHealth, platformContext, settlementHealth, webhookEvents } from "@/lib/admin-data";
+import {
+  failedNotifications, notificationHealth, platformContext, settlementHealth, webhookEvents,
+} from "@/lib/admin-data";
 import { formatMoneyByCurrency, formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
 import type { NotificationHealthRow, SettlementHealthRow, WebhookEventRow } from "@/lib/db/types";
-import { RetryNotification } from "./health-actions";
+import { FailedNotifications } from "./health-actions";
 
 export const metadata = { title: "Platform health" };
 
@@ -113,10 +115,11 @@ export default async function AdminHealthPage({
     );
   }
 
-  const [queue, settlement, webhooks] = await Promise.all([
+  const [queue, settlement, webhooks, failed] = await Promise.all([
     notificationHealth(ctx.supabase),
     settlementHealth(ctx.supabase, SETTLEMENT_LIMIT),
     webhookEvents(ctx.supabase, { limit: WEBHOOK_LIMIT }),
+    failedNotifications(ctx.supabase),
   ]);
 
   const tz = ctx.timezone;
@@ -310,8 +313,8 @@ export default async function AdminHealthPage({
 
             {settlement.length === SETTLEMENT_LIMIT && (
               <p className="text-xs text-gray-500">
-                Showing the {SETTLEMENT_LIMIT} most recent unsuccessful payments. Older ones are not on
-                this page.
+                Showing {SETTLEMENT_LIMIT} unsuccessful payments, the most recently recorded first.
+                There are more than that, and they are not on this page.
               </p>
             )}
           </>
@@ -439,7 +442,7 @@ export default async function AdminHealthPage({
         <Card>
           <CardHeader title="Send one failed message again" />
           <CardBody>
-            <RetryNotification failedRows={failedRows} />
+            <FailedNotifications rows={failed} timezone={ctx.timezone} />
           </CardBody>
         </Card>
       </section>

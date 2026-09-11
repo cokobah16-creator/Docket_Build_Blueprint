@@ -1,14 +1,10 @@
-// The one thing an operator can DO from the health screen: put a single failed message back in
-// the queue.
+// The one thing an operator can DO from the health screen: put a failed message back in the queue.
 //
-// WHY IT ASKS FOR AN ID INSTEAD OF PUTTING A BUTTON ON A ROW. platform_notification_health is
-// GROUPED — firm, status, channel, event, and counts. It carries no notification id, because it
-// carries no payload and no recipient either: migration 20 chose that shape so an operator can
-// see that something is failing without reading anybody's business. retry_notification() works
-// on ONE notification, so the id has to come from somewhere that legitimately has it — the
-// dispatcher's own log, or the Sentry event raised when the send failed. There is no bulk
-// retry, and inventing one would mean giving this screen the ids, which would mean giving it
-// the rows.
+// The grouped health view carries no notification id on purpose — no id means no payload and no
+// recipient, which is the boundary migration 20 drew. But retry_notification() works on ONE
+// message, so an operator who can see that forty reminders failed needs a way to reach one.
+// platform_failed_notifications is that way: the same boundary, one row per failed message, with
+// an id, what it was, what went wrong and when. Nothing about the person it was going to.
 //
 // Rules obeyed here:
 //  · The database decides. retry_notification() checks is_platform_admin() and mfa_ok() itself,
@@ -21,6 +17,18 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { captureException } from "@/lib/observability";
+import { formatWhen } from "@/lib/time";
+import type { FailedNotificationRow } from "@/lib/db/types";
+
+/**
+ * The event key in ordinary words. describeNotification() needs a payload, a firm name and a
+ * zone to build a client-facing sentence, and this screen has none of those by design — so the
+ * key itself is unpacked instead.
+ */
+function describeEvent(event: string): string {
+  const words = event.replace(/_/g, " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -67,44 +75,57 @@ async function retryOneNotification(formData: FormData): Promise<void> {
 }
 
 /**
- * The retry form. `failedRows` is only used to say how many failed messages the grouped view
- * can see, so the number on screen is the database's count and not a guess.
+ * One row per failed message, each with the button that sends it again.
+ *
+ * There is no bulk retry. Five failures in a row usually means the provider or the credential is
+ * wrong, and sending forty more would cost a client forty more texts before anybody noticed.
  */
-export function RetryNotification({ failedRows }: { failedRows: number }) {
-  return (
-    <form action={retryOneNotification} className="space-y-3">
-      <div>
-        <label htmlFor="notification-id" className="block text-sm font-medium text-gray-800">
-          Notification id
-        </label>
-        <input
-          id="notification-id"
-          name="notification"
-          required
-          inputMode="text"
-          autoCapitalize="none"
-          autoComplete="off"
-          spellCheck={false}
-          placeholder="00000000-0000-0000-0000-000000000000"
-          aria-describedby="notification-id-hint"
-          className="mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-mono text-sm text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
-        />
-      </div>
-      <p id="notification-id-hint" className="text-sm text-gray-600">
-        {failedRows === 0
-          ? "Nothing is currently failed in the groups below, so there should be nothing to send again."
-          : `${failedRows} failed message${failedRows === 1 ? "" : "s"} ${failedRows === 1 ? "is" : "are"} in the groups below.`}{" "}
-        The id is not on this page and cannot be — the queue is grouped so that it carries no
-        recipient and no payload. Copy it from the dispatcher log or from the Sentry event for
-        the failure. The database refuses anything that is not failed right now, and stops at
-        five attempts.
+export function FailedNotifications({ rows, timezone }: { rows: FailedNotificationRow[]; timezone: string }) {
+  if (rows.length === 0) {
+    return (
+      <p className="text-sm text-gray-600">
+        Nothing has failed. A message that fails is listed here with the reason, and can be put
+        back in the queue.
       </p>
-      <button
-        type="submit"
-        className="min-h-[44px] w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto"
-      >
-        Send this one again
-      </button>
-    </form>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-600">
+        {rows.length} failed message{rows.length === 1 ? "" : "s"}. The database refuses a retry on
+        anything that is not failed right now, and stops at five attempts. What the message said,
+        and who it was for, are not shown here and are not readable from this console.
+      </p>
+      <ul className="space-y-2">
+        {rows.map((row) => (
+          <li key={row.id} className="rounded-lg border border-gray-200 bg-white p-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <p className="text-sm font-medium text-gray-900">
+                {describeEvent(row.event)} · {row.channel}
+              </p>
+              <p className="text-xs text-gray-500">
+                {row.firm_name ?? "No firm"}
+                {row.attempts > 0 ? ` · attempt ${row.attempts} of 5` : ""}
+              </p>
+            </div>
+            {row.error && <p className="mt-1 break-words text-xs text-red-800">{row.error}</p>}
+            <p className="mt-1 text-xs text-gray-500">
+              Queued {formatWhen(row.created_at, timezone, { dateStyle: "medium", timeStyle: "short" })}
+            </p>
+            <form action={retryOneNotification} className="mt-2">
+              <input type="hidden" name="notificationId" value={row.id} />
+              <button
+                type="submit"
+                disabled={row.attempts >= 5}
+                className="min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {row.attempts >= 5 ? "Tried five times" : "Send this one again"}
+              </button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

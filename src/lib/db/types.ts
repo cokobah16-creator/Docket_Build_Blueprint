@@ -692,9 +692,24 @@ export interface SettlementHealthRow {
   status: string;
   provider_ref: string;
   paid_at: string | null;
+  created_at: string;
   reported_subaccount: string | null;
   expected_subaccount: string | null;
   settlement_mismatch: boolean;
+}
+
+/** One failed message, reachable so it can be retried. No payload, no recipient. */
+export interface FailedNotificationRow {
+  id: string;
+  firm_id: string | null;
+  firm_name: string | null;
+  firm_slug: string | null;
+  channel: string;
+  event: string;
+  attempts: number;
+  error: string | null;
+  created_at: string;
+  send_after: string;
 }
 
 /** A firm's override of the sentence a client reads for one event. */

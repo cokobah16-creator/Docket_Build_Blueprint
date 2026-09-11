@@ -9,7 +9,8 @@ import { headers } from "next/headers";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseServer } from "@/lib/supabase/server";
 import type {
-  DomainRequestRow, FirmAdminRow, NotificationHealthRow, SettlementHealthRow, WebhookEventRow,
+  DomainRequestRow, FailedNotificationRow, FirmAdminRow, NotificationHealthRow,
+  SettlementHealthRow, WebhookEventRow,
 } from "@/lib/db/types";
 
 export interface PlatformContext {
@@ -83,9 +84,27 @@ export async function settlementHealth(supabase: SupabaseClient, limit = 100): P
   const { data } = await supabase
     .from("platform_settlement_health")
     .select("*")
-    .order("paid_at", { ascending: false, nullsFirst: true })
+    // paid_at is null on every row this view can hold — record_payment only writes it on success
+    // — so recency comes from payments.created_at, which migration 20 added for exactly this.
+    .order("created_at", { ascending: false })
     .limit(limit);
   return (data ?? []) as SettlementHealthRow[];
+}
+
+/**
+ * Failed notifications one at a time, because the grouped health view has no id and a message
+ * cannot be put back in the queue without one. Still no payload and no recipient.
+ */
+export async function failedNotifications(
+  supabase: SupabaseClient,
+  limit = 100,
+): Promise<FailedNotificationRow[]> {
+  const { data } = await supabase
+    .from("platform_failed_notifications")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as FailedNotificationRow[];
 }
 
 /** What providers sent us. `badOnly` is the view an operator actually wants. */

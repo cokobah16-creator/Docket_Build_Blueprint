@@ -740,9 +740,12 @@ function courtDraft(c: CourtView): CourtDraft {
 export function PlatformCourtEditor({
   courts,
   totalCourts,
+  search,
 }: {
   courts: CourtView[];
   totalCourts: number;
+  /** The name filter currently applied, so the box shows what the list is showing. */
+  search: string;
 }) {
   const router = useRouter();
   const [draft, setDraft] = useState<CourtDraft | null>(null);
@@ -769,6 +772,31 @@ export function PlatformCourtEditor({
     <Card>
       <CardHeader title="Platform courts" action={<Badge>{totalCourts} in the directory</Badge>} />
       <CardBody className="space-y-4">
+        {/* The directory is longer than any page of it. Without this box most of it could never
+            be opened, and this screen is the only place a platform court can be corrected. */}
+        <form method="get" action="/admin/reference" className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[12rem] flex-1">
+            <label htmlFor="court-search" className="block text-sm font-medium text-gray-800">
+              Find a court
+            </label>
+            <input
+              id="court-search"
+              type="search"
+              name="court"
+              defaultValue={search}
+              placeholder="Name, division or town"
+              className="mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
+            />
+          </div>
+          <button type="submit" className="min-h-[44px] rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800">
+            Search
+          </button>
+          {search && (
+            <a href="/admin/reference" className="min-h-[44px] px-2 py-2.5 text-sm text-brand underline">
+              Clear
+            </a>
+          )}
+        </form>
         <p className="text-sm text-gray-600">
           Every firm on Docket picks from this directory when it opens a matter or posts a sitting. A
           court entered here belongs to the platform, not to a firm — a firm adds its own private
