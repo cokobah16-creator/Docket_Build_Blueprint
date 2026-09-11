@@ -45,7 +45,7 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
   if (!ctx) {
     return (
       <div className="space-y-5">
-        <h1 className="font-heading text-2xl font-semibold text-brand">Service inbox</h1>
+        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Service inbox</h1>
         <Alert kind="warning" title="Nothing to show yet">
           This account is not a member of a firm on Docket, so no process can have been served on it.
         </Alert>
@@ -95,7 +95,7 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-5">
-      <h1 className="font-heading text-2xl font-semibold text-brand">Service inbox</h1>
+      <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Service inbox</h1>
       <p className="text-sm text-gray-600">
         Processes served on {myFirmIds.size > 1 ? "your firms" : ctx.firmName} through Docket, and the ones
         they served. Times in {timezone}.

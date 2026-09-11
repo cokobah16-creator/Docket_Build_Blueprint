@@ -1,10 +1,9 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { currentFirm } from "@/lib/firm";
 import { firmById } from "@/lib/tenant";
 import { ConsultationRoom } from "@/components/video/consultation-room";
 import { Alert } from "@/components/ui/alert";
+import { Screen, ScreenHeader } from "@/components/portal/screen";
 
 export const metadata = { title: "Waiting room" };
 
@@ -32,7 +31,7 @@ export default async function WaitingRoomPage({ params }: { params: Promise<{ id
   const [{ data: lawyer }, { data: service }, firm] = await Promise.all([
     appt.lawyer_id ? supabase.from("lawyer_public").select("full_name, title").eq("id", appt.lawyer_id).maybeSingle() : Promise.resolve({ data: null }),
     appt.service_id ? supabase.from("services").select("name, duration_min").eq("id", appt.service_id).maybeSingle() : Promise.resolve({ data: null }),
-    (await currentFirm()) ?? firmById(appt.firm_id),
+    firmById(appt.firm_id),
   ]);
   const law = lawyer as { full_name: string | null; title: string | null } | null;
   const svc = service as { name: string; duration_min: number } | null;
@@ -41,37 +40,38 @@ export default async function WaitingRoomPage({ params }: { params: Promise<{ id
   const lawyerName = law?.full_name ?? "your lawyer";
 
   return (
-    <div className="space-y-5">
-      <header>
-        <p className="text-sm text-gray-600">
-          <Link href={`/app/appointments/${appt.id}`} className="text-brand underline">← Appointment {appt.reference}</Link>
-        </p>
-        <h1 className="mt-2 font-heading text-2xl font-semibold text-brand">{svc?.name ?? "Consultation"}</h1>
-        <dl className="mt-3 space-y-1 text-sm text-gray-700">
-          <div className="flex gap-2"><dt className="w-20 text-gray-500">With</dt><dd className="font-medium">{lawyerName}{law?.title ? ` · ${law.title}` : ""}</dd></div>
-          <div className="flex gap-2"><dt className="w-20 text-gray-500">When</dt><dd className="font-medium">{when} <span className="text-gray-500">({tz})</span></dd></div>
-          {svc && <div className="flex gap-2"><dt className="w-20 text-gray-500">Length</dt><dd className="font-medium">{svc.duration_min} minutes</dd></div>}
-        </dl>
-      </header>
+    <>
+      <ScreenHeader back={`/app/appointments/${appt.id}`} backLabel={`Back to appointment ${appt.reference}`} title="Waiting room" />
+      <Screen>
+        <header>
+          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">{svc?.name ?? "Consultation"}</h1>
+          <dl className="mt-2.5 space-y-1.5 text-[13px]">
+            <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-gray-500">With</dt><dd className="font-semibold text-gray-900">{lawyerName}{law?.title ? ` · ${law.title}` : ""}</dd></div>
+            <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-gray-500">When</dt><dd className="font-semibold text-gray-900">{when} <span className="font-normal text-gray-500">({tz})</span></dd></div>
+            {svc && <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-gray-500">Length</dt><dd className="font-semibold text-gray-900">{svc.duration_min} minutes</dd></div>}
+          </dl>
+        </header>
 
-      {appt.mode !== "virtual" ? (
-        <Alert kind="info">This is an {appt.mode.replace("_", " ")} appointment, so there is no video room.</Alert>
-      ) : !live ? (
-        <Alert kind="warning">This appointment is {appt.status.replace("_", " ")}, so the room is closed.</Alert>
-      ) : (
-        <ConsultationRoom
-          appointmentId={appt.id}
-          role="participant"
-          startsAt={appt.starts_at}
-          endsAt={appt.ends_at}
-          counterpartLabel={lawyerName}
-          accent={firm?.brand?.colours?.primary ?? "#0F2A44"}
-          doneHref={`/app/appointments/${appt.id}`}
-        />
-      )}
-      <p className="text-xs text-gray-500">
-        Consultations are private and are not recorded. Use headphones in a quiet place if you can.
-      </p>
-    </div>
+        {appt.mode !== "virtual" ? (
+          <Alert kind="info">This is an {appt.mode.replace("_", " ")} appointment, so there is no video room.</Alert>
+        ) : !live ? (
+          <Alert kind="warning">This appointment is {appt.status.replace("_", " ")}, so the room is closed.</Alert>
+        ) : (
+          <ConsultationRoom
+            appointmentId={appt.id}
+            role="participant"
+            startsAt={appt.starts_at}
+            endsAt={appt.ends_at}
+            counterpartLabel={lawyerName}
+            contextLabel={firm?.name}
+            accent={firm?.brand?.colours?.primary ?? "#0F2A44"}
+            doneHref={`/app/appointments/${appt.id}`}
+          />
+        )}
+        <p className="text-[11.5px] leading-relaxed text-gray-500">
+          Consultations are private and are not recorded. Use headphones in a quiet place if you can.
+        </p>
+      </Screen>
+    </>
   );
 }

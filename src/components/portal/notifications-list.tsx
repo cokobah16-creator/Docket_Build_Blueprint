@@ -25,21 +25,30 @@ export function NotificationsList({ rows, firmNames, timezone, compact = false }
   return (
     <div>
       {!compact && unread > 0 && (
-        <div className="flex justify-end border-b border-gray-100 px-5 py-2">
+        <div className="flex justify-end border-b border-gray-100 px-4 py-2">
           <Button size="sm" variant="ghost" onClick={readAll}>Mark all read ({unread})</Button>
         </div>
       )}
-      <ul className="divide-y divide-gray-100">
+      <ul>
         {items.map((n) => {
           const c = describeNotification(n.event, n.payload, (n.firm_id && firmNames[n.firm_id]) || "Your firm", timezone);
+          // Unread carries a dot and a tinted ground — never colour alone.
           return (
             <li key={n.id}>
-              <Link href={c.url} onClick={() => readOne(n.id)} className={`flex items-start gap-3 px-5 py-3 hover:bg-gray-50 ${n.read_at ? "" : "bg-sky-50/60"}`}>
-                <span aria-hidden="true" className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${n.read_at ? "bg-transparent" : "bg-brand"}`} />
+              <Link
+                href={c.url}
+                onClick={() => readOne(n.id)}
+                className={`flex items-start gap-2.5 border-t border-gray-100 px-4 py-3 first:border-t-0 hover:bg-gray-50 ${n.read_at ? "" : "bg-[#FBFAF7]"}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`mt-1.5 size-[7px] shrink-0 rounded-full ${n.read_at ? "bg-transparent" : "bg-brand"}`}
+                />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-medium text-gray-900">{c.title}</span>
-                  {c.body && <span className="block truncate text-xs text-gray-600">{c.body}</span>}
-                  <span className="block text-[11px] text-gray-500">{fmt.format(new Date(n.created_at))}</span>
+                  {!n.read_at && <span className="sr-only">Unread. </span>}
+                  <span className="block text-[13.5px] font-semibold leading-snug text-gray-900">{c.title}</span>
+                  {c.body && <span className="mt-0.5 block text-[12.5px] leading-[1.4] text-gray-600">{c.body}</span>}
+                  <span className="mt-0.5 block text-[11px] text-gray-500">{fmt.format(new Date(n.created_at))}</span>
                 </span>
               </Link>
             </li>

@@ -19,3 +19,37 @@ body {
   background-color: var(--dk-surface);
   font-family: var(--dk-font-body), system-ui, sans-serif;
 }
+
+/* Screens rise a few pixels as they arrive, so a tap reads as a move rather
+   than a repaint. The waiting indicator breathes. Both are motion for its own
+   sake, so both stop for anyone who has asked them to. */
+@keyframes dkRise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes dkPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

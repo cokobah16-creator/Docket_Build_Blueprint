@@ -7,6 +7,9 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { startInvoicePayment } from "@/lib/actions/portal";
+import { Screen } from "@/components/portal/screen";
+import { PayPanel } from "@/components/portal/pay-panel";
+import type { PaymentChannel } from "@/lib/providers/payments";
 
 export const metadata = { title: "Invoice" };
 
@@ -30,10 +33,11 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const inv = (data ?? null) as Invoice | null;
   if (!inv) notFound();
 
-  const [{ data: itemRows }, { data: paymentRows }, firm] = await Promise.all([
+  const [{ data: itemRows }, { data: paymentRows }, firm, { data: appointment }] = await Promise.all([
     supabase.from("invoice_items").select("id, description, quantity, unit_minor").eq("invoice_id", inv.id),
     supabase.from("payments").select("id, provider, provider_ref, status, amount_minor, paid_at").eq("invoice_id", inv.id).order("paid_at", { ascending: false }),
     firmById(inv.firm_id),
+    supabase.from("appointments").select("hold_expires_at").eq("invoice_id", inv.id).maybeSingle(),
   ]);
   const items = (itemRows ?? []) as Item[];
   const payments = (paymentRows ?? []) as Payment[];
@@ -41,27 +45,36 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const outstanding = Math.max(0, inv.total_minor - inv.paid_minor);
   const payable = ["issued", "partially_paid", "overdue"].includes(inv.status) && outstanding > 0;
   const invoiceId = inv.id;
-  const pay = async () => {
+  const pay = async (channel: PaymentChannel) => {
     "use server";
-    const r = await startInvoicePayment(invoiceId);
-    if (r?.error) redirect(`/app/payments/${invoiceId}?error=${encodeURIComponent(r.error)}`);
+    const r = await startInvoicePayment(invoiceId, channel);
+    if (r?.error) return r;
   };
 
+  // A consultation invoice carries the fifteen-minute hold; a matter invoice
+  // does not, and must not pretend to.
+  const holdExpiresAt = (appointment as { hold_expires_at: string | null } | null)?.hold_expires_at ?? null;
+
   return (
-    <div className="space-y-5">
+    <Screen>
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-2xl font-semibold text-brand">{inv.status === "paid" ? "Receipt" : "Invoice"} {inv.number}</h1>
-          <p className="text-sm text-gray-600">{firm?.legal_name ?? firm?.name ?? "Your firm"}</p>
+          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">{inv.status === "paid" ? "Receipt" : "Invoice"} {inv.number}</h1>
+          <p className="mt-1 text-[13px] text-gray-600">{firm?.legal_name ?? firm?.name ?? "Your firm"}</p>
         </div>
         <StatusPill status={inv.status as Status} />
       </header>
 
       {actionError && <Alert kind="error">{actionError}</Alert>}
       {payable && (
-        <form action={pay}>
-          <button type="submit" className="w-full rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-brand-on hover:opacity-90">Pay {fmt(outstanding)}</button>
-        </form>
+        <PayPanel
+          amount={fmt(outstanding)}
+          invoiceNumber={inv.number}
+          description={items[0]?.description ?? "Legal services"}
+          holdExpiresAt={holdExpiresAt}
+          firmName={firm?.name ?? "your firm"}
+          onPay={pay}
+        />
       )}
 
       <Card>
@@ -106,6 +119,6 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
         <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Download PDF</a>
         <Link href="/app/payments" className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">All payments</Link>
       </div>
-    </div>
+    </Screen>
   );
 }

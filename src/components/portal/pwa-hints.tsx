@@ -5,6 +5,8 @@
 
 import { useEffect, useState } from "react";
 import { isLowData, setLowData } from "@/lib/low-data";
+import { Alert } from "@/components/ui/alert";
+import { SettingRow, Switch } from "@/components/ui/switch";
 
 const DISMISS_KEY = "docket:ios-hint-dismissed";
 
@@ -23,13 +25,17 @@ export function IosInstallHint({ appName }: { appName: string }) {
   }, []);
   if (!show) return null;
   return (
-    <div role="status" className="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-      <p className="font-medium">Add {appName} to your home screen</p>
-      <p className="mt-1">Tap the Share button <span aria-hidden="true">⎋</span> in Safari, then <strong>Add to Home Screen</strong>. You get a full-screen app and notifications.</p>
-      <button type="button" className="mt-2 text-xs underline" onClick={() => { try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ } setShow(false); }}>
-        Don't show again
+    <Alert kind="info" icon="upload" title={`Add ${appName} to your home screen`}>
+      Tap the Share button in Safari, then <strong>Add to Home Screen</strong>. You get a
+      full-screen app and notifications.
+      <button
+        type="button"
+        className="mt-1.5 block text-[11.5px] font-semibold underline underline-offset-2"
+        onClick={() => { try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ } setShow(false); }}
+      >
+        Don&apos;t show again
       </button>
-    </div>
+    </Alert>
   );
 }
 
@@ -37,12 +43,15 @@ export function LowDataToggle() {
   const [on, setOn] = useState(false);
   useEffect(() => setOn(isLowData()), []);
   return (
-    <label className="flex items-center justify-between gap-4 text-sm text-gray-800">
-      <span>
-        <span className="block font-medium">Low-data mode</span>
-        <span className="block text-xs text-gray-500">Previews and images load only when you tap them. Saved on this device.</span>
-      </span>
-      <input type="checkbox" className="h-5 w-5" checked={on} onChange={(e) => { setLowData(e.target.checked); setOn(e.target.checked); }} />
-    </label>
+    <SettingRow
+      title="Low-data mode"
+      hint="Previews and images load only when you tap them. Saved on this device."
+    >
+      <Switch
+        label="Low-data mode"
+        checked={on}
+        onChange={(next) => { setLowData(next); setOn(next); }}
+      />
+    </SettingRow>
   );
 }

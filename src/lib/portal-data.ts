@@ -18,14 +18,22 @@ export async function firmNamesFor(ids: string[]): Promise<Record<string, string
   return Object.fromEntries(entries);
 }
 
-/** Matters the client is party to, across every firm, with status label, firm name, last update and lawyers. */
-export async function clientMatters(supabase: SupabaseClient, limit = 50): Promise<MatterSummary[]> {
-  const { data } = await supabase
+/**
+ * Matters the client is party to, with status label, firm name, last update
+ * and lawyers. Pass `firmId` to read only the firm the portal is currently
+ * showing; omit it for the whole picture across every firm acting for them.
+ */
+export async function clientMatters(
+  supabase: SupabaseClient,
+  limit = 50,
+  firmId?: string | null,
+): Promise<MatterSummary[]> {
+  let query = supabase
     .from("matters")
     .select("id, firm_id, reference, title, type, status_id, description, next_action, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
-    .is("deleted_at", null)
-    .order("opened_at", { ascending: false })
-    .limit(limit);
+    .is("deleted_at", null);
+  if (firmId) query = query.eq("firm_id", firmId);
+  const { data } = await query.order("opened_at", { ascending: false }).limit(limit);
   const matters = (data ?? []) as MatterRow[];
   if (matters.length === 0) return [];
   const ids = matters.map((m) => m.id);

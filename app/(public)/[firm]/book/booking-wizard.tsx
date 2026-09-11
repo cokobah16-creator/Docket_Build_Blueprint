@@ -1,5 +1,13 @@
 "use client";
 
+// The booking wizard, folded for the phone.
+//
+// The flow used to be eight conditional steps — service, format, lawyer, date,
+// slot, intake, sign-in, review — which is a lot of "Continue" on a phone. It
+// is now five, by putting the choices that belong together on one screen:
+// lawyer sits with the day and time it constrains, and signing in happens on
+// the review screen, next to the thing it is for. Nothing was dropped.
+
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
@@ -15,24 +23,39 @@ import type {
 } from "@/lib/db/types";
 import { SignInForms } from "@/components/auth/sign-in-forms";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/input";
+import { Input, Select, chipClasses, choiceCardClasses } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { bookAppointment, startPayment, saveContactEmail } from "@/lib/actions/booking";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { cn } from "@/lib/cn";
+import { startPayment, saveContactEmail } from "@/lib/actions/booking";
 
-type Step = "service" | "mode" | "lawyer" | "date" | "slot" | "intake" | "signin" | "review";
+type Step = "service" | "mode" | "when" | "intake" | "review";
 type Mode = "virtual" | "in_person" | "phone";
 type Answers = Record<string, string | string[]>;
 interface SessionUser { id: string; email: string | null; phone: string | null }
 
-const MODE_LABELS: Record<Mode, string> = {
-  virtual: "Virtual — video call from your phone or laptop",
-  in_person: "In person — at the firm's office",
-  phone: "Phone call",
+const STEP_TITLES: Record<Step, string> = {
+  service: "Service",
+  mode: "Format",
+  when: "Date & time",
+  intake: "Details",
+  review: "Review",
+};
+
+const MODES: Record<Mode, { label: string; hint: string; icon: IconName }> = {
+  virtual: {
+    label: "Virtual",
+    hint: "Video call from your phone — audio-only if the network is weak.",
+    icon: "video",
+  },
+  in_person: { label: "In person", hint: "At the firm's office.", icon: "building" },
+  phone: { label: "Phone call", hint: "A call on the number you signed in with.", icon: "phone" },
 };
 
 const fieldClasses =
-  "w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-base text-gray-900 " +
+  "w-full rounded-[9px] border border-gray-300 bg-white px-3 py-[11px] text-base text-gray-900 " +
   "placeholder:text-gray-400 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 function isoDateInTz(d: Date, tz: string): string {
@@ -103,14 +126,11 @@ export function BookingWizard({
   const lawyerTz = lawyer?.timezone ?? firm.timezone;
 
   const steps = useMemo<Step[]>(() => {
-    const s: Step[] = ["service", "mode"];
-    if (lawyers.length > 1) s.push("lawyer");
-    s.push("date", "slot");
+    const s: Step[] = ["service", "mode", "when"];
     if (form) s.push("intake");
-    if (!user) s.push("signin");
     s.push("review");
     return s;
-  }, [lawyers.length, form, user]);
+  }, [form]);
   const step = steps[Math.min(stepIdx, steps.length - 1)]!;
 
   // --- session ---------------------------------------------------------------
@@ -151,7 +171,7 @@ export function BookingWizard({
       }
     } catch { /* ignore */ }
     setPendingResume(false);
-    setStepIdx(999); // clamps to the last step (review, or signin if still anonymous)
+    setStepIdx(999); // clamps to the last step (review)
   }, [pendingResume, storageKey]);
 
   useEffect(() => {
@@ -159,11 +179,6 @@ export function BookingWizard({
       sessionStorage.setItem(storageKey, JSON.stringify({ serviceId, mode, lawyerId, date, slot, answers }));
     } catch { /* ignore */ }
   }, [storageKey, serviceId, mode, lawyerId, date, slot, answers]);
-
-  // When sign-in completes on the signin step, move on to review.
-  useEffect(() => {
-    if (user && step === "signin") setStepIdx(steps.indexOf("review"));
-  }, [user, step, steps]);
 
   // --- slots -------------------------------------------------------------------
   const loadSlots = useCallback(async (d: string) => {
@@ -178,15 +193,18 @@ export function BookingWizard({
     setSlots((data ?? []) as AppointmentSlot[]);
   }, [supabase, serviceId, lawyerId, firm.id]);
 
-  useEffect(() => { if (step === "slot" && date) loadSlots(date); }, [step, date, loadSlots]);
+  // Day and time are one screen now, so the slots load as soon as a day is
+  // picked rather than on the way to a separate step.
+  useEffect(() => { if (step === "when" && date) loadSlots(date); }, [step, date, loadSlots]);
 
   const dates = useMemo(() => {
-    const out: { iso: string; label: string }[] = [];
+    const out: { iso: string; dow: string; num: string }[] = [];
     for (let i = 0; i < 14; i++) {
       const d = new Date(Date.now() + i * 86_400_000);
       out.push({
         iso: isoDateInTz(d, lawyerTz),
-        label: new Intl.DateTimeFormat("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: lawyerTz }).format(d),
+        dow: new Intl.DateTimeFormat("en-GB", { weekday: "short", timeZone: lawyerTz }).format(d),
+        num: new Intl.DateTimeFormat("en-GB", { day: "numeric", timeZone: lawyerTz }).format(d),
       });
     }
     return out;
@@ -198,9 +216,7 @@ export function BookingWizard({
     switch (step) {
       case "service": return Boolean(service);
       case "mode": return Boolean(mode);
-      case "lawyer": return Boolean(lawyerId);
-      case "date": return Boolean(date);
-      case "slot": return Boolean(slot);
+      case "when": return Boolean(lawyerId && date && slot);
       case "intake":
         return visibleQuestions.every((q) => {
           if (!q.required) return true;
@@ -256,7 +272,7 @@ export function BookingWizard({
       if ("error" in booked) {
         if (booked.error.includes("slot unavailable")) {
           setSlot(null);
-          setStepIdx(steps.indexOf("slot"));
+          setStepIdx(steps.indexOf("when"));
           throw new Error("That time was just taken. Please pick another slot.");
         }
         throw new Error(booked.error);
@@ -287,108 +303,185 @@ export function BookingWizard({
   }
 
   const stepNumber = stepIdx + 1;
+  const feeMinor = service?.price_minor ?? 0;
 
   return (
-    <div className="space-y-5">
-      <ol className="flex flex-wrap gap-2 text-xs text-gray-500" aria-label="Progress">
-        {steps.map((s, i) => (
-          <li key={s} className={i === stepIdx ? "font-semibold text-brand" : i < stepIdx ? "text-gray-700" : ""}>
-            {i + 1}. {{ service: "Service", mode: "Format", lawyer: "Lawyer", date: "Date", slot: "Time", intake: "Details", signin: "Sign in", review: "Review" }[s]}
-          </li>
-        ))}
-      </ol>
+    <div>
+      <header className="sticky top-0 z-20 -mx-4 flex min-h-[50px] items-center gap-2.5 border-b border-[#EBE7E0] bg-white/[0.92] px-3.5 py-2.5 backdrop-blur-xl">
+        <button
+          type="button"
+          onClick={back}
+          disabled={stepIdx === 0 || submitting}
+          aria-label="Back a step"
+          className="grid size-9 shrink-0 place-items-center rounded-full border border-gray-200 bg-white text-brand disabled:opacity-40"
+        >
+          <Icon name="chevron-left" size={19} strokeWidth={2} />
+        </button>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13px] font-semibold text-gray-900">{STEP_TITLES[step]}</p>
+          <p className="mt-px truncate text-[11px] text-gray-500">
+            Step {stepNumber} of {steps.length} · {firm.name}
+          </p>
+        </div>
+      </header>
+      <div className="-mx-4 h-[3px] bg-gray-200" aria-hidden="true">
+        <div
+          className="h-full bg-brand transition-[width] duration-300"
+          style={{ width: `${(stepNumber / steps.length) * 100}%` }}
+        />
+      </div>
 
-      {error && <Alert kind="error">{error}</Alert>}
+      <div className="flex flex-col gap-3 pt-4">
+        {error && <Alert kind="error">{error}</Alert>}
 
-      {step === "service" && (
-        <Section title="What do you need help with?">
-          <div className="grid gap-3">
+        {step === "service" && (
+          <>
+            <StepTitle>What do you need help with?</StepTitle>
             {services.map((s) => (
-              <ChoiceCard key={s.id} selected={serviceId === s.id} onClick={() => { setServiceId(s.id); setMode(null); setSlot(null); }}>
-                <p className="font-medium text-gray-900">{s.name}</p>
-                {s.description && <p className="mt-1 text-sm text-gray-600">{s.description}</p>}
-                <p className="mt-1 text-sm font-medium text-brand">
-                  {formatMoneyMinor(s.price_minor, s.currency)} · {s.duration_min} minutes
-                </p>
-              </ChoiceCard>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {step === "mode" && service && (
-        <Section title="How would you like to meet?">
-          <div className="grid gap-3">
-            {(["virtual", "in_person", "phone"] as Mode[])
-              .filter((m) => m !== "virtual" || service.virtual_available)
-              .map((m) => (
-                <ChoiceCard key={m} selected={mode === m} onClick={() => setMode(m)}>
-                  <p className="font-medium text-gray-900">{MODE_LABELS[m]}</p>
-                </ChoiceCard>
-              ))}
-          </div>
-        </Section>
-      )}
-
-      {step === "lawyer" && (
-        <Section title="Who would you like to see?">
-          <div className="grid gap-3">
-            {lawyers.map((l) => (
-              <ChoiceCard key={l.id} selected={lawyerId === l.id} onClick={() => { setLawyerId(l.id); setDate(null); setSlot(null); }}>
-                <p className="font-medium text-gray-900">{lawyerName(l, firm.name)}</p>
-                {l.title && <p className="text-sm text-gray-600">{l.title}</p>}
-              </ChoiceCard>
-            ))}
-          </div>
-        </Section>
-      )}
-
-      {step === "date" && (
-        <Section title="Pick a day" hint={`Times are shown in your timezone (${visitorTz})${visitorTz !== lawyerTz ? ` and the lawyer's (${lawyerTz})` : ""}.`}>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            {dates.map((d) => (
               <button
-                key={d.iso}
+                key={s.id}
                 type="button"
-                onClick={() => { setDate(d.iso); setSlot(null); }}
-                className={`rounded-lg border px-3 py-3 text-sm ${date === d.iso ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand"}`}
+                aria-pressed={serviceId === s.id}
+                onClick={() => { setServiceId(s.id); setMode(null); setSlot(null); }}
+                className={choiceCardClasses(serviceId === s.id)}
               >
-                {d.label}
+                <span className="block text-[14.5px] font-semibold text-gray-900">{s.name}</span>
+                {s.description && <span className="mt-1 block text-[12.5px] leading-[1.45] text-gray-600">{s.description}</span>}
+                <span className="mt-1.5 block text-[13px] font-semibold text-brand">
+                  {formatMoneyMinor(s.price_minor, s.currency)} · {s.duration_min} minutes
+                </span>
               </button>
             ))}
-          </div>
-        </Section>
-      )}
+          </>
+        )}
 
-      {step === "slot" && (
-        <Section title="Pick a time">
-          {slotsLoading ? (
-            <p className="text-sm text-gray-600">Checking availability…</p>
-          ) : slots.length === 0 ? (
-            <Alert kind="info">No free times on this day. Try another day.</Alert>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {slots.map((s) => (
-                <button
-                  key={s.starts_at}
-                  type="button"
-                  onClick={() => setSlot(s)}
-                  className={`rounded-lg border px-3 py-3 text-sm ${slot?.starts_at === s.starts_at ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand"}`}
-                >
-                  <span className="block font-medium">{fmtTime(s.starts_at, visitorTz)}</span>
-                  {visitorTz !== lawyerTz && (
-                    <span className="block text-xs opacity-80">{fmtTime(s.starts_at, lawyerTz)} lawyer time</span>
-                  )}
-                </button>
-              ))}
+        {step === "mode" && service && (
+          <>
+            <StepTitle>How would you like to meet?</StepTitle>
+            {(["virtual", "in_person", "phone"] as Mode[])
+              .filter((m) => m !== "virtual" || service.virtual_available)
+              .map((m) => {
+                const on = mode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setMode(m)}
+                    className={choiceCardClasses(on)}
+                  >
+                    <span className="flex items-start gap-3">
+                      <span
+                        className={cn(
+                          "grid size-[34px] shrink-0 place-items-center rounded-lg",
+                          on ? "bg-brand text-brand-on" : "bg-gray-100 text-gray-500",
+                        )}
+                      >
+                        <Icon name={MODES[m].icon} size={18} />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[14.5px] font-semibold text-gray-900">{MODES[m].label}</span>
+                        <span className="mt-0.5 block text-[12.5px] leading-[1.45] text-gray-600">{MODES[m].hint}</span>
+                      </span>
+                    </span>
+                  </button>
+                );
+              })}
+          </>
+        )}
+
+        {step === "when" && (
+          <>
+            <StepTitle>Pick a day and time</StepTitle>
+            <p className="text-xs leading-relaxed text-gray-500">
+              Times are shown in your timezone ({visitorTz})
+              {visitorTz !== lawyerTz ? `, and the lawyer's (${lawyerTz}) under each` : ", the same as the lawyer's"}.
+              The slot is held for fifteen minutes while you pay.
+            </p>
+
+            {/* The lawyer decides which slots exist, so the choice sits here. */}
+            {lawyers.length > 1 && (
+              <fieldset className="flex flex-col gap-2">
+                <legend className="mb-1 text-[12.5px] font-semibold text-gray-700">Who would you like to see?</legend>
+                <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
+                  {lawyers.map((l) => (
+                    <button
+                      key={l.id}
+                      type="button"
+                      aria-pressed={lawyerId === l.id}
+                      onClick={() => { setLawyerId(l.id); setDate(null); setSlot(null); }}
+                      className={chipClasses(lawyerId === l.id, "shrink-0")}
+                    >
+                      {lawyerName(l, firm.name)}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+
+            <div className="-mx-4 grid grid-flow-col justify-start gap-[7px] overflow-x-auto px-4 pb-0.5">
+              {dates.map((d) => {
+                const on = date === d.iso;
+                return (
+                  <button
+                    key={d.iso}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => { setDate(d.iso); setSlot(null); }}
+                    className={cn(
+                      "min-h-14 w-[62px] rounded-[9px] border",
+                      on ? "border-brand bg-brand text-brand-on" : "border-gray-200 bg-white text-gray-900",
+                    )}
+                  >
+                    <span className="block text-[10.5px] uppercase tracking-[0.06em] opacity-70">{d.dow}</span>
+                    <span className="mt-0.5 block text-[17px] font-bold">{d.num}</span>
+                  </button>
+                );
+              })}
             </div>
-          )}
-        </Section>
-      )}
 
-      {step === "intake" && form && (
-        <Section title="A few details for your lawyer" hint="Only what's needed to prepare. Your answers are private to the firm.">
-          <div className="space-y-4">
+            {!date ? (
+              <p className="text-[12.5px] text-gray-500">Pick a day to see the free times.</p>
+            ) : slotsLoading ? (
+              <p className="text-[12.5px] text-gray-600">Checking availability…</p>
+            ) : slots.length === 0 ? (
+              <Alert kind="info">No free times on this day. Try another day.</Alert>
+            ) : (
+              <div className="grid grid-cols-4 gap-[7px]">
+                {slots.map((s) => {
+                  const on = slot?.starts_at === s.starts_at;
+                  return (
+                    <button
+                      key={s.starts_at}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => setSlot(s)}
+                      className={cn(
+                        "min-h-[46px] rounded-[9px] border text-[13px] font-semibold",
+                        on ? "border-brand bg-brand text-brand-on" : "border-gray-200 bg-white text-gray-900",
+                      )}
+                    >
+                      <span className="block">{fmtTime(s.starts_at, visitorTz)}</span>
+                      {visitorTz !== lawyerTz && (
+                        <span className="block text-[10px] font-normal opacity-75">{fmtTime(s.starts_at, lawyerTz)}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <p className="text-[11.5px] text-gray-500">
+              Two-hour lead time, the daily cap and the firm&apos;s breaks are already taken out.
+            </p>
+          </>
+        )}
+
+        {step === "intake" && form && (
+          <>
+            <StepTitle>A few details for your lawyer</StepTitle>
+            <p className="text-xs leading-relaxed text-gray-500">
+              Only what is needed to prepare. Your answers are private to {firm.name}.
+            </p>
             {visibleQuestions.map((q) => (
               <IntakeField
                 key={q.key}
@@ -399,46 +492,54 @@ export function BookingWizard({
                 onFiles={(list) => setFiles((f) => ({ ...f, [q.key]: list }))}
               />
             ))}
-          </div>
-        </Section>
-      )}
+          </>
+        )}
 
-      {step === "signin" && (
-        <Section title="Sign in to hold your slot" hint="We'll remember your choices while you sign in.">
-          {!authChecked ? (
-            <p className="text-sm text-gray-600">Checking your session…</p>
-          ) : (
-            <SignInForms redirectNext={`/${firm.slug}/book?resume=1`} />
-          )}
-        </Section>
-      )}
+        {step === "review" && service && slot && mode && (
+          <>
+            <StepTitle>Review and {feeMinor > 0 ? "pay" : "confirm"}</StepTitle>
+            <dl className="flex flex-col gap-3 rounded-card border border-gray-200 bg-white px-4 py-[15px] text-[13.5px]">
+              <Row label="Service" value={service.name} />
+              <Row label="Lawyer" value={lawyerName(lawyer, firm.name)} />
+              <Row label="Format" value={MODES[mode].label} />
+              <Row label="Date" value={fmtDate(slot.starts_at, visitorTz)} />
+              <Row
+                label="Time"
+                value={
+                  visitorTz === lawyerTz
+                    ? `${fmtTime(slot.starts_at, visitorTz)} (${visitorTz})`
+                    : `${fmtTime(slot.starts_at, visitorTz)} your time · ${fmtTime(slot.starts_at, lawyerTz)} lawyer's time`
+                }
+              />
+              <Row label="Duration" value={`${service.duration_min} minutes`} />
+              <div className="border-t border-gray-100 pt-3">
+                <Row label="Fee" value={formatMoneyMinor(service.price_minor, service.currency)} bold />
+              </div>
+            </dl>
 
-      {step === "review" && service && slot && mode && (
-        <Section title="Review and confirm">
-          <dl className="space-y-3 text-sm">
-            <Row label="Service" value={service.name} />
-            <Row label="Lawyer" value={lawyerName(lawyer, firm.name)} />
-            <Row label="Format" value={MODE_LABELS[mode]} />
-            <Row label="Date" value={fmtDate(slot.starts_at, visitorTz)} />
-            <Row
-              label="Time"
-              value={
-                visitorTz === lawyerTz
-                  ? `${fmtTime(slot.starts_at, visitorTz)} (${visitorTz})`
-                  : `${fmtTime(slot.starts_at, visitorTz)} your time · ${fmtTime(slot.starts_at, lawyerTz)} lawyer's time`
-              }
-            />
-            <Row label="Duration" value={`${service.duration_min} minutes`} />
-            <Row label="Fee" value={`${formatMoneyMinor(service.price_minor, service.currency)}${service.price_minor > 0 ? " — payable now to confirm" : ""}`} />
-          </dl>
-          {firm.policies.cancellation?.text ? (
-            <p className="mt-4 text-xs text-gray-500">{String(firm.policies.cancellation.text)}</p>
-          ) : null}
-          {firm.policies.disclaimer?.text ? (
-            <p className="mt-2 text-xs text-gray-500">{String(firm.policies.disclaimer.text)}</p>
-          ) : null}
-          {needEmail && (
-            <div className="mt-4">
+            {feeMinor > 0 && (
+              <Alert kind="notice">
+                Your slot is held for <strong>15 minutes</strong> while you pay. The fee settles to{" "}
+                {firm.name}&apos;s own account — Docket never holds it.
+              </Alert>
+            )}
+
+            {/* Signing in is what the confirm button needs, so it lives beside it. */}
+            {!user && (
+              <div className="flex flex-col gap-2.5 rounded-card border border-gray-200 bg-white px-4 py-[15px]">
+                <p className="text-[13.5px] font-semibold text-gray-900">Sign in to hold your slot</p>
+                <p className="text-xs leading-relaxed text-gray-500">
+                  Your choices above are remembered while you sign in.
+                </p>
+                {!authChecked ? (
+                  <p className="text-[12.5px] text-gray-600">Checking your session…</p>
+                ) : (
+                  <SignInForms redirectNext={`/${firm.slug}/book?resume=1`} />
+                )}
+              </div>
+            )}
+
+            {needEmail && (
               <Input
                 label="Email for your receipt"
                 type="email"
@@ -448,62 +549,64 @@ export function BookingWizard({
                 hint="Required by the payment provider."
                 required
               />
-            </div>
-          )}
-        </Section>
-      )}
+            )}
 
-      <div className="flex items-center justify-between gap-3">
-        <Button variant="ghost" onClick={back} disabled={stepIdx === 0 || submitting}>
-          Back
-        </Button>
+            {firm.policies.cancellation?.text ? (
+              <p className="text-[11.5px] leading-relaxed text-gray-500">{String(firm.policies.cancellation.text)}</p>
+            ) : null}
+            {firm.policies.disclaimer?.text ? (
+              <p className="text-[11.5px] leading-relaxed text-gray-500">{String(firm.policies.disclaimer.text)}</p>
+            ) : (
+              <p className="text-[11.5px] leading-relaxed text-gray-500">
+                Submitting an inquiry or booking a consultation does not create a lawyer-client
+                relationship. Formal legal advice and representation begin only on a signed engagement.
+              </p>
+            )}
+          </>
+        )}
+      </div>
+
+      <div className="pt-5">
         {step === "review" ? (
-          <Button size="lg" onClick={submit} disabled={submitting || (needEmail && !contactEmail)}>
-            {submitting ? "Holding your slot…" : service && service.price_minor > 0 ? "Confirm and pay" : "Confirm booking"}
+          <Button
+            size="lg"
+            className="w-full"
+            onClick={submit}
+            disabled={!user || submitting || (needEmail && !contactEmail)}
+          >
+            {submitting
+              ? "Holding your slot…"
+              : !user
+                ? "Sign in to confirm"
+                : feeMinor > 0
+                  ? `Confirm and pay ${formatMoneyMinor(service!.price_minor, service!.currency)}`
+                  : "Confirm booking"}
           </Button>
-        ) : step === "signin" ? null : (
-          <Button size="lg" onClick={next} disabled={!canProceed}>
+        ) : (
+          <Button size="lg" className="w-full" onClick={next} disabled={!canProceed}>
             Continue
           </Button>
         )}
       </div>
-      <p className="text-xs text-gray-400">Step {stepNumber} of {steps.length}</p>
     </div>
   );
 }
 
 // --- small pieces ----------------------------------------------------------------
 
-function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
+function StepTitle({ children }: { children: ReactNode }) {
   return (
-    <Card>
-      <CardHeader title={title} />
-      <CardBody>
-        {hint && <p className="mb-4 text-sm text-gray-500">{hint}</p>}
-        {children}
-      </CardBody>
-    </Card>
-  );
-}
-
-function ChoiceCard({ selected, onClick, children }: { selected: boolean; onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={selected}
-      className={`rounded-lg border p-4 text-left transition ${selected ? "border-brand ring-2 ring-brand" : "border-gray-300 bg-white hover:border-brand"}`}
-    >
+    <h2 className="font-heading text-[20px] font-semibold leading-tight tracking-[-0.01em] text-brand">
       {children}
-    </button>
+    </h2>
   );
 }
 
-function Row({ label, value }: { label: string; value: string }) {
+function Row({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-gray-500">{label}</dt>
-      <dd className="text-right font-medium text-gray-900">{value}</dd>
+      <dt className="shrink-0 text-gray-500">{label}</dt>
+      <dd className={cn("text-right text-gray-900", bold ? "font-bold" : "font-semibold")}>{value}</dd>
     </div>
   );
 }
@@ -526,22 +629,52 @@ function IntakeField({
   if (q.type === "longtext") {
     return (
       <div className="space-y-1.5">
-        <label htmlFor={id} className="block text-sm font-medium text-gray-800">{q.label}</label>
-        <textarea id={id} rows={4} maxLength={q.max_length} required={q.required} className={fieldClasses} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
-        {q.help && <p className="text-sm text-gray-500">{q.help}</p>}
+        <label htmlFor={id} className="block text-[12.5px] font-semibold text-gray-700">{q.label}</label>
+        <textarea id={id} rows={4} maxLength={q.max_length} required={q.required} className={cn(fieldClasses, "min-h-[76px] leading-relaxed")} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
+        {q.help && <p className="text-[11.5px] text-gray-500">{q.help}</p>}
       </div>
+    );
+  }
+  // Short option lists read better as chips on a phone than as a stack of
+  // radios or a select the thumb has to scroll inside.
+  if (q.type === "choice" && (q.options ?? []).length <= 8) {
+    const multiple = Boolean(q.multiple);
+    const selected = Array.isArray(value) ? value : typeof value === "string" && value ? [value] : [];
+    const toggle = (opt: string) => {
+      if (!multiple) return onChange(opt);
+      onChange(selected.includes(opt) ? selected.filter((v) => v !== opt) : [...selected, opt]);
+    };
+    return (
+      <fieldset className="space-y-2">
+        <legend className="mb-1 text-[12.5px] font-semibold text-gray-700">{q.label}</legend>
+        <div className="flex flex-wrap gap-[7px]">
+          {(q.options ?? []).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              role={multiple ? "checkbox" : "radio"}
+              aria-checked={selected.includes(opt)}
+              onClick={() => toggle(opt)}
+              className={chipClasses(selected.includes(opt))}
+            >
+              {opt}
+            </button>
+          ))}
+        </div>
+        {q.help && <p className="text-[11.5px] text-gray-500">{q.help}</p>}
+      </fieldset>
     );
   }
   if (q.type === "choice" && q.multiple) {
     const selected = Array.isArray(value) ? value : [];
     return (
       <fieldset className="space-y-2">
-        <legend className="text-sm font-medium text-gray-800">{q.label}</legend>
+        <legend className="text-[12.5px] font-semibold text-gray-700">{q.label}</legend>
         {(q.options ?? []).map((opt) => (
-          <label key={opt} className="flex items-center gap-2 text-sm text-gray-700">
+          <label key={opt} className="flex items-center gap-2 text-[13.5px] text-gray-700">
             <input
               type="checkbox"
-              className="h-4 w-4"
+              className="size-4"
               checked={selected.includes(opt)}
               onChange={(e) => onChange(e.target.checked ? [...selected, opt] : selected.filter((v) => v !== opt))}
             />
@@ -563,17 +696,24 @@ function IntakeField({
   }
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium text-gray-800">{q.label}</label>
+      <label htmlFor={id} className="block text-[12.5px] font-semibold text-gray-700">{q.label}</label>
+      <label
+        htmlFor={id}
+        className="flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[9px] border border-dashed border-gray-300 bg-white text-[13px] font-semibold text-brand"
+      >
+        <Icon name="upload" size={17} />
+        Choose files
+      </label>
       <input
         id={id}
         type="file"
         multiple={(q.max_files ?? 1) > 1}
         accept="application/pdf,image/jpeg,image/png,image/heic,.docx"
-        className="block w-full text-sm text-gray-700"
+        className="sr-only"
         onChange={(e) => onFiles(Array.from<File>(e.target.files ?? []).slice(0, q.max_files ?? 1))}
       />
-      {files.length > 0 && <p className="text-xs text-gray-500">{files.map((f) => f.name).join(", ")}</p>}
-      <p className="text-xs text-gray-500">PDF or images, up to 25 MB each. Uploaded securely after you sign in.</p>
+      {files.length > 0 && <p className="text-[11.5px] text-gray-600">{files.map((f) => f.name).join(", ")}</p>}
+      <p className="text-[11.5px] text-gray-500">PDF or images, up to 25 MB each. Uploaded securely after you sign in.</p>
     </div>
   );
 }

@@ -3,7 +3,9 @@
 
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { currentFirm } from "@/lib/firm";
+import { selectedFirm } from "@/lib/portal-firm";
+import { formatMoneyMinor } from "@/lib/money";
+import { Screen } from "@/components/portal/screen";
 import { PaymentResult } from "./payment-result";
 
 export const metadata = { title: "Payment" };
@@ -26,18 +28,28 @@ export default async function PaymentResultPage({ params }: { params: Promise<{ 
   } | null;
   if (!appt) notFound();
 
-  const firm = await currentFirm();
+  const [firm, { data: invoiceRow }] = await Promise.all([
+    selectedFirm(supabase),
+    appt.invoice_id
+      ? supabase.from("invoices").select("number, total_minor, currency").eq("id", appt.invoice_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const invoice = invoiceRow as { number: string; total_minor: number; currency: string } | null;
 
   return (
-    <PaymentResult
-      appointmentId={appt.id}
-      reference={appt.reference}
-      initialStatus={appt.status}
-      holdExpiresAt={appt.hold_expires_at}
-      startsAt={appt.starts_at}
-      timezone={appt.client_timezone ?? "Africa/Lagos"}
-      invoiceId={appt.invoice_id}
-      bookHref={firm ? `/${firm.slug}/book` : "/app"}
-    />
+    <Screen>
+      <PaymentResult
+        appointmentId={appt.id}
+        reference={appt.reference}
+        initialStatus={appt.status}
+        holdExpiresAt={appt.hold_expires_at}
+        startsAt={appt.starts_at}
+        timezone={appt.client_timezone ?? "Africa/Lagos"}
+        invoiceId={appt.invoice_id}
+        invoiceNumber={invoice?.number ?? null}
+        amount={invoice ? formatMoneyMinor(invoice.total_minor, invoice.currency) : null}
+        bookHref={firm ? `/${firm.slug}/book` : "/app"}
+      />
+    </Screen>
   );
 }
