@@ -17,15 +17,17 @@
 //    are no public document URLs anywhere in Docket.
 //  · Low-data mode defers every preview until it is asked for.
 
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { requestDocument, cancelDocumentRequest } from "@/lib/actions/matters";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { recordDocumentOpen } from "@/lib/document-open";
 import { isLowData } from "@/lib/low-data";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
-import type { DocumentRow, DocumentVersionRow } from "@/lib/db/types";
+import type { DocumentRequestRow, DocumentRow, DocumentVersionRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
 
 export type StaffDocument = DocumentRow & { version: DocumentVersionRow | null; version_count: number };
@@ -46,7 +48,7 @@ function storagePathFor(firmId: string, documentId: string, versionId: string, f
 }
 
 export function StaffDocuments({
-  firmId, matterId, userId, documents, timezone, names,
+  firmId, matterId, userId, documents, timezone, names, requests = [],
 }: {
   firmId: string;
   matterId: string;
@@ -55,8 +57,34 @@ export function StaffDocuments({
   timezone: string;
   /** user id → who uploaded it (staff or the client who sent it in). */
   names: Record<string, string>;
+  /** What the client has been asked for (migration 31). */
+  requests?: DocumentRequestRow[];
 }) {
   const router = useRouter();
+  const [askOpen, setAskOpen] = useState(false);
+  const [askTitle, setAskTitle] = useState("");
+  const [askWhy, setAskWhy] = useState("");
+  const [askDue, setAskDue] = useState("");
+  const [askBusy, setAskBusy] = useState(false);
+  const [askError, setAskError] = useState<string | null>(null);
+
+  async function ask(e: FormEvent) {
+    e.preventDefault();
+    setAskError(null); setAskBusy(true);
+    const r = await requestDocument(matterId, firmId, { title: askTitle, why: askWhy || undefined, dueOn: askDue || null });
+    setAskBusy(false);
+    if (r?.error) { setAskError(r.error); return; }
+    setAskTitle(""); setAskWhy(""); setAskDue(""); setAskOpen(false);
+    router.refresh();
+  }
+  async function withdraw(id: string) {
+    setAskError(null);
+    const r = await cancelDocumentRequest(id, matterId);
+    if (r?.error) { setAskError(r.error); return; }
+    router.refresh();
+  }
+  const openRequests = requests.filter((r) => !r.fulfilled_at && !r.cancelled_at);
+  const dayFmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lowData, setLowData] = useState(false);
@@ -192,6 +220,10 @@ export function StaffDocuments({
     setPreview({ doc: shown, url: null, loading: true });
     const supabase = supabaseBrowser();
     if (!supabase) { setPreview(null); setError("Not configured."); return; }
+    // Record the read first: the storage policy requires it (migration 30), and it is what the
+    // audit log shows as document.opened.
+    const refused = await recordDocumentOpen(supabase, target.id);
+    if (refused) { setError(refused); setPreview(null); return; }
     const { data, error: signError } = await supabase.storage.from("documents").createSignedUrl(target.storage_path, 120);
     if (signError || !data?.signedUrl) { setError(signError?.message ?? "Could not open the document."); setPreview(null); return; }
     setPreview({ doc: shown, url: data.signedUrl, loading: false });
@@ -215,6 +247,45 @@ export function StaffDocuments({
 
   return (
     <div>
+
+      {/* What the client has been asked for. A request is a row: it shows here, on the client's
+          documents tab, and in their notifications, until it is answered or withdrawn. */}
+      <section className="border-b border-gray-100 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold text-gray-900">Asked of the client</h3>
+          <Button size="sm" variant="ghost" onClick={() => setAskOpen((o) => !o)}>{askOpen ? "Cancel" : "Ask for a document"}</Button>
+        </div>
+        {askError && <div className="mt-2"><Alert kind="error">{askError}</Alert></div>}
+        {askOpen && (
+          <form onSubmit={ask} className="mt-3 grid gap-2 sm:grid-cols-3">
+            <input value={askTitle} onChange={(e) => setAskTitle(e.target.value)} required maxLength={200} placeholder="What document" className="rounded-lg border border-gray-300 px-3 py-2 text-sm sm:col-span-2" />
+            <input type="date" value={askDue} onChange={(e) => setAskDue(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" aria-label="By when" />
+            <input value={askWhy} onChange={(e) => setAskWhy(e.target.value)} maxLength={2000} placeholder="Why it is needed (the client sees this)" className="rounded-lg border border-gray-300 px-3 py-2 text-sm sm:col-span-3" />
+            <div className="sm:col-span-3"><Button type="submit" size="sm" disabled={askBusy || askTitle.trim().length < 2}>{askBusy ? "Asking…" : "Ask"}</Button></div>
+          </form>
+        )}
+        {openRequests.length === 0 ? (
+          <p className="mt-2 text-xs text-gray-500">Nothing outstanding.</p>
+        ) : (
+          <ul className="mt-2 space-y-1.5">
+            {openRequests.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                <span className="min-w-0">
+                  <span className="font-medium text-gray-900">{r.title}</span>
+                  <span className="text-xs text-gray-600">
+                    {r.due_on ? ` · by ${dayFmt.format(new Date(`${r.due_on}T00:00:00Z`))}` : ""}
+                    {r.requested_by && names[r.requested_by] ? ` · asked by ${names[r.requested_by]}` : ""}
+                  </span>
+                </span>
+                <Button size="sm" variant="ghost" onClick={() => withdraw(r.id)}>Withdraw</Button>
+              </li>
+            ))}
+          </ul>
+        )}
+        {requests.some((r) => r.fulfilled_at) && (
+          <p className="mt-2 text-xs text-[#15803D]">Answered: {requests.filter((r) => r.fulfilled_at).map((r) => r.title).join(", ")}.</p>
+        )}
+      </section>
       {error && <div className="px-4 pt-4 sm:px-5"><Alert kind="error" title="That was refused">{error}</Alert></div>}
 
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">

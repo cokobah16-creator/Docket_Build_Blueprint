@@ -317,6 +317,8 @@ export interface MatterRow {
   reference: string;
   title: string;
   type: string;
+  /** 'firm' (every member, the default) or 'team' (matter_lawyers only — migration 29). */
+  access: "firm" | "team";
   status_id: string | null;
   description: string | null;
   next_action: string | null;
@@ -375,6 +377,64 @@ export interface DocumentRow {
   /** When staff marked a client upload as looked at; null keeps it on the review counter. */
   reviewed_at: string | null;
   reviewed_by: string | null;
+  created_at: string;
+}
+
+/** A document staff asked the client for (migration 31). */
+export interface DocumentRequestRow {
+  id: string;
+  firm_id: string;
+  matter_id: string;
+  title: string;
+  why: string | null;
+  /** YYYY-MM-DD or null — a calendar day. */
+  due_on: string | null;
+  requested_by: string | null;
+  requested_at: string;
+  fulfilled_document_id: string | null;
+  fulfilled_at: string | null;
+  cancelled_at: string | null;
+}
+
+/** Someone on the other side of a matter, as the firm knows them (migration 32). Firm work product. */
+export interface AdversePartyRow {
+  id: string;
+  firm_id: string;
+  matter_id: string;
+  name: string;
+  aliases: string[];
+  kind: "person" | "organisation";
+  relation: "adverse" | "co_party" | "witness" | "related";
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** One hit from run_conflict_check(). A restricted matter the caller cannot see carries no identity. */
+export interface ConflictMatch {
+  kind: "client" | "adverse" | "opposing_party" | "cause_title";
+  name: string;
+  searched: string;
+  strength: "exact" | "contains" | "similar";
+  restricted: boolean;
+  matter_id: string | null;
+  matter_reference: string | null;
+  matter_title: string | null;
+  lead_lawyer_id: string | null;
+}
+
+/** A conflict search as recorded, and the lawyer's decision on it (migration 32). */
+export interface ConflictCheckRow {
+  id: string;
+  firm_id: string;
+  matter_id: string | null;
+  query: { names?: string[]; keys?: string[] };
+  matches: ConflictMatch[];
+  outcome: "clear" | "conflict" | "waived" | null;
+  decision_note: string | null;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_by: string | null;
   created_at: string;
 }
 

@@ -237,6 +237,11 @@ export default async function FirmMattersPage({
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center gap-2">
                         {m.status && <StatusChip status={m.status} />}
+                        {m.access === "team" && (
+                          <span className="inline-flex items-center rounded-full bg-[#141414] px-2.5 py-0.5 text-xs font-medium text-white" title="Only this matter's team can open it">
+                            Restricted
+                          </span>
+                        )}
                         {m.closed_at && (
                           <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-700">
                             Closed

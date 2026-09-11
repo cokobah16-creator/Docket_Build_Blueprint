@@ -27,6 +27,9 @@ arrives as a plain error whose message is the whole explanation.
 | `mfa_ok()` | the session's JWT claim `aal` is exactly `aal2` — a second factor was used |
 | `is_firm_member(f)` | the caller has a `firm_members` row in firm `f`, any role |
 | `staff_w(f)` | `is_firm_member(f)` **and** `mfa_ok()` **and** the firm is not suspended |
+| `can_see_matter(m)` | the wall (migration 29): `is_firm_member` of the matter's firm **and** (the matter is `access = 'firm'` **or** the caller is on `matter_lawyers`). Every matter-content policy and every matter-scoped definer function asks it |
+| `open_document_version(v)` | the one door to a document's bytes (migration 30): checks `can_access_document_version(v)`, records a `document_reads` row and a `document.opened` audit line, returns `storage_path`/`mime`/`size_bytes`/`name`. The Storage read policy then requires that record — `recorded_read(v)`, five minutes — before a signed URL is minted |
+| `matter_row_r(f, m)` / `matter_row_w(f, m)` | a row that may or may not hang off a matter: `can_see_matter(m)` when it does (write: **and** `staff_w(f)`), the firm-wide test when `m` is null |
 | `admin_w(f)` | the caller is `owner` or `admin` in `f` **and** `mfa_ok()` **and** not suspended |
 
 So "staff (MFA)" below always means `staff_w`, and a **suspended firm cannot write anything** —
@@ -163,10 +166,12 @@ Refuses:
 ### `accept_invite(p_token text)`
 Returns `jsonb`. **Who:** any signed-in person holding the token.
 
-Joins the matter a staff member invited them to, as the invited `party_role`.
+Joins the matter a staff member invited them to, as the invited `party_role`. A member of the firm
+can never accept an invitation into that firm's own matter (migration 33): the invitation is for
+the client, and a colleague outside a wall must not walk in through it.
 
 Refuses:
-- `not authenticated` *(42501)*
+- `not authenticated` *(42501)* · `a member of the firm cannot join its own matter as a party — the invitation is for the client` *(42501)*
 - `invite invalid or expired` — one sentence for a wrong token, a used token and an expired one, on purpose
 
 ### `invoice_settlement(p_invoice uuid)`
@@ -176,6 +181,21 @@ Returns `jsonb` — the Paystack subaccount the checkout must route to, and the 
 
 Refuses:
 - `not permitted` *(42501)* — also what a missing invoice returns, so an id cannot be probed
+
+### `fulfil_document_request(p_request uuid, p_document uuid)`
+Returns `void`. **Who:** a party to the matter, or firm staff who can see it (the wall applies).
+
+Answers a request the firm made (`document_requests`, migration 31) with an uploaded document:
+marks it fulfilled once, audits `document_request.fulfilled`, and tells the lawyer who asked
+(`document_received`). Staff create requests by plain insert and withdraw them by setting
+`cancelled_at`; nobody can delete one. The API's update grant covers only `title`, `why`, `due_on`
+and `cancelled_at` (migration 33), so fulfilment and who-asked-when are the function's alone, and
+`guard_document_request()` keeps a withdrawal withdrawn.
+
+Refuses:
+- `not authenticated` · `not permitted` *(42501)* — also what an unknown request returns
+- `this request was withdrawn` · `this request has already been answered`
+- `that document is not on this matter` — a document on another matter, or a deleted one
 
 ---
 
@@ -187,13 +207,20 @@ the same sentence whether the caller is at another firm, has no second factor, o
 suspended one. That is deliberate: a more specific refusal would tell a stranger which firm owns
 a row.
 
-### `open_matter(p_firm uuid, p_title text, p_type matter_type, p_client uuid = null, p_cause_title text = null, p_description text = null, p_court_id uuid = null, p_suit_number text = null, p_judicial_division text = null, p_originating_lawyer uuid = null, p_handling_lawyer uuid = null, p_status_key text = 'new_inquiry', p_note_to_client text = null)`
+### `open_matter(p_firm uuid, p_title text, p_type matter_type, p_client uuid = null, p_cause_title text = null, p_description text = null, p_court_id uuid = null, p_suit_number text = null, p_judicial_division text = null, p_originating_lawyer uuid = null, p_handling_lawyer uuid = null, p_status_key text = 'new_inquiry', p_note_to_client text = null, p_conflict_check uuid = null, p_adverse_parties jsonb = null)`
 Returns `jsonb`. Issues the reference from the firm's counter, adds the client as a party and the
 lead lawyer, records court and suit number, and posts the first client-visible timeline entry.
+Since migration 32 it also records the other side (`p_adverse_parties`, an array of
+`{name, kind, aliases}`) and attaches a conflict check run before the matter existed
+(`p_conflict_check`, decided, this firm's, not yet on a matter) — so the clearance guard on the
+client link can find it in the same call.
 
 Refuses: `not permitted` *(42501)* · `matter title is required` · `client account not found` ·
 `a member of the firm cannot be its client on a matter` · `handling lawyer is not a member of the firm` ·
-`originating lawyer is not a member of the firm`
+`originating lawyer is not a member of the firm` · `conflict check not found` ·
+`that conflict check belongs to another matter` · `decide the conflict check before opening the matter on it` ·
+`the conflict check did not search for <names>: run it again` (migration 33 — the check's keys must cover the client's name and company and every name on the other side) ·
+`this firm requires a cleared conflict check before a client joins a matter` (the trigger, with the switch on)
 
 ### `post_court_update(p_matter uuid, p_outcome text, p_occurred_at timestamptz = now(), p_court_name text = null, p_adjourned_at_instance_of text = null, p_next_date timestamptz = null, p_next_purpose text = null, p_note_to_client text = null, p_internal_note text = null, p_court_id uuid = null, p_judicial_division text = null, p_allow_non_sitting bool = false, p_judge text = null, p_courtroom text = null, p_purpose_kind text = null)`
 Returns `uuid` (the client-visible update). The thirty-second form after a sitting: composes the
@@ -265,8 +292,34 @@ does not send this invitation itself — there is no account to send it to yet.
 
 Refuses: `matter not found` · `not permitted` *(42501)* ·
 `only a client or a contact can be invited to a matter` ·
+`this firm requires a cleared conflict check before a client is invited to a matter` (the switch on, `p_role = 'client'`) ·
 `give a phone number or an email address to send the invitation to` ·
 `an invitation lasts between 1 and 60 days` · `that person is already on this matter`
+
+### `run_conflict_check(p_firm uuid, p_matter uuid = null, p_names text[] = null)`
+Returns `jsonb` — `check_id`, the normalised `keys` searched, `matches` and `match_count`. **Who:**
+`staff_w(firm)`; with `p_matter`, also `can_see_matter`.
+
+Searches **this firm's own register** — clients on its matters (profile name and company), the
+adverse-party register with aliases, free-text opposing parties, and cause titles (which can only
+contain a name) — for the names given plus everyone `p_matter` itself names, across every other
+matter of the firm, closed ones included. Strengths: `exact`, `contains` (a whole run of words),
+`similar` (trigram ≥ 0.5); keys under four characters match only exactly. A match on a restricted
+matter the caller is not on comes back with `restricted: true`, no `matter_id`, and the lead
+lawyer's id. Records the search as a `conflict_checks` row (undecided) and audits
+`conflict_check.run`. Never another firm's register; never a decision.
+
+Refuses: `not permitted` *(42501)* — a matter of another firm, or one behind a wall ·
+`nothing to check: give at least one name`
+
+### `decide_conflict_check(p_check uuid, p_outcome text, p_note text = null)`
+Returns `void`. The lawyer's decision — `clear`, `conflict` or `waived` — with who and when; a
+waiver carries its reason. Once: a changed mind is a new check. Audits `conflict_check.decided`.
+With `firms.conflict_checks_required` on, the latest decided check on a matter being `clear` or
+`waived` is what lets a client be joined to it (`guard_conflict_clearance()` on `matter_parties`).
+
+Refuses: `not permitted` *(42501)* · `the outcome is clear, conflict or waived` ·
+`this check has already been decided — run a new one` · `a waiver records why: give the note`
 
 ### `revoke_matter_invite(p_invite uuid)`
 Returns `void`. Expires an invitation that has not been accepted.
@@ -549,6 +602,9 @@ that fired them:
 | `validate_policies()` | `firms.policies` | **nothing.** Keeps `privacy`, `terms`, `engagement` and `cancellation`, each with its **own** `version`, plus `title`, `text`, an `https://` `url` and a numeric `free_cancel_hours`; strips `<` and `>`; drops any other document. A top-level `version` is kept but is read by nothing |
 | `validate_notification_templates()` | `firms.notification_templates` | **nothing.** Keeps `{subject, text}` per event key, strips angle brackets, and drops any entry whose `text` is empty |
 | `check_staff_invite_role()` | `staff_invites` | `only an owner may invite another owner` *(42501)* |
+| `guard_conflict_clearance()` | `matter_parties` | `this firm requires a cleared conflict check before a client joins a matter` — only with `firms.conflict_checks_required` on, only for `role = 'client'`, on insert and on any update that moves the row (migration 33) |
+| `guard_document_request()` | `document_requests` | `a withdrawn request stays withdrawn — ask again with a new request` · `an answered request cannot be withdrawn` |
+| `guard_matter_team()` | `matter_lawyers` | `this is the last member of a restricted matter's team — set the matter to firm-wide first, or add someone else` *(42501)* — on delete, and on an update that moves the row off the matter |
 | `check_row_firm()` | every matter-linked table | `row does not belong to the firm that owns the matter` · `row does not belong to the firm that owns the appointment` |
 | `check_matter_court()` | `matters` | `court <id> is not available to this firm` |
 | `check_court_visible()` | court-bearing rows | `court <id> is not available to this firm` |
@@ -558,7 +614,7 @@ that fired them:
 | `audit_row_change()` | several tables | never refuses; writes `audit_log` |
 | `handle_new_user()` | `auth.users` | never refuses; opens the `profiles` row |
 | `document_version_set_current()` | `document_versions` | never refuses; points `documents.current_version_id` at the newest version |
-| `notify_matter_update()`, `notify_appointment_status()`, `notify_message()` | their tables | never refuse; enqueue notifications |
+| `notify_matter_update()`, `notify_appointment_status()`, `notify_message()`, `notify_document_request()` | their tables | never refuse; enqueue notifications (`document_requested` goes to every party on the matter) |
 
 **The three silent rewrites are the ones that bite.** `brand`, `policies` and
 `notification_templates` are all stored differently from how they were sent, with no error. Any

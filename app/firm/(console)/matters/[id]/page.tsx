@@ -34,7 +34,7 @@ import { MessagesThread } from "@/components/portal/messages-thread";
 import { cn } from "@/lib/cn";
 import { formatDay, todayIn } from "@/lib/days";
 import { relativeLabel } from "@/lib/relative";
-import type { FirmThread } from "@/lib/db/types";
+import type { FirmThread, DocumentRequestRow, AdversePartyRow, ConflictCheckRow } from "@/lib/db/types";
 import type {
   DocumentRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
   ServiceDirectoryRow, TaskRow,
@@ -43,6 +43,7 @@ import { CopyButton, MatterTabs, type TabSpec } from "./matter-tabs";
 import { StaffTimeline, type StaffUpdate } from "./staff-timeline";
 import { StaffDocuments, type StaffDocument } from "./staff-documents";
 import { PartiesPanel, type MatterPartyRow, type PendingInvite } from "./parties-panel";
+import { ConflictsPanel } from "./conflicts-panel";
 import { TasksPanel } from "./tasks-panel";
 import { EditPanel } from "./edit-panel";
 
@@ -120,12 +121,13 @@ interface MatterDetail {
   closed_at: string | null;
   originating_lawyer_id: string | null;
   handling_lawyer_id: string | null;
+  access: "firm" | "team";
 }
 
 const MATTER_COLUMNS =
   "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, next_action_owner_id, next_action_due, court_id, court_name, " +
   "suit_number, judicial_division, judge, next_event_at, next_event_note, awaiting_date, opened_at, closed_at, " +
-  "originating_lawyer_id, handling_lawyer_id";
+  "originating_lawyer_id, handling_lawyer_id, access";
 
 export default async function MatterWorkbench({
   params, searchParams,
@@ -225,6 +227,11 @@ export default async function MatterWorkbench({
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {status && <StatusChip status={status} />}
+            {matter.access === "team" && (
+              <span className="inline-flex items-center rounded-full border border-[#141414] bg-[#141414] px-2.5 py-0.5 text-xs font-medium text-white" title="Only this matter's team can open it">
+                Restricted
+              </span>
+            )}
             {matter.closed_at && <StatusPill status="closed" />}
           </div>
         </div>
@@ -335,7 +342,7 @@ export default async function MatterWorkbench({
         {tab === "messages" && <MessagesSection ctx={ctx} matter={matter} names={names} />}
         {tab === "invoices" && <InvoicesSection ctx={ctx} matter={matter} basePath={basePath} extraQuery={extraQuery} />}
         {tab === "counsel" && <CounselSection ctx={ctx} matter={matter} />}
-        {tab === "parties" && <PartiesSection ctx={ctx} matter={matter} parties={parties} profiles={profiles} />}
+        {tab === "parties" && <PartiesSection ctx={ctx} matter={matter} parties={parties} profiles={profiles} names={names} />}
         {tab === "tasks" && <TasksSection ctx={ctx} matter={matter} staffOptions={staffOptions} />}
         {tab === "edit" && (
           <EditSection ctx={ctx} matter={matter} statuses={statuses} staffOptions={staffOptions} leadLawyerId={leadLawyerId} alsoOn={lawyers.filter((l) => !l.is_lead).map((l) => l.user_id)} />
@@ -408,6 +415,14 @@ async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; mat
     : { data: [] as DocumentVersionRow[] };
   const versions = (versionRows ?? []) as DocumentVersionRow[];
 
+  const { data: requestRows } = await ctx.supabase
+    .from("document_requests")
+    .select("id, firm_id, matter_id, title, why, due_on, requested_by, requested_at, fulfilled_document_id, fulfilled_at, cancelled_at")
+    .eq("matter_id", matter.id)
+    .order("requested_at", { ascending: false })
+    .limit(100);
+  const requests = (requestRows ?? []) as DocumentRequestRow[];
+
   const documents: StaffDocument[] = docs.map((d) => ({
     ...d,
     version:
@@ -419,6 +434,7 @@ async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; mat
 
   return (
     <StaffDocuments
+      requests={requests}
       firmId={matter.firm_id}
       matterId={matter.id}
       userId={ctx.userId}
@@ -612,21 +628,43 @@ async function CounselSection({ ctx, matter }: { ctx: StaffContext; matter: Matt
 
 // ---------------------------------------------------------------- parties
 async function PartiesSection({
-  ctx, matter, parties, profiles,
+  ctx, matter, parties, profiles, names,
 }: {
   ctx: StaffContext;
   matter: MatterDetail;
   parties: Array<{ user_id: string; role: string; can_view_docs: boolean; can_pay: boolean }>;
   profiles: Array<{ id: string; full_name: string | null; phone: string | null; email: string | null }>;
+  names: Record<string, string>;
 }) {
-  const { data: inviteRows } = await ctx.supabase
-    .from("invites")
-    .select("id, phone, email, role, token, expires_at, created_at")
-    .eq("matter_id", matter.id)
-    .is("accepted_by", null)
-    .gt("expires_at", new Date().toISOString())
-    .order("created_at", { ascending: false })
-    .limit(50);
+  // The other side and the checks sit with the parties: one tab answers "who is on this matter,
+  // on both sides, and may we act". The firm's switch is read here so the panel says what the
+  // database will refuse (a client joined before clearance) rather than letting the lawyer find out.
+  const [{ data: inviteRows }, { data: adverseRows }, { data: checkRows }, { data: firmRow }] = await Promise.all([
+    ctx.supabase
+      .from("invites")
+      .select("id, phone, email, role, token, expires_at, created_at")
+      .eq("matter_id", matter.id)
+      .is("accepted_by", null)
+      .gt("expires_at", new Date().toISOString())
+      .order("created_at", { ascending: false })
+      .limit(50),
+    ctx.supabase
+      .from("matter_adverse_parties")
+      .select("id, firm_id, matter_id, name, aliases, kind, relation, note, created_by, created_at")
+      .eq("matter_id", matter.id)
+      .order("created_at", { ascending: true })
+      .limit(100),
+    ctx.supabase
+      .from("conflict_checks")
+      .select("id, firm_id, matter_id, query, matches, outcome, decision_note, reviewed_by, reviewed_at, created_by, created_at")
+      .eq("matter_id", matter.id)
+      .order("created_at", { ascending: false })
+      .limit(50),
+    ctx.supabase.from("firms").select("conflict_checks_required").eq("id", matter.firm_id).maybeSingle(),
+  ]);
+  const adverse = (adverseRows ?? []) as AdversePartyRow[];
+  const checks = (checkRows ?? []) as ConflictCheckRow[];
+  const conflictChecksRequired = Boolean((firmRow as { conflict_checks_required: boolean } | null)?.conflict_checks_required);
 
   const profileById = new Map(profiles.map((p) => [p.id, p]));
   const rows: MatterPartyRow[] = parties.map((p) => ({
@@ -640,15 +678,26 @@ async function PartiesSection({
   }));
 
   return (
-    <PartiesPanel
-      matterId={matter.id}
-      matterReference={matter.reference}
-      matterTitle={matter.cause_title ?? matter.title}
-      firmName={ctx.firmName}
-      parties={rows}
-      invites={(inviteRows ?? []) as PendingInvite[]}
-      timezone={ctx.timezone}
-    />
+    <>
+      <PartiesPanel
+        matterId={matter.id}
+        matterReference={matter.reference}
+        matterTitle={matter.cause_title ?? matter.title}
+        firmName={ctx.firmName}
+        parties={rows}
+        invites={(inviteRows ?? []) as PendingInvite[]}
+        timezone={ctx.timezone}
+      />
+      <ConflictsPanel
+        matterId={matter.id}
+        firmId={matter.firm_id}
+        adverse={adverse}
+        checks={checks}
+        names={names}
+        required={conflictChecksRequired}
+        timezone={ctx.timezone}
+      />
+    </>
   );
 }
 
@@ -689,6 +738,13 @@ async function EditSection({
   leadLawyerId: string;
   alsoOn: string[];
 }) {
+  // The firm's walls switch, read here rather than threaded through the page: a control the
+  // database will refuse is worse than none, so the panel only offers restriction when it can be
+  // granted. The team is what the page already loaded.
+  const { data: firmRow } = await ctx.supabase.from("firms").select("matter_walls").eq("id", matter.firm_id).maybeSingle();
+  const wallsEnabled = Boolean((firmRow as { matter_walls: boolean } | null)?.matter_walls);
+  const teamIds = [leadLawyerId, ...alsoOn].filter(Boolean);
+
   const courts = await courtsFor(ctx.supabase, ctx.firmId);
   return (
     <EditPanel
@@ -698,7 +754,10 @@ async function EditSection({
       statuses={statuses}
       courts={courts}
       staff={staffOptions}
+      wallsEnabled={wallsEnabled}
+      onTeam={teamIds.includes(ctx.userId)}
       initial={{
+        access: matter.access,
         reference: matter.reference,
         title: matter.title,
         causeTitle: matter.cause_title ?? "",

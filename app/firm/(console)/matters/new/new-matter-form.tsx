@@ -17,7 +17,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { CourtPicker } from "@/components/firm/court-picker";
-import { openMatter, inviteMatterParty } from "@/lib/actions/matters";
+import { openMatter, inviteMatterParty, runConflictCheck } from "@/lib/actions/matters";
+import { DecideCheck, MatchList } from "../[id]/conflicts-panel";
+import type { ConflictMatch } from "@/lib/db/types";
 import type { StaffMember } from "@/lib/firm-data";
 import { normalizeNigerianPhone } from "@/lib/nigeria";
 import { Alert } from "@/components/ui/alert";
@@ -56,6 +58,7 @@ export function NewMatterForm({
   courts,
   currentUserId,
   timezone,
+  conflictChecksRequired,
 }: {
   firmId: string;
   firmName: string;
@@ -65,6 +68,8 @@ export function NewMatterForm({
   currentUserId: string;
   /** The viewer's own zone: the database keeps every timestamp in UTC. */
   timezone: string;
+  /** firms.conflict_checks_required: open_matter() refuses a client until a check on it is cleared. */
+  conflictChecksRequired: boolean;
 }) {
   const router = useRouter();
 
@@ -103,6 +108,14 @@ export function NewMatterForm({
   const [invitePhone, setInvitePhone] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<"client" | "contact">("client");
+
+  // ---- the other side, and the conflict check run before the matter exists
+  const [otherSide, setOtherSide] = useState("");
+  const [extraNames, setExtraNames] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const [check, setCheck] = useState<{ id: string; matches: ConflictMatch[]; outcome: "clear" | "conflict" | "waived" | null } | null>(null);
+  const staffNames = useMemo(() => Object.fromEntries(staff.map((m) => [m.user_id, staffName(m)])), [staff]);
 
   // ---- submission
   const [busy, setBusy] = useState(false);
@@ -149,6 +162,46 @@ export function NewMatterForm({
     setHits(((data ?? []) as ClientHit[]).filter((p) => !staffIds.has(p.id)));
   }
 
+  /** One line per party: "Name / alias, alias". Recorded on the matter's register as it opens. */
+  function adverseParties(): Array<{ name: string; kind: "person" | "organisation"; aliases: string[] }> {
+    return otherSide
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length >= 2)
+      .slice(0, 20)
+      .map((line) => {
+        const [namePart, aliasPart] = line.split("/");
+        const name = (namePart ?? "").trim();
+        const aliases = (aliasPart ?? "").split(",").map((a) => a.trim()).filter(Boolean).slice(0, 10);
+        const kind: "person" | "organisation" = /\b(ltd|limited|plc|llc|llp|inc|nig(eria)?|company|bank|enterprises?|ventures?|holdings?|&)\b/i.test(name) ? "organisation" : "person";
+        return { name, kind, aliases };
+      })
+      .filter((p) => p.name.length >= 2);
+  }
+
+  /** Everyone the form names: the client, the other side and its aliases, and anything typed to check. */
+  function namesToCheck(): string[] {
+    const names: string[] = [];
+    if (clientMode === "existing" && client?.full_name) names.push(client.full_name);
+    for (const p of adverseParties()) names.push(p.name, ...p.aliases);
+    for (const n of extraNames.split(",")) if (n.trim()) names.push(n.trim());
+    return Array.from(new Set(names.map((n) => n.trim()).filter(Boolean))).slice(0, 20);
+  }
+
+  async function runCheck() {
+    setCheckError(null);
+    const names = namesToCheck();
+    if (names.length === 0) {
+      setCheckError("Name the client, the other side, or type a name to check.");
+      return;
+    }
+    setChecking(true);
+    const r = await runConflictCheck(firmId, { names });
+    setChecking(false);
+    if ("error" in r) { setCheckError(r.error); return; }
+    setCheck({ id: r.checkId, matches: r.matches, outcome: null });
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
@@ -167,6 +220,16 @@ export function NewMatterForm({
       return;
     }
 
+    const joiningClient = (clientMode === "existing" && Boolean(client)) || (clientMode === "invite" && inviteRole === "client");
+    if (conflictChecksRequired && joiningClient && !(check && (check.outcome === "clear" || check.outcome === "waived"))) {
+      setError(
+        check && check.outcome === "conflict"
+          ? "The conflict check found a conflict. Run a new check and clear or waive it before a client is joined, or open the matter without a client."
+          : "This firm requires a cleared conflict check before a client is joined. Run the check below and record your decision first, or open the matter without a client.",
+      );
+      return;
+    }
+
     setBusy(true);
     const result = await openMatter({
       firmId,
@@ -182,6 +245,8 @@ export function NewMatterForm({
       handlingLawyerId: handlingLawyerId || null,
       statusKey: statusKey || null,
       noteToClient: clientMode === "existing" && client ? noteToClient.trim() || null : null,
+      conflictCheckId: check?.outcome ? check.id : null,
+      adverseParties: adverseParties(),
     });
 
     if ("error" in result) {
@@ -456,7 +521,7 @@ export function NewMatterForm({
               <button
                 key={mode}
                 type="button"
-                onClick={() => { setClientMode(mode); setError(null); }}
+                onClick={() => { setClientMode(mode); setError(null); setCheck(null); }}
                 aria-pressed={clientMode === mode}
                 className={cn(
                   "flex min-h-[44px] items-center rounded-full border px-4 text-sm",
@@ -502,7 +567,7 @@ export function NewMatterForm({
                     <p className="text-sm font-medium text-gray-900">{client.full_name ?? "Client"}</p>
                     <p className="text-xs text-gray-600">{[client.phone, client.email].filter(Boolean).join(" · ") || "No contact details on file"}</p>
                   </div>
-                  <button type="button" onClick={() => setClient(null)} className="text-sm text-gray-600 underline">Change</button>
+                  <button type="button" onClick={() => { setClient(null); setCheck(null); }} className="text-sm text-gray-600 underline">Change</button>
                 </div>
               )}
 
@@ -512,7 +577,7 @@ export function NewMatterForm({
                     <li key={p.id}>
                       <button
                         type="button"
-                        onClick={() => { setClient(p); setHits([]); }}
+                        onClick={() => { setClient(p); setHits([]); setCheck(null); }}
                         className="flex min-h-[44px] w-full flex-col justify-center rounded-lg border border-gray-200 px-3 py-2 text-left hover:border-brand"
                       >
                         <span className="text-sm font-medium text-gray-900">{p.full_name ?? "Client"}</span>
@@ -581,6 +646,66 @@ export function NewMatterForm({
                   <option value="contact">A contact on the matter</option>
                 </select>
               </div>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader title="The other side, and conflicts" />
+        <CardBody className="space-y-4">
+          <div>
+            <label htmlFor="other_side" className="text-sm font-medium text-gray-900">Who is on the other side</label>
+            <p className="text-xs text-gray-500">
+              One per line, as on the process. Other spellings after a slash, separated by commas:{" "}
+              <em>Emeka Eze / E. Eze, Chief Eze</em>. Recorded on the matter; never shown to the client. Changing
+              this, or the client, discards a check already run: the database admits only the names it searched.
+            </p>
+            <textarea id="other_side" rows={3} maxLength={4000} value={otherSide} onChange={(e) => { setOtherSide(e.target.value); setCheck(null); }} className={field} />
+          </div>
+          <div>
+            <label htmlFor="extra_names" className="text-sm font-medium text-gray-900">Also check</label>
+            <p className="text-xs text-gray-500">
+              Anyone else the check should look for — a director, a spouse, a trading name — separated by commas.
+              {clientMode === "invite" ? " The client you are inviting has no name on file yet, so type it here." : ""}
+            </p>
+            <input id="extra_names" type="text" maxLength={1000} value={extraNames} onChange={(e) => setExtraNames(e.target.value)} className={field} />
+          </div>
+
+          {conflictChecksRequired ? (
+            <p className="text-sm text-gray-700">
+              This firm requires a cleared conflict check before a client is joined to a matter. Run it here and record your
+              decision; the matter then opens on the client with the check attached.
+            </p>
+          ) : (
+            <p className="text-sm text-gray-600">
+              A check searches your firm&rsquo;s own register — its clients, the other sides it has recorded, cause titles — and
+              records what it found and what you decided. It is optional for this firm, and it is never decided for you.
+            </p>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <Button type="button" variant="ghost" onClick={() => void runCheck()} disabled={checking}>
+              {checking ? "Searching…" : check ? "Run the check again" : "Run the conflict check"}
+            </Button>
+            {check?.outcome && (
+              <span className="text-sm text-emerald-800">
+                Recorded as {check.outcome === "clear" ? "clear" : check.outcome === "waived" ? "waived" : "a conflict"}.
+              </span>
+            )}
+          </div>
+          {checkError && <Alert kind="error">{checkError}</Alert>}
+          {check && (
+            <div className="space-y-2">
+              <MatchList matches={check.matches} names={staffNames} />
+              {!check.outcome && (
+                <DecideCheck checkId={check.id} matterId={null} onDone={(outcome) => setCheck((c) => (c ? { ...c, outcome } : c))} />
+              )}
+              {check.outcome === "conflict" && (
+                <Alert kind="warning">
+                  A conflict is recorded. {conflictChecksRequired ? "The matter cannot open on a client until a later check clears or waives it." : "The matter can still open; the record stays with it."}
+                </Alert>
+              )}
             </div>
           )}
         </CardBody>

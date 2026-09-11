@@ -143,6 +143,14 @@ Migrations apply in filename order, which is chronological:
 20260910000022_member_and_message_invariants.sqlfirm_members shut to direct writes; last-owner guard; messages immutable
 20260910000023_booking_limit_in_the_rpc.sqlthe booking rate limit inside book_appointment()
 20260910000024_wave_zero_doors.sql        dead grants revoked; notifications read_at-only for the API; push only with a subscription; audit_log.ip dropped
+20260910000025_message_reads.sql          per-reader receipts, firm_threads, who owes the reply
+20260910000026_next_action_work_item.sql  next_action gains an owner and a due day
+20260910000027_structured_client_update.sqlwhat it means / next / what you must do / when you will hear
+20260910000029_matter_walls.sql           opt-in matter walls: firms.matter_walls, matters.access, can_see_matter()
+20260910000030_document_reads.sql         document_reads as the door to the bytes — APPLY ONLY WITH ITS FRONT END
+20260910000031_document_requests.sql      document_requests: asked, answered once through fulfil_document_request(), withdrawn — never deleted
+20260910000032_conflict_checks.sql        matter_adverse_parties; conflict_checks shaped; run_conflict_check(), decide_conflict_check(); firms.conflict_checks_required
+20260910000033_wave_two_review.sql        the review round: invitations walled, last member by update, fulfilment columns, clearance on every move, a check bound to its names
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -381,19 +389,34 @@ What is running against what. Three things, reconciled against the sources named
 given — not a plan, a reading. Update it on every production deploy and every applied migration;
 a release nobody can name is the state this section exists to end.
 
-| | As of 11 Sep 2026, 12:40 UTC | Reconciled against |
+**Order matters for some migrations.** 25 and 30 change what the front end must do (call
+`mark_thread_read()`; call `open_document_version()` before asking Storage for a file), so each goes
+live only after production is READY on the front end that does it — otherwise threads stop clearing,
+or documents stop opening. 29 is safe either side: it is default-off and identical in effect to the
+policies it replaces until a firm switches walls on. 31 is additive and goes **first** — the matter
+screens that ship with it select from `document_requests`, so the table must exist before they
+deploy — and `dispatch-notifications` must carry the `document_requested` / `document_received`
+renderers (v8) before the first request is made. 32 is safe either side: it re-creates
+`open_matter()` with two more defaulted parameters (the deployed form passes named arguments and
+resolves to it), pg_trgm goes into the `extensions` schema, and the clearance guard is off until a
+firm switches it on. 33 is safe either side for the same reasons: it tightens what 29, 31 and 32
+admit without changing any call the deployed front end makes.
+
+| | As of 11 Sep 2026, 16:50 UTC | Reconciled against |
 |---|---|---|
-| **App** | `fe45072` (the merge of PR #18), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
-| **Schema** | Migrations **1–25**, all applied: 27 ledger entries (`20260909000001_schema` … `message_reads`, plus the two unnumbered `consultations` and `client_portal`). Applied in step with the app: 25 went live only after production was READY on the front end that calls `mark_thread_read()` | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
-| **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v7** · `video-session` **v2** | MCP `list_edge_functions` — three functions, not two |
+| **App** | `2adae58` (the merge of PR #19), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
+| **Schema** | Migrations **1–29 and 31–33** applied: 34 ledger entries (`20260909000001_schema` … `wave_two_review`, plus the two unnumbered `consultations` and `client_portal`). **30 is not applied** — it waits for the front end that calls `open_document_version()` (the ordering rule above). 29 (walls, default off), 31 (additive), 32 (default off; `open_matter()` keeps resolving for the deployed form) and 33 (the review round, which only tightens what those admit) went live ahead of their front end | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
+| **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v8** (renders `document_requested` / `document_received`) · `video-session` **v2** · `storage-manifest` **v1** (`storage_manifest_url` in Vault; `docket-storage-manifest` runs `*/10 * * * *`) | MCP `list_edge_functions`; `cron.job`; `cron.job_run_details` |
 
-Migration ledger names are the file names for 1–21 and short names after: `message_reads` is
-`20260910000025_message_reads.sql`, `wave_zero_doors` is 24, `booking_limit_in_the_rpc` is 23,
-`member_and_message_invariants` is 22.
+Migration ledger names are the file names for 1–21 and short names after: `wave_two_review` is
+`20260910000033_wave_two_review.sql`, `conflict_checks` 32, `document_requests` 31, `matter_walls` 29, `storage_manifest` 28, `structured_client_update` 27,
+`next_action_work_item` 26, `message_reads` 25, `wave_zero_doors` 24, `booking_limit_in_the_rpc` 23,
+`member_and_message_invariants` 22.
 
-Previous: app `6778f3c` against migrations 1–24 (11 Sep, 11:30 UTC) — the schema was ahead of the
-app by five migrations, with `supabase/tests/70_deployed_frontend_compat.sql` and the `compat` CI
-job as the reason that was safe.
+Previous: app `2adae58` against 1–28 (13:35 UTC).
+
+Previous: app `fe45072` against 1–25 (12:40 UTC); app `6778f3c` against 1–24 (11:30 UTC), when the
+schema was ahead of the app by five migrations with the compat suite as the reason that was safe.
 
 ## Related
 

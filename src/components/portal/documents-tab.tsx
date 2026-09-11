@@ -5,15 +5,16 @@
 // previews PDFs and images through short signed URLs, lists versions.
 // Low-data mode defers every preview until tapped.
 
-import { useCallback, useEffect, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { createDocument, finalizeDocumentVersion } from "@/lib/actions/portal";
+import { recordDocumentOpen } from "@/lib/document-open";
+import { createDocument, finalizeDocumentVersion, fulfilDocumentRequest } from "@/lib/actions/portal";
 import { isLowData } from "@/lib/low-data";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Modal } from "@/components/ui/modal";
-import type { DocumentRow, DocumentVersionRow } from "@/lib/db/types";
+import type { DocumentRequestRow, DocumentRow, DocumentVersionRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
 
 export type DocumentWithVersion = DocumentRow & { version: DocumentVersionRow | null; version_count: number };
@@ -28,9 +29,12 @@ function fmtSize(n: number | null | undefined) {
 }
 
 export function DocumentsTab({
-  firmId, matterId, appointmentId, documents, timezone, canUpload = true,
-}: { firmId: string; matterId: string | null; appointmentId: string | null; documents: DocumentWithVersion[]; timezone: string; canUpload?: boolean }) {
+  firmId, matterId, appointmentId, documents, timezone, canUpload = true, requests = [],
+}: { firmId: string; matterId: string | null; appointmentId: string | null; documents: DocumentWithVersion[]; timezone: string; canUpload?: boolean; requests?: DocumentRequestRow[] }) {
   const router = useRouter();
+  // Which request the next upload answers, if any. Set by "Upload this", cleared once used.
+  const [forRequest, setForRequest] = useState<string | null>(null);
+  const fileInput = useRef<HTMLInputElement | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lowData, setLowData] = useState(false);
@@ -42,7 +46,8 @@ export function DocumentsTab({
   const upload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    // A cancelled picker leaves no request pending: the next generic upload must not answer it.
+    if (!file) { setForRequest(null); return; }
     setError(null);
     if (file.size > MAX_BYTES) { setError("Files must be 25 MB or smaller."); return; }
     const supabase = supabaseBrowser();
@@ -53,10 +58,17 @@ export function DocumentsTab({
     const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined, upsert: false });
     if (upErr) { setBusy(null); setError(`Upload failed: ${upErr.message}`); return; }
     const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
+    if (fin?.error) { setBusy(null); setError(fin.error); return; }
+    // An upload made for a request answers it; the database refuses a second answer or a
+    // document from another matter, and tells whoever asked.
+    if (forRequest) {
+      const answered = await fulfilDocumentRequest(forRequest, created.documentId);
+      setForRequest(null);
+      if (answered?.error) { setBusy(null); setError(`Uploaded, but not linked to the request: ${answered.error}`); router.refresh(); return; }
+    }
     setBusy(null);
-    if (fin?.error) { setError(fin.error); return; }
     router.refresh();
-  }, [appointmentId, firmId, matterId, router]);
+  }, [appointmentId, firmId, forRequest, matterId, router]);
 
   const openPreview = useCallback(async (doc: DocumentWithVersion, force = false) => {
     if (!doc.version) return;
@@ -64,6 +76,10 @@ export function DocumentsTab({
     setPreview({ doc, url: null, loading: true });
     const supabase = supabaseBrowser();
     if (!supabase) return;
+    // The read is recorded first, and the record is what the storage policy checks (migration
+    // 30): without it the signed URL is refused. Not a courtesy log — the door.
+    const refused = await recordDocumentOpen(supabase, doc.version.id);
+    if (refused) { setError(refused); setPreview(null); return; }
     const { data, error: sErr } = await supabase.storage.from("documents").createSignedUrl(doc.version.storage_path, 120);
     if (sErr || !data?.signedUrl) { setError(sErr?.message ?? "Could not open the document."); setPreview(null); return; }
     setPreview({ doc, url: data.signedUrl, loading: false });
@@ -87,11 +103,41 @@ export function DocumentsTab({
       {canUpload && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
           <p className="text-xs text-gray-500">PDF, Word, JPEG, PNG or HEIC · up to 25 MB · shared with your firm</p>
-          <label className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">
+          <label
+            onClick={() => setForRequest(null)}
+            className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
+          >
             {busy ?? "Upload a document"}
-            <input type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
+            <input ref={fileInput} type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
           </label>
         </div>
+      )}
+      {/* What the firm has asked for and has not received. An upload made from here answers it. */}
+      {requests.filter((r) => !r.fulfilled_at && !r.cancelled_at).length > 0 && (
+        <section className="border-b border-gray-100 bg-[#FFFAEB] px-5 py-4">
+          <h3 className="text-sm font-semibold text-[#92400E]">Your firm has asked you for</h3>
+          <ul className="mt-2 space-y-2">
+            {requests.filter((r) => !r.fulfilled_at && !r.cancelled_at).map((r) => (
+              <li key={r.id} className="flex flex-wrap items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-900">{r.title}</p>
+                  {r.why && <p className="text-xs text-gray-700">{r.why}</p>}
+                  {r.due_on && <p className="text-xs text-[#92400E]">By {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${r.due_on}T00:00:00Z`))}</p>}
+                </div>
+                {canUpload && (
+                  <Button size="sm" disabled={Boolean(busy)} onClick={() => { setForRequest(r.id); fileInput.current?.click(); }}>
+                    {forRequest === r.id && busy ? busy : "Upload this"}
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {requests.some((r) => r.fulfilled_at) && (
+        <p className="border-b border-gray-100 px-5 py-2 text-xs text-gray-500">
+          Answered: {requests.filter((r) => r.fulfilled_at).map((r) => r.title).join(", ")}.
+        </p>
       )}
       {documents.length === 0 ? (
         <p className="px-5 py-8 text-center text-sm text-gray-500">No documents yet. Upload one, or wait for your lawyer to share.</p>

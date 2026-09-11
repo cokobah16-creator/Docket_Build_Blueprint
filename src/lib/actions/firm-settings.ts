@@ -441,6 +441,27 @@ export async function updateFirmSettlement(firmId: string, input: SettlementInpu
  * address that is printed when they do. serve_process() also requires the firm to be ACTIVE, so
  * a pending firm can undertake this and it takes effect when Docket verifies the firm.
  */
+/**
+ * Matter walls: may this firm restrict a matter to its team? Off by default, which is the pooled
+ * stance every partner sees the whole firm. The database refuses to switch it off while any
+ * matter is still restricted (migration 29), and that refusal is shown verbatim: the fix is to
+ * open those matters one by one, not to flip a checkbox over them.
+ */
+export async function updateMatterWalls(firmId: string, enabled: boolean): Promise<SettingsResult> {
+  if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
+  return updateFirm(firmId, { matter_walls: Boolean(enabled) });
+}
+
+/**
+ * firms.conflict_checks_required. On, no client joins a matter — by open_matter(), by
+ * invitation, by direct insert — until the latest decided conflict check on it is clear or
+ * waived; the trigger on matter_parties is the rule. Off, checks are advisory and recorded.
+ */
+export async function updateConflictChecksRequired(firmId: string, enabled: boolean): Promise<SettingsResult> {
+  if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
+  return updateFirm(firmId, { conflict_checks_required: Boolean(enabled) });
+}
+
 export async function updateServiceOfProcess(firmId: string, input: ServiceOfProcessInput): Promise<SettingsResult> {
   if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
 

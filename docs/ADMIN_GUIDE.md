@@ -11,6 +11,65 @@ database's own words, not a rewritten version of them.
 
 ---
 
+
+## Matter walls
+
+By default every member of your firm can open every matter — the stance most partnerships want,
+and the one Docket started with. **Settings → Matter walls** switches on the option to restrict a
+matter to its team.
+
+- A matter is restricted from its **Edit** tab, by someone on its team. If you are not on the team
+  yet, the button puts you on it and restricts in one step — a wall you are outside of would lock
+  you out of the file.
+- Once restricted, the matter and everything on it — documents (the files themselves, not only
+  the list), messages, the timeline, tasks, court dates, parties, counsel, process served, invoices
+  — can be opened only by the people on its team. **Owners and admins are not exempt.** The client
+  on the matter sees exactly what they saw before.
+- Anyone on the team can add colleagues to it or open the matter to the whole firm again. The last
+  person on a restricted matter's team cannot be removed: nobody could open the file.
+- Walls cannot be switched off while any matter is still restricted. Open those matters first, one
+  by one, so no file is quietly opened to the whole firm by a checkbox.
+
+This is enforced by the database, not by the screens: a restricted matter is invisible to a
+colleague outside its team through every door, including a direct request to the API.
+
+## Asking a client for a document
+
+A matter's **Documents** tab has a panel, **Asked of the client**. Name the document, say why if it
+helps, and give a day it is needed by. The client is told, sees the request on their own Documents
+tab with an **Upload this** button, and their upload answers it: the request shows *answered*,
+with the file, and whoever asked is told it arrived.
+
+- A request is answered once. A second file on the same subject is just another document.
+- You may **withdraw** a request while it is open. Requests are never deleted: what was asked for
+  is part of the file's history, withdrawn or answered.
+- On a restricted matter, requests are behind the wall like everything else on it.
+
+## Conflict checks
+
+Docket keeps, per matter, a register of **the other side** — the opposing party, co-parties,
+witnesses, related companies, with their other spellings — on the matter's **Parties** tab and on
+the form that opens a matter. The client never sees it.
+
+A **conflict check** searches your firm's own register: every client on your books, every other
+side you have recorded, the cause titles, across every other matter, closed ones included. Run it
+from the Parties tab of a matter (it checks everyone the matter names) or while opening one (it
+checks the client and the other side you typed). It never searches another firm's records, and
+another firm never searches yours.
+
+- What comes back is a list of matches, each saying where the name was found and how closely it
+  matched. A match on a matter you are walled out of says only that a match exists and who leads
+  that matter, so you can ask.
+- **You decide, once**: *clear*, *conflict*, or *waived* with the reason. The decision is recorded
+  with your name and the time, and the search results stay with it. To change your mind, run a
+  new check.
+- **Settings → Conflict checks** is off by default: checks are advisory and recorded. Switched on,
+  Docket refuses to put a client on a matter — when it is opened, by invitation, or any other
+  way — until the latest decided check on that matter is clear or waived. A contact may still be
+  invited. A check that found a conflict blocks until a later one clears it.
+
+Docket never decides a conflict. It finds the names and keeps the record of who decided what.
+
 ## Before anything else: your second factor
 
 **Every change a firm makes to itself requires two-factor authentication.** Not as policy — the
@@ -388,6 +447,9 @@ The remedy is with Docket, not in the console. Your data is untouched throughout
 | Price and activate services | `/firm/admin/services` |
 | Write the booking questions | `/firm/admin/intake` |
 | Invite, promote or remove colleagues | `/firm/admin/people` |
+| Ask the client for a document | the matter → Documents → Asked of the client |
+| Record the other side, run a conflict check | the matter → Parties |
+| Require a cleared check before a client joins | `/firm/admin/settings` → Conflict checks |
 | Read the audit trail | `/firm/admin/audit` |
 | Set a lawyer's working week | `/firm/availability` |
 | Enrol two-factor | `/firm/security/mfa` |

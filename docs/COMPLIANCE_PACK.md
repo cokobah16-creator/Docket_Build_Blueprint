@@ -72,9 +72,13 @@ somebody you share a matter or an appointment with. Nothing broader.
 | `matter_court_numbers` | suit numbers by court |
 | `updates` | the timeline. `visibility = 'client'` or `'internal'`; `updates_client_select` allows only `visibility = 'client'` rows to a party |
 | `court_events` | sittings, purposes, outcomes |
-| `tasks`, `conflict_checks` | internal |
+| `tasks` | internal |
+| `matter_adverse_parties` | **the other side, by name and alias** — people who have never used Docket, recorded by the firm for conflict checking. Firm work product: no client policy |
+| `conflict_checks` | what the firm searched for and what matched (names, and which matter each was found on), the lawyer's decision and its note. Staff who can see the matter read it; never edited or deleted through the API |
 | `process_service` | `served_on_name`, `served_on_capacity`, `served_at_address`, `server_name`, the note and the proof |
 | `documents`, `document_versions` | the filename, who uploaded it, size, mime, checksum, and the storage path |
+| `document_requests` | what the firm asked the client for, why, and by when — `why` is free text a lawyer typed about the client's matter. The client reads their own requests; never deleted |
+| `document_reads` | who opened which document version, when (migration 30). Staff who can see the matter read it; the client never does |
 
 **Docket does not classify sensitivity and cannot.** `matter_type` includes `family`, `employment`,
 `immigration`, `regulatory` and `debt_recovery`, and a matter's description, its documents and its
@@ -126,7 +130,7 @@ Three buckets (migration 4). Object paths carry the tenant, and the storage poli
 `marketing`), `version` (text), `accepted_at`.
 
 - **Insert** requires `user_id = auth.uid()` — nobody can consent on somebody else's behalf.
-- **Read** is `user_id = auth.uid() or is_firm_member(firm_id)` — the person, and the firm.
+- **Read** is `user_id = auth.uid() or is_firm_member(firm_id)` — the person, and the firm. Matter content (the matter, its documents and their bytes, updates, messages, tasks, court events, parties, counsel, process served, invoices) is further gated by `can_see_matter()` since migration 29: a matter a firm has restricted to its team is readable and writable only by that team — owners and admins included — and every definer function that takes a matter asks the same. Off by default; a firm switches it on.
 - **There is no update policy and no delete policy.** In practice the table is append-only: a
   consent record cannot be altered or removed through the API.
 - `ip` and `user_agent` columns exist and are **not populated** by the portal's consent action.
@@ -384,7 +388,7 @@ not during one.*
 | Did money go somewhere wrong | `platform_settlement_health`, and `/admin/health`. A mis-settled charge is recorded as a **failed** payment carrying `settlement_mismatch`, `reported_subaccount` and `expected_subaccount`, and audited as `payment.settlement_mismatch` |
 | Did anything arrive unverified | `webhook_events` — `signature_ok` and `outcome`, with `outcome <> 'processed'` indexed |
 | Were messages sent | `notifications` (status, event, channel, `sent_at`) — and remember the **payload is personal data**, so a queue export is itself a disclosure |
-| Were documents read | Supabase Storage access logs, in the dashboard. **Docket does not log document reads itself**: a signed URL is minted by the browser and the read happens at Storage. This is a real limit on what can be reconstructed |
+| Were documents read | `document_reads` (migration 30): one row per open — who, which version, when — and a `document.opened` line in `audit_log`. **The record is the door, not a courtesy log**: the Storage read policy requires a read recorded by the caller within the last five minutes before it will mint a signed URL, so no bytes leave without one. Staff who can see the matter see the record; a client never does. Storage's own access logs remain the second source |
 | Was the schema itself changed | `supabase/migrations/` in git, against the live schema |
 
 ### Then — assess and notify
@@ -407,7 +411,7 @@ not during one.*
 
 ### Standing gaps to state in any incident report
 
-- **Document reads are not logged by Docket.** Only Storage's own logs show them.
+- **Document reads are logged by Docket** since migration 30, as above; the app-layer fetch cannot skip the record because the Storage policy refuses a read without one.
 - **`consent_records.ip`/`user_agent` are never populated** (and `audit_log` no longer has an address column), so no request can be
   traced to an address from within the database.
 - **`audit_row_change()` does not cover every table.** `/firm/admin/audit` names its own coverage at

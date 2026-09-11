@@ -63,6 +63,19 @@ const openSchema = z.object({
   handlingLawyerId: z.string().uuid().nullish(),
   statusKey: z.string().trim().max(64).nullish(),
   noteToClient: z.string().trim().max(4000).nullish(),
+  /** A decided conflict check run before the matter existed; open_matter() attaches it. */
+  conflictCheckId: z.string().uuid().nullish(),
+  /** The other side as known at the outset — the register a later check searches. */
+  adverseParties: z
+    .array(
+      z.object({
+        name: z.string().trim().min(2).max(200),
+        kind: z.enum(["person", "organisation"]).default("person"),
+        aliases: z.array(z.string().trim().min(1).max(200)).max(10).default([]),
+      }),
+    )
+    .max(20)
+    .nullish(),
 });
 
 export type OpenMatterInput = z.input<typeof openSchema>;
@@ -96,6 +109,8 @@ export async function openMatter(input: OpenMatterInput): Promise<OpenMatterResu
     p_handling_lawyer: d.handlingLawyerId || null,
     p_status_key: d.statusKey || null,
     p_note_to_client: d.noteToClient || null,
+    p_conflict_check: d.conflictCheckId || null,
+    p_adverse_parties: d.adverseParties && d.adverseParties.length > 0 ? d.adverseParties : null,
   });
   if (error) return { error: error.message };
 
@@ -145,9 +160,43 @@ const patchSchema = z.object({
   handlingLawyerId: z.string().uuid().nullish(),
   originatingLawyerId: z.string().uuid().nullish(),
   closedAt: plainDay.nullable().optional(),
+  // Changed through setMatterAccess(), never here: restricting needs the caller on the team first.
 });
 
 export type MatterPatch = z.input<typeof patchSchema>;
+
+/**
+ * Restrict a matter to its team, or open it to the firm again. The database holds the rules
+ * (migration 29): the firm's walls must be on, and whoever restricts must be on the team — a wall
+ * you are outside of would lock you out. So 'team' first makes sure the caller is on the team,
+ * then sets access; 'firm' just sets it. Owners and admins outside the team cannot do either,
+ * which is what a wall means.
+ */
+export async function setMatterAccess(matterId: string, firmId: string, access: "firm" | "team"): Promise<Err> {
+  if (!z.string().uuid().safeParse(matterId).success || !z.string().uuid().safeParse(firmId).success) return { error: "Unknown matter." };
+  if (access !== "firm" && access !== "team") return { error: "Choose firm-wide or team only." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in first." };
+
+  if (access === "team") {
+    const { data: team } = await supabase.from("matter_lawyers").select("user_id, is_lead").eq("matter_id", matterId);
+    const rows = (team ?? []) as Array<{ user_id: string; is_lead: boolean }>;
+    if (!rows.some((r) => r.user_id === user.id)) {
+      const { error: teamError } = await supabase
+        .from("matter_lawyers")
+        .insert({ matter_id: matterId, firm_id: firmId, user_id: user.id, is_lead: !rows.some((r) => r.is_lead) });
+      if (teamError) return { error: teamError.message };
+    }
+  }
+
+  const { error, count } = await supabase.from("matters").update({ access }, { count: "exact" }).eq("id", matterId);
+  if (error) return { error: error.message };
+  if (count === 0) return { error: "Nothing changed: you may not be on this matter's team, or the firm's walls are off." };
+  refreshMatter(matterId);
+  return undefined;
+}
 
 /**
  * Direct update under the matters policy (staff_w). Only the keys the caller
@@ -236,6 +285,49 @@ export async function setMatterLawyers(
   if (deleteError) return { error: deleteError.message };
 
   refreshMatter(d.matterId);
+  return undefined;
+}
+
+// ---------------------------------------------------------------- documents the client is asked for
+const requestSchema = z.object({
+  title: z.string().trim().min(2, "Say what document you need.").max(200),
+  why: z.string().trim().max(2000).optional(),
+  // A calendar day, never an instant: document_requests.due_on is a DATE.
+  dueOn: plainDay.nullable().optional(),
+});
+
+/** Ask the client on a matter for a named document. Under document_requests_insert (the wall applies). */
+export async function requestDocument(matterId: string, firmId: string, input: z.input<typeof requestSchema>): Promise<Err> {
+  if (!z.string().uuid().safeParse(matterId).success || !z.string().uuid().safeParse(firmId).success) return { error: "Unknown matter." };
+  const parsed = requestSchema.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in first." };
+  const { error } = await supabase.from("document_requests").insert({
+    firm_id: firmId, matter_id: matterId, title: parsed.data.title, why: parsed.data.why || null,
+    due_on: parsed.data.dueOn ?? null, requested_by: user.id,
+  });
+  if (error) return { error: error.message };
+  refreshMatter(matterId);
+  return undefined;
+}
+
+/** Withdraw a request. Never deleted: what was asked for is part of the file's history. */
+export async function cancelDocumentRequest(requestId: string, matterId: string): Promise<Err> {
+  if (!z.string().uuid().safeParse(requestId).success) return { error: "Unknown request." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error, count } = await supabase
+    .from("document_requests")
+    .update({ cancelled_at: new Date().toISOString() }, { count: "exact" })
+    .eq("id", requestId)
+    .is("fulfilled_at", null)
+    .is("cancelled_at", null);
+  if (error) return { error: error.message };
+  if (count === 0) return { error: "That request was already answered or withdrawn." };
+  refreshMatter(matterId);
   return undefined;
 }
 
@@ -400,5 +492,95 @@ export async function closeTask(taskId: string): Promise<Err> {
   if (readError && !matterId) {
     return { error: "The task is closed, but this page could not be refreshed. Reload to see it." };
   }
+  return undefined;
+}
+
+// ---------------------------------------------------------------- the other side, and conflicts (migration 32)
+const adverseSchema = z.object({
+  name: z.string().trim().min(2, "Give the name as it appears on the process.").max(200),
+  kind: z.enum(["person", "organisation"]).default("person"),
+  relation: z.enum(["adverse", "co_party", "witness", "related"]).default("adverse"),
+  aliases: z.array(z.string().trim().min(1).max(200)).max(10).default([]),
+  note: z.string().trim().max(2000).nullish(),
+});
+export type AdversePartyInput = z.input<typeof adverseSchema>;
+
+/** Record someone on the other side. Under matter_adverse_parties_insert (the wall applies); never visible to a client. */
+export async function addAdverseParty(matterId: string, firmId: string, input: AdversePartyInput): Promise<Err> {
+  if (!z.string().uuid().safeParse(matterId).success || !z.string().uuid().safeParse(firmId).success) return { error: "Unknown matter." };
+  const parsed = adverseSchema.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const d = parsed.data;
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { data: auth } = await supabase.auth.getUser();
+  const { error } = await supabase.from("matter_adverse_parties").insert({
+    matter_id: matterId,
+    firm_id: firmId,
+    name: d.name,
+    kind: d.kind,
+    relation: d.relation,
+    aliases: d.aliases,
+    note: d.note || null,
+    created_by: auth.user?.id ?? null,
+  });
+  if (error) return { error: error.message };
+  refreshMatter(matterId);
+  return undefined;
+}
+
+export async function removeAdverseParty(partyId: string, matterId: string): Promise<Err> {
+  if (!z.string().uuid().safeParse(partyId).success) return { error: "Unknown entry." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error, count } = await supabase.from("matter_adverse_parties").delete({ count: "exact" }).eq("id", partyId);
+  if (error) return { error: error.message };
+  if (count === 0) return { error: "That entry could not be removed — it may already be gone, or this matter is not yours to change." };
+  refreshMatter(matterId);
+  return undefined;
+}
+
+export type ConflictCheckResult =
+  | { error: string }
+  | { checkId: string; keys: string[]; matches: import("@/lib/db/types").ConflictMatch[]; matchCount: number };
+
+/**
+ * Search the firm's own register — its clients, the adverse parties it has recorded, the
+ * free-text opposing parties and cause titles — for the names given and, when a matter is
+ * named, everyone that matter names. run_conflict_check() records the search as a
+ * conflict_checks row; the decision is a separate step. Never another firm's register.
+ */
+export async function runConflictCheck(firmId: string, input: { matterId?: string | null; names?: string[] }): Promise<ConflictCheckResult> {
+  if (!z.string().uuid().safeParse(firmId).success) return { error: "Unknown firm." };
+  const matterId = input.matterId && z.string().uuid().safeParse(input.matterId).success ? input.matterId : null;
+  const names = (input.names ?? []).map((n) => n.trim()).filter((n) => n.length > 0).slice(0, 20);
+  if (!matterId && names.length === 0) return { error: "Give at least one name to check." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { data, error } = await supabase.rpc("run_conflict_check", { p_firm: firmId, p_matter: matterId, p_names: names.length > 0 ? names : null });
+  if (error) return { error: error.message };
+  const r = (data ?? null) as { check_id?: string; keys?: string[]; matches?: import("@/lib/db/types").ConflictMatch[]; match_count?: number } | null;
+  if (!r?.check_id) return { error: "The check could not be run. Try again." };
+  if (matterId) refreshMatter(matterId);
+  return { checkId: r.check_id, keys: r.keys ?? [], matches: r.matches ?? [], matchCount: Number(r.match_count ?? 0) };
+}
+
+/** The lawyer's decision on a check: clear, conflict, or waived with the reason. Once. */
+export async function decideConflictCheck(
+  checkId: string,
+  outcome: "clear" | "conflict" | "waived",
+  note: string | null | undefined,
+  matterId?: string | null,
+): Promise<Err> {
+  if (!z.string().uuid().safeParse(checkId).success) return { error: "Unknown check." };
+  if (!["clear", "conflict", "waived"].includes(outcome)) return { error: "The outcome is clear, conflict or waived." };
+  const trimmed = (note ?? "").trim();
+  if (outcome === "waived" && trimmed.length < 2) return { error: "A waiver records why: give the note." };
+  if (trimmed.length > 2000) return { error: "Keep the note to 2,000 characters." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error } = await supabase.rpc("decide_conflict_check", { p_check: checkId, p_outcome: outcome, p_note: trimmed || null });
+  if (error) return { error: error.message };
+  refreshMatter(matterId ?? null);
   return undefined;
 }
