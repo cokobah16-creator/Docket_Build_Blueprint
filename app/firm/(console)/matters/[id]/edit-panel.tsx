@@ -26,6 +26,9 @@ export interface MatterEditInitial {
   causeTitle: string;
   description: string;
   nextAction: string;
+  nextActionOwnerId: string;
+  /** YYYY-MM-DD or "" — a calendar day. */
+  nextActionDue: string;
   statusId: string;
   courtId: string | null;
   courtName: string;
@@ -60,6 +63,8 @@ export function EditPanel({
   const [causeTitle, setCauseTitle] = useState(initial.causeTitle);
   const [description, setDescription] = useState(initial.description);
   const [nextAction, setNextAction] = useState(initial.nextAction);
+  const [nextActionOwnerId, setNextActionOwnerId] = useState(initial.nextActionOwnerId);
+  const [nextActionDue, setNextActionDue] = useState(initial.nextActionDue);
   const [statusId, setStatusId] = useState(initial.statusId);
   const [courtId, setCourtId] = useState<string | null>(initial.courtId);
   const [courtName, setCourtName] = useState(initial.courtName);
@@ -94,6 +99,8 @@ export function EditPanel({
       causeTitle: causeTitle.trim() || null,
       description: description.trim() || null,
       nextAction: nextAction.trim() || null,
+      nextActionOwnerId: nextActionOwnerId || null,
+      nextActionDue: nextActionDue || null,
       statusId: statusId || null,
       courtId: courtId || null,
       courtName: courtName.trim() || null,
@@ -161,6 +168,22 @@ export function EditPanel({
           <label htmlFor="matter-next-action" className="text-sm font-medium text-gray-900">Next action</label>
           <p className="text-xs text-gray-500">One line, in plain language — your client reads this in their app.</p>
           <input id="matter-next-action" value={nextAction} onChange={(e) => setNextAction(e.target.value)} maxLength={500} className={field} />
+          {/* A next action with nobody on it and no day is a note, not work. Both are optional,
+              because a matter can be waiting on the court — but the queue and Today count only
+              the ones with a day. */}
+          <div className="mt-2 grid gap-3 sm:grid-cols-2">
+            <div>
+              <label htmlFor="matter-next-owner" className="text-sm font-medium text-gray-900">Who is on it</label>
+              <select id="matter-next-owner" value={nextActionOwnerId} onChange={(e) => setNextActionOwnerId(e.target.value)} className={field}>
+                <option value="">Nobody yet</option>
+                {staff.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="matter-next-due" className="text-sm font-medium text-gray-900">Due by</label>
+              <input id="matter-next-due" type="date" value={nextActionDue} onChange={(e) => setNextActionDue(e.target.value)} className={field} />
+            </div>
+          </div>
         </div>
 
         <div>

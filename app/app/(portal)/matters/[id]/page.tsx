@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { firmById } from "@/lib/tenant";
 import { clientTimezone } from "@/lib/portal-data";
+import { formatDay } from "@/lib/days";
 import { formatMoneyMinor } from "@/lib/money";
 import { startInvoicePayment } from "@/lib/actions/portal";
 import { Card } from "@/components/ui/card";
@@ -31,7 +32,7 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
 
   const { data } = await supabase
     .from("matters")
-    .select("id, firm_id, reference, title, type, status_id, description, next_action, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
+    .select("id, firm_id, reference, title, type, status_id, description, next_action, next_action_due, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
     .eq("id", id)
     .maybeSingle();
   const matter = (data ?? null) as MatterRow | null;
@@ -62,7 +63,12 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
             {matter.court_name && <span>{matter.court_name}{matter.suit_number ? <> · <span className="font-mono">{matter.suit_number}</span></> : null}</span>}
           </div>
           {matter.next_event_at && <p className="mt-2 text-[13px] text-gray-800">Next court date: <strong>{fmt.format(new Date(matter.next_event_at))}</strong>{matter.next_event_note ? ` · ${matter.next_event_note}` : ""}</p>}
-          {matter.next_action && <p className="mt-1 text-[13px] font-semibold text-brand">Next action: {matter.next_action}</p>}
+          {matter.next_action && (
+            <p className="mt-1 text-[13px] font-semibold text-brand">
+              Next action: {matter.next_action}
+              {matter.next_action_due && <span className="font-normal text-gray-600"> · by {formatDay(matter.next_action_due)}</span>}
+            </p>
+          )}
         </header>
 
         {actionError && <Alert kind="error">{actionError}</Alert>}

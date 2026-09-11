@@ -11,14 +11,18 @@ import { Card, EmptyState } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { firmStaff, requestedFirmId, staffContext, staffLabel } from "@/lib/firm-data";
 import { relativeLabel } from "@/lib/relative";
+import { formatDay, todayIn } from "@/lib/days";
 import type { TaskRow } from "@/lib/db/types";
 import { CloseTaskButton } from "./close-button";
 
 export const metadata = { title: "Tasks" };
 
 const LIMIT = 200;
-type View = "open" | "overdue" | "mine" | "unassigned" | "done";
-const VIEWS: Array<[View, string]> = [["open", "Open"], ["overdue", "Overdue"], ["mine", "Mine"], ["unassigned", "Unassigned"], ["done", "Done"]];
+type View = "open" | "overdue" | "mine" | "unassigned" | "done" | "next";
+const VIEWS: Array<[View, string]> = [["open", "Open"], ["overdue", "Overdue"], ["mine", "Mine"], ["unassigned", "Unassigned"], ["next", "Next actions"], ["done", "Done"]];
+
+/** A live matter's next action, as the queue shows it. */
+interface NextActionRow { id: string; title: string; reference: string; next_action: string; next_action_owner_id: string | null; next_action_due: string | null }
 
 export default async function FirmTasks({ searchParams }: { searchParams: Promise<{ firm?: string; view?: string }> }) {
   const sp = await searchParams;
@@ -44,8 +48,17 @@ export default async function FirmTasks({ searchParams }: { searchParams: Promis
     if (view === "unassigned") q = q.is("assignee_id", null);
     q = q.order("due_at", { ascending: true, nullsFirst: false }).order("created_at", { ascending: true });
   }
-  const { data, error } = await q.limit(LIMIT);
+  const { data, error } = view === "next" ? { data: [], error: null } : await q.limit(LIMIT);
   const tasks = (data ?? []) as TaskRow[];
+
+  // Next actions are on the matter, not in tasks: one per live matter, with an owner and a due
+  // day since migration 26. Shown here because this is where the firm looks for its work.
+  const nextActions: NextActionRow[] = view === "next"
+    ? (((await supabase.from("matters").select("id, title, reference, next_action, next_action_owner_id, next_action_due")
+        .eq("firm_id", firmId).is("deleted_at", null).is("closed_at", null).not("next_action", "is", null)
+        .order("next_action_due", { ascending: true, nullsFirst: false }).limit(LIMIT)).data ?? []) as NextActionRow[])
+    : [];
+  const today = todayIn(tz);
 
   const matterIds = Array.from(new Set(tasks.map((t) => t.matter_id).filter((x): x is string => Boolean(x))));
   const matters = matterIds.length
@@ -82,6 +95,34 @@ export default async function FirmTasks({ searchParams }: { searchParams: Promis
 
       {error && <Alert kind="error" title="This screen could not read the tasks">{error.message}</Alert>}
 
+      {view === "next" ? (
+        <Card>
+          {nextActions.length === 0 ? (
+            <EmptyState title="No matter has a next action recorded" hint="Set one on the matter's Edit tab, with who is on it and the day it is due by." />
+          ) : (
+            <ul>
+              {nextActions.map((m) => {
+                const late = Boolean(m.next_action_due && m.next_action_due < today);
+                return (
+                  <li key={m.id} className="border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0">
+                    <span className="block text-[13.5px] font-semibold text-[#141414]">{m.next_action}</span>
+                    <Link href={`/firm/matters/${m.id}?tab=edit`} className="mt-0.5 block truncate text-[12.5px] text-[#141414] underline underline-offset-2">
+                      {m.title} <span className="font-mono text-[#57534E]">{m.reference}</span>
+                    </Link>
+                    <span className="mt-1 block text-[11.5px] text-[#57534E]">
+                      {m.next_action_owner_id ? owner.get(m.next_action_owner_id) ?? "A colleague" : <span className="font-semibold text-[#92400E]">Nobody on it</span>}
+                      {" · "}
+                      {m.next_action_due
+                        ? <span className={cn(late && "font-semibold text-[#B42318]")}>{late ? "Overdue, was due " : "Due "}{formatDay(m.next_action_due)}</span>
+                        : "No due day"}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      ) : (
       <Card>
         {tasks.length === 0 ? (
           <EmptyState
@@ -116,6 +157,7 @@ export default async function FirmTasks({ searchParams }: { searchParams: Promis
           </ul>
         )}
       </Card>
+      )}
     </div>
   );
 }

@@ -320,6 +320,10 @@ export interface MatterRow {
   status_id: string | null;
   description: string | null;
   next_action: string | null;
+  /** Who the next action is on — a firm member. Null: nobody yet. */
+  next_action_owner_id: string | null;
+  /** The calendar day it is due by, YYYY-MM-DD. A day, never an instant. */
+  next_action_due: string | null;
   court_name: string | null;
   suit_number: string | null;
   next_event_at: string | null;
@@ -455,6 +459,8 @@ export interface FirmOverview {
   service_to_acknowledge: number;
   /** Shared: threads whose latest message came from outside the firm — what the firm owes, whoever has read it. */
   threads_awaiting_reply: number;
+  /** Live matters whose next action's due day has passed, judged in the firm's timezone. */
+  next_actions_overdue: number;
 }
 
 /** Row of firm_sittings_due: a past court date with no update posted. */

@@ -32,6 +32,7 @@ import { StatusPill, type Status } from "@/components/ui/badge";
 import { CounselRoster } from "@/components/firm/counsel-roster";
 import { MessagesThread } from "@/components/portal/messages-thread";
 import { cn } from "@/lib/cn";
+import { formatDay, todayIn } from "@/lib/days";
 import type {
   DocumentRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
   ServiceDirectoryRow, TaskRow,
@@ -103,6 +104,8 @@ interface MatterDetail {
   status_id: string | null;
   description: string | null;
   next_action: string | null;
+  next_action_owner_id: string | null;
+  next_action_due: string | null;
   court_id: string | null;
   court_name: string | null;
   suit_number: string | null;
@@ -118,7 +121,7 @@ interface MatterDetail {
 }
 
 const MATTER_COLUMNS =
-  "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, court_id, court_name, " +
+  "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, next_action_owner_id, next_action_due, court_id, court_name, " +
   "suit_number, judicial_division, judge, next_event_at, next_event_note, awaiting_date, opened_at, closed_at, " +
   "originating_lawyer_id, handling_lawyer_id";
 
@@ -229,7 +232,25 @@ export default async function MatterWorkbench({
           )}
         </p>
 
-        {matter.next_action && <p className="text-sm font-medium text-brand">Next action: {matter.next_action}</p>}
+        {matter.next_action && (
+          <p className="text-sm font-medium text-brand">
+            Next action: {matter.next_action}
+            {(matter.next_action_owner_id || matter.next_action_due) && (
+              <span className="font-normal text-gray-600">
+                {" · "}
+                {matter.next_action_owner_id ? (names[matter.next_action_owner_id] ?? "a colleague") : <span className="text-amber-800">nobody on it</span>}
+                {matter.next_action_due && (
+                  <>
+                    {" · due "}
+                    <span className={matter.next_action_due < todayIn(ctx.timezone) ? "font-semibold text-red-700" : undefined}>
+                      {matter.next_action_due < todayIn(ctx.timezone) ? "overdue, was " : ""}{formatDay(matter.next_action_due)}
+                    </span>
+                  </>
+                )}
+              </span>
+            )}
+          </p>
+        )}
 
         <p className="text-xs text-gray-600">
           Handling: {handling ?? "not recorded"} · Originating: {originating ?? "not recorded"}
@@ -617,6 +638,8 @@ async function EditSection({
         causeTitle: matter.cause_title ?? "",
         description: matter.description ?? "",
         nextAction: matter.next_action ?? "",
+        nextActionOwnerId: matter.next_action_owner_id ?? "",
+        nextActionDue: matter.next_action_due ?? "",
         statusId: matter.status_id ?? "",
         courtId: matter.court_id,
         courtName: matter.court_name ?? "",
