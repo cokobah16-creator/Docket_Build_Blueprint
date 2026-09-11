@@ -100,7 +100,7 @@ circumstances, finances. Treat every matter record as capable of holding sensiti
 
 | Table | Personal data | Note |
 |---|---|---|
-| `audit_log` | `actor_id`, `action`, `entity`, `entity_id`, `meta`, and an `ip` column | **Append-only**: insert, update and delete are revoked from every API role; `audit()` is the only writer. **The `ip` column is never populated** — `audit()` does not set it, so it is always null |
+| `audit_log` | `actor_id`, `action`, `entity`, `entity_id`, `meta` | **Append-only**: insert, update and delete are revoked from every API role; `audit()` is the only writer. **No address column**: there was one, never populated, and it was dropped (migration 24) rather than filled — Postgres cannot see a request's address, and a value a caller can forge has no place in a table people read as forensic |
 | `consent_records` | see §2 | The `ip` and `user_agent` columns are likewise **never populated** — `recordConsent` in `app/app/(portal)/actions.ts` writes `user_id`, `firm_id`, `kind` and `version` only |
 | `rate_limits` | For a signed-in caller the key **is** `auth.uid()`; for an anonymous one it is a SHA-256 digest of the client address, computed in `src/lib/rate-limit.ts` — **the address itself never reaches the database** | No RLS policy at all: only `rate_limit_hit()` touches it. Rows older than a day are swept opportunistically inside that function |
 | `webhook_events` | provider, event type, provider reference, outcome, firm, invoice | Never the body of a verified event |
@@ -408,7 +408,7 @@ not during one.*
 ### Standing gaps to state in any incident report
 
 - **Document reads are not logged by Docket.** Only Storage's own logs show them.
-- **`audit_log.ip` and `consent_records.ip`/`user_agent` are never populated**, so no request can be
+- **`consent_records.ip`/`user_agent` are never populated** (and `audit_log` no longer has an address column), so no request can be
   traced to an address from within the database.
 - **`audit_row_change()` does not cover every table.** `/firm/admin/audit` names its own coverage at
   the foot of the page; read that before concluding from a silence in the log.
