@@ -764,3 +764,25 @@ export const FIRM_ROLES: Array<{ value: string; label: string; hint: string }> =
   { value: "lawyer", label: "Lawyer", hint: "Matters, court updates, consultations and their own diary" },
   { value: "staff", label: "Staff", hint: "Matters and consultations, but not the firm's settings" },
 ];
+
+/** storage_integrity() (migration 28): the bytes, measured against the rows. */
+export interface StorageIntegrity {
+  /** False on a database with no storage schema (local); every count below is then from the manifest alone. */
+  storage_present: boolean;
+  /** storage.objects rows in the documents and intake-uploads buckets: what should exist. */
+  objects: number;
+  manifest_rows: number;
+  /** Objects the manifest has never fetched. */
+  unverified: number;
+  ok: number;
+  /** Rows say it exists; the bytes 404. */
+  missing: number;
+  /** The bytes hash differently from document_versions.checksum. */
+  mismatch: number;
+  error: number;
+  /** Verified more than seven days ago. */
+  stale: number;
+  /** document_versions rows with no storage.objects row at all: the "looks intact" failure. */
+  row_only_versions: number;
+  last_run_at: string | null;
+}

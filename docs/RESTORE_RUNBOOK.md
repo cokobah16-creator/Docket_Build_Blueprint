@@ -26,7 +26,7 @@ deliberately whether that is acceptable. It probably is not.
 
 - [x] PITR enabled — **no, by decision, 11 Sep 2026.** No firm has real client files on Docket yet, so the add-on is not bought yet; the RPO below is stated as 24 hours accordingly. **Revisit before the first firm goes live with real matters** — that is the trigger, and it is written here so it is not forgotten
 - [ ] Daily backup retention: ______ days
-- [ ] Storage object backup arrangement: ______ (see §2)
+- [ ] Storage object backup arrangement: ______ (see §1.2). **The manifest half is built** (migration 28 + the `storage-manifest` function): `/admin/health` says whether every object the rows describe exists and hashes as the version row says. The copy to a second location is not, and waits on where that location is
 
 ---
 
@@ -89,6 +89,16 @@ Do this, in writing, before you need it:
 
 A restore that brings back rows without bytes is worse than one that brings back neither, because
 the system will look intact.
+
+**Which is why the manifest exists.** The `storage-manifest` Edge Function (migration 28) downloads
+every object in `documents` and `intake-uploads` on a rolling schedule — fifty at a time, every ten
+minutes, each one again after a week — hashes it, and compares the hash to
+`document_versions.checksum`. `/admin/health` reads the result through `storage_integrity()`: how
+many objects the rows describe, how many are verified and matching, how many 404, how many hash
+differently, and — the failure this paragraph is about — how many version rows have no object at
+all. After any restore, that screen is the first thing to read, and "every object verified, none
+missing" is the sentence that means the documents came back. Until the function has run, the
+screen says so rather than showing zeros.
 
 ### 1.3 Edge Function secrets
 

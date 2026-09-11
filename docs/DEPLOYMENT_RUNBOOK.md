@@ -177,13 +177,14 @@ must enrol TOTP before `/admin` will let it do anything, because every platform 
 
 ## 3. The Edge Functions
 
-Three functions, and **two of them must be deployed with `--no-verify-jwt`**, because their callers
+Four functions, and **three of them must be deployed with `--no-verify-jwt`**, because their callers
 hold no Supabase session. There is no `supabase/config.toml` in this repository, so the flag has to
 be on the command line every time.
 
 ```bash
 supabase functions deploy paystack-webhook        --project-ref <ref> --no-verify-jwt
 supabase functions deploy dispatch-notifications  --project-ref <ref> --no-verify-jwt
+supabase functions deploy storage-manifest        --project-ref <ref> --no-verify-jwt
 supabase functions deploy video-session           --project-ref <ref>
 ```
 
@@ -193,6 +194,13 @@ supabase functions deploy video-session           --project-ref <ref>
   reaches `record_payment()`.
 - **`dispatch-notifications`** is called by `pg_cron`, which sends `x-cron-secret` and nothing else.
   That secret is its only credential and is compared as a digest, not as a string.
+- **`storage-manifest`** is called by `pg_cron` every ten minutes with the same `x-cron-secret`
+  (migration 28). It downloads a bounded batch of objects from the `documents` and
+  `intake-uploads` buckets, hashes them against `document_versions.checksum`, and writes
+  `storage_manifest`; `/admin/health` reads the result through `storage_integrity()`. It needs two
+  Vault secrets — `cron_secret`, which the dispatcher already has, and
+  `vault.create_secret('https://<ref>.supabase.co/functions/v1/storage-manifest', 'storage_manifest_url')`
+  — and is a no-op until both exist.
 - **`video-session`** is called by signed-in people and reads the `Authorization` header itself, so
   it keeps JWT verification on.
 
@@ -217,7 +225,9 @@ signed with a different private one.
 
 **Proves it worked:** `curl -X POST https://<ref>.supabase.co/functions/v1/dispatch-notifications`
 with no header returns `unauthorized` (401), and with the right `x-cron-secret` returns
-`{"sent":0,"failed":0,"skipped":0}`.
+`{"sent":0,"failed":0,"skipped":0}`. The same call to `/functions/v1/storage-manifest` returns
+`forbidden` (403) without the header and a JSON count of what it verified with it; within an hour
+`/admin/health` should show every object verified and none missing.
 
 ---
 
