@@ -7,9 +7,11 @@
 // it does not override keeps Docket's words, so an empty object is the normal state and no
 // client is ever left without a message. Placeholders in {braces} are filled here.
 //
-// A FAILED SEND COUNTS. notifications.attempts (migration 20) is incremented on every failure,
-// and retry_notification() refuses a sixth attempt — so a provider outage cannot become an
-// endless loop of texts at a client's expense.
+// A RETRY COUNTS, A FAILURE DOES NOT. notifications.attempts (migration 20) belongs to
+// retry_notification(): it increments when an operator puts a failed message back in the queue
+// and refuses the sixth. This function only marks the row 'failed' — counting the failure here
+// as well would make one retry cost two, so a provider outage cannot become an endless loop of
+// texts at a client's expense and an operator is never told they have used tries they have not.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3';
 
@@ -203,12 +205,11 @@ Deno.serve(async (req: Request) => {
       if (r.channel === 'push')  { await sendPush(r.user_id, subject, text, url); }
       await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', r.id); sent++;
     } catch (e: any) {
-      // attempts is what bounds retry_notification() (migration 20): a platform admin may put a
-      // failed notification back in the queue, but never a sixth time.
+      // attempts is NOT touched here. retry_notification() (migration 20) owns that counter: it
+      // increments on every re-queue and refuses the sixth. Counting the send failure as well
+      // would make one retry cycle cost two, so an operator would get two tries and be told they
+      // had used five.
       await supabase.from('notifications')
-        // attempts is NOT touched here. retry_notification() owns that counter: it increments on
-        // every re-queue and refuses the sixth. Counting the send failure as well would make one
-        // retry cycle cost two, so an operator would get two tries and be told they had used five.
         .update({ status: 'failed', error: String(e?.message ?? e).slice(0, 500) })
         .eq('id', r.id);
       failed++;
