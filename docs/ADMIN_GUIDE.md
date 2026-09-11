@@ -34,7 +34,7 @@ your clients. Three states:
 | Status | What it means |
 |---|---|
 | **Pending** | You have registered and Docket has not yet verified you. **You can change everything** — this is the setup path — but your public site does not resolve and nobody can book |
-| **Active** | Docket has checked your RC/BN number against CAC and your owners' enrolment numbers against the Roll of Legal Practitioners. Your site is live, your lawyers are listed, and bookings are open |
+| **Active** | A Docket platform administrator has reviewed your RC/BN number and your owners' enrolment numbers and activated the firm. **Docket does not itself check either against CAC or the Roll of Legal Practitioners** — nothing in the platform can, and no screen should tell a client it did. Your site resolves and your lawyers are listed. **Bookings open only once you have published your terms and privacy notice** (Settings → Policies): `book_appointment()` refuses every booking for a firm whose policies are unpublished, active or not |
 | **Suspended** | Every screen still **reads**, and **no form will save.** See the last section |
 
 You cannot set your own status, plan, web address (slug) or custom domain. Those are Docket's, and

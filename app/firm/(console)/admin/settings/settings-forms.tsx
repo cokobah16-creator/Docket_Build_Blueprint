@@ -866,7 +866,17 @@ function DomainSection({ firmId, firmSlug, customDomain, openRequest, decidedReq
   const [hostname, setHostname] = useState("");
   const [note, setNote] = useState("");
 
-  const records = openRequest ? Object.entries(openRequest.verification ?? {}) : [];
+  // Vercel returns the records to add as a LIST of {type, domain, value, reason}. This used to
+  // run Object.entries() over that list and String() each entry, which printed "[object Object]"
+  // where a firm expected a TXT record to copy — the one thing the panel exists to show.
+  type DnsRecord = { type?: unknown; domain?: unknown; value?: unknown; reason?: unknown };
+  const raw: unknown = openRequest?.verification ?? null;
+  const records: DnsRecord[] = Array.isArray(raw)
+    ? (raw as DnsRecord[])
+    : raw && typeof raw === "object"
+      ? Object.values(raw as Record<string, DnsRecord>).filter((r) => r && typeof r === "object")
+      : [];
+  const text = (v: unknown) => (typeof v === "string" || typeof v === "number" ? String(v) : "");
 
   return (
     <Section
@@ -889,13 +899,22 @@ function DomainSection({ firmId, firmSlug, customDomain, openRequest, decidedReq
           {records.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border border-gray-200">
               <table className="w-full min-w-[24rem] text-left text-sm">
+                <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                  <tr>
+                    <th scope="col" className="px-3 py-2">Type</th>
+                    <th scope="col" className="px-3 py-2">Name</th>
+                    <th scope="col" className="px-3 py-2">Value</th>
+                  </tr>
+                </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {records.map(([key, value]) => (
-                    <tr key={key}>
-                      <th scope="row" className="px-3 py-2 font-medium text-gray-700">
-                        {key}
-                      </th>
-                      <td className="break-all px-3 py-2 text-gray-800">{String(value)}</td>
+                  {records.map((r, i) => (
+                    <tr key={`${text(r.type)}-${text(r.domain)}-${i}`}>
+                      <td className="px-3 py-2 font-medium text-gray-700">{text(r.type) || "—"}</td>
+                      <td className="break-all px-3 py-2 text-gray-800"><code>{text(r.domain) || "—"}</code></td>
+                      <td className="break-all px-3 py-2 text-gray-800">
+                        <code>{text(r.value) || "—"}</code>
+                        {text(r.reason) && <p className="mt-1 text-xs text-gray-500">{text(r.reason)}</p>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>

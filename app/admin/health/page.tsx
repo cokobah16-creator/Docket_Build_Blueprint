@@ -115,12 +115,19 @@ export default async function AdminHealthPage({
     );
   }
 
-  const [queue, settlement, webhooks, failed] = await Promise.all([
+  // Each reader says whether its QUERY worked. A failed read is rendered as a failure in its own
+  // section — an empty list means "nothing there" and a failed one means "we do not know", and
+  // the second must never be dressed as the first on a screen an operator acts on.
+  const [queueRead, settlementRead, webhooksRead, failedRead] = await Promise.all([
     notificationHealth(ctx.supabase),
     settlementHealth(ctx.supabase, SETTLEMENT_LIMIT),
     webhookEvents(ctx.supabase, { limit: WEBHOOK_LIMIT }),
     failedNotifications(ctx.supabase),
   ]);
+  const queue = queueRead.rows;
+  const settlement = settlementRead.rows;
+  const webhooks = webhooksRead.rows;
+  const failed = failedRead.rows;
 
   const tz = ctx.timezone;
   const nowMs = Date.now();
@@ -221,7 +228,12 @@ export default async function AdminHealthPage({
           </Alert>
         )}
 
-        {settlement.length === 0 ? (
+        {settlementRead.error ? (
+          <Alert kind="error" title="This screen could not read the settlement view">
+            {settlementRead.error}. That is a failed read, not a clean sheet — nothing in this section
+            reflects what is actually there. Reload; if it persists, check that migration 20’s platform_settlement_health view exists on this project and that this account is a platform admin.
+          </Alert>
+        ) : settlement.length === 0 ? (
           <Card>
             <EmptyState
               title="No payment is waiting to be reconciled"
@@ -345,7 +357,17 @@ export default async function AdminHealthPage({
           {firmGroups.length === 1 ? "" : "s"}
         </p>
 
-        {queue.length === 0 ? (
+        {queueRead.error ? (
+          <Alert kind="error" title="This screen could not read the notification queue">
+            {queueRead.error}. That is a failed read, not a clean sheet — nothing in this section
+            reflects what is actually there. Reload; if it persists, check that migration 20’s platform_notification_health view exists on this project.
+          </Alert>
+        ) : failedRead.error ? (
+          <Alert kind="error" title="This screen could not read the failed messages">
+            {failedRead.error}. The grouped counts may be fine, but the one-at-a-time list that lets
+            you retry a message did not load, so nothing here can be retried until it does.
+          </Alert>
+        ) : queue.length === 0 ? (
           <Card>
             <EmptyState
               title="There is nothing in the notification queue"
@@ -460,7 +482,12 @@ export default async function AdminHealthPage({
           </Alert>
         )}
 
-        {webhooks.length === 0 ? (
+        {webhooksRead.error ? (
+          <Alert kind="error" title="This screen could not read webhook deliveries">
+            {webhooksRead.error}. That is a failed read, not a clean sheet — nothing in this section
+            reflects what is actually there. Reload; if it persists, check that migration 20’s webhook_events table exists on this project.
+          </Alert>
+        ) : webhooks.length === 0 ? (
           <Card>
             <EmptyState
               title="No provider has called this deployment yet"

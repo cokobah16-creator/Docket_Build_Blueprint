@@ -85,20 +85,20 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-brand-surface">
+    <div className="min-h-screen bg-docket-paper">
       <header className="border-b border-black/5 bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/admin" className="truncate font-heading text-base font-semibold text-brand">
+            <Link href="/admin" className="truncate font-heading text-base font-semibold text-docket-hunter">
               Docket platform
             </Link>
             <Badge>platform admin</Badge>
           </div>
           <div className="flex shrink-0 items-center gap-4">
-            <Link href="/firm" className="text-sm font-medium text-gray-600 hover:text-brand">
+            <Link href="/firm" className="text-sm font-medium text-gray-600 hover:text-docket-link">
               Firm console
             </Link>
-            <Link href="/firm/security/mfa" className="text-sm font-medium text-gray-600 hover:text-brand">
+            <Link href="/firm/security/mfa" className="text-sm font-medium text-gray-600 hover:text-docket-link">
               Security
             </Link>
           </div>
@@ -110,7 +110,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-black/5 hover:text-brand"
+                  className="block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-black/5 hover:text-docket-link"
                 >
                   {item.label}
                 </Link>

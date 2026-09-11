@@ -105,7 +105,7 @@ export function MessagesThread({
                     ))}
                   </ul>
                 )}
-                <p className={`mt-1 text-[11px] ${mine ? "text-white/80" : "text-gray-500"}`}>
+                <p className={`mt-1 text-[11px] ${mine ? "text-brand-on opacity-80" : "text-gray-500"}`}>
                   {fmt.format(new Date(m.created_at))}{mine && m.read_at ? " · Read" : ""}
                 </p>
               </div>

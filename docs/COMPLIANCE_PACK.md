@@ -281,15 +281,21 @@ Run as that `:user`, and keep the output with the request.
 | Activity | `select * from audit_log where actor_id = :user order by at;` |
 
 A client can already see most of this for themselves: `/app` shows their matters, timeline,
-documents, invoices and messages, and `/app/profile` lists **every consent record they hold**.
-Point them there first; it is faster than a manual export and it is the same data.
+documents, invoices and messages, and `/app/profile` lists their **fifty most recent** consent
+records — the query is capped there (`app/app/(portal)/profile/page.tsx`), so a long-standing client
+of several firms may hold more than that page shows. Point them there first for the everyday case;
+for a subject-access request, the `consent_records` query above is the complete set and the page is not.
 
 ### 6b. Rectification
 
 `profiles` is writable by its owner (`profiles_update` is `id = auth.uid()`), so a person corrects
-their own name, address and contact details at `/app/profile` without anyone's help. Matter
-content is the firm's record: correcting it is the firm's act, and every change to `matters` is
-written to `audit_log` by `audit_row_change()`.
+their own **name, email address, timezone, preferred channel and quiet hours** at `/app/profile`
+without anyone's help — those are the fields `updateProfile()` accepts (`src/lib/actions/portal.ts`),
+and they are the only ones. **Docket holds no postal address on a profile**, so there is nothing to
+rectify there; the phone number is the sign-in identity and changes by re-verifying a new number,
+not by editing a field. Anything else a person asks to correct — an address on a matter, a name on
+an invoice — is matter content, which is the firm's record: correcting it is the firm's act, and
+every change to `matters` is written to `audit_log` by `audit_row_change()`.
 
 ### 6c. Erasure — what actually happens, including what blocks it
 

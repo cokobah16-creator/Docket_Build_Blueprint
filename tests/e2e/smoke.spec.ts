@@ -15,10 +15,17 @@ test("platform landing responds", async ({ page }) => {
 
 test("tenant public home renders with the firm's branding", async ({ page }) => {
   test.skip(!configured, "NEXT_PUBLIC_SUPABASE_URL not set");
+  // ?firm= only resolves a tenant OFF production (src/lib/tenant.ts). Against a production-mode
+  // target this lands on the Docket landing page — and that page has a footer link matching
+  // /book/i and a non-empty first header anchor, so the old assertions passed there, green,
+  // having checked nothing about any firm. Every assertion below is one the landing page cannot
+  // satisfy: the CTA must point INTO this firm, and the brand tokens must be set inline, which
+  // only the tenant layout does (brandStyle() in src/lib/brand.ts).
   await page.goto(`/?firm=${firmSlug}`);
-  await expect(page.getByRole("link", { name: /book/i }).first()).toBeVisible();
-  // the tenant layout puts the firm's name in the header link
-  await expect(page.locator("header a").first()).not.toBeEmpty();
+  const cta = page.locator(`a[href="/${firmSlug}/book"]`).first();
+  await expect(cta).toBeVisible();
+  await expect(page.locator('[style*="--dk-primary"]').first()).toBeAttached();
+  await expect(page.locator("header a").first()).not.toHaveText(/sign in/i);
 });
 
 test("firm registration is reachable from the landing", async ({ page }) => {

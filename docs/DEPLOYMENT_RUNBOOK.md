@@ -274,7 +274,8 @@ nothing may: the only clients there run as the signed-in person so that RLS deci
 
 `src/lib/tenant.ts` resolves a firm from the request host in three steps: a subdomain of
 **`.docket.app`** by slug, then a custom domain by exact match, then `?firm=<slug>` — which is the
-development and preview route, not a public one.
+development and preview route, not a public one, and is **ignored entirely on the production
+deployment**: `resolveFirm()` skips it whenever `isProductionDeployment()` is true (`src/lib/env.ts`).
 
 **The subdomain suffix is a literal in that file**, not an environment variable:
 
@@ -293,8 +294,15 @@ So there are two cases:
 
 **Proves it worked:** `https://<slug>.docket.app/` renders that firm's home page with its own
 colours, and the platform's own root renders the landing page. Where the wildcard is not in place
-yet, `https://<your deployment>/?firm=<slug>` renders the same tenant page — which is how to tell a
-DNS problem apart from a data problem.
+yet, `https://<your deployment>/<slug>` renders the same tenant page **by path** — the `[firm]`
+route segment resolves a slug on its own (`app/(public)/[firm]/layout.tsx` calls `firmBySlug()`
+and never touches `resolveFirm()`) — which is how to tell a DNS problem apart from a data problem:
+a 404 there means the firm is not active or not there; the tenant page means the DNS wildcard is
+what is missing.
+
+Do **not** use `https://<your deployment>/?firm=<slug>` for this on production. It is ignored
+there, so it renders the landing page whether or not the firm exists — a diagnostic that gives the
+same answer in both cases, and reads as "the firm is not there" when the firm is fine.
 
 ---
 

@@ -339,6 +339,17 @@ export async function setFirmDomain(_prev: FirmWriteState, formData: FormData): 
     };
   }
 
+  // The hostname this firm is LEAVING comes from the database, for the same reason it does on
+  // the unmap path: the form’s hidden field is what the operator’s browser believed when the
+  // page rendered, and a card left open while that host moved to another firm would take the
+  // other firm’s site off the project. Read it before the write changes it.
+  const { data: beforeRow } = await supabase
+    .from("firm_admin")
+    .select("custom_domain")
+    .eq("id", firmId)
+    .maybeSingle();
+  const previous = (beforeRow as { custom_domain: string | null } | null)?.custom_domain ?? null;
+
   const { error } = await supabase.rpc("set_firm_domain", {
     p_firm: firmId,
     p_domain: domain,
@@ -347,12 +358,41 @@ export async function setFirmDomain(_prev: FirmWriteState, formData: FormData): 
   if (error) return { error: error.message };
 
   revalidatePath("/admin");
+  const dnsNote =
+    added.misconfigured === true
+      ? `Vercel still reports DNS as not pointing here. ${CACHE_NOTE}`
+      : CACHE_NOTE;
+
+  // A remap used to leave the OLD hostname attached to the Vercel project: still answering for
+  // Docket, unreusable by any other firm, and mapped to nobody. Take it off — unless, between
+  // the page render and this click, another firm was given it, in which case it is theirs now.
+  if (!previous || previous === added.host) {
+    return { done: `${added.host} is mapped to this firm.`, notice: dnsNote };
+  }
+  const { data: nowHeldBy } = await supabase
+    .from("firm_admin")
+    .select("id, name")
+    .eq("custom_domain", previous)
+    .maybeSingle();
+  if (nowHeldBy) {
+    const other = nowHeldBy as { id: string; name: string };
+    return {
+      done: `${added.host} is mapped to this firm.`,
+      notice: `${previous} was left on the Vercel project because ${other.name} now uses it. ${dnsNote}`,
+    };
+  }
+  const removed = await removeDomain(previous);
+  if (!removed.ok) {
+    return {
+      done: `${added.host} is mapped to this firm.`,
+      notice: `${previous} is no longer this firm’s, but it is still on the Vercel project — ${providerMessage(removed)} Take it off there yourself if another firm needs it. ${dnsNote}`,
+    };
+  }
   return {
     done: `${added.host} is mapped to this firm.`,
-    notice:
-      added.misconfigured === true
-        ? `Vercel still reports DNS as not pointing here. ${CACHE_NOTE}`
-        : CACHE_NOTE,
+    notice: removed.removed
+      ? `${previous} has been taken off the Vercel project. ${dnsNote}`
+      : `Vercel was not holding ${previous}, so there was nothing to take off. ${dnsNote}`,
   };
 }
 

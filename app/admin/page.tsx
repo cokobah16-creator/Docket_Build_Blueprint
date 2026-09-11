@@ -95,11 +95,15 @@ export default async function AdminFirmsPage() {
     );
   }
 
-  const [firms, requests, host] = await Promise.all([
+  const [firmsRead, requestsRead, host] = await Promise.all([
     platformFirms(ctx.supabase, FIRM_LIMIT),
     domainRequests(ctx.supabase, REQUEST_LIMIT),
     deploymentHost(),
   ]);
+  // A failed read is shown as one. "No firms on Docket yet" on a broken query would send an
+  // operator to /firm/start to register a firm that already exists.
+  const firms = firmsRead.rows;
+  const requests = requestsRead.rows;
   const providerConfigured = vercelConfigured();
 
   const byId = new Map<string, FirmAdminRow>(firms.map((f) => [f.id, f]));
@@ -137,7 +141,12 @@ export default async function AdminFirmsPage() {
       <section id="firms" className="space-y-4">
         <h2 className="font-heading text-lg font-semibold text-gray-900">Firms</h2>
 
-        {firms.length === 0 ? (
+        {firmsRead.error ? (
+          <Alert kind="error" title="This screen could not read the firm list">
+            {firmsRead.error}. That is a failed read, not a clean sheet — nothing in this section
+            reflects what is actually there. Reload; if it persists, check that the firm_admin view exists and that this account is in platform_admins.
+          </Alert>
+        ) : firms.length === 0 ? (
           <Card>
             <EmptyState
               title="No firms on Docket yet"
@@ -281,7 +290,12 @@ export default async function AdminFirmsPage() {
           </Alert>
         )}
 
-        {open.length === 0 ? (
+        {requestsRead.error ? (
+          <Alert kind="error" title="This screen could not read domain requests">
+            {requestsRead.error}. That is a failed read, not a clean sheet — nothing in this section
+            reflects what is actually there. Reload; if it persists, check that migration 20’s domain_requests table exists on this project.
+          </Alert>
+        ) : open.length === 0 ? (
           <Card>
             <EmptyState
               title="No firm is waiting on a domain"
