@@ -153,7 +153,9 @@ export async function setFirmStatus(_prev: FirmWriteState, formData: FormData): 
   revalidatePath("/admin");
   const done =
     parsed.data.status === "active"
-      ? "Active. The public site and bookings are open."
+      // Activation opens the public site. It does NOT open bookings on its own: book_appointment()
+      // refuses while terms or privacy carry a "0-" version, and every firm starts that way.
+      ? "Active. The public site is open. Bookings open once the firm has published its terms and privacy notice — until then book_appointment() refuses every one."
       : parsed.data.status === "suspended"
         ? "Suspended. Every write this firm makes is now refused; its reads still work."
         : "Pending. The firm is off the public site until it is activated again.";

@@ -427,7 +427,7 @@ function SettlementSection({ firmId, settlement }: FirmSettingsProps) {
           placeholder="ACCT_"
           spellCheck={false}
           autoCapitalize="off"
-          hint="Starts with ACCT_ and is followed by letters and digits. Copy it from your Paystack dashboard. Leave it empty to stop taking prepaid bookings."
+          hint="Starts with ACCT_ and is followed by letters and digits. Copy it from your Paystack dashboard. Leave it empty to stop taking money altogether — not only new prepaid bookings, but every invoice already issued and still unpaid."
         />
         <SaveButton pending={pending} />
       </form>
@@ -781,12 +781,13 @@ function PoliciesSection({ firmId, policies, policyDocumentsAtRisk }: FirmSettin
         )}
 
         {changing.length > 0 && (
-          <Alert kind="warning" title="Every client of this firm will be locked out until they accept">
+          <Alert kind="warning" title="Every client of this firm will be asked to accept again">
             <p>
-              You are changing the version of the {changing.join(" and the ")}. The portal compares a
-              client's recorded consent against the version string exactly, so the moment this is
-              saved every client of this firm is stopped at a consent screen and cannot see their
-              matters, documents or invoices until they accept the new version.
+              You are changing the version of the {changing.join(" and the ")}. The portal compares
+              a client&rsquo;s recorded consent against the version string exactly, so the moment
+              this is saved every client of this firm meets a consent screen the next time they open
+              their portal home, and until they accept, what Docket has on record is their consent
+              to the old version.
             </p>
             <label className="mt-3 flex min-h-[44px] items-start gap-3">
               <input type="checkbox" checked={acknowledge} onChange={(e) => setAcknowledge(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />

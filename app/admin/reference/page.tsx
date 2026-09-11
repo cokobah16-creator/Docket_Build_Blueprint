@@ -79,6 +79,7 @@ interface CourtRow {
   division: string | null;
   city: string | null;
   short_name: string | null;
+  suit_number_hint: string | null;
   is_active: boolean;
 }
 
@@ -132,14 +133,14 @@ export default async function AdminReferencePage({
     (courtSearch
       ? supabase
           .from("courts")
-          .select("id, name, level, state_code, division, city, short_name, is_active", { count: "exact" })
+          .select("id, name, level, state_code, division, city, short_name, suit_number_hint, is_active", { count: "exact" })
           .is("firm_id", null)
           .or(`name.ilike.%${courtSearch}%,short_name.ilike.%${courtSearch}%,division.ilike.%${courtSearch}%,city.ilike.%${courtSearch}%`)
           .order("name", { ascending: true })
           .limit(COURT_LIMIT)
       : supabase
           .from("courts")
-          .select("id, name, level, state_code, division, city, short_name, is_active", { count: "exact" })
+          .select("id, name, level, state_code, division, city, short_name, suit_number_hint, is_active", { count: "exact" })
           .is("firm_id", null)
           .order("name", { ascending: true })
           .limit(COURT_LIMIT)),
@@ -180,6 +181,7 @@ export default async function AdminReferencePage({
     division: c.division,
     city: c.city,
     shortName: c.short_name,
+    suitNumberHint: c.suit_number_hint,
     isActive: c.is_active,
   }));
 
@@ -259,12 +261,16 @@ export default async function AdminReferencePage({
                     ? `${upcomingVacations} window${upcomingVacations === 1 ? "" : "s"} still to come${
                         vacationsThrough ? `, the last ending ${dayLabel(vacationsThrough)}` : ""
                       }`
-                    : "off, because nothing has been entered"}
+                    : vacationsThrough
+                      ? `off, because every window entered has already ended — the last on ${dayLabel(vacationsThrough)}`
+                      : "off, because nothing has been entered"}
                 </p>
                 <p className={`text-sm ${vacationsOn ? "text-emerald-900" : "text-red-900"}`}>
                   {vacationsOn
                     ? "A date inside one of these windows is refused for the courts and states the window covers."
-                    : "court_vacations is empty, so a date in the middle of the Long Vacation is treated as an ordinary sitting day. Entering the first window below is what turns this part of the check on."}
+                    : vacationsThrough
+                      ? "Every vacation window on record is in the past, so a date in the middle of this year's Long Vacation is treated as an ordinary sitting day. Enter the current windows below."
+                      : "court_vacations is empty, so a date in the middle of the Long Vacation is treated as an ordinary sitting day. Entering the first window below is what turns this part of the check on."}
                 </p>
               </li>
             </ul>

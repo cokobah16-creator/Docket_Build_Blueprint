@@ -179,7 +179,7 @@ Docket.
 
 - Your **VAT rate** (Settings → Operations) is applied to consultation fees at booking and to any
   invoice you raise by hand.
-- Your **reference prefix** — the letters in `AK-2026-000123` — is at Settings → Operations and
+- Your **reference prefix** — the letters at the front of a reference such as `XY-2026-000123` — is at Settings → Operations and
   becomes **fixed as soon as your firm issues its first reference**. The screen locks it then, and
   the reason is arithmetic, not caution: references are numbered per firm per year, and changing
   the prefix mid-year leaves one year's numbering carrying two different prefixes. Choose it at
@@ -281,7 +281,7 @@ contact details shown on your public site.
 
 - the **tagline**, the **call-to-action** wording and the **logo** — up to 200 characters each, and
   no angle brackets;
-- three **colours** — primary, accent and surface — each a six-digit hex code like `#0f2a44`.
+- three **colours** — primary, accent and surface — each a six-digit hex code such as `#1c3f5e`.
   Anything else, including a colour name or a three-digit code, is dropped;
 - two **font names** — heading and body — letters, digits and spaces only, up to 40 characters;
 - four **contact** fields — email, phone, address and WhatsApp — up to 200 characters each.

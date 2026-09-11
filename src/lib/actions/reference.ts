@@ -152,6 +152,8 @@ const courtSchema = z.object({
   division: z.string().trim().max(120, { message: "Keep the division to 120 characters or less." }),
   city: z.string().trim().max(120, { message: "Keep the city to 120 characters or less." }),
   shortName: z.string().trim().max(60, { message: "Keep the short name to 60 characters or less." }),
+  /** Shown to a lawyer opening a matter: "Suit numbers at this court read like …". */
+  suitNumberHint: z.string().trim().max(80, { message: "Keep the suit-number example to 80 characters or less." }),
   isActive: z.boolean(),
 });
 
@@ -373,6 +375,27 @@ export async function deletePublicHoliday(id: string): Promise<ReferenceResult> 
  * court_id; removing the row would silently unhook them. Retiring a court is what `isActive` is
  * for — it drops out of the pickers and stays attached to everything that already used it.
  */
+/**
+ * Where each level sits in the court picker, matching the ranks migrations 10 and 12 seeded.
+ * courtsFor() orders by sort and then by name, so a court with no rank would outrank all of them.
+ */
+const SORT_BY_LEVEL: Record<string, number> = {
+  supreme: 10,
+  court_of_appeal: 20,
+  federal_high: 30,
+  fct_high: 40,
+  state_high: 41,
+  national_industrial: 50,
+  sharia_appeal: 60,
+  customary_appeal: 61,
+  magistrate: 70,
+  district: 71,
+  customary: 72,
+  area: 73,
+  tribunal: 80,
+  other: 90,
+};
+
 export async function savePlatformCourt(input: PlatformCourtInput): Promise<ReferenceResult> {
   const parsed = courtSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
@@ -389,7 +412,13 @@ export async function savePlatformCourt(input: PlatformCourtInput): Promise<Refe
     state_code: stateCode,
     division: orNull(d.division),
     city: orNull(d.city),
+    suit_number_hint: orNull(d.suitNumberHint),
     is_active: d.isActive,
+    // Without this, `sort` defaults to 0 and courtsFor() orders by sort then name — so every
+    // court an operator adds would sit at the very top of the picker for EVERY firm on Docket,
+    // above the Supreme Court. The seeded directory ranks by level in tens; a court added here
+    // takes the rank of its own level, so it lands among its peers.
+    sort: SORT_BY_LEVEL[d.level] ?? 90,
   };
 
   if (d.id) {

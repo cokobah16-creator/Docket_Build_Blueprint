@@ -188,10 +188,13 @@ jobs:
       - id: check
         env:
           SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
           FIRM_SLUG: ${{ secrets.E2E_FIRM_SLUG }}
         run: |
           set -euo pipefail
-          if [ -n "${SUPABASE_URL:-}" ] && [ -n "${FIRM_SLUG:-}" ]; then
+          # All three, because the e2e job passes all three. Checking two of them would let the
+          # job start with no anon key and fail as though the app were broken.
+          if [ -n "${SUPABASE_URL:-}" ] && [ -n "${SUPABASE_ANON_KEY:-}" ] && [ -n "${FIRM_SLUG:-}" ]; then
             echo "configured=true" >> "$GITHUB_OUTPUT"
           else
             echo "configured=false" >> "$GITHUB_OUTPUT"

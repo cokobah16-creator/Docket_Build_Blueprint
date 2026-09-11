@@ -61,6 +61,7 @@ export interface CourtView {
   division: string | null;
   city: string | null;
   shortName: string | null;
+  suitNumberHint: string | null;
   isActive: boolean;
 }
 
@@ -717,11 +718,12 @@ interface CourtDraft {
   division: string;
   city: string;
   shortName: string;
+  suitNumberHint: string;
   isActive: boolean;
 }
 
 function emptyCourt(): CourtDraft {
-  return { id: null, name: "", level: "state_high", stateCode: "", division: "", city: "", shortName: "", isActive: true };
+  return { id: null, name: "", level: "state_high", stateCode: "", division: "", city: "", shortName: "", suitNumberHint: "", isActive: true };
 }
 
 function courtDraft(c: CourtView): CourtDraft {
@@ -733,6 +735,7 @@ function courtDraft(c: CourtView): CourtDraft {
     division: c.division ?? "",
     city: c.city ?? "",
     shortName: c.shortName ?? "",
+    suitNumberHint: c.suitNumberHint ?? "",
     isActive: c.isActive,
   };
 }
@@ -857,6 +860,23 @@ export function PlatformCourtEditor({
                   placeholder="FHC Warri"
                   className={field}
                 />
+              </div>
+              <div>
+                <label className={labelClass} htmlFor="court-suit-hint">
+                  Suit-number example
+                </label>
+                <input
+                  id="court-suit-hint"
+                  value={draft.suitNumberHint}
+                  onChange={(e) => patch({ suitNumberHint: e.target.value })}
+                  maxLength={80}
+                  placeholder="FHC/WR/CS/123/2026"
+                  className={field}
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Shown to a lawyer opening a matter at this court, so the suit number is typed the
+                  way the registry writes it. Leave it empty if the shape varies.
+                </p>
               </div>
               <div>
                 <label className={labelClass} htmlFor="court-state">

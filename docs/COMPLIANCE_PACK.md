@@ -213,7 +213,7 @@ Every outbound flow, and exactly what leaves.
 | **Twilio** | every other country code: the recipient's phone number and the message text | the same |
 | **Web push** | the browser's push endpoint, plus a title, a body and a URL | the same |
 | **Sentry** | error messages and stack traces, plus `where`, tags, extra context and a **user id** — a uuid, never a name, phone or email. Inert with no `SENTRY_DSN` | `src/lib/observability/sentry.ts` |
-| **PostHog** | five funnel events, a distinct id that is either the account's uuid or the anonymous visitor cookie, and event properties. **Nothing identifies a person by name, phone or email.** Default host `https://eu.i.posthog.com`. Inert with no `POSTHOG_KEY` | `src/lib/observability/posthog.ts` |
+| **PostHog** | three funnel events today — a tenant site viewed, a booking started, a matter opened. Two more are named in the code and emitted by nothing: a payment is only trustworthy from the Paystack webhook, which runs in Deno and does not share this module, and attendance has no single moment that makes it true. | a distinct id that is either the account's uuid or the anonymous visitor cookie, and event properties. **Nothing identifies a person by name, phone or email.** Default host `https://eu.i.posthog.com`. Inert with no `POSTHOG_KEY` | `src/lib/observability/posthog.ts` |
 
 The **message text** sent to Resend, Termii and Twilio is composed by the dispatcher and may name
 the firm and carry a reference, an invoice number, an amount or a court date. A firm may override
