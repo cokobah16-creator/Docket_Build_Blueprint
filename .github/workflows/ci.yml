@@ -13,8 +13,9 @@
 #   routes     a real `next build`, checked against the content security policy: every route
 #              Next.js prerenders must be one the nonce policy accounts for, or the page ships
 #              as dead HTML. See scripts/check-prerendered-routes.mjs.
-#   compat     this branch's migrations, then main's own seed and RLS suite run against them —
-#              the deployed front end's expectations of the database, checked from main's side.
+#   compat     this branch's migrations, then main's own seed and RLS suite run against them, and
+#              every relation and function main's code names checked for existence — the deployed
+#              front end's expectations of the database, from main's side.
 #
 # A sixth, e2e, needs a configured Supabase project and is therefore GATED — see the bottom of
 # this file for exactly what it needs and why it is skipped without it.
@@ -184,6 +185,14 @@ jobs:
           test "${PIPESTATUS[0]}" -eq 0
           grep -q 'ALL CHECKS PASSED' compat.log || { echo "::error::main's suite did not report ALL CHECKS PASSED against this schema"; exit 1; }
           echo "main's suite: $(grep -c 'PASS  ' compat.log) checks pass against this branch's schema"
+
+      # main's suite exercises what main's tests cover, which is not every screen — the admin
+      # surfaces in particular. This reads every relation and function name straight out of main's
+      # code and asks the schema for each one, so a rename that no test touches still fails here.
+      - name: Every relation and function main's code names exists in this schema
+        env:
+          PGPASSWORD: postgres
+        run: bash scripts/check-deployed-reads.sh origin/main postgres://postgres:postgres@localhost:5432/docket_compat
 
   # ---------------------------------------------------------------- the app
   typecheck:

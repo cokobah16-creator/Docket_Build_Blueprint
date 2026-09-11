@@ -8,9 +8,16 @@
 -- writes a client makes without MFA still go through.
 --
 -- WHAT IT PINS, AND WHERE THE LIST CAME FROM. `git grep` over origin/main for .from("…"),
--- .rpc("…"), and the two raw PostgREST fetches in src/lib/tenant.ts and src/lib/services.ts.
--- When the deployed front end starts reading something new, add it here; when a column here is
--- renamed, this suite fails before the live site does.
+-- .rpc("…"), and the two raw PostgREST fetches in src/lib/tenant.ts and src/lib/services.ts —
+-- main as it is, which is what deploys next, and a superset of whatever production is serving at
+-- the moment. When a column here is renamed, this suite fails before the live site does.
+--
+-- The two inventories in sections 1 and 2 are the part of this file that goes stale: the day a
+-- screen starts reading a new table, nothing adds it here. So they are ALSO derived, not just
+-- listed: scripts/check-deployed-reads.sh reads the same names straight out of the code at any
+-- ref and asks the schema for each one, and the compat CI job runs it against origin/main. The
+-- lists below are kept so that a reader can see the contract without running anything; the
+-- script is what keeps them honest.
 --
 -- THE SHARP CHECKS ARE THE ONES AT aal1. A client never holds MFA, so anything the portal reads or
 -- writes must work at aal1 — and the console layout on main reads firm_members BEFORE it checks
@@ -65,7 +72,11 @@ begin
     'invoice_items','firm_overview','notification_preferences','firm_service_directory','firm_cause_list','courts',
     'court_events','consultation_notes','service_inbox','push_subscriptions','public_holidays','platform_admins',
     'partner_attribution','lawyer_profiles','invites','intake_responses','firm_sittings_due','firm_admin',
-    'court_vacations','consultation_sessions','consultation_internal_notes','firm_public'] loop
+    'court_vacations','consultation_sessions','consultation_internal_notes','firm_public',
+    -- the firm-admin and platform-admin surfaces (migration 20)
+    'audit_log','domain_requests','firm_counters','intake_forms','staff_invites','webhook_events',
+    'reference_data_coverage','platform_notification_health','platform_settlement_health',
+    'platform_failed_notifications'] loop
     if not exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = r) then
       missing := missing || ' ' || r;
     end if;
@@ -82,7 +93,11 @@ begin
     'save_consultation_notes','revoke_service','revoke_matter_invite','reschedule_appointment','post_court_update',
     'open_matter','mark_no_show','link_service_to_matter','issue_invoice','is_non_sitting_day','invite_matter_party',
     'create_invoice','cancel_invoice','cancel_appointment','book_appointment','acknowledge_service',
-    'accept_staff_invite','accept_invite'] loop
+    'accept_staff_invite','accept_invite',
+    -- the guards the app asks directly, and the admin writers (migrations 12, 13, 20, 21)
+    'admin_w','mfa_ok','is_platform_admin','firm_not_suspended','firm_policies_published','rate_limit_hit',
+    'set_member_role','remove_member','set_firm_plan','set_firm_domain','retry_notification',
+    'request_firm_domain','withdraw_firm_domain_request'] loop
     if not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                    where n.nspname = 'public' and p.proname = r) then
       missing := missing || ' ' || r;
