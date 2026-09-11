@@ -1,0 +1,16 @@
+{
+  "artboards": [
+    {
+      "file": "Docket PWA.dc.html",
+      "x": 0,
+      "y": 0,
+      "w": 900,
+      "h": 1140,
+      "print": "flow"
+    }
+  ],
+  "launch": {
+    "view": "focused",
+    "file": "Docket PWA.dc.html"
+  }
+}

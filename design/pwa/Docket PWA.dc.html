@@ -1,0 +1,1680 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=Archivo:wght@400;500;600;700&display=swap" />
+<style>
+  body { margin: 0; background: #E7E4DC; }
+  a { color: #0F2A44; text-decoration: underline; text-underline-offset: 2px; }
+  a:hover { color: #B08D57; }
+  * { box-sizing: border-box; }
+  ::-webkit-scrollbar { width: 0; height: 0; }
+  @keyframes dkPulse { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+  @keyframes dkRise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;gap:20px;padding:28px 20px 56px;font-family:Inter,system-ui,sans-serif">
+
+  <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:10px;max-width:760px">
+    <div style="display:flex;gap:2px;padding:3px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:9px">
+      <button onClick="{{ useClient }}" style="{{ shellClientBtn }}">Client app</button>
+      <button onClick="{{ useLawyer }}" style="{{ shellLawyerBtn }}">Lawyer app</button>
+    </div>
+    <div style="display:flex;gap:2px;padding:3px;background:#fff;border:1px solid rgba(0,0,0,.1);border-radius:9px">
+      <button onClick="{{ useIos }}" style="{{ iosBtn }}">iPhone</button>
+      <button onClick="{{ useAndroid }}" style="{{ androidBtn }}">Android</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;padding:0 4px;font-size:11.5px;color:rgba(0,0,0,.5)">
+      <span style="font-family:ui-monospace,Menlo,monospace;letter-spacing:.02em">{{ routeLabel }}</span>
+    </div>
+  </div>
+
+  <x-import component-from-global-scope="{{ frameComponent }}" from="./ios-frame.jsx ./android-frame.jsx" dc-props="{{ frameProps }}" style="flex:none">
+    <div style="{{ appRootStyle }}">
+
+      <div style="flex:none;height:{{ topPad }}px;background:var(--chrome,#F7F5F0)"></div>
+
+      <div style="flex:1;min-height:0;overflow:auto;position:relative">
+
+        <!-- ══════════════ CLIENT · HOME ══════════════ -->
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:16px;animation:dkRise .22s ease-out">
+
+          <sc-if value="{{ offline }}">
+          <div style="display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border:1px solid #D9D2C4;background:#FBF7EE;border-radius:10px">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#7A6A46" stroke-width="1.6" stroke-linecap="round" style="flex:none;margin-top:1px"><path d="m3 3 18 18M5 9.6a12 12 0 0 1 3.6-2.2M15.4 7.4A12 12 0 0 1 19 9.6M8 13a7.4 7.4 0 0 1 2-1.1M16 13a7.4 7.4 0 0 0-1.2-.8M10.4 16.4a3.6 3.6 0 0 1 3.2 0M12 19.6h.01" /></svg>
+            <div style="font-size:12.5px;line-height:1.45;color:#5C4F35">
+              <div style="font-weight:600;color:#3F3520">Offline — showing your saved copy</div>
+              <div style="margin-top:2px">Saved 11 Sept, 09:14. Court dates and the matter timeline are readable. Payments and uploads wait for a connection.</div>
+            </div>
+          </div>
+          </sc-if>
+
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <button onClick="{{ openSheet }}" style="flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;cursor:pointer">
+              <div style="display:flex;align-items:center;gap:7px">
+                <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:23px;font-weight:600;letter-spacing:-.015em;color:var(--pri,#0F2A44);line-height:1.15">Welcome, Adaeze</div>
+              </div>
+              <div style="display:flex;align-items:center;gap:5px;margin-top:3px">
+                <span style="font-size:13px;color:#4B5563">{{ firmName }}</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"><path d="m7 10 5 5 5-5" /></svg>
+              </div>
+            </button>
+            <button onClick="{{ goNotifs }}" style="flex:none;position:relative;width:42px;height:42px;border-radius:999px;border:1px solid #E5E7EB;background:#fff;display:grid;place-items:center;cursor:pointer">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--pri,#0F2A44)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6.8 10.4a5.2 5.2 0 0 1 10.4 0c0 4.4 1.6 5.6 1.6 5.6H5.2s1.6-1.2 1.6-5.6M10.2 19a2 2 0 0 0 3.6 0" /></svg>
+              <span style="position:absolute;top:-3px;right:-3px;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:var(--pri,#0F2A44);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center">3</span>
+            </button>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px">
+            <button onClick="{{ goBook }}" style="{{ quickBtn }}">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--pri,#0F2A44)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5.2" width="17.6" height="15.6" rx="2.4" /><path d="M8 3.2v4M16 3.2v4M3.2 10.4h17.6" /></svg>
+              Book
+            </button>
+            <button onClick="{{ goWaiting }}" style="{{ quickBtn }}">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--pri,#0F2A44)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="6.4" width="12.4" height="11.2" rx="2.2" /><path d="m15.2 11.2 6-3.4v8.4l-6-3.4z" /></svg>
+              Join
+            </button>
+            <button onClick="{{ goMatters }}" style="{{ quickBtn }}">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--pri,#0F2A44)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 11.3 11 17.8a4.1 4.1 0 0 1-5.8-5.8l6.9-6.9a2.7 2.7 0 0 1 3.9 3.9l-6.9 6.9a1.4 1.4 0 0 1-1.9-1.9l6.4-6.4" /></svg>
+              Upload
+            </button>
+            <button onClick="{{ goMessages }}" style="{{ quickBtn }}">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--pri,#0F2A44)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="5.2" width="18.4" height="13.6" rx="2.2" /><path d="m3.4 6.6 8.6 6.2 8.6-6.2" /></svg>
+              Message
+            </button>
+            <button onClick="{{ goPay }}" style="{{ quickBtn }}">
+              <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="var(--pri,#0F2A44)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="2.6" y="5.6" width="18.8" height="12.8" rx="2.2" /><path d="M2.6 10h18.8" /><circle cx="7" cy="14.2" r="1.4" /></svg>
+              Pay
+            </button>
+          </div>
+
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 17px;border-bottom:1px solid #F3F4F6">
+              <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:15.5px;font-weight:600;color:#111827">Next appointment</div>
+              <button onClick="{{ goAppts }}" style="{{ linkBtn }}">All</button>
+            </div>
+            <div style="padding:15px 17px;display:flex;flex-direction:column;gap:9px">
+              <div style="font-size:14.5px;font-weight:600;color:#111827;line-height:1.35">{{ nextWhen }}</div>
+              <div style="font-size:13px;color:#4B5563"><span style="font-family:ui-monospace,Menlo,monospace">{{ nextRef }}</span> · virtual</div>
+              <div style="display:flex;align-items:center;gap:13px;flex-wrap:wrap">
+                <span style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--acc,#B08D57);color:var(--accInk,#7A5F33);border-radius:999px;padding:5px 11px;font-size:12.5px;font-weight:600">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.8 4.4 4.4L19 7.6" /></svg>
+                  Confirmed
+                </span>
+                <button onClick="{{ goAppt }}" style="{{ linkBtn }}">Details</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 17px;border-bottom:1px solid #F3F4F6">
+              <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:15.5px;font-weight:600;color:#111827">My matters</div>
+              <button onClick="{{ goMatters }}" style="{{ linkBtn }}">All</button>
+            </div>
+            <sc-for list="{{ matters }}" as="m" hint-placeholder-count="2">
+            <button onClick="{{ goMatters }}" style="width:100%;text-align:left;display:block;padding:13px 17px;background:none;border:0;border-top:1px solid #F3F4F6;cursor:pointer">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                <div style="font-size:14px;font-weight:600;color:#111827;line-height:1.35">{{ m.title }}</div>
+                <span style="flex:none;border:1px solid var(--acc,#B08D57);color:var(--accInk,#7A5F33);border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:600;white-space:nowrap">{{ m.status }}</span>
+              </div>
+              <div style="margin-top:4px;font-size:12px;color:#6B7280"><span style="font-family:ui-monospace,Menlo,monospace">{{ m.ref }}</span> · {{ m.lawyer }}</div>
+              <div style="margin-top:3px;font-size:12px;color:#4B5563">{{ m.last }}</div>
+            </button>
+            </sc-for>
+          </div>
+
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;box-shadow:0 1px 2px rgba(16,24,40,.04);overflow:hidden">
+            <div style="padding:13px 17px;border-bottom:1px solid #F3F4F6;font-family:var(--head,Fraunces),Georgia,serif;font-size:15.5px;font-weight:600;color:#111827">Recent documents</div>
+            <sc-for list="{{ documents }}" as="d" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 17px;border-top:1px solid #F3F4F6">
+              <div style="display:flex;align-items:center;gap:9px;min-width:0">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6.4 3.4h7l4.2 4.2v13H6.4z" /><path d="M13.4 3.4v4.2h4.2" /></svg>
+                <span style="font-size:13.5px;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ d.n }}</span>
+              </div>
+              <span style="flex:none;font-size:11.5px;color:#6B7280">{{ d.d }}</span>
+            </div>
+            </sc-for>
+          </div>
+
+          <div style="text-align:center;font-size:11.5px;color:#6B7280;padding-top:2px">
+            <a href="#court">Court dates</a> · <a href="#pay">Payments</a> · <a href="#profile">Profile</a>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · NOTIFICATIONS ══════════════ -->
+        <sc-if value="{{ isNotifs }}">
+        <div style="animation:dkRise .2s ease-out">
+          <div style="{{ subHeader }}">
+            <button onClick="{{ back }}" style="{{ backBtn }}">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 5.5-7 6.5 7 6.5" /></svg>
+            </button>
+            <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:17px;font-weight:600;color:var(--pri,#0F2A44)">Notifications</div>
+          </div>
+          <div style="padding:14px 16px 22px">
+            <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+              <sc-for list="{{ notifications }}" as="n" hint-placeholder-count="4">
+              <div style="{{ n.rowStyle }}">
+                <span style="{{ n.dotStyle }}"></span>
+                <div style="min-width:0">
+                  <div style="font-size:13.5px;font-weight:600;color:#111827;line-height:1.35">{{ n.t }}</div>
+                  <div style="margin-top:2px;font-size:12.5px;color:#4B5563;line-height:1.4">{{ n.b }}</div>
+                  <div style="margin-top:3px;font-size:11px;color:#6B7280">{{ n.when }}</div>
+                </div>
+              </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · APPOINTMENTS ══════════════ -->
+        <sc-if value="{{ isAppts }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px;animation:dkRise .2s ease-out">
+          <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:23px;font-weight:600;letter-spacing:-.015em;color:var(--pri,#0F2A44)">Appointments</div>
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+            <sc-for list="{{ appointments }}" as="a" hint-placeholder-count="3">
+            <button onClick="{{ goAppt }}" style="{{ a.rowStyle }}">
+              <div style="min-width:0">
+                <div style="font-size:14px;font-weight:600;color:#111827">{{ a.short }}</div>
+                <div style="margin-top:3px;font-size:12px;color:#6B7280"><span style="font-family:ui-monospace,Menlo,monospace">{{ a.ref }}</span> · {{ a.mode }}</div>
+                <div style="margin-top:2px;font-size:12px;color:#4B5563">{{ a.svc }}</div>
+              </div>
+              <span style="{{ a.pillStyle }}">{{ a.status }}</span>
+            </button>
+            </sc-for>
+          </div>
+          <button onClick="{{ goBook }}" style="{{ primaryBtn }}">Book a Consultation</button>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · APPOINTMENT DETAIL ══════════════ -->
+        <sc-if value="{{ isAppt }}">
+        <div style="animation:dkRise .2s ease-out">
+          <div style="{{ subHeader }}">
+            <button onClick="{{ back }}" style="{{ backBtn }}">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 5.5-7 6.5 7 6.5" /></svg>
+            </button>
+            <div style="font-size:13px;color:#4B5563;font-family:ui-monospace,Menlo,monospace">{{ nextRef }}</div>
+          </div>
+          <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+              <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:22px;font-weight:600;letter-spacing:-.015em;color:var(--pri,#0F2A44);line-height:1.2">Legal Consultation</div>
+              <span style="flex:none;display:inline-flex;align-items:center;gap:5px;border:1px solid #A7D8BE;background:#ECFDF3;color:#05603A;border-radius:999px;padding:4px 10px;font-size:12px;font-weight:600">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.8 4.4 4.4L19 7.6" /></svg>
+                Confirmed
+              </span>
+            </div>
+
+            <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+              <div style="padding:13px 17px;border-bottom:1px solid #F3F4F6;font-family:var(--head,Fraunces),Georgia,serif;font-size:15.5px;font-weight:600;color:#111827">Details</div>
+              <div style="padding:14px 17px;display:flex;flex-direction:column;gap:12px;font-size:13.5px">
+                <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">When</span><span style="text-align:right;font-weight:600;color:#111827">{{ nextWhen }}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Timezone</span><span style="font-weight:600;color:#111827">Africa/Lagos</span></div>
+                <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Lawyer</span><span style="font-weight:600;color:#111827">{{ leadLawyer }}</span></div>
+                <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Format</span><span style="font-weight:600;color:#111827">virtual</span></div>
+                <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Duration</span><span style="font-weight:600;color:#111827">45 minutes</span></div>
+                <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Invoice</span><span style="text-align:right;font-weight:600;color:#111827"><a href="#invoice" style="font-family:ui-monospace,Menlo,monospace">{{ invoiceNo }}</a> · ₦50,000 · paid</span></div>
+              </div>
+            </div>
+
+            <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+              <div style="padding:13px 17px;border-bottom:1px solid #F3F4F6;font-family:var(--head,Fraunces),Georgia,serif;font-size:15.5px;font-weight:600;color:#111827">Video consultation</div>
+              <div style="padding:14px 17px;display:flex;flex-direction:column;gap:12px">
+                <div style="font-size:13.5px;color:#374151;line-height:1.5">The waiting room opens at <strong style="color:#111827">10:50</strong>, 10 minutes before your consultation. Test your camera and microphone there, then wait for {{ leadLawyer }} to admit you.</div>
+                <button onClick="{{ goWaiting }}" style="{{ primaryBtn }}">Go to the waiting room</button>
+              </div>
+            </div>
+
+            <button onClick="{{ noop }}" style="{{ ghostBtn }}">Cancel appointment</button>
+            <div style="font-size:11.5px;color:#6B7280;line-height:1.5">Consultations may be rescheduled or cancelled free of charge up to 24 hours before the appointment.</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · WAITING ROOM ══════════════ -->
+        <sc-if value="{{ isWaiting }}">
+        <div style="animation:dkRise .2s ease-out">
+          <div style="{{ subHeader }}">
+            <button onClick="{{ back }}" style="{{ backBtn }}">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 5.5-7 6.5 7 6.5" /></svg>
+            </button>
+            <div style="font-size:13px;color:#4B5563">Waiting room</div>
+          </div>
+          <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:22px;font-weight:600;letter-spacing:-.015em;color:var(--pri,#0F2A44)">Legal Consultation</div>
+              <div style="margin-top:9px;display:flex;flex-direction:column;gap:5px;font-size:13px">
+                <div style="display:flex;gap:10px"><span style="width:62px;color:#6B7280">With</span><span style="font-weight:600;color:#111827">{{ leadLawyer }}</span></div>
+                <div style="display:flex;gap:10px"><span style="width:62px;color:#6B7280">When</span><span style="font-weight:600;color:#111827">Today, 11:00 <span style="font-weight:400;color:#6B7280">(Africa/Lagos)</span></span></div>
+                <div style="display:flex;gap:10px"><span style="width:62px;color:#6B7280">Length</span><span style="font-weight:600;color:#111827">45 minutes</span></div>
+              </div>
+            </div>
+
+            <div style="border:1px solid #E5E7EB;border-radius:12px;background:#0B0B0C;overflow:hidden;position:relative;aspect-ratio:4/3;display:grid;place-items:center">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:9px;color:rgba(255,255,255,.5)">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6.6" width="18" height="12.8" rx="2.4" /><circle cx="12" cy="13" r="3.4" /><path d="M8.6 6.6l1.4-2.2h4l1.4 2.2" /></svg>
+                <span style="font-size:11.5px;letter-spacing:.06em;text-transform:uppercase">Your camera preview</span>
+              </div>
+              <div style="position:absolute;left:11px;bottom:11px;display:flex;gap:7px">
+                <span style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.12);color:#fff;border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:600">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9.4" y="3.4" width="5.2" height="10" rx="2.6" /><path d="M6.4 11.6a5.6 5.6 0 0 0 11.2 0M12 17.2v3.4" /></svg>
+                  Mic on
+                </span>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:9px;align-items:flex-start;font-size:13px;color:#05603A;background:#ECFDF3;border:1px solid #A7D8BE;border-radius:10px;padding:11px 13px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="m5 12.8 4.4 4.4L19 7.6" /></svg>
+              Camera and microphone are working.
+            </div>
+
+            <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;padding:14px 15px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
+                <div style="min-width:0">
+                  <div style="font-size:13.5px;font-weight:600;color:#111827">Join with audio only</div>
+                  <div style="margin-top:2px;font-size:12px;color:#6B7280;line-height:1.45">Uses about 0.5 MB a minute instead of 6 MB. Best on a weak network.</div>
+                </div>
+                <button onClick="{{ toggleAudio }}" style="{{ switchTrack }}"><span style="{{ switchKnob }}"></span></button>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:11.5px;color:#6B7280;border-top:1px solid #F3F4F6;padding-top:11px">
+                <span style="width:7px;height:7px;border-radius:999px;background:{{ netColor }};flex:none"></span>
+                {{ netLabel }}
+              </div>
+            </div>
+
+            <button onClick="{{ joinCall }}" style="{{ primaryBtn }}">Join and wait to be admitted</button>
+            <div style="font-size:11.5px;color:#6B7280;line-height:1.5">Consultations are private and are not recorded. Use headphones in a quiet place if you can.</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · CALL ══════════════ -->
+        <sc-if value="{{ isCall }}">
+        <div style="height:100%;background:#0B0B0C;display:flex;flex-direction:column;animation:dkRise .2s ease-out">
+          <div style="flex:none;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="min-width:0">
+              <div style="font-size:13.5px;font-weight:600;color:#fff">{{ callTitle }}</div>
+              <div style="margin-top:2px;font-size:11.5px;color:rgba(255,255,255,.55);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ leadLawyer }} · {{ firmName }}</div>
+            </div>
+            <span style="flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid {{ netBorderDark }};background:{{ netBgDark }};color:{{ netInkDark }};border-radius:999px;padding:5px 10px;font-size:11px;font-weight:600">
+              <span style="width:6px;height:6px;border-radius:999px;background:currentColor"></span>
+              {{ netLabel }}
+            </span>
+          </div>
+
+          <div style="flex:1;min-height:0;position:relative;display:grid;place-items:center;padding:0 16px">
+            <sc-if value="{{ inLobby }}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;max-width:260px">
+              <div style="width:72px;height:72px;border-radius:999px;border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;animation:dkPulse 2s ease-in-out infinite">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.4" /><path d="M12 7.2V12l3.4 2" /></svg>
+              </div>
+              <div style="font-size:14.5px;font-weight:600;color:#fff">Waiting for {{ leadLawyer }}</div>
+              <div style="font-size:12.5px;color:rgba(255,255,255,.6);line-height:1.5">You are in the waiting room. Keep this screen open — you will be let in shortly.</div>
+            </div>
+            </sc-if>
+            <sc-if value="{{ inCall }}">
+            <div style="width:100%;height:100%;display:grid;place-items:center;position:relative">
+              <sc-if value="{{ audioOnly }}">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:13px;text-align:center">
+                <div style="width:84px;height:84px;border-radius:999px;background:var(--pri,#0F2A44);color:#fff;display:grid;place-items:center;font-family:var(--head,Fraunces),Georgia,serif;font-size:30px;font-weight:600">{{ lawyerInitials }}</div>
+                <div style="font-size:14.5px;font-weight:600;color:#fff">{{ leadLawyer }}</div>
+                <div style="font-size:12px;color:rgba(255,255,255,.55)">Audio only · about 0.5 MB a minute</div>
+              </div>
+              </sc-if>
+              <sc-if value="{{ videoOn }}">
+              <div style="position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.35)">
+                <div style="display:flex;flex-direction:column;align-items:center;gap:8px">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="6.4" width="12.4" height="11.2" rx="2.2" /><path d="m15.2 11.2 6-3.4v8.4l-6-3.4z" /></svg>
+                  <span style="font-size:11.5px;letter-spacing:.06em;text-transform:uppercase">{{ leadLawyer }}</span>
+                </div>
+              </div>
+              <div style="position:absolute;right:0;bottom:8px;width:92px;height:124px;border-radius:12px;background:#17171A;border:1px solid rgba(255,255,255,.14);display:grid;place-items:center;color:rgba(255,255,255,.3);font-size:10px;letter-spacing:.05em;text-transform:uppercase">You</div>
+              </sc-if>
+            </div>
+            </sc-if>
+          </div>
+
+          <sc-if value="{{ dataWarning }}">
+          <div style="flex:none;margin:0 16px 10px;display:flex;gap:9px;align-items:flex-start;padding:11px 13px;border-radius:10px;background:rgba(180,83,9,.16);border:1px solid rgba(251,191,36,.3)">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="M12 4.4 21 19.6H3z" /><path d="M12 9.6v4.6M12 16.8v.1" /></svg>
+            <div style="font-size:12px;color:#FDE68A;line-height:1.45">
+              <span style="font-weight:600">Your connection is weak.</span> Turn the camera off to keep the audio clear.
+              <button onClick="{{ toggleAudio }}" style="display:block;margin-top:5px;background:none;border:0;padding:0;color:#FDE68A;font:inherit;font-weight:600;text-decoration:underline;cursor:pointer">Switch to audio only</button>
+            </div>
+          </div>
+          </sc-if>
+
+          <div style="flex:none;padding:12px 16px 20px;display:flex;flex-direction:column;gap:11px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:11px">
+              <button onClick="{{ noop }}" style="{{ callCtl }}">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="9.4" y="3.4" width="5.2" height="10" rx="2.6" /><path d="M6.4 11.6a5.6 5.6 0 0 0 11.2 0M12 17.2v3.4" /></svg>
+              </button>
+              <button onClick="{{ toggleAudio }}" style="{{ camCtl }}">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="6.4" width="12.4" height="11.2" rx="2.2" /><path d="m15.2 11.2 6-3.4v8.4l-6-3.4z" /></svg>
+              </button>
+              <button onClick="{{ endCall }}" style="width:54px;height:54px;border-radius:999px;border:0;background:#B42318;color:#fff;display:grid;place-items:center;cursor:pointer">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.4h3l1.4 3.4-2 1.6a11 11 0 0 0 5 5l1.6-2 3.4 1.4v3c0 1-.8 1.8-1.8 1.7C10.4 17 7 13.6 4.5 5.2a1.8 1.8 0 0 1 1.7-1.8z" /><path d="m3 21 18-18" /></svg>
+              </button>
+            </div>
+            <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.42)">{{ dataUsed }}</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · CALL ENDED ══════════════ -->
+        <sc-if value="{{ isEnded }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px;animation:dkRise .2s ease-out">
+          <div style="display:flex;gap:10px;align-items:flex-start;padding:13px;border-radius:10px;background:#ECFDF3;border:1px solid #A7D8BE">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#05603A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="m5 12.8 4.4 4.4L19 7.6" /></svg>
+            <div style="font-size:13px;color:#05603A;line-height:1.45">
+              <div style="font-weight:700">Call ended · 42 minutes</div>
+              <div style="margin-top:2px">Thank you. {{ leadLawyer }}'s summary will appear on your appointment once it is written.</div>
+            </div>
+          </div>
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;padding:15px;display:flex;flex-direction:column;gap:10px">
+            <div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#6B7280">Data used</div>
+            <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:26px;font-weight:600;color:var(--pri,#0F2A44)">{{ endedData }}</div>
+            <div style="font-size:12px;color:#6B7280;line-height:1.45">{{ endedDataNote }}</div>
+          </div>
+          <button onClick="{{ goAppt }}" style="{{ primaryBtn }}">Back to appointment</button>
+          <button onClick="{{ goHome }}" style="{{ ghostBtn }}">Home</button>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · MATTERS ══════════════ -->
+        <sc-if value="{{ isMatters }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px;animation:dkRise .2s ease-out">
+          <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:23px;font-weight:600;letter-spacing:-.015em;color:var(--pri,#0F2A44)">Matters</div>
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+            <sc-for list="{{ matters }}" as="m" hint-placeholder-count="2">
+            <div style="{{ m.rowStyle }}">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                <div style="font-size:14px;font-weight:600;color:#111827;line-height:1.35">{{ m.title }}</div>
+                <span style="flex:none;border:1px solid var(--acc,#B08D57);color:var(--accInk,#7A5F33);border-radius:999px;padding:3px 9px;font-size:11.5px;font-weight:600;white-space:nowrap">{{ m.status }}</span>
+              </div>
+              <div style="margin-top:4px;font-size:12px;color:#6B7280"><span style="font-family:ui-monospace,Menlo,monospace">{{ m.ref }}</span> · {{ firmName }} · {{ m.lawyer }}</div>
+              <div style="margin-top:6px;font-size:12px;color:#4B5563">Latest: {{ m.last }}</div>
+              <div style="margin-top:3px;font-size:12px;color:#4B5563">{{ m.court }}</div>
+              <div style="margin-top:5px;font-size:12px;font-weight:600;color:var(--pri,#0F2A44)">{{ m.next }}</div>
+            </div>
+            </sc-for>
+          </div>
+          <div style="font-size:11.5px;color:#6B7280;line-height:1.5">Timeline, documents, messages and invoices sit inside each matter. Court dates are also on <a href="#court">your phone calendar</a>.</div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · MESSAGES ══════════════ -->
+        <sc-if value="{{ isMessages }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px;animation:dkRise .2s ease-out">
+          <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:23px;font-weight:600;letter-spacing:-.015em;color:var(--pri,#0F2A44)">Messages</div>
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+            <sc-for list="{{ threads }}" as="t" hint-placeholder-count="3">
+            <div style="{{ t.rowStyle }}">
+              <div style="min-width:0">
+                <div style="font-size:14px;font-weight:600;color:#111827;line-height:1.35">{{ t.title }}</div>
+                <div style="margin-top:3px;font-size:12px;color:#6B7280">{{ t.sub }}</div>
+                <div style="margin-top:4px;font-size:12px;color:#4B5563;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ t.last }}</div>
+              </div>
+              <span style="{{ t.badgeStyle }}">{{ t.unread }}</span>
+            </div>
+            </sc-for>
+          </div>
+          <div style="font-size:11.5px;color:#6B7280;line-height:1.5">Each matter and consultation has its own secure thread with {{ firmName }}.</div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · PROFILE ══════════════ -->
+        <sc-if value="{{ isProfile }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px;animation:dkRise .2s ease-out">
+          <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:23px;font-weight:600;letter-spacing:-.015em;color:var(--pri,#0F2A44)">Profile</div>
+
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+            <div style="padding:13px 17px;border-bottom:1px solid #F3F4F6;font-family:var(--head,Fraunces),Georgia,serif;font-size:15.5px;font-weight:600;color:#111827">Your details</div>
+            <div style="padding:15px 17px;display:flex;flex-direction:column;gap:14px">
+              <div>
+                <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:6px">Full name</div>
+                <div style="border:1px solid #D1D5DB;border-radius:9px;padding:11px 12px;font-size:14px;color:#111827;background:#fff">Adaeze Okonkwo</div>
+              </div>
+              <div>
+                <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:4px">Phone</div>
+                <div style="font-size:13.5px;color:#374151">+234 803 411 0982</div>
+                <div style="margin-top:2px;font-size:11.5px;color:#6B7280">Sign-in number — contact your firm to change it.</div>
+              </div>
+              <div>
+                <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:6px">Email <span style="font-weight:400;color:#6B7280">(receipts and notifications)</span></div>
+                <div style="border:1px solid #D1D5DB;border-radius:9px;padding:11px 12px;font-size:14px;color:#111827">adaeze.o@gmail.com</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+                <div>
+                  <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:6px">Timezone</div>
+                  <div style="border:1px solid #D1D5DB;border-radius:9px;padding:11px 12px;font-size:13.5px;color:#111827;display:flex;align-items:center;justify-content:space-between;gap:6px">Africa/Lagos<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"><path d="m7 10 5 5 5-5" /></svg></div>
+                </div>
+                <div>
+                  <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:6px">Channel</div>
+                  <div style="border:1px solid #D1D5DB;border-radius:9px;padding:11px 12px;font-size:13.5px;color:#111827;display:flex;align-items:center;justify-content:space-between;gap:6px">SMS<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-linecap="round"><path d="m7 10 5 5 5-5" /></svg></div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+                <div>
+                  <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:6px">Quiet hours start</div>
+                  <div style="border:1px solid #D1D5DB;border-radius:9px;padding:11px 12px;font-size:13.5px;color:#111827;font-family:ui-monospace,Menlo,monospace">21:30</div>
+                </div>
+                <div>
+                  <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:6px">Quiet hours end</div>
+                  <div style="border:1px solid #D1D5DB;border-radius:9px;padding:11px 12px;font-size:13.5px;color:#111827;font-family:ui-monospace,Menlo,monospace">06:30</div>
+                </div>
+              </div>
+              <div style="font-size:11.5px;color:#6B7280;line-height:1.5">During quiet hours, push, SMS and email wait until the hours end. In-app notifications and 10-minute consultation reminders are never held.</div>
+              <button onClick="{{ noop }}" style="{{ primaryBtnSm }}">Save</button>
+            </div>
+          </div>
+
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 17px;border-bottom:1px solid #F3F4F6">
+              <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:15.5px;font-weight:600;color:#111827">Notifications &amp; data</div>
+              <a href="#prefs" style="font-size:12.5px">Preferences</a>
+            </div>
+            <div style="padding:15px 17px;display:flex;flex-direction:column;gap:15px">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
+                <div style="min-width:0">
+                  <div style="font-size:13.5px;font-weight:600;color:#111827">Push notifications</div>
+                  <div style="margin-top:2px;font-size:12px;color:#6B7280;line-height:1.45">Court updates and consultation reminders on this device.</div>
+                </div>
+                <span style="flex:none;border:1px solid #A7D8BE;background:#ECFDF3;color:#05603A;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:600">On</span>
+              </div>
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;border-top:1px solid #F3F4F6;padding-top:15px">
+                <div style="min-width:0">
+                  <div style="font-size:13.5px;font-weight:600;color:#111827">Low-data mode</div>
+                  <div style="margin-top:2px;font-size:12px;color:#6B7280;line-height:1.45">Previews and images load only when you tap them. Saved on this device.</div>
+                </div>
+                <button onClick="{{ toggleLowData }}" style="{{ lowDataTrack }}"><span style="{{ lowDataKnob }}"></span></button>
+              </div>
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;border-top:1px solid #F3F4F6;padding-top:15px">
+                <div style="min-width:0">
+                  <div style="font-size:13.5px;font-weight:600;color:#111827">Offline copy</div>
+                  <div style="margin-top:2px;font-size:12px;color:#6B7280;line-height:1.45">{{ offlineNote }}</div>
+                </div>
+                <button onClick="{{ toggleOffline }}" style="{{ ghostBtnSm }}">{{ offlineAction }}</button>
+              </div>
+            </div>
+          </div>
+
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+            <div style="padding:13px 17px;border-bottom:1px solid #F3F4F6;font-family:var(--head,Fraunces),Georgia,serif;font-size:15.5px;font-weight:600;color:#111827">Your firms</div>
+            <sc-for list="{{ firmList }}" as="f" hint-placeholder-count="2">
+            <button onClick="{{ f.pick }}" style="{{ f.rowStyle }}">
+              <span style="{{ f.markStyle }}">{{ f.initial }}</span>
+              <span style="flex:1;min-width:0;text-align:left">
+                <span style="display:block;font-size:14px;font-weight:600;color:#111827">{{ f.name }}</span>
+                <span style="display:block;margin-top:2px;font-size:12px;color:#6B7280">{{ f.meta }}</span>
+              </span>
+              <span style="{{ f.checkStyle }}">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.8 4.4 4.4L19 7.6" /></svg>
+              </span>
+            </button>
+            </sc-for>
+            <div style="padding:12px 17px;border-top:1px solid #F3F4F6;font-size:11.5px;color:#6B7280;line-height:1.5">One sign-in, whichever firms act for you. The app takes the colours and name of the firm you are reading.</div>
+          </div>
+
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+            <div style="padding:13px 17px;border-bottom:1px solid #F3F4F6;font-family:var(--head,Fraunces),Georgia,serif;font-size:15.5px;font-weight:600;color:#111827">Consent history</div>
+            <div style="padding:6px 17px 12px;font-size:13px">
+              <div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #F3F4F6"><span style="color:#374151">cancellation <span style="color:#6B7280">v2026-09</span></span><span style="color:#6B7280">11 Sept 2026</span></div>
+              <div style="display:flex;justify-content:space-between;gap:12px;padding:9px 0"><span style="color:#374151">disclaimer <span style="color:#6B7280">v2026-09</span></span><span style="color:#6B7280">11 Sept 2026</span></div>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:10px">
+            <button onClick="{{ noop }}" style="{{ ghostBtn }}">Sign out</button>
+            <button onClick="{{ noop }}" style="{{ ghostBtn }}">Sign out everywhere</button>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · BOOKING ══════════════ -->
+        <sc-if value="{{ isBook }}">
+        <div style="animation:dkRise .2s ease-out">
+          <div style="{{ subHeader }}">
+            <button onClick="{{ bookBack }}" style="{{ backBtn }}">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 5.5-7 6.5 7 6.5" /></svg>
+            </button>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;font-weight:600;color:#111827">{{ bookTitle }}</div>
+              <div style="margin-top:1px;font-size:11px;color:#6B7280">Step {{ bookNum }} of 5 · {{ firmName }}</div>
+            </div>
+          </div>
+          <div style="height:3px;background:#E5E7EB"><div style="height:100%;width:{{ bookPct }}%;background:var(--pri,#0F2A44);transition:width .25s ease"></div></div>
+
+          <div style="padding:16px 16px 22px;display:flex;flex-direction:column;gap:13px">
+
+            <sc-if value="{{ step0 }}">
+            <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--pri,#0F2A44);line-height:1.25">What do you need help with?</div>
+            <sc-for list="{{ services }}" as="s" hint-placeholder-count="4">
+            <button onClick="{{ s.pick }}" style="{{ s.cardStyle }}">
+              <span style="display:block;font-size:14.5px;font-weight:600;color:#111827">{{ s.name }}</span>
+              <span style="display:block;margin-top:4px;font-size:12.5px;color:#4B5563;line-height:1.45">{{ s.desc }}</span>
+              <span style="display:block;margin-top:6px;font-size:13px;font-weight:600;color:var(--pri,#0F2A44)">{{ s.price }} · {{ s.mins }} minutes</span>
+            </button>
+            </sc-for>
+            </sc-if>
+
+            <sc-if value="{{ step1 }}">
+            <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--pri,#0F2A44);line-height:1.25">How would you like to meet?</div>
+            <sc-for list="{{ modes }}" as="mo" hint-placeholder-count="3">
+            <button onClick="{{ mo.pick }}" style="{{ mo.cardStyle }}">
+              <span style="display:flex;align-items:flex-start;gap:11px">
+                <span style="{{ mo.iconStyle }}">
+                  <sc-if value="{{ mo.isVirtual }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="6.4" width="12.4" height="11.2" rx="2.2" /><path d="m15.2 11.2 6-3.4v8.4l-6-3.4z" /></svg></sc-if>
+                  <sc-if value="{{ mo.isOffice }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20.4V5.2h9v15.2M14 10h5v10.4M8 8.6h3M8 12h3M8 15.4h3" /></svg></sc-if>
+                  <sc-if value="{{ mo.isPhone }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.6h3.1l1.5 3.6-2.1 1.6a11.4 11.4 0 0 0 5.4 5.4l1.6-2.1 3.6 1.5v3.1a1.9 1.9 0 0 1-2 1.9C10 18.5 5.5 14 4.3 5.6a1.9 1.9 0 0 1 1.9-2z" /></svg></sc-if>
+                </span>
+                <span style="min-width:0">
+                  <span style="display:block;font-size:14.5px;font-weight:600;color:#111827">{{ mo.label }}</span>
+                  <span style="display:block;margin-top:3px;font-size:12.5px;color:#4B5563;line-height:1.45">{{ mo.hint }}</span>
+                </span>
+              </span>
+            </button>
+            </sc-for>
+            </sc-if>
+
+            <sc-if value="{{ step2 }}">
+            <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--pri,#0F2A44);line-height:1.25">Pick a day and time</div>
+            <div style="font-size:12px;color:#6B7280;line-height:1.5">Times are shown in your timezone (Africa/Lagos), the same as the lawyer's. The slot is held for fifteen minutes while you pay.</div>
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:7px">
+              <sc-for list="{{ days }}" as="d" hint-placeholder-count="5">
+              <button onClick="{{ d.pick }}" style="{{ d.style }}">
+                <span style="display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.72">{{ d.dow }}</span>
+                <span style="display:block;margin-top:3px;font-size:17px;font-weight:700">{{ d.num }}</span>
+              </button>
+              </sc-for>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:2px">
+              <sc-for list="{{ slots }}" as="sl" hint-placeholder-count="4">
+              <button onClick="{{ sl.pick }}" style="{{ sl.style }}">{{ sl.time }}</button>
+              </sc-for>
+            </div>
+            <div style="font-size:11.5px;color:#6B7280">Two-hour lead time, the daily cap and the firm's breaks are already taken out.</div>
+            </sc-if>
+
+            <sc-if value="{{ step3 }}">
+            <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--pri,#0F2A44);line-height:1.25">A few details for your lawyer</div>
+            <div style="font-size:12px;color:#6B7280;line-height:1.5">Only what is needed to prepare. Your answers are private to {{ firmName }}.</div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12.5px;font-weight:600;color:#374151">Are you consulting as an individual or for a business?</div>
+              <div style="display:flex;gap:8px">
+                <sc-for list="{{ clientTypes }}" as="ct" hint-placeholder-count="2">
+                <button onClick="{{ ct.pick }}" style="{{ ct.style }}">{{ ct.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12.5px;font-weight:600;color:#374151">What does your matter concern?</div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ areas }}" as="ar" hint-placeholder-count="6">
+                <button onClick="{{ ar.pick }}" style="{{ ar.style }}">{{ ar.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <sc-if value="{{ propertyPicked }}">
+            <div style="display:flex;flex-direction:column;gap:8px;padding:13px;border-radius:10px;background:#fff;border:1px solid #E5E7EB">
+              <div style="font-size:12.5px;font-weight:600;color:#374151">Where is the property located (state and area)?</div>
+              <div style="border:1px solid #D1D5DB;border-radius:9px;padding:11px 12px;font-size:14px;color:#111827;background:#fff">Lagos · Ikoyi</div>
+              <div style="margin-top:4px;font-size:12.5px;font-weight:600;color:#374151">Which documents do you hold?</div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px">
+                <sc-for list="{{ docTypes }}" as="dt" hint-placeholder-count="5">
+                <button onClick="{{ dt.pick }}" style="{{ dt.style }}">{{ dt.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            </sc-if>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12.5px;font-weight:600;color:#374151">Briefly describe your legal issue</div>
+              <div style="border:1px solid #D1D5DB;border-radius:9px;padding:11px 12px;font-size:13.5px;color:#374151;background:#fff;min-height:76px;line-height:1.5">I am buying a three-bedroom flat in Ikoyi and want the title checked before I pay the balance.</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12.5px;font-weight:600;color:#374151">Upload any relevant documents (optional)</div>
+              <button onClick="{{ noop }}" style="display:flex;align-items:center;justify-content:center;gap:8px;min-height:46px;border:1px dashed #C3C8D0;border-radius:9px;background:#fff;color:var(--pri,#0F2A44);font:600 13px Inter,system-ui,sans-serif;cursor:pointer">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16.4V4.8M7.6 9.2 12 4.8l4.4 4.4M4.8 19.2h14.4" /></svg>
+                Choose files
+              </button>
+              <div style="font-size:11.5px;color:#6B7280">PDF or images, up to 25 MB each. Uploaded securely after you sign in.</div>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ step4 }}">
+            <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:20px;font-weight:600;letter-spacing:-.01em;color:var(--pri,#0F2A44);line-height:1.25">Review and pay</div>
+            <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;padding:15px 16px;display:flex;flex-direction:column;gap:12px;font-size:13.5px">
+              <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Service</span><span style="text-align:right;font-weight:600;color:#111827">{{ chosenService }}</span></div>
+              <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Lawyer</span><span style="font-weight:600;color:#111827">{{ leadLawyer }}</span></div>
+              <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Format</span><span style="font-weight:600;color:#111827">{{ chosenMode }}</span></div>
+              <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Date</span><span style="text-align:right;font-weight:600;color:#111827">{{ chosenDay }}</span></div>
+              <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">Time</span><span style="font-weight:600;color:#111827">{{ chosenSlot }} (Africa/Lagos)</span></div>
+              <div style="display:flex;justify-content:space-between;gap:16px;border-top:1px solid #F3F4F6;padding-top:12px"><span style="color:#6B7280">Fee</span><span style="font-weight:700;color:#111827">₦50,000</span></div>
+              <div style="display:flex;justify-content:space-between;gap:16px"><span style="color:#6B7280">VAT</span><span style="font-weight:600;color:#111827">Not charged</span></div>
+            </div>
+            <div style="display:flex;gap:9px;align-items:flex-start;padding:11px 13px;border:1px solid #E3D9C4;background:#FBF7EE;border-radius:10px">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7A6A46" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><circle cx="12" cy="12" r="8.4" /><path d="M12 7.2V12l3.4 2" /></svg>
+              <div style="font-size:12px;color:#5C4F35;line-height:1.45">Your slot is held for <strong>15 minutes</strong> while you pay. The fee settles to {{ firmName }}'s own account — Docket never holds it.</div>
+            </div>
+            <div style="font-size:11.5px;color:#6B7280;line-height:1.5">Submitting an inquiry or booking a consultation does not create a lawyer-client relationship. Formal legal advice and representation begin only on a signed engagement.</div>
+            </sc-if>
+
+          </div>
+
+          <div style="padding:0 16px 22px">
+            <button onClick="{{ bookNext }}" style="{{ bookCtaStyle }}">{{ bookCta }}</button>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · PAY ══════════════ -->
+        <sc-if value="{{ isPay }}">
+        <div style="animation:dkRise .2s ease-out">
+          <div style="{{ subHeader }}">
+            <button onClick="{{ back }}" style="{{ backBtn }}">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 5.5-7 6.5 7 6.5" /></svg>
+            </button>
+            <div style="flex:1;display:flex;align-items:center;justify-content:space-between;gap:10px">
+              <div style="font-size:13px;font-weight:600;color:#111827">Pay to confirm</div>
+              <div style="display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:#92400E;background:#FFFAEB;border:1px solid #F3DDA4;border-radius:999px;padding:4px 9px;font-family:ui-monospace,Menlo,monospace">{{ holdClock }}</div>
+            </div>
+          </div>
+          <div style="padding:16px 16px 22px;display:flex;flex-direction:column;gap:14px">
+            <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;padding:16px;display:flex;flex-direction:column;gap:4px">
+              <div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#6B7280">Amount due</div>
+              <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:34px;font-weight:600;letter-spacing:-.02em;color:var(--pri,#0F2A44);line-height:1.1">₦50,000</div>
+              <div style="margin-top:2px;font-size:12.5px;color:#4B5563"><span style="font-family:ui-monospace,Menlo,monospace">{{ invoiceNo }}</span> · Legal Consultation · {{ chosenDay }}</div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <div style="font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:#6B7280">How would you like to pay?</div>
+              <sc-for list="{{ payMethods }}" as="pm" hint-placeholder-count="3">
+              <button onClick="{{ pm.pick }}" style="{{ pm.style }}">
+                <span style="display:flex;align-items:center;gap:11px;min-width:0">
+                  <span style="{{ pm.iconStyle }}">
+                    <sc-if value="{{ pm.isCard }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.6" y="5.6" width="18.8" height="12.8" rx="2.2" /><path d="M2.6 10h18.8M6.4 14.4h3.4" /></svg></sc-if>
+                    <sc-if value="{{ pm.isTransfer }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.6 8.4h15.2l-3.4-3.4M20.4 15.6H5.2l3.4 3.4" /></svg></sc-if>
+                    <sc-if value="{{ pm.isUssd }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.4 3.6 7.8 20.4M16.2 3.6l-1.6 16.8M4.4 8.8h16M3.6 15.2h16" /></svg></sc-if>
+                  </span>
+                  <span style="min-width:0;text-align:left">
+                    <span style="display:block;font-size:14px;font-weight:600;color:#111827">{{ pm.label }}</span>
+                    <span style="display:block;margin-top:2px;font-size:12px;color:#6B7280">{{ pm.hint }}</span>
+                  </span>
+                </span>
+                <span style="{{ pm.radioStyle }}"></span>
+              </button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ payCard }}">
+            <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;padding:15px 16px;display:flex;flex-direction:column;gap:12px">
+              <div>
+                <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:6px">Card number</div>
+                <div style="border:1px solid #D1D5DB;border-radius:9px;padding:12px;font-size:15px;color:#111827;font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em">5061 •••• •••• 4471</div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:11px">
+                <div>
+                  <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:6px">Expiry</div>
+                  <div style="border:1px solid #D1D5DB;border-radius:9px;padding:12px;font-size:15px;color:#111827;font-family:ui-monospace,Menlo,monospace">09/29</div>
+                </div>
+                <div>
+                  <div style="font-size:12.5px;font-weight:600;color:#374151;margin-bottom:6px">CVV</div>
+                  <div style="border:1px solid #D1D5DB;border-radius:9px;padding:12px;font-size:15px;color:#111827;font-family:ui-monospace,Menlo,monospace">•••</div>
+                </div>
+              </div>
+            </div>
+            </sc-if>
+
+            <sc-if value="{{ payTransfer }}">
+            <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;padding:15px 16px;display:flex;flex-direction:column;gap:11px">
+              <div style="font-size:12.5px;color:#4B5563;line-height:1.5">Transfer the exact amount to the one-time account below. The booking confirms itself the moment the transfer lands — usually under a minute.</div>
+              <div style="display:flex;flex-direction:column;gap:8px;padding:13px;border-radius:10px;background:#F9FAFB;border:1px solid #EEF0F3">
+                <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px"><span style="color:#6B7280">Bank</span><span style="font-weight:600;color:#111827">Wema Bank</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px"><span style="color:#6B7280">Account</span><span style="font-weight:700;color:#111827;font-family:ui-monospace,Menlo,monospace">7824 119 034</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px;font-size:13px"><span style="color:#6B7280">Name</span><span style="font-weight:600;color:#111827;text-align:right">{{ firmName }} / Docket</span></div>
+              </div>
+              <button onClick="{{ noop }}" style="{{ ghostBtnSm }}">Copy account number</button>
+            </div>
+            </sc-if>
+
+            <button onClick="{{ doPay }}" style="{{ payCtaStyle }}">{{ payCta }}</button>
+            <div style="display:flex;align-items:flex-start;gap:9px;font-size:11.5px;color:#6B7280;line-height:1.5">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none;margin-top:1px"><path d="M12 3.4 5.2 6v6c0 4.2 3 7.4 6.8 8.6 3.8-1.2 6.8-4.4 6.8-8.6V6z" /></svg>
+              Paystack takes the payment and settles it to {{ firmName }}'s own subaccount. Docket never holds client money.
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ CLIENT · PAID ══════════════ -->
+        <sc-if value="{{ isPaid }}">
+        <div style="padding:26px 16px 22px;display:flex;flex-direction:column;gap:16px;animation:dkRise .24s ease-out">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:13px;text-align:center;padding:8px 0 4px">
+            <div style="width:62px;height:62px;border-radius:999px;background:#ECFDF3;border:1px solid #A7D8BE;display:grid;place-items:center">
+              <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#05603A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.8 4.4 4.4L19 7.6" /></svg>
+            </div>
+            <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:22px;font-weight:600;letter-spacing:-.015em;color:var(--pri,#0F2A44);line-height:1.25">Booked and paid</div>
+            <div style="font-size:13.5px;color:#4B5563;line-height:1.5;max-width:280px">{{ chosenDay }} at {{ chosenSlot }} with {{ leadLawyer }}. A receipt is on its way to adaeze.o@gmail.com.</div>
+          </div>
+          <div style="border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden">
+            <div style="padding:13px 16px;display:flex;justify-content:space-between;gap:12px;font-size:13px;border-bottom:1px solid #F3F4F6"><span style="color:#6B7280">Reference</span><span style="font-weight:600;color:#111827;font-family:ui-monospace,Menlo,monospace">AK-0261</span></div>
+            <div style="padding:13px 16px;display:flex;justify-content:space-between;gap:12px;font-size:13px;border-bottom:1px solid #F3F4F6"><span style="color:#6B7280">Invoice</span><span style="font-weight:600;color:#111827;font-family:ui-monospace,Menlo,monospace">{{ invoiceNo }}</span></div>
+            <div style="padding:13px 16px;display:flex;justify-content:space-between;gap:12px;font-size:13px"><span style="color:#6B7280">Paid</span><span style="font-weight:700;color:#111827">₦50,000</span></div>
+          </div>
+          <button onClick="{{ goAppt }}" style="{{ primaryBtn }}">See the appointment</button>
+          <button onClick="{{ goHome }}" style="{{ ghostBtn }}">Back to home</button>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ LAWYER · TODAY ══════════════ -->
+        <sc-if value="{{ isToday }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px;animation:dkRise .2s ease-out">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+            <div style="min-width:0">
+              <div style="font-family:Archivo,system-ui,sans-serif;font-size:22px;font-weight:700;letter-spacing:-.02em;color:#141414">Today</div>
+              <div style="margin-top:3px;font-size:12.5px;color:#57534E">Attorneys Klinique · Friday, 11 September 2026</div>
+            </div>
+            <span style="flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid #DDD9D2;background:#fff;color:#57534E;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16A34A" stroke-width="2.6" stroke-linecap="round"><path d="m5 12.8 4.4 4.4L19 7.6" /></svg>
+              MFA
+            </span>
+          </div>
+
+          <div style="display:flex;align-items:center;gap:9px;border:1px solid #DDD9D2;background:#fff;border-radius:10px;padding:0 13px;min-height:46px">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="1.8" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="6.4" /><path d="m15.8 15.8 4 4" /></svg>
+            <span style="font-size:13.5px;color:#6B7280">Cause title, suit number or client</span>
+          </div>
+
+          <div style="border:1px solid #E7B84B;border-radius:12px;background:#fff;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 15px;background:#FFFBEB;border-bottom:1px solid #F3E2B3">
+              <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M12 4.4 21 19.6H3z" /><path d="M12 9.6v4.6M12 16.8v.1" /></svg>
+                <span style="font-size:13.5px;font-weight:700;color:#7A3E0A">Sittings without an update (2)</span>
+              </div>
+            </div>
+            <sc-for list="{{ sittings }}" as="s" hint-placeholder-count="2">
+            <div style="{{ s.rowStyle }}">
+              <div style="min-width:0">
+                <div style="font-size:13.5px;font-weight:600;color:#141414;line-height:1.35">{{ s.cause }}</div>
+                <div style="margin-top:3px;font-size:11.5px;color:#57534E;line-height:1.45"><span style="font-family:ui-monospace,Menlo,monospace">{{ s.suit }}</span> · {{ s.court }}</div>
+                <div style="margin-top:3px;font-size:11.5px;line-height:1.45;color:#57534E">{{ s.purpose }} · {{ s.lawyer }}</div>
+                <div style="margin-top:4px;font-size:11.5px;font-weight:600;color:#92400E">Sat {{ s.sat }} · {{ s.since }}</div>
+              </div>
+              <button onClick="{{ noop }}" style="flex:none;min-height:40px;padding:0 14px;border-radius:9px;border:0;background:#141414;color:#fff;font:600 12.5px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap">Post update</button>
+            </div>
+            </sc-for>
+          </div>
+
+          <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;overflow:hidden">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 15px;border-bottom:1px solid #F0EEEA">
+              <div style="font-size:13.5px;font-weight:700;color:#141414">Today's consultations (3)</div>
+              <button onClick="{{ goConsults }}" style="{{ lawLinkBtn }}">All</button>
+            </div>
+            <sc-for list="{{ todayAppts }}" as="a" hint-placeholder-count="3">
+            <div style="{{ a.rowStyle }}">
+              <div style="min-width:0;display:flex;gap:11px;align-items:flex-start">
+                <span style="flex:none;font-family:ui-monospace,Menlo,monospace;font-size:13px;font-weight:700;color:#141414;padding-top:1px">{{ a.time }}</span>
+                <span style="min-width:0">
+                  <span style="display:block;font-size:13.5px;font-weight:600;color:#141414">{{ a.client }}</span>
+                  <span style="display:block;margin-top:2px;font-size:11.5px;color:#57534E"><span style="font-family:ui-monospace,Menlo,monospace">{{ a.ref }}</span> · {{ a.svc }} · {{ a.mode }}</span>
+                </span>
+              </div>
+              <div style="flex:none;display:flex;align-items:center;gap:8px">
+                <span style="{{ a.pillStyle }}">{{ a.status }}</span>
+                <sc-if value="{{ a.live }}">
+                <button onClick="{{ goLawCall }}" style="min-height:40px;padding:0 13px;border-radius:9px;border:0;background:#141414;color:#fff;font:600 12.5px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap">Open room</button>
+                </sc-if>
+              </div>
+            </div>
+            </sc-for>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:9px">
+            <sc-for list="{{ counters }}" as="c" hint-placeholder-count="6">
+            <div style="border:1px solid #DDD9D2;border-radius:11px;background:#fff;padding:13px">
+              <div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#57534E;line-height:1.35">{{ c.l }}</div>
+              <div style="margin-top:5px;font-family:Archivo,system-ui,sans-serif;font-size:24px;font-weight:700;color:{{ c.ink }};line-height:1">{{ c.v }}</div>
+              <div style="margin-top:4px;font-size:11px;color:#57534E;line-height:1.35">{{ c.h }}</div>
+            </div>
+            </sc-for>
+          </div>
+
+          <div style="border:1px solid #DDD9D2;border-radius:11px;background:#fff;padding:14px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="min-width:0">
+              <div style="font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:#57534E">Outstanding</div>
+              <div style="margin-top:4px;font-family:Archivo,system-ui,sans-serif;font-size:22px;font-weight:700;color:#141414">₦575,000</div>
+            </div>
+            <button onClick="{{ noop }}" style="{{ lawGhostSm }}">Invoices</button>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ LAWYER · CONSULTATIONS ══════════════ -->
+        <sc-if value="{{ isConsults }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px;animation:dkRise .2s ease-out">
+          <div>
+            <div style="font-family:Archivo,system-ui,sans-serif;font-size:22px;font-weight:700;letter-spacing:-.02em;color:#141414">Consultations</div>
+            <div style="margin-top:3px;font-size:12.5px;color:#57534E">Upcoming · times in Africa/Lagos</div>
+          </div>
+          <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;overflow:hidden">
+            <sc-for list="{{ consults }}" as="c" hint-placeholder-count="4">
+            <button onClick="{{ goLawAppt }}" style="{{ c.rowStyle }}">
+              <span style="min-width:0;text-align:left">
+                <span style="display:block;font-size:13.5px;font-weight:600;color:#141414">{{ c.when }} · {{ c.client }}</span>
+                <span style="display:block;margin-top:3px;font-size:11.5px;color:#57534E"><span style="font-family:ui-monospace,Menlo,monospace">{{ c.ref }}</span> · {{ c.svc }} · {{ c.mode }}</span>
+                <span style="display:block;margin-top:2px;font-size:11.5px;color:{{ c.noteInk }}">{{ c.note }}</span>
+              </span>
+              <span style="{{ c.pillStyle }}">{{ c.status }}</span>
+            </button>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ LAWYER · APPOINTMENT + NOTES ══════════════ -->
+        <sc-if value="{{ isLawAppt }}">
+        <div style="animation:dkRise .2s ease-out">
+          <div style="{{ lawSubHeader }}">
+            <button onClick="{{ back }}" style="{{ lawBackBtn }}">
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m14.5 5.5-7 6.5 7 6.5" /></svg>
+            </button>
+            <div style="font-size:13px;color:#57534E;font-family:ui-monospace,Menlo,monospace">AK-0247</div>
+          </div>
+          <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:14px">
+            <div>
+              <div style="font-family:Archivo,system-ui,sans-serif;font-size:20px;font-weight:700;letter-spacing:-.02em;color:#141414;line-height:1.25">Adaeze Okonkwo</div>
+              <div style="margin-top:4px;font-size:12.5px;color:#57534E">Legal Consultation · virtual · 45 minutes</div>
+              <div style="margin-top:9px;display:flex;flex-wrap:wrap;gap:7px">
+                <span style="border:1px solid #A7D8BE;background:#ECFDF3;color:#05603A;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:600">Confirmed</span>
+                <span style="border:1px solid #DDD9D2;background:#fff;color:#57534E;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:600">Paid ₦50,000</span>
+                <span style="border:1px solid #DDD9D2;background:#fff;color:#57534E;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:600">Today, 11:00</span>
+              </div>
+            </div>
+
+            <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;overflow:hidden">
+              <div style="padding:12px 15px;border-bottom:1px solid #F0EEEA;font-size:13px;font-weight:700;color:#141414">Intake</div>
+              <div style="padding:13px 15px;display:flex;flex-direction:column;gap:10px;font-size:12.5px">
+                <div><span style="color:#57534E">Consulting as</span><div style="margin-top:2px;color:#141414;font-weight:600">Individual</div></div>
+                <div><span style="color:#57534E">Concerns</span><div style="margin-top:2px;color:#141414;font-weight:600">Property or land · Lagos · Ikoyi</div></div>
+                <div><span style="color:#57534E">Documents held</span><div style="margin-top:2px;color:#141414;font-weight:600">Deed of Assignment, Survey plan</div></div>
+                <div><span style="color:#57534E">Issue</span><div style="margin-top:3px;color:#3F3B36;line-height:1.5">I am buying a three-bedroom flat in Ikoyi and want the title checked before I pay the balance.</div></div>
+                <div style="display:flex;align-items:center;gap:8px;padding-top:3px">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" style="flex:none"><path d="M6.4 3.4h7l4.2 4.2v13H6.4z" /><path d="M13.4 3.4v4.2h4.2" /></svg>
+                  <a href="#doc" style="font-size:12.5px;color:#141414">Deed of Assignment — Ikoyi.pdf</a>
+                </div>
+              </div>
+            </div>
+
+            <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;overflow:hidden">
+              <div style="padding:12px 15px;border-bottom:1px solid #F0EEEA;display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <span style="font-size:13px;font-weight:700;color:#141414">Consultation notes</span>
+                <span style="{{ notesBadge }}">{{ notesState }}</span>
+              </div>
+              <div style="padding:13px 15px;display:flex;flex-direction:column;gap:13px">
+                <div>
+                  <div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px">
+                    Summary for the client
+                    <span style="border:1px solid #A7D8BE;background:#ECFDF3;color:#05603A;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase">Client sees</span>
+                  </div>
+                  <div style="border:1px solid #D6D3CE;border-radius:9px;padding:11px 12px;font-size:13px;color:#3F3B36;line-height:1.5;min-height:70px">We agreed to proceed with the certified true copies and to write to the Bureau before the next date.</div>
+                </div>
+                <div>
+                  <div style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:#374151;margin-bottom:6px">
+                    Internal note
+                    <span style="border:1px solid #E5C4C4;background:#FEF3F2;color:#912018;border-radius:4px;padding:1px 5px;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase">Never reaches the client</span>
+                  </div>
+                  <div style="border:1px solid #D6D3CE;border-radius:9px;padding:11px 12px;font-size:13px;color:#3F3B36;line-height:1.5;min-height:56px">Vendor's agent evasive on the Governor's Consent. Advise a search at the registry before any further payment.</div>
+                </div>
+                <button onClick="{{ saveNotes }}" style="{{ lawPrimaryBtn }}">{{ notesCta }}</button>
+              </div>
+            </div>
+
+            <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;padding:14px 15px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div style="min-width:0">
+                <div style="font-size:13px;font-weight:600;color:#141414">Room open</div>
+                <div style="margin-top:2px;font-size:11.5px;color:#57534E">The client can knock from 10:50.</div>
+              </div>
+              <button onClick="{{ goLawCall }}" style="flex:none;min-height:42px;padding:0 15px;border-radius:9px;border:0;background:#141414;color:#fff;font:600 13px Inter,system-ui,sans-serif;cursor:pointer">Open room</button>
+            </div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ LAWYER · CALL / ADMIT ══════════════ -->
+        <sc-if value="{{ isLawCall }}">
+        <div style="height:100%;background:#0B0B0C;display:flex;flex-direction:column;animation:dkRise .2s ease-out">
+          <div style="flex:none;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="min-width:0">
+              <div style="font-size:13.5px;font-weight:600;color:#fff">{{ lawCallTitle }}</div>
+              <div style="margin-top:2px;font-size:11.5px;color:rgba(255,255,255,.55)">Adaeze Okonkwo · AK-0247</div>
+            </div>
+            <span style="flex:none;display:inline-flex;align-items:center;gap:6px;border:1px solid rgba(167,216,190,.4);background:rgba(5,96,58,.24);color:#A7F3D0;border-radius:999px;padding:5px 10px;font-size:11px;font-weight:600">
+              <span style="width:6px;height:6px;border-radius:999px;background:currentColor"></span>
+              Connection good
+            </span>
+          </div>
+
+          <sc-if value="{{ knocking }}">
+          <div style="flex:none;margin:0 16px 12px;padding:13px;border-radius:11px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div style="min-width:0;display:flex;align-items:center;gap:11px">
+              <span style="flex:none;width:38px;height:38px;border-radius:999px;background:#fff;color:#0B0B0C;display:grid;place-items:center;font:700 14px Inter,system-ui,sans-serif">AO</span>
+              <span style="min-width:0">
+                <span style="display:block;font-size:13px;font-weight:600;color:#fff">Adaeze is waiting</span>
+                <span style="display:block;margin-top:2px;font-size:11.5px;color:rgba(255,255,255,.55)">Knocked 40 seconds ago</span>
+              </span>
+            </div>
+            <button onClick="{{ admit }}" style="flex:none;min-height:40px;padding:0 16px;border-radius:9px;border:0;background:#fff;color:#0B0B0C;font:700 13px Inter,system-ui,sans-serif;cursor:pointer">Admit</button>
+          </div>
+          </sc-if>
+
+          <div style="flex:1;min-height:0;position:relative;display:grid;place-items:center;padding:0 16px">
+            <sc-if value="{{ lawWaiting }}">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;max-width:250px">
+              <div style="width:66px;height:66px;border-radius:999px;border:1px solid rgba(255,255,255,.18);display:grid;place-items:center;animation:dkPulse 2s ease-in-out infinite">
+                <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.6" /><path d="M5.2 20.4c0-3.5 3-5.8 6.8-5.8s6.8 2.3 6.8 5.8" /></svg>
+              </div>
+              <div style="font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.5">Room open. Admit Adaeze when you are ready — nothing is recorded.</div>
+            </div>
+            </sc-if>
+            <sc-if value="{{ lawInCall }}">
+            <div style="width:100%;height:100%;position:relative;display:grid;place-items:center">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:9px;color:rgba(255,255,255,.35)">
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="6.4" width="12.4" height="11.2" rx="2.2" /><path d="m15.2 11.2 6-3.4v8.4l-6-3.4z" /></svg>
+                <span style="font-size:11.5px;letter-spacing:.06em;text-transform:uppercase">Adaeze Okonkwo</span>
+              </div>
+              <div style="position:absolute;right:0;bottom:8px;width:90px;height:120px;border-radius:12px;background:#17171A;border:1px solid rgba(255,255,255,.14);display:grid;place-items:center;color:rgba(255,255,255,.3);font-size:10px;letter-spacing:.05em;text-transform:uppercase">You</div>
+            </div>
+            </sc-if>
+          </div>
+
+          <div style="flex:none;padding:12px 16px 20px;display:flex;flex-direction:column;gap:11px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:11px">
+              <button onClick="{{ noop }}" style="{{ callCtl }}">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="9.4" y="3.4" width="5.2" height="10" rx="2.6" /><path d="M6.4 11.6a5.6 5.6 0 0 0 11.2 0M12 17.2v3.4" /></svg>
+              </button>
+              <button onClick="{{ noop }}" style="{{ callCtl }}">
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="6.4" width="12.4" height="11.2" rx="2.2" /><path d="m15.2 11.2 6-3.4v8.4l-6-3.4z" /></svg>
+              </button>
+              <button onClick="{{ endLawCall }}" style="min-height:54px;padding:0 20px;border-radius:999px;border:0;background:#B42318;color:#fff;font:700 13px Inter,system-ui,sans-serif;cursor:pointer;display:inline-flex;align-items:center;gap:9px">
+                <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6.2 3.4h3l1.4 3.4-2 1.6a11 11 0 0 0 5 5l1.6-2 3.4 1.4v3c0 1-.8 1.8-1.8 1.7C10.4 17 7 13.6 4.5 5.2a1.8 1.8 0 0 1 1.7-1.8z" /><path d="m3 21 18-18" /></svg>
+                End &amp; write notes
+              </button>
+            </div>
+            <div style="text-align:center;font-size:11px;color:rgba(255,255,255,.42)">Private room · not recorded · you hold the only owner token</div>
+          </div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ LAWYER · CLIENTS ══════════════ -->
+        <sc-if value="{{ isClients }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:13px;animation:dkRise .2s ease-out">
+          <div>
+            <div style="font-family:Archivo,system-ui,sans-serif;font-size:22px;font-weight:700;letter-spacing:-.02em;color:#141414">Clients</div>
+            <div style="margin-top:3px;font-size:12.5px;color:#57534E">Attorneys Klinique · 64 people the firm acts for</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px;border:1px solid #DDD9D2;background:#fff;border-radius:10px;padding:0 13px;min-height:46px">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#57534E" stroke-width="1.8" stroke-linecap="round" style="flex:none"><circle cx="11" cy="11" r="6.4" /><path d="m15.8 15.8 4 4" /></svg>
+            <span style="font-size:13.5px;color:#6B7280">Name, company, phone or email</span>
+          </div>
+          <div style="display:flex;gap:7px;overflow:auto;padding-bottom:2px">
+            <sc-for list="{{ clientFilters }}" as="cf" hint-placeholder-count="4">
+            <button onClick="{{ cf.pick }}" style="{{ cf.style }}">{{ cf.label }}</button>
+            </sc-for>
+          </div>
+          <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;overflow:hidden">
+            <sc-for list="{{ clients }}" as="c" hint-placeholder-count="4">
+            <div style="{{ c.rowStyle }}">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px;min-width:0">
+                  <span style="font-size:13.5px;font-weight:600;color:#141414">{{ c.name }}</span>
+                  <span style="{{ c.tagStyle }}">{{ c.tag }}</span>
+                </div>
+                <span style="{{ c.owedStyle }}">{{ c.owed }}</span>
+              </div>
+              <div style="margin-top:4px;font-size:11.5px;color:{{ c.contactInk }};line-height:1.45">{{ c.contact }}</div>
+              <div style="margin-top:3px;font-size:11.5px;color:#57534E;line-height:1.45">{{ c.stats }}</div>
+              <div style="margin-top:4px;font-size:11.5px;font-weight:600;color:#141414">{{ c.next }}</div>
+            </div>
+            </sc-for>
+          </div>
+          <div style="font-size:11px;color:#57534E;line-height:1.5">"Last seen" is the later of the most recent consultation that had begun and was not cancelled, and the most recent entry posted on one of their matters.</div>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ LAWYER · ME ══════════════ -->
+        <sc-if value="{{ isMe }}">
+        <div style="padding:14px 16px 22px;display:flex;flex-direction:column;gap:13px;animation:dkRise .2s ease-out">
+          <div style="font-family:Archivo,system-ui,sans-serif;font-size:22px;font-weight:700;letter-spacing:-.02em;color:#141414">Me &amp; the firm</div>
+
+          <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;padding:15px;display:flex;align-items:center;gap:13px">
+            <span style="flex:none;width:48px;height:48px;border-radius:10px;background:#141414;color:#fff;display:grid;place-items:center;font:700 17px Archivo,system-ui,sans-serif">BO</span>
+            <div style="min-width:0">
+              <div style="font-size:15px;font-weight:700;color:#141414">B. Okafor</div>
+              <div style="margin-top:2px;font-size:12px;color:#57534E">Associate · Attorneys Klinique</div>
+              <div style="margin-top:3px;font-size:11.5px;color:#57534E;font-family:ui-monospace,Menlo,monospace">SCN/2018/044182 · called 2018</div>
+            </div>
+          </div>
+
+          <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;overflow:hidden">
+            <div style="padding:12px 15px;border-bottom:1px solid #F0EEEA;font-size:13px;font-weight:700;color:#141414">Session</div>
+            <div style="padding:13px 15px;display:flex;flex-direction:column;gap:12px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+                <div style="min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:#141414">Two-factor</div>
+                  <div style="margin-top:2px;font-size:11.5px;color:#57534E">Required before any write. Verified 08:42 today.</div>
+                </div>
+                <span style="flex:none;border:1px solid #A7D8BE;background:#ECFDF3;color:#05603A;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700">aal2</span>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #F0EEEA;padding-top:12px">
+                <div style="min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:#141414">Push on this phone</div>
+                  <div style="margin-top:2px;font-size:11.5px;color:#57534E">Sittings digest and service of process.</div>
+                </div>
+                <span style="flex:none;border:1px solid #A7D8BE;background:#ECFDF3;color:#05603A;border-radius:999px;padding:4px 10px;font-size:11px;font-weight:700">On</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;overflow:hidden">
+            <sc-for list="{{ meLinks }}" as="ml" hint-placeholder-count="5">
+            <button onClick="{{ noop }}" style="{{ ml.rowStyle }}">
+              <span style="min-width:0;text-align:left">
+                <span style="display:block;font-size:13.5px;font-weight:600;color:#141414">{{ ml.label }}</span>
+                <span style="display:block;margin-top:2px;font-size:11.5px;color:#57534E">{{ ml.hint }}</span>
+              </span>
+              <span style="flex:none;display:flex;align-items:center;gap:9px">
+                <span style="{{ ml.countStyle }}">{{ ml.count }}</span>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6B7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9.5 5.5 7 6.5-7 6.5" /></svg>
+              </span>
+            </button>
+            </sc-for>
+          </div>
+
+          <div style="border:1px solid #DDD9D2;border-radius:12px;background:#fff;padding:14px 15px">
+            <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:#57534E">This phone is a working tool</div>
+            <div style="margin-top:6px;font-size:12px;color:#57534E;line-height:1.55">The console wears no firm's colours — those belong to the client app. Colour here means one thing: something is late, unpaid, or waiting on you.</div>
+          </div>
+
+          <button onClick="{{ noop }}" style="{{ lawGhostBtn }}">Sign out</button>
+        </div>
+        </sc-if>
+
+        <!-- ══════════════ FIRM SWITCHER SHEET ══════════════ -->
+        <sc-if value="{{ sheet }}">
+        <div style="position:absolute;inset:0;z-index:80">
+          <button onClick="{{ closeSheet }}" style="position:absolute;inset:0;border:0;background:rgba(17,24,39,.42);cursor:pointer"></button>
+          <div style="position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:18px 18px 0 0;padding:8px 0 18px;box-shadow:0 -8px 32px rgba(0,0,0,.18);animation:dkRise .22s ease-out">
+            <div style="width:38px;height:4px;border-radius:999px;background:#E5E7EB;margin:6px auto 12px"></div>
+            <div style="padding:0 18px 10px">
+              <div style="font-family:var(--head,Fraunces),Georgia,serif;font-size:17px;font-weight:600;color:var(--pri,#0F2A44)">Your firms</div>
+              <div style="margin-top:3px;font-size:12px;color:#6B7280">One sign-in. The app takes the name and colours of the firm you open.</div>
+            </div>
+            <sc-for list="{{ firmList }}" as="f" hint-placeholder-count="2">
+            <button onClick="{{ f.pick }}" style="{{ f.sheetRowStyle }}">
+              <span style="{{ f.markStyle }}">{{ f.initial }}</span>
+              <span style="flex:1;min-width:0;text-align:left">
+                <span style="display:block;font-size:14.5px;font-weight:600;color:#111827">{{ f.name }}</span>
+                <span style="display:block;margin-top:2px;font-size:12px;color:#6B7280">{{ f.meta }}</span>
+              </span>
+              <span style="{{ f.checkStyle }}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.8 4.4 4.4L19 7.6" /></svg>
+              </span>
+            </button>
+            </sc-for>
+          </div>
+        </div>
+        </sc-if>
+
+      </div>
+
+      <!-- ══════════════ BOTTOM NAV ══════════════ -->
+      <sc-if value="{{ showClientNav }}">
+      <div style="flex:none;border-top:1px solid #E5E7EB;background:#fff;display:grid;grid-template-columns:repeat(5,1fr)">
+        <button onClick="{{ goHome }}" style="{{ tabHome }}">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.8 12 3.5l9 7.3M5.6 9.6V20.5h12.8V9.6" /></svg>
+          Home
+        </button>
+        <button onClick="{{ goAppts }}" style="{{ tabAppts }}">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5.2" width="17.6" height="15.6" rx="2.4" /><path d="M8 3.2v4M16 3.2v4M3.2 10.4h17.6" /></svg>
+          Appointments
+        </button>
+        <button onClick="{{ goMatters }}" style="{{ tabMatters }}">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3.2 7.2a2 2 0 0 1 2-2h3.4l2 2.6h8.2a2 2 0 0 1 2 2v7.4a2 2 0 0 1-2 2H5.2a2 2 0 0 1-2-2z" /></svg>
+          Matters
+        </button>
+        <button onClick="{{ goMessages }}" style="{{ tabMessages }}">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="5.2" width="18.4" height="13.6" rx="2.2" /><path d="m3.4 6.6 8.6 6.2 8.6-6.2" /></svg>
+          Messages
+        </button>
+        <button onClick="{{ goProfile }}" style="{{ tabProfile }}">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.2" r="3.6" /><path d="M5.2 20.4c0-3.5 3-5.8 6.8-5.8s6.8 2.3 6.8 5.8" /></svg>
+          Profile
+        </button>
+      </div>
+      </sc-if>
+
+      <sc-if value="{{ showLawyerNav }}">
+      <div style="flex:none;border-top:1px solid #DDD9D2;background:#fff;display:grid;grid-template-columns:repeat(4,1fr)">
+        <button onClick="{{ goToday }}" style="{{ tabToday }}">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.2" y="5.2" width="17.6" height="15.6" rx="2.4" /><path d="M8 3.2v4M16 3.2v4M3.2 10.4h17.6" /><path d="M8.4 14.6h3" /></svg>
+          Today
+        </button>
+        <button onClick="{{ goConsults }}" style="{{ tabConsults }}">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.8" y="6.4" width="12.4" height="11.2" rx="2.2" /><path d="m15.2 11.2 6-3.4v8.4l-6-3.4z" /></svg>
+          Consultations
+        </button>
+        <button onClick="{{ goClients }}" style="{{ tabClients }}">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9.4" cy="8.4" r="3.2" /><path d="M3.6 19.8c0-3.2 2.6-5.2 5.8-5.2s5.8 2 5.8 5.2" /><path d="M16 6.2a3 3 0 0 1 0 5.8M17.4 14.8c2 .6 3.2 2.2 3.2 5" /></svg>
+          Clients
+        </button>
+        <button onClick="{{ goMe }}" style="{{ tabMe }}">
+          <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5 20.4V5.2h9v15.2M14 10h5v10.4M8 8.6h3M8 12h3M8 15.4h3" /></svg>
+          Me
+        </button>
+      </div>
+      </sc-if>
+
+      <div style="flex:none;height:{{ botPad }}px;background:{{ botPadBg }}"></div>
+    </div>
+  </x-import>
+
+  <div style="max-width:480px;text-align:center;font-size:11.5px;line-height:1.6;color:rgba(0,0,0,.45)">
+    {{ caption }}
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;initialShell&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;client&quot;, &quot;lawyer&quot;], &quot;default&quot;: &quot;client&quot;, &quot;tsType&quot;: &quot;'client' | 'lawyer'&quot;, &quot;section&quot;: &quot;Prototype&quot; },
+  &quot;initialFrame&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;ios&quot;, &quot;android&quot;], &quot;default&quot;: &quot;ios&quot;, &quot;tsType&quot;: &quot;'ios' | 'android'&quot;, &quot;section&quot;: &quot;Prototype&quot; },
+  &quot;initialFirm&quot;: { &quot;editor&quot;: &quot;enum&quot;, &quot;options&quot;: [&quot;ak&quot;, &quot;bc&quot;], &quot;default&quot;: &quot;ak&quot;, &quot;tsType&quot;: &quot;'ak' | 'bc'&quot;, &quot;section&quot;: &quot;Prototype&quot; }
+}">
+class Component extends DCLogic {
+  state = {
+    shell: null, frame: null, firmKey: null,
+    screen: 'home', stack: [],
+    book: 0, svc: 'legal-consultation', mode: 'virtual', day: 22, slot: '11:00',
+    clientType: 'Individual', area: 'Property or land', docs: ['Deed of Assignment', 'Survey plan'],
+    payMethod: 'card', paying: false,
+    call: 'lobby', audioOnly: false, lawCall: 'waiting',
+    lowData: false, offline: false, sheet: false, notesSaved: false,
+    clientFilter: 'Everyone'
+  };
+
+  // ── routing ────────────────────────────────────────────────
+  nav(screen) {
+    this.setState((s) => ({ screen, stack: [...s.stack, s.screen], sheet: false }));
+  }
+  goBack() {
+    this.setState((s) => {
+      const stack = s.stack.slice();
+      const prev = stack.pop();
+      return { screen: prev || 'home', stack };
+    });
+  }
+  reset(screen) { this.setState({ screen, stack: [] }); }
+
+  fmtMoney(n) { return '₦' + n.toLocaleString('en-NG'); }
+
+  renderVals() {
+    const S = this.state;
+    const shell = S.shell ?? this.props.initialShell ?? 'client';
+    const frame = S.frame ?? this.props.initialFrame ?? 'ios';
+    const firmKey = S.firmKey ?? this.props.initialFirm ?? 'ak';
+    const lawyerShell = shell === 'lawyer';
+    const ios = frame === 'ios';
+
+    const FIRMS = {
+      ak: { name: 'Attorneys Klinique', pri: '#0F2A44', acc: '#B08D57', accInk: '#7A5F33', sur: '#F7F5F0', head: 'Fraunces', initial: 'A', lawyer: 'B. Okafor', invoice: 'AK-INV-2026-0188', ref: 'AK-0247', when: 'Tuesday, 22 September 2026 at 11:00', meta: '2 matters · 3 consultations' },
+      bc: { name: 'Bello & Co', pri: '#5B2333', acc: '#7D8471', accInk: '#5A6152', sur: '#F6F4EF', head: 'Archivo', initial: 'B', lawyer: 'K. Bello', invoice: 'BC-INV-2026-0074', ref: 'BC-0113', when: 'Thursday, 24 September 2026 at 14:30', meta: '1 matter · 1 consultation' }
+    };
+    const F = FIRMS[firmKey];
+
+    // Lawyer shell is the platform's neutral working tool — no firm colours.
+    const pri = lawyerShell ? '#141414' : F.pri;
+    const acc = lawyerShell ? '#57534E' : F.acc;
+    const accInk = lawyerShell ? '#57534E' : F.accInk;
+    const sur = lawyerShell ? '#F5F4F1' : F.sur;
+    const head = lawyerShell ? 'Archivo' : F.head;
+
+    const screen = S.screen;
+    const clientScreens = ['home', 'notifs', 'appts', 'appt', 'waiting', 'call', 'ended', 'matters', 'messages', 'profile', 'book', 'pay', 'paid'];
+    const inClient = clientScreens.includes(screen);
+    const cur = lawyerShell ? (inClient ? 'today' : screen) : (inClient ? screen : 'home');
+
+    const darkScreen = cur === 'call' || cur === 'lawCall';
+    const fullBleed = ['waiting', 'call', 'book', 'pay', 'paid', 'ended', 'lawCall', 'lawAppt', 'notifs', 'appt'].includes(cur);
+
+    // ── shared style tokens ───────────────────────────────────
+    const card = 'border:1px solid #E5E7EB;border-radius:12px;background:#fff;overflow:hidden';
+    const linkBtn = 'background:none;border:0;padding:0;font:500 12.5px Inter,system-ui,sans-serif;color:var(--pri,#0F2A44);text-decoration:underline;text-underline-offset:2px;cursor:pointer';
+    const lawLinkBtn = 'background:none;border:0;padding:0;font:500 12.5px Inter,system-ui,sans-serif;color:#141414;text-decoration:underline;text-underline-offset:2px;cursor:pointer';
+    const quickBtn = 'display:flex;flex-direction:column;align-items:center;gap:5px;min-height:64px;padding:10px 2px;border:1px solid #E5E7EB;border-radius:9px;background:#fff;font:600 11px Inter,system-ui,sans-serif;color:var(--pri,#0F2A44);cursor:pointer';
+    const primaryBtn = 'width:100%;min-height:50px;border:0;border-radius:10px;background:var(--pri,#0F2A44);color:#fff;font:600 15px Inter,system-ui,sans-serif;cursor:pointer';
+    const primaryBtnSm = 'align-self:flex-start;min-height:44px;padding:0 20px;border:0;border-radius:9px;background:var(--pri,#0F2A44);color:#fff;font:600 14px Inter,system-ui,sans-serif;cursor:pointer';
+    const ghostBtn = 'flex:1;min-height:48px;padding:0 16px;border:1px solid #D1D5DB;border-radius:10px;background:#fff;color:var(--pri,#0F2A44);font:500 14px Inter,system-ui,sans-serif;cursor:pointer';
+    const ghostBtnSm = 'flex:none;min-height:40px;padding:0 13px;border:1px solid #D1D5DB;border-radius:9px;background:#fff;color:var(--pri,#0F2A44);font:600 12.5px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap';
+    const lawPrimaryBtn = 'width:100%;min-height:48px;border:0;border-radius:9px;background:#141414;color:#fff;font:600 14px Inter,system-ui,sans-serif;cursor:pointer';
+    const lawGhostBtn = 'width:100%;min-height:48px;border:1px solid #D6D3CE;border-radius:9px;background:#fff;color:#141414;font:500 14px Inter,system-ui,sans-serif;cursor:pointer';
+    const lawGhostSm = 'flex:none;min-height:40px;padding:0 14px;border:1px solid #D6D3CE;border-radius:9px;background:#fff;color:#141414;font:600 12.5px Inter,system-ui,sans-serif;cursor:pointer';
+    const subHeader = 'position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:9px 14px;min-height:50px;background:rgba(255,255,255,.92);backdrop-filter:blur(12px);border-bottom:1px solid #EBE7E0';
+    const lawSubHeader = 'position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:10px;padding:9px 14px;min-height:50px;background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-bottom:1px solid #E6E2DB';
+    const backBtn = 'flex:none;width:36px;height:36px;border-radius:999px;border:1px solid #E5E7EB;background:#fff;color:var(--pri,#0F2A44);display:grid;place-items:center;cursor:pointer';
+    const lawBackBtn = 'flex:none;width:36px;height:36px;border-radius:999px;border:1px solid #DDD9D2;background:#fff;color:#141414;display:grid;place-items:center;cursor:pointer';
+    const rowBase = 'width:100%;display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;background:none;border:0;cursor:pointer;text-align:left';
+
+    const tab = (active, dark) => 'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:56px;padding:7px 2px;border:0;background:none;cursor:pointer;font:' + (active ? '600' : '400') + ' 11.5px Inter,system-ui,sans-serif;color:' + (active ? (dark ? '#141414' : 'var(--pri,#0F2A44)') : '#6B7280');
+
+    const pill = (kind) => {
+      const map = {
+        confirmed: 'border:1px solid #A7D8BE;background:#ECFDF3;color:#05603A',
+        completed: 'border:1px solid #D5D9DF;background:#F9FAFB;color:#475467',
+        awaiting: 'border:1px solid #F3DDA4;background:#FFFAEB;color:#92400E',
+        cancelled: 'border:1px solid #E5E7EB;background:#F3F4F6;color:#4B5563'
+      };
+      return 'flex:none;border-radius:999px;padding:4px 10px;font-size:11.5px;font-weight:600;white-space:nowrap;' + (map[kind] || map.completed);
+    };
+
+    // ── client data ───────────────────────────────────────────
+    const MATTERS = {
+      ak: [
+        { title: 'Adeyemi v. Lagos State Lands Bureau', ref: 'AK-2026-014', lawyer: 'B. Okafor', status: 'In court', last: 'Adjourned for continuation · 14 Sept, 13:42', court: 'High Court of Lagos State, Ikeja Judicial Division · ID/4471GCM/2026', next: 'Next court date: 6 Oct 2026, 09:00 · Continuation of hearing' },
+        { title: 'Sale of 3 Bedroom, Ikoyi — title search', ref: 'AK-2026-021', lawyer: 'N. Eze', status: 'Open', last: 'Search report received · 9 Sept, 16:05', court: 'No court — transactional', next: 'Next: read the search report and confirm you want to proceed' }
+      ],
+      bc: [
+        { title: 'Estate of M. Okonkwo — probate', ref: 'BC-2026-031', lawyer: 'K. Bello', status: 'Open', last: 'Letters of administration filed · 3 Sept, 10:15', court: 'High Court of Lagos State, Probate Registry', next: 'Next: bring the original death certificate to the registry' }
+      ]
+    };
+    const matters = MATTERS[firmKey].map((m, i) => ({ ...m, rowStyle: 'padding:14px 16px;' + (i > 0 ? 'border-top:1px solid #F3F4F6' : '') }));
+
+    const APPTS = {
+      ak: [
+        { short: 'Tue 22 Sept 2026, 11:00', ref: 'AK-0247', mode: 'virtual', svc: 'Legal Consultation', status: 'Confirmed', kind: 'confirmed' },
+        { short: 'Wed 2 Sept 2026, 15:00', ref: 'AK-0231', mode: 'virtual', svc: 'Legal Consultation', status: 'Completed', kind: 'completed' },
+        { short: 'Wed 12 Aug 2026, 09:30', ref: 'AK-0198', mode: 'in person', svc: 'Property & Real Estate', status: 'Completed', kind: 'completed' }
+      ],
+      bc: [
+        { short: 'Thu 24 Sept 2026, 14:30', ref: 'BC-0113', mode: 'virtual', svc: 'Legal Consultation', status: 'Confirmed', kind: 'confirmed' },
+        { short: 'Mon 31 Aug 2026, 10:00', ref: 'BC-0091', mode: 'in person', svc: 'Legal Consultation', status: 'Completed', kind: 'completed' }
+      ]
+    };
+    const appointments = APPTS[firmKey].map((a, i) => ({
+      ...a,
+      rowStyle: rowBase + ';align-items:center;' + (i > 0 ? 'border-top:1px solid #F3F4F6' : ''),
+      pillStyle: pill(a.kind)
+    }));
+
+    const NOTIFS = [
+      { t: 'Court update on Adeyemi v. Lagos State Lands Bureau', b: 'Adjourned for continuation — next date 6 Oct 2026, 09:00', when: '14 Sept 2026, 13:44', unread: true },
+      { t: 'Consultation confirmed', b: 'AK-0247 · Tuesday, 22 September 2026 at 11:00', when: '11 Sept 2026, 09:12', unread: true },
+      { t: 'Receipt for ₦50,000', b: 'Invoice AK-INV-2026-0188 · paid to Attorneys Klinique', when: '11 Sept 2026, 09:11', unread: true },
+      { t: 'Search report received', b: 'Sale of 3 Bedroom, Ikoyi — title search', when: '9 Sept 2026, 16:05', unread: false }
+    ];
+    const notifications = NOTIFS.map((n, i) => ({
+      ...n,
+      rowStyle: 'display:flex;gap:11px;padding:13px 16px;' + (i > 0 ? 'border-top:1px solid #F3F4F6;' : '') + (n.unread ? 'background:#FBFAF7' : ''),
+      dotStyle: 'flex:none;margin-top:6px;width:7px;height:7px;border-radius:999px;background:' + (n.unread ? 'var(--pri,#0F2A44)' : 'transparent')
+    }));
+
+    const documents = [
+      { n: 'Deed of Assignment — Ikoyi.pdf', d: '9 Sept 2026' },
+      { n: 'Certificate of Occupancy.pdf', d: '8 Sept 2026' },
+      { n: 'Written address (defendant).pdf', d: '8 Sept 2026' }
+    ];
+
+    const THREADS = {
+      ak: [
+        { title: 'Adeyemi v. Lagos State Lands Bureau', sub: 'AK-2026-014 · Attorneys Klinique', last: 'B. Okafor: The certified true copies are ready to collect.', unread: 2 },
+        { title: 'Sale of 3 Bedroom, Ikoyi — title search', sub: 'AK-2026-021 · Attorneys Klinique', last: 'You: Thank you — I have read the report.', unread: 0 },
+        { title: 'Consultation AK-0247', sub: '22 Sept 2026, 11:00 · Attorneys Klinique', last: 'N. Eze: Please bring the survey plan.', unread: 1 }
+      ],
+      bc: [
+        { title: 'Estate of M. Okonkwo — probate', sub: 'BC-2026-031 · Bello & Co', last: 'K. Bello: The registry has fixed 2 October.', unread: 1 }
+      ]
+    };
+    const threads = THREADS[firmKey].map((t, i) => ({
+      ...t,
+      rowStyle: 'display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;' + (i > 0 ? 'border-top:1px solid #F3F4F6' : ''),
+      unread: t.unread > 0 ? String(t.unread) : '',
+      badgeStyle: t.unread > 0
+        ? 'flex:none;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--pri,#0F2A44);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center'
+        : 'display:none'
+    }));
+
+    const firmList = ['ak', 'bc'].map((k) => {
+      const f = FIRMS[k];
+      const on = k === firmKey;
+      return {
+        initial: f.initial, name: f.name, meta: f.meta,
+        pick: () => this.setState({ firmKey: k, sheet: false, screen: 'home', stack: [] }),
+        rowStyle: 'width:100%;display:flex;align-items:center;gap:12px;padding:13px 17px;border:0;border-top:1px solid #F3F4F6;background:' + (on ? '#FBFAF7' : 'none') + ';cursor:pointer',
+        sheetRowStyle: 'width:100%;display:flex;align-items:center;gap:12px;padding:14px 18px;border:0;background:' + (on ? '#FBFAF7' : 'none') + ';cursor:pointer',
+        markStyle: 'flex:none;width:40px;height:40px;border-radius:9px;background:' + f.pri + ';color:#fff;display:grid;place-items:center;font-family:' + f.head + ',Georgia,serif;font-size:17px;font-weight:600',
+        checkStyle: on
+          ? 'flex:none;width:22px;height:22px;border-radius:999px;background:' + f.pri + ';color:#fff;display:grid;place-items:center'
+          : 'display:none'
+      };
+    });
+
+    // ── booking ───────────────────────────────────────────────
+    const SERVICES = [
+      { slug: 'legal-consultation', name: 'Legal Consultation', desc: 'A 45-minute face-to-face virtual consultation with an Attorneys Klinique lawyer.', price: '₦50,000', mins: 45 },
+      { slug: 'property-real-estate', name: 'Property & Real Estate', desc: "Title searches, conveyancing, Governor's Consent and property disputes.", price: '₦50,000', mins: 45 },
+      { slug: 'contract-review', name: 'Contract Review & Drafting', desc: 'Review, negotiation and drafting of contracts and agreements.', price: '₦50,000', mins: 45 },
+      { slug: 'litigation', name: 'Litigation', desc: 'Representation and advisory in civil and commercial litigation.', price: '₦50,000', mins: 45 }
+    ];
+    const choiceCard = (on) => 'width:100%;display:block;text-align:left;padding:14px 15px;border-radius:11px;background:#fff;cursor:pointer;border:1px solid ' + (on ? 'var(--pri,#0F2A44)' : '#E5E7EB') + ';box-shadow:' + (on ? '0 0 0 1px var(--pri,#0F2A44) inset' : 'none');
+    const services = SERVICES.map((s) => ({ ...s, cardStyle: choiceCard(s.slug === S.svc), pick: () => this.setState({ svc: s.slug }) }));
+
+    const MODES = [
+      { key: 'virtual', label: 'Virtual', hint: 'Video call from your phone — audio-only if the network is weak.' },
+      { key: 'in_person', label: 'In person', hint: "At the firm's office in Lagos." },
+      { key: 'phone', label: 'Phone call', hint: 'A call on the number you signed in with.' }
+    ];
+    const modes = MODES.map((m) => ({
+      ...m,
+      isVirtual: m.key === 'virtual', isOffice: m.key === 'in_person', isPhone: m.key === 'phone',
+      cardStyle: choiceCard(m.key === S.mode),
+      pick: () => this.setState({ mode: m.key }),
+      iconStyle: 'flex:none;width:34px;height:34px;border-radius:8px;display:grid;place-items:center;font-size:14px;background:' + (m.key === S.mode ? 'var(--pri,#0F2A44)' : '#F3F4F6') + ';color:' + (m.key === S.mode ? '#fff' : '#6B7280')
+    }));
+
+    const DAYS = [
+      { num: 22, dow: 'Tue', full: 'Tuesday, 22 September 2026' },
+      { num: 23, dow: 'Wed', full: 'Wednesday, 23 September 2026' },
+      { num: 24, dow: 'Thu', full: 'Thursday, 24 September 2026' },
+      { num: 25, dow: 'Fri', full: 'Friday, 25 September 2026' },
+      { num: 28, dow: 'Mon', full: 'Monday, 28 September 2026' }
+    ];
+    const days = DAYS.map((d) => ({
+      ...d,
+      pick: () => this.setState({ day: d.num }),
+      style: 'min-height:56px;border-radius:9px;cursor:pointer;font-family:Inter,system-ui,sans-serif;border:1px solid ' + (d.num === S.day ? 'var(--pri,#0F2A44)' : '#E5E7EB') + ';background:' + (d.num === S.day ? 'var(--pri,#0F2A44)' : '#fff') + ';color:' + (d.num === S.day ? '#fff' : '#111827')
+    }));
+    const SLOTS = ['09:30', '11:00', '14:00', '16:30'];
+    const slots = SLOTS.map((t) => ({
+      time: t,
+      pick: () => this.setState({ slot: t }),
+      style: 'min-height:46px;border-radius:9px;cursor:pointer;font:600 13px Inter,system-ui,sans-serif;border:1px solid ' + (t === S.slot ? 'var(--pri,#0F2A44)' : '#E5E7EB') + ';background:' + (t === S.slot ? 'var(--pri,#0F2A44)' : '#fff') + ';color:' + (t === S.slot ? '#fff' : '#111827')
+    }));
+
+    const chipStyle = (on) => 'min-height:42px;padding:0 14px;border-radius:999px;cursor:pointer;font:500 12.5px Inter,system-ui,sans-serif;border:1px solid ' + (on ? 'var(--pri,#0F2A44)' : '#D1D5DB') + ';background:' + (on ? 'var(--pri,#0F2A44)' : '#fff') + ';color:' + (on ? '#fff' : '#374151');
+    const clientTypes = ['Individual', 'Business'].map((l) => ({ label: l, style: chipStyle(l === S.clientType) + 'flex:1;', pick: () => this.setState({ clientType: l }) }));
+    const AREAS = ['Property or land', 'Business or contracts', 'Family', 'Employment', 'Debt', 'Immigration'];
+    const areas = AREAS.map((l) => ({ label: l, style: chipStyle(l === S.area), pick: () => this.setState({ area: l }) }));
+    const DOC_TYPES = ['Certificate of Occupancy', 'Deed of Assignment', 'Survey plan', "Governor's Consent", 'None yet'];
+    const docTypes = DOC_TYPES.map((l) => ({
+      label: l,
+      style: chipStyle(S.docs.includes(l)),
+      pick: () => this.setState((st) => ({ docs: st.docs.includes(l) ? st.docs.filter((x) => x !== l) : [...st.docs, l] }))
+    }));
+
+    const BOOK_TITLES = ['Service', 'Format', 'Date & time', 'Details', 'Review'];
+    const chosenService = (SERVICES.find((s) => s.slug === S.svc) || SERVICES[0]).name;
+    const chosenMode = (MODES.find((m) => m.key === S.mode) || MODES[0]).label;
+    const chosenDay = (DAYS.find((d) => d.num === S.day) || DAYS[0]).full;
+
+    const PAY_METHODS = [
+      { key: 'card', label: 'Card', hint: 'Verve, Mastercard or Visa' },
+      { key: 'transfer', label: 'Bank transfer', hint: 'One-time account · confirms in under a minute' },
+      { key: 'ussd', label: 'USSD', hint: 'Dial from the phone you are holding' }
+    ];
+    const payMethods = PAY_METHODS.map((p) => ({
+      ...p,
+      isCard: p.key === 'card', isTransfer: p.key === 'transfer', isUssd: p.key === 'ussd',
+      pick: () => this.setState({ payMethod: p.key }),
+      style: 'width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;border-radius:11px;background:#fff;cursor:pointer;border:1px solid ' + (p.key === S.payMethod ? 'var(--pri,#0F2A44)' : '#E5E7EB'),
+      iconStyle: 'flex:none;width:36px;height:36px;border-radius:8px;display:grid;place-items:center;font-size:15px;background:' + (p.key === S.payMethod ? 'var(--pri,#0F2A44)' : '#F3F4F6') + ';color:' + (p.key === S.payMethod ? '#fff' : '#6B7280'),
+      radioStyle: 'flex:none;width:20px;height:20px;border-radius:999px;border:' + (p.key === S.payMethod ? '6px solid var(--pri,#0F2A44)' : '1.5px solid #D1D5DB')
+    }));
+
+    // ── lawyer data ───────────────────────────────────────────
+    const sittings = [
+      { cause: 'Adeyemi v. Lagos State Lands Bureau', suit: 'ID/4471GCM/2026', court: 'High Court of Lagos State, Ikeja Judicial Division', purpose: 'Continuation of hearing', sat: '8 Sept 2026, 09:00', since: '3 days ago', lawyer: 'B. Okafor' },
+      { cause: 'Nwosu & 2 Ors v. Zenith Freight Ltd', suit: 'FHC/L/CS/882/2026', court: 'Federal High Court, Lagos Judicial Division', purpose: 'Mention', sat: '4 Sept 2026, 09:00', since: 'last week', lawyer: 'A. Sani' }
+    ].map((s, i) => ({ ...s, rowStyle: 'display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:13px 15px;' + (i > 0 ? 'border-top:1px solid #F0EEEA' : '') }));
+
+    const todayAppts = [
+      { time: '11:00', client: 'Adaeze Okonkwo', ref: 'AK-0247', svc: 'Legal Consultation', mode: 'virtual', status: 'Confirmed', kind: 'confirmed', live: true },
+      { time: '14:30', client: 'Ifeanyi Nwosu', ref: 'AK-0252', svc: 'Contract Review', mode: 'phone', status: 'Confirmed', kind: 'confirmed', live: false },
+      { time: '16:30', client: 'Bisi Adeyemi', ref: 'AK-0253', svc: 'Legal Consultation', mode: 'in person', status: 'Awaiting payment', kind: 'awaiting', live: false }
+    ].map((a, i) => ({ ...a, rowStyle: 'display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:13px 15px;' + (i > 0 ? 'border-top:1px solid #F0EEEA' : ''), pillStyle: pill(a.kind) }));
+
+    const counters = [
+      { l: 'Open matters', v: '18', h: 'Every live file', ink: '#141414' },
+      { l: 'Court dates, 30 days', v: '7', h: 'The diary sits on each matter', ink: '#141414' },
+      { l: 'Unread messages', v: '4', h: 'Reply from the matter', ink: '#141414' },
+      { l: 'Overdue tasks', v: '2', h: 'Past their due date', ink: '#B42318' },
+      { l: 'Uploads to review', v: '3', h: 'Sent in by clients', ink: '#141414' },
+      { l: 'Service to acknowledge', v: '1', h: 'Served on your firm', ink: '#92400E' }
+    ];
+
+    const consults = [
+      { when: 'Today, 11:00', client: 'Adaeze Okonkwo', ref: 'AK-0247', svc: 'Legal Consultation', mode: 'virtual', status: 'Confirmed', kind: 'confirmed', note: 'Room opens 10:50 · intake filed', noteInk: '#15803D' },
+      { when: 'Today, 14:30', client: 'Ifeanyi Nwosu', ref: 'AK-0252', svc: 'Contract Review', mode: 'phone', status: 'Confirmed', kind: 'confirmed', note: 'No intake on file', noteInk: '#57534E' },
+      { when: 'Today, 16:30', client: 'Bisi Adeyemi', ref: 'AK-0253', svc: 'Legal Consultation', mode: 'in person', status: 'Awaiting payment', kind: 'awaiting', note: 'Hold expires 09:58 — nothing is booked yet', noteInk: '#92400E' },
+      { when: 'Mon 14 Sept, 10:00', client: 'Zenith Freight Ltd', ref: 'AK-0256', svc: 'Corporate & Commercial', mode: 'virtual', status: 'Confirmed', kind: 'confirmed', note: 'Rescheduled once', noteInk: '#57534E' }
+    ].map((c, i) => ({ ...c, rowStyle: rowBase.replace('padding:14px 16px', 'padding:13px 15px') + ';' + (i > 0 ? 'border-top:1px solid #F0EEEA' : ''), pillStyle: pill(c.kind) }));
+
+    const clients = [
+      { name: 'Adaeze Okonkwo', tag: '', contact: '+234 803 411 0982 · adaeze.o@gmail.com', contactInk: '#57534E', stats: '2 matters (2 open) · 3 consultations · last seen today', next: 'Next consultation 22 Sept 2026, 11:00', owed: '' },
+      { name: 'Zenith Freight Ltd', tag: 'business', contact: '+234 701 220 4471 · no email — receipts cannot be sent', contactInk: '#92400E', stats: '1 matter (1 open) · 1 consultation · last seen last week', next: '', owed: '₦275,000 due' },
+      { name: 'Ifeanyi Nwosu', tag: '', contact: '+234 812 006 3318 · inwosu@zenithfreight.ng', contactInk: '#57534E', stats: '1 matter (1 open) · 2 consultations · last seen 3 days ago', next: 'Next consultation today, 14:30', owed: '' },
+      { name: 'Bisi Adeyemi', tag: '', contact: '+234 809 553 1204 · no email — receipts cannot be sent', contactInk: '#92400E', stats: 'No matter · 1 consultation · not seen yet', next: 'Next consultation today, 16:30', owed: '₦50,000 due' }
+    ].map((c, i) => ({
+      ...c,
+      rowStyle: 'padding:13px 15px;' + (i > 0 ? 'border-top:1px solid #F0EEEA' : ''),
+      tagStyle: c.tag ? 'flex:none;border-radius:4px;background:#F0EEEA;color:#57534E;padding:1px 6px;font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase' : 'display:none',
+      owedStyle: c.owed ? 'flex:none;font-size:12.5px;font-weight:700;color:#92400E;white-space:nowrap' : 'display:none'
+    }));
+    const clientFilters = ['Everyone', 'Owing', 'On a matter', 'No email'].map((l) => ({
+      label: l,
+      pick: () => this.setState({ clientFilter: l }),
+      style: 'flex:none;min-height:40px;padding:0 14px;border-radius:999px;cursor:pointer;font:500 12.5px Inter,system-ui,sans-serif;border:1px solid ' + (l === S.clientFilter ? '#141414' : '#D6D3CE') + ';background:' + (l === S.clientFilter ? '#141414' : '#fff') + ';color:' + (l === S.clientFilter ? '#fff' : '#57534E')
+    }));
+
+    const meLinks = [
+      { label: 'Sittings', hint: 'The chase list and the cause list', count: '2' },
+      { label: 'Matters', hint: 'Every live file, searchable', count: '18' },
+      { label: 'Service inbox', hint: 'Process served on this firm', count: '1' },
+      { label: 'Invoices', hint: 'Issued, part-paid and overdue', count: '6' },
+      { label: 'Availability', hint: 'Hours, breaks and the daily cap', count: '' }
+    ].map((m, i) => ({
+      ...m,
+      rowStyle: 'width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 15px;background:none;border:0;' + (i > 0 ? 'border-top:1px solid #F0EEEA;' : '') + 'cursor:pointer',
+      countStyle: m.count ? 'min-width:22px;height:22px;padding:0 6px;border-radius:999px;background:#F0EEEA;color:#57534E;font-size:11px;font-weight:700;display:grid;place-items:center' : 'display:none'
+    }));
+
+    // ── connection / data honesty ─────────────────────────────
+    const weak = S.offline || S.lowData;
+    const netLabel = S.audioOnly ? 'Audio only · connection good' : (weak ? 'Connection weak' : 'Connection good');
+    const netColor = weak && !S.audioOnly ? '#D97706' : '#16A34A';
+
+    const captions = {
+      home: 'Client home, recreated from app/app/(portal)/page.tsx — welcome, quick actions, next appointment, matters, documents and notifications. Tap the firm name to switch firms.',
+      notifs: 'Notifications, from src/components/portal/notifications-list.tsx. Unread rows carry a dot and a tinted ground.',
+      appts: 'Appointments, from app/app/(portal)/appointments/page.tsx.',
+      appt: 'Appointment detail, from app/app/(portal)/appointments/[id]/page.tsx — the room opens ten minutes before the start.',
+      waiting: 'Waiting room preflight. The audio-only switch is the bandwidth-honest addition: it names the data cost before the client commits.',
+      call: 'Daily room, wrapped in Docket controls. A weak connection says so and offers the cheaper path rather than degrading silently.',
+      ended: 'After the call: what it cost in data, and where the summary will appear.',
+      matters: 'Matters, from app/app/(portal)/matters/page.tsx — court, suit number and the next date read the same way on every matter.',
+      messages: 'Messages, from app/app/(portal)/messages/page.tsx — one thread per matter and per consultation.',
+      profile: 'Profile, from app/app/(portal)/profile/page.tsx, plus the offline copy and the firm list.',
+      book: 'Booking, from app/(public)/[firm]/book/booking-wizard.tsx, restyled for the phone — eight conditional steps folded into five.',
+      pay: 'Payment, in-app. Card, transfer and USSD; the fifteen-minute hold is on screen the whole time.',
+      paid: 'Confirmation. The fee has settled to the firm, not to Docket.',
+      today: "Lawyer Today, from app/firm/(console)/page.tsx — a feed: search, the chase list first, then the day, then the counters.",
+      consults: 'Consultations, from app/firm/(console)/appointments/page.tsx.',
+      lawAppt: 'Appointment and notes, from the console appointment page. Two boxes, two audiences — the internal note has no client policy at all.',
+      lawCall: 'The lawyer holds the only owner token. The client knocks; you admit.',
+      clients: 'Clients, from app/firm/(console)/clients/page.tsx — a missing email is called out, because a receipt cannot be sent without one.',
+      me: 'Me and the firm. MFA state is visible because every write depends on it.'
+    };
+
+    return {
+      // chrome
+      frameComponent: ios ? 'IOSDevice' : 'AndroidDevice',
+      frameProps: { width: ios ? 402 : 412, height: ios ? 874 : 892, dark: darkScreen },
+      darkFrame: darkScreen && ios,
+      topPad: ios ? (fullBleed ? 50 : 54) : 6,
+      botPad: ios ? 26 : 2,
+      botPadBg: darkScreen ? '#0B0B0C' : '#fff',
+      appRootStyle: 'height:100%;display:flex;flex-direction:column;background:' + (darkScreen ? '#0B0B0C' : sur) + ";font-family:Inter,system-ui,sans-serif;--pri:" + pri + ';--acc:' + acc + ';--accInk:' + accInk + ';--head:' + head + ';--chrome:' + (darkScreen ? '#0B0B0C' : sur),
+      routeLabel: (lawyerShell ? 'lawyer' : 'client') + ' / ' + cur,
+      caption: captions[cur] || '',
+
+      shellClientBtn: this.segBtn(!lawyerShell),
+      shellLawyerBtn: this.segBtn(lawyerShell),
+      iosBtn: this.segBtn(ios),
+      androidBtn: this.segBtn(!ios),
+      useClient: () => this.setState({ shell: 'client', screen: 'home', stack: [] }),
+      useLawyer: () => this.setState({ shell: 'lawyer', screen: 'today', stack: [] }),
+      useIos: () => this.setState({ frame: 'ios' }),
+      useAndroid: () => this.setState({ frame: 'android' }),
+
+      // screen flags
+      isHome: cur === 'home', isNotifs: cur === 'notifs', isAppts: cur === 'appts', isAppt: cur === 'appt',
+      isWaiting: cur === 'waiting', isCall: cur === 'call', isEnded: cur === 'ended',
+      isMatters: cur === 'matters', isMessages: cur === 'messages', isProfile: cur === 'profile',
+      isBook: cur === 'book', isPay: cur === 'pay', isPaid: cur === 'paid',
+      isToday: cur === 'today', isConsults: cur === 'consults', isLawAppt: cur === 'lawAppt',
+      isLawCall: cur === 'lawCall', isClients: cur === 'clients', isMe: cur === 'me',
+
+      showClientNav: !lawyerShell && ['home', 'appts', 'matters', 'messages', 'profile'].includes(cur),
+      showLawyerNav: lawyerShell && ['today', 'consults', 'clients', 'me'].includes(cur),
+
+      // navigation
+      back: () => this.goBack(),
+      noop: () => {},
+      goHome: () => this.reset('home'),
+      goAppts: () => this.reset('appts'),
+      goMatters: () => this.reset('matters'),
+      goMessages: () => this.reset('messages'),
+      goProfile: () => this.reset('profile'),
+      goNotifs: () => this.nav('notifs'),
+      goAppt: () => this.nav('appt'),
+      goWaiting: () => this.nav('waiting'),
+      goBook: () => this.setState({ screen: 'book', book: 0, stack: ['home'] }),
+      goPay: () => this.nav('pay'),
+      goToday: () => this.reset('today'),
+      goConsults: () => this.reset('consults'),
+      goClients: () => this.reset('clients'),
+      goMe: () => this.reset('me'),
+      goLawAppt: () => this.nav('lawAppt'),
+      goLawCall: () => this.setState({ screen: 'lawCall', lawCall: 'waiting', stack: ['today'] }),
+
+      // firm + shell surfaces
+      firmName: F.name, leadLawyer: F.lawyer, invoiceNo: F.invoice,
+      nextRef: F.ref, nextWhen: F.when,
+      lawyerInitials: F.lawyer.split(' ').map((p) => p[0]).join(''),
+      firmList,
+      sheet: S.sheet,
+      openSheet: () => this.setState({ sheet: true }),
+      closeSheet: () => this.setState({ sheet: false }),
+
+      // data
+      matters, appointments, notifications, documents, threads,
+      services, modes, days, slots, clientTypes, areas, docTypes, payMethods,
+      sittings, todayAppts, counters, consults, clients, clientFilters, meLinks,
+      propertyPicked: S.area === 'Property or land',
+
+      // booking
+      bookTitle: BOOK_TITLES[S.book], bookNum: S.book + 1, bookPct: (S.book + 1) * 20,
+      step0: S.book === 0, step1: S.book === 1, step2: S.book === 2, step3: S.book === 3, step4: S.book === 4,
+      bookCta: S.book === 4 ? 'Confirm and pay ₦50,000' : 'Continue',
+      bookCtaStyle: primaryBtn,
+      bookNext: () => (S.book === 4 ? this.setState({ screen: 'pay', stack: ['home'] }) : this.setState({ book: S.book + 1 })),
+      bookBack: () => (S.book === 0 ? this.goBack() : this.setState({ book: S.book - 1 })),
+      chosenService, chosenMode, chosenDay, chosenSlot: S.slot,
+
+      // payment
+      payCard: S.payMethod === 'card', payTransfer: S.payMethod === 'transfer',
+      holdClock: '14:38 held',
+      payCta: S.paying ? 'Taking payment…' : 'Pay ₦50,000',
+      payCtaStyle: primaryBtn + (S.paying ? ';opacity:.6' : ''),
+      doPay: () => {
+        this.setState({ paying: true });
+        setTimeout(() => this.setState({ paying: false, screen: 'paid', stack: ['home'] }), 900);
+      },
+
+      // call
+      inLobby: S.call === 'lobby', inCall: S.call === 'in',
+      videoOn: S.call === 'in' && !S.audioOnly, audioOnly: S.audioOnly,
+      callTitle: S.call === 'lobby' ? 'Waiting room' : 'In consultation · 12:04',
+      dataWarning: S.call === 'in' && !S.audioOnly && weak,
+      dataUsed: S.audioOnly ? 'Audio only · 6 MB used' : 'Video · 74 MB used · about 6 MB a minute',
+      netLabel, netColor,
+      netBorderDark: weak && !S.audioOnly ? 'rgba(251,191,36,.34)' : 'rgba(167,216,190,.4)',
+      netBgDark: weak && !S.audioOnly ? 'rgba(180,83,9,.2)' : 'rgba(5,96,58,.24)',
+      netInkDark: weak && !S.audioOnly ? '#FDE68A' : '#A7F3D0',
+      endedData: S.audioOnly ? '6 MB' : '74 MB',
+      endedDataNote: S.audioOnly ? 'Audio only, 42 minutes. About a tenth of what video would have cost.' : 'Video, 42 minutes. Audio only would have used about 6 MB.',
+      toggleAudio: () => this.setState((st) => ({ audioOnly: !st.audioOnly })),
+      joinCall: () => this.setState({ screen: 'call', call: 'lobby', stack: ['appt'] }),
+      endCall: () => this.setState({ screen: 'ended', stack: ['appt'] }),
+      callCtl: 'width:50px;height:50px;border-radius:999px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.1);color:#fff;display:grid;place-items:center;cursor:pointer',
+      camCtl: 'width:50px;height:50px;border-radius:999px;border:1px solid ' + (S.audioOnly ? 'rgba(255,255,255,.1)' : 'rgba(255,255,255,.18)') + ';background:' + (S.audioOnly ? 'rgba(255,255,255,.04)' : 'rgba(255,255,255,.1)') + ';color:' + (S.audioOnly ? 'rgba(255,255,255,.35)' : '#fff') + ';display:grid;place-items:center;cursor:pointer',
+
+      // lawyer call
+      knocking: S.lawCall === 'waiting', lawWaiting: S.lawCall === 'waiting', lawInCall: S.lawCall === 'in',
+      lawCallTitle: S.lawCall === 'waiting' ? 'Room open' : 'In consultation · 12:04',
+      admit: () => this.setState({ lawCall: 'in' }),
+      endLawCall: () => this.setState({ screen: 'lawAppt', stack: ['today'] }),
+
+      // notes
+      notesState: S.notesSaved ? 'Saved · client notified' : 'Not written yet',
+      notesBadge: S.notesSaved
+        ? 'flex:none;border:1px solid #A7D8BE;background:#ECFDF3;color:#05603A;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700'
+        : 'flex:none;border:1px solid #F3DDA4;background:#FFFAEB;color:#92400E;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700',
+      notesCta: S.notesSaved ? 'Saved' : 'Save and mark completed',
+      saveNotes: () => this.setState({ notesSaved: true }),
+
+      // profile toggles
+      offline: S.offline,
+      offlineNote: S.offline ? 'Saved 11 Sept, 09:14 — matters, court dates and the last ten timeline entries.' : 'Keep your matters and court dates readable with no network.',
+      offlineAction: S.offline ? 'Go online' : 'Save now',
+      toggleOffline: () => this.setState((st) => ({ offline: !st.offline })),
+      toggleLowData: () => this.setState((st) => ({ lowData: !st.lowData })),
+      switchTrack: this.trackStyle(S.audioOnly, 'var(--pri,#0F2A44)'),
+      switchKnob: this.knobStyle(S.audioOnly),
+      lowDataTrack: this.trackStyle(S.lowData, 'var(--pri,#0F2A44)'),
+      lowDataKnob: this.knobStyle(S.lowData),
+
+      // style tokens
+      card, linkBtn, lawLinkBtn, quickBtn, primaryBtn, primaryBtnSm, ghostBtn, ghostBtnSm,
+      lawPrimaryBtn, lawGhostBtn, lawGhostSm, subHeader, lawSubHeader, backBtn, lawBackBtn,
+      tabHome: tab(cur === 'home'), tabAppts: tab(cur === 'appts'), tabMatters: tab(cur === 'matters'),
+      tabMessages: tab(cur === 'messages'), tabProfile: tab(cur === 'profile'),
+      tabToday: tab(cur === 'today', true), tabConsults: tab(cur === 'consults', true),
+      tabClients: tab(cur === 'clients', true), tabMe: tab(cur === 'me', true)
+    };
+  }
+
+  segBtn(on) {
+    return 'min-height:34px;padding:0 13px;border:0;border-radius:7px;cursor:pointer;font:600 12px Inter,system-ui,sans-serif;background:' +
+      (on ? '#141414' : 'transparent') + ';color:' + (on ? '#fff' : 'rgba(0,0,0,.55)');
+  }
+  trackStyle(on, onColor) {
+    return 'flex:none;width:46px;height:28px;border-radius:999px;border:0;padding:3px;cursor:pointer;display:flex;justify-content:' +
+      (on ? 'flex-end' : 'flex-start') + ';background:' + (on ? onColor : '#D1D5DB') + ';transition:background .18s ease';
+  }
+  knobStyle() {
+    return 'display:block;width:22px;height:22px;border-radius:999px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25)';
+  }
+}
+
+</script>
+</body>
+</html>

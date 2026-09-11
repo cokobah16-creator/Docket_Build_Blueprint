@@ -10,6 +10,7 @@
   --dk-surface: #f6f5f2;
   --dk-on-primary: #ffffff;
   --dk-on-accent: #ffffff;
+  --dk-accent-ink: #6b5430;
   --dk-font-heading: Georgia;
   --dk-font-body: system-ui;
 }
@@ -18,4 +19,91 @@ body {
   margin: 0;
   background-color: var(--dk-surface);
   font-family: var(--dk-font-body), system-ui, sans-serif;
+}
+
+/* ── The two app shells ──────────────────────────────────────────────────
+   Docket has two phone surfaces and they are deliberately not the same
+   colour. The client app wears the firm's brand: the client is dealing with
+   their lawyers, not with Docket. The lawyer console wears none of it — it is
+   the same working tool whichever firm you open it for, and colour in it means
+   one thing only: something is late, unpaid, or waiting on you.
+
+   Both shells are built from the same semantic tokens, so a card, a pill or a
+   row is one component in both places and only the palette moves.
+   See design/pwa/README.md. */
+
+.dk-shell {
+  --dk-app-line: #e5e7eb;      /* card and control boundary   */
+  --dk-app-rule: #f3f4f6;      /* divider inside a card       */
+  --dk-app-field: #d1d5db;     /* input and ghost-button edge */
+  --dk-app-strong: #111827;    /* titles, values              */
+  --dk-app-body: #374151;      /* prose                       */
+  --dk-app-soft: #4b5563;      /* secondary prose             */
+  --dk-app-muted: #6b7280;     /* labels, timestamps          */
+  --dk-app-tint: #fbfaf7;      /* unread / selected row       */
+  --dk-app-bar: #ebe7e0;       /* sticky sub-header hairline  */
+  min-height: 100dvh;
+  background-color: var(--dk-app-surface);
+  color: var(--dk-app-strong);
+}
+
+/* Client app — the firm's own colours. */
+.dk-shell-client {
+  --dk-app-pri: var(--dk-primary);
+  --dk-app-acc: var(--dk-accent);
+  --dk-app-acc-ink: var(--dk-accent-ink);
+  --dk-app-on-pri: var(--dk-on-primary);
+  --dk-app-head: var(--dk-font-heading);
+  --dk-app-surface: var(--dk-surface);
+}
+
+/* Lawyer console — neutral, on purpose. Never reads a firm token. */
+.dk-shell-console {
+  --dk-app-pri: #141414;
+  --dk-app-acc: #57534e;
+  --dk-app-acc-ink: #57534e;
+  --dk-app-on-pri: #ffffff;
+  --dk-app-head: Archivo;
+  --dk-app-surface: #f5f4f1;
+  --dk-app-line: #ddd9d2;
+  --dk-app-rule: #f0eeea;
+  --dk-app-field: #d6d3ce;
+  --dk-app-strong: #141414;
+  --dk-app-body: #3f3b36;
+  --dk-app-soft: #57534e;
+  --dk-app-muted: #57534e;
+  --dk-app-tint: #faf9f7;
+  --dk-app-bar: #e6e2db;
+}
+
+/* The call screen is dark in both shells: it is a video room, not a page. */
+.dk-shell-dark {
+  --dk-app-surface: #0b0b0c;
+  --dk-app-strong: #ffffff;
+  background-color: #0b0b0c;
+}
+
+/* ── Safe areas ──────────────────────────────────────────────────────────
+   Installed to the home screen, the app owns the whole display. The artboard
+   models this with fixed top/bottom pads per device; the real thing reads the
+   insets. viewport-fit=cover is set in app/layout.tsx. */
+.dk-safe-top { padding-top: env(safe-area-inset-top, 0px); }
+.dk-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* ── Motion ──────────────────────────────────────────────────────────────
+   Screen changes rise a few pixels; the "waiting" states breathe. Both are
+   decoration, so both stop for anyone who has asked motion to stop. */
+@keyframes dk-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes dk-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+.dk-rise { animation: dk-rise 0.22s ease-out; }
+.dk-pulse { animation: dk-pulse 2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dk-rise, .dk-pulse { animation: none; }
 }

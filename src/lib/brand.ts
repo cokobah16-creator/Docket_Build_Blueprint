@@ -69,6 +69,40 @@ export function readableForeground(background: string | null | undefined): strin
     : DEFAULT_TOKENS.paper;
 }
 
+/** Scale every channel of a colour by `factor`, clamped to a byte. */
+function scale(colour: string, factor: number): string | null {
+  const rgb = parseHex(colour);
+  if (!rgb) return null;
+  const byte = (v: number) =>
+    Math.round(Math.max(0, Math.min(255, v * factor)))
+      .toString(16)
+      .padStart(2, "0");
+  return `#${byte(rgb[0])}${byte(rgb[1])}${byte(rgb[2])}`;
+}
+
+/**
+ * The accent, darkened until it reads as text on a white card.
+ *
+ * A firm's accent is chosen to be drawn *as* a colour — a rule, a fill, a
+ * border. Set as type on paper it is usually too light: Attorneys Klinique's
+ * #B08D57 is 2.6:1 on white, well under the 4.5:1 body-text floor. So the
+ * accent is walked down in luminance until it clears 6:1, which is where the
+ * hand-picked inks in the PWA artboard sit (#7A5F33 is 5.98:1, #5A6152 is
+ * 6.43:1). Used for accent-coloured type only; the accent itself is unchanged
+ * wherever it is a fill or a border.
+ */
+export function accentInk(accent: string | null | undefined): string {
+  const base = accent ?? DEFAULT_TOKENS.accent;
+  if (parseHex(base) === null) return DEFAULT_TOKENS.ink;
+  for (let factor = 100; factor > 0; factor -= 1) {
+    const candidate = scale(base, factor / 100);
+    if (!candidate) break;
+    const contrast = contrastRatio(candidate, DEFAULT_TOKENS.paper);
+    if (contrast !== null && contrast >= 6) return candidate;
+  }
+  return DEFAULT_TOKENS.ink;
+}
+
 export function brandStyle(brand: FirmBrand | null | undefined): CSSProperties {
   const colours = brand?.colours ?? {};
   const fonts = brand?.fonts ?? {};
@@ -80,6 +114,7 @@ export function brandStyle(brand: FirmBrand | null | undefined): CSSProperties {
     "--dk-surface": colours.surface ?? DEFAULT_TOKENS.surface,
     "--dk-on-primary": readableForeground(primary),
     "--dk-on-accent": readableForeground(accent),
+    "--dk-accent-ink": accentInk(accent),
     "--dk-font-heading": fonts.heading ?? DEFAULT_TOKENS.headingFont,
     "--dk-font-body": fonts.body ?? DEFAULT_TOKENS.bodyFont,
   } as CSSProperties;

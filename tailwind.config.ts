@@ -34,10 +34,38 @@ const config: Config = {
           hair: "#b4b2b2",
           edge: "#7d7a7a",
         },
+        // The phone app's semantic palette. Every value resolves to a
+        // --dk-app-* variable that app/globals.css redefines per shell, so one
+        // Card or Pill component renders in the firm's colours inside /app and
+        // in the console's neutral greys inside /firm without branching.
+        dk: {
+          pri: "var(--dk-app-pri)",
+          acc: "var(--dk-app-acc)",
+          "acc-ink": "var(--dk-app-acc-ink)",
+          "on-pri": "var(--dk-app-on-pri)",
+          surface: "var(--dk-app-surface)",
+          line: "var(--dk-app-line)",
+          rule: "var(--dk-app-rule)",
+          field: "var(--dk-app-field)",
+          strong: "var(--dk-app-strong)",
+          body: "var(--dk-app-body)",
+          soft: "var(--dk-app-soft)",
+          muted: "var(--dk-app-muted)",
+          tint: "var(--dk-app-tint)",
+          bar: "var(--dk-app-bar)",
+        },
       },
       fontFamily: {
         heading: ["var(--dk-font-heading)", "Georgia", "serif"],
         body: ["var(--dk-font-body)", "system-ui", "sans-serif"],
+        // Headings inside a phone shell: the firm's face in the client app,
+        // Archivo in the console.
+        "app-head": ["var(--dk-app-head)", "Georgia", "serif"],
+        mono: ["ui-monospace", "Menlo", "monospace"],
+      },
+      boxShadow: {
+        card: "0 1px 2px rgba(16, 24, 40, 0.04)",
+        sheet: "0 -8px 32px rgba(0, 0, 0, 0.18)",
       },
       borderRadius: {
         card: "0.75rem",
