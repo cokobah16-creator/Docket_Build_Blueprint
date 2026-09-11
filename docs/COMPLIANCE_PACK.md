@@ -291,11 +291,17 @@ for a subject-access request, the `consent_records` query above is the complete 
 `profiles` is writable by its owner (`profiles_update` is `id = auth.uid()`), so a person corrects
 their own **name, email address, timezone, preferred channel and quiet hours** at `/app/profile`
 without anyone's help — those are the fields `updateProfile()` accepts (`src/lib/actions/portal.ts`),
-and they are the only ones. **Docket holds no postal address on a profile**, so there is nothing to
-rectify there; the phone number is the sign-in identity and changes by re-verifying a new number,
-not by editing a field. Anything else a person asks to correct — an address on a matter, a name on
-an invoice — is matter content, which is the firm's record: correcting it is the firm's act, and
-every change to `matters` is written to `audit_log` by `audit_row_change()`.
+and they are the only ones. `profiles` also carries `address`, `country`, `state`, `client_type`
+and `company_name`, and the console's client list reads them — but **nothing writes them**:
+`updateProfile()` does not accept them, and no staff member can update another person's profile at
+all, because `profiles_update` is `id = auth.uid()` and there is no RPC that does it for them. So
+today those columns are empty for every person and there is nothing to rectify in them; the day a
+screen starts filling them in, it must be a screen the person can correct them on too, because the
+policy already gives them that right and a field a person cannot see is one they cannot dispute.
+The phone number is the sign-in identity and changes by re-verifying a new number, not by editing
+a field. Anything else a person asks to correct — an address on a matter, a name on an invoice —
+is matter content, which is the firm's record: correcting it is the firm's act, and every change to
+`matters` is written to `audit_log` by `audit_row_change()`.
 
 ### 6c. Erasure — what actually happens, including what blocks it
 
