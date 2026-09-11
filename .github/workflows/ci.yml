@@ -1,7 +1,7 @@
 # Docket — continuous integration.
 #
-# Four things can be checked without a Supabase project, a Paystack account or a domain, and
-# all four are checked on every push:
+# Five things can be checked without a Supabase project, a Paystack account or a domain, and
+# all five are checked on every push:
 #
 #   sql        the migrations apply in order against an empty Postgres 16, the seed loads, and
 #              every suite in supabase/tests passes. This is the one that matters: the database
@@ -13,8 +13,10 @@
 #   routes     a real `next build`, checked against the content security policy: every route
 #              Next.js prerenders must be one the nonce policy accounts for, or the page ships
 #              as dead HTML. See scripts/check-prerendered-routes.mjs.
+#   compat     this branch's migrations, then main's own seed and RLS suite run against them —
+#              the deployed front end's expectations of the database, checked from main's side.
 #
-# A fifth, e2e, needs a configured Supabase project and is therefore GATED — see the bottom of
+# A sixth, e2e, needs a configured Supabase project and is therefore GATED — see the bottom of
 # this file for exactly what it needs and why it is skipped without it.
 
 name: CI
@@ -114,6 +116,74 @@ jobs:
           name: db-test-log
           path: db-test.log
           if-no-files-found: ignore
+
+  # ---------------------------------------------------------------- the schema vs the deployed code
+  #
+  # Migrations reach the live project from a branch; the front end that is actually serving comes
+  # from main. In between, the live schema is AHEAD of the code reading it — which is only safe if
+  # every read that code makes still works. supabase/tests/70_deployed_frontend_compat.sql pins
+  # that contract from this branch's side. This job checks it from main's side: it builds the
+  # database from THIS branch's migrations and then runs main's own seed and main's own RLS suite
+  # against it. If main's expectations of the database hold on this schema, the deployed front
+  # end will too.
+  #
+  # main's files are materialised under $RUNNER_TEMP, never under supabase/tests/: the sql job
+  # counts suites by listing that directory, and a file dropped there would inflate the count.
+  # main's seed is used, not this branch's — a seed difference must not read as a compat failure.
+  compat:
+    name: main's own suite against this schema
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch main
+        run: git fetch --no-tags --depth=1 origin main:refs/remotes/origin/main
+
+      - name: Install the PostgreSQL 16 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-16
+
+      - name: Build this branch's schema, then run main's seed and main's RLS suite on it
+        env:
+          PGPASSWORD: postgres
+          URL: postgres://postgres:postgres@localhost:5432
+        run: |
+          set -euo pipefail
+          T="$RUNNER_TEMP/compat"; mkdir -p "$T"
+          git show origin/main:supabase/seed.sql                     > "$T/main_seed.sql"
+          git show origin/main:supabase/tests/00_local_auth_stub.sql > "$T/main_00.sql"
+          git show origin/main:supabase/tests/10_rls_isolation.sql   > "$T/main_10.sql"
+          echo "main is $(git rev-parse --short origin/main); this branch has $(ls supabase/migrations/*.sql | wc -l) migrations"
+          psql "$URL/postgres" -v ON_ERROR_STOP=1 -q -c "drop database if exists docket_compat" -c "create database docket_compat"
+          psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f "$T/main_00.sql"
+          for f in supabase/migrations/*.sql; do psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f "$f"; done
+          psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f "$T/main_seed.sql"
+          psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f "$T/main_10.sql" 2>&1 \
+            | sed -E 's/^psql:[^:]+:[0-9]+: //' | grep -E 'PASS|FAIL|ERROR|ALL CHECKS' | tee compat.log
+          test "${PIPESTATUS[0]}" -eq 0
+          grep -q 'ALL CHECKS PASSED' compat.log || { echo "::error::main's suite did not report ALL CHECKS PASSED against this schema"; exit 1; }
+          echo "main's suite: $(grep -c 'PASS  ' compat.log) checks pass against this branch's schema"
 
   # ---------------------------------------------------------------- the app
   typecheck:
