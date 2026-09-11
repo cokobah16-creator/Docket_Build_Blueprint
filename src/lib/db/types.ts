@@ -317,6 +317,8 @@ export interface MatterRow {
   reference: string;
   title: string;
   type: string;
+  /** 'firm' (every member, the default) or 'team' (matter_lawyers only — migration 29). */
+  access: "firm" | "team";
   status_id: string | null;
   description: string | null;
   next_action: string | null;

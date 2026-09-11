@@ -143,6 +143,10 @@ Migrations apply in filename order, which is chronological:
 20260910000022_member_and_message_invariants.sqlfirm_members shut to direct writes; last-owner guard; messages immutable
 20260910000023_booking_limit_in_the_rpc.sqlthe booking rate limit inside book_appointment()
 20260910000024_wave_zero_doors.sql        dead grants revoked; notifications read_at-only for the API; push only with a subscription; audit_log.ip dropped
+20260910000025_message_reads.sql          per-reader receipts, firm_threads, who owes the reply
+20260910000026_next_action_work_item.sql  next_action gains an owner and a due day
+20260910000027_structured_client_update.sqlwhat it means / next / what you must do / when you will hear
+20260910000029_matter_walls.sql           opt-in matter walls: firms.matter_walls, matters.access, can_see_matter()
 ```
 
 Then the launch tenant's data, if you are running one:

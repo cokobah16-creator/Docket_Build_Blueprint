@@ -145,9 +145,43 @@ const patchSchema = z.object({
   handlingLawyerId: z.string().uuid().nullish(),
   originatingLawyerId: z.string().uuid().nullish(),
   closedAt: plainDay.nullable().optional(),
+  // Changed through setMatterAccess(), never here: restricting needs the caller on the team first.
 });
 
 export type MatterPatch = z.input<typeof patchSchema>;
+
+/**
+ * Restrict a matter to its team, or open it to the firm again. The database holds the rules
+ * (migration 29): the firm's walls must be on, and whoever restricts must be on the team — a wall
+ * you are outside of would lock you out. So 'team' first makes sure the caller is on the team,
+ * then sets access; 'firm' just sets it. Owners and admins outside the team cannot do either,
+ * which is what a wall means.
+ */
+export async function setMatterAccess(matterId: string, firmId: string, access: "firm" | "team"): Promise<Err> {
+  if (!z.string().uuid().safeParse(matterId).success || !z.string().uuid().safeParse(firmId).success) return { error: "Unknown matter." };
+  if (access !== "firm" && access !== "team") return { error: "Choose firm-wide or team only." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in first." };
+
+  if (access === "team") {
+    const { data: team } = await supabase.from("matter_lawyers").select("user_id, is_lead").eq("matter_id", matterId);
+    const rows = (team ?? []) as Array<{ user_id: string; is_lead: boolean }>;
+    if (!rows.some((r) => r.user_id === user.id)) {
+      const { error: teamError } = await supabase
+        .from("matter_lawyers")
+        .insert({ matter_id: matterId, firm_id: firmId, user_id: user.id, is_lead: !rows.some((r) => r.is_lead) });
+      if (teamError) return { error: teamError.message };
+    }
+  }
+
+  const { error, count } = await supabase.from("matters").update({ access }, { count: "exact" }).eq("id", matterId);
+  if (error) return { error: error.message };
+  if (count === 0) return { error: "Nothing changed: you may not be on this matter's team, or the firm's walls are off." };
+  refreshMatter(matterId);
+  return undefined;
+}
 
 /**
  * Direct update under the matters policy (staff_w). Only the keys the caller

@@ -40,8 +40,7 @@ import {
   updatePolicies,
   updateServiceOfProcess,
   withdrawDomainRequest,
-  type SettingsResult,
-} from "@/lib/actions/firm-settings";
+  type SettingsResult, updateMatterWalls } from "@/lib/actions/firm-settings";
 
 const FIELD =
   "w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-base text-gray-900 " +
@@ -74,6 +73,8 @@ export interface FirmSettingsProps {
   operations: { timezone: string; defaultCurrency: string; vatRate: string; referencePrefix: string; referenceIssued: boolean };
   settlement: { paystackSubaccount: string };
   serviceOfProcess: { accepts: boolean; chambers: string; email: string; phone: string; contactUserId: string };
+  /** firms.matter_walls: may a matter be restricted to its team? */
+  matterWalls: boolean;
   brand: FirmBrand;
   policies: { terms: PolicyDoc; privacy: PolicyDoc };
   /** Documents stored under firms.policies that validate_policies() will drop on the next write. */
@@ -205,6 +206,7 @@ export function SettingsForms(props: FirmSettingsProps) {
       <OperationsSection {...props} />
       <SettlementSection {...props} />
       <ServiceSection {...props} />
+      <WallsSection {...props} />
       <BrandSection {...props} />
       <PoliciesSection {...props} />
       <DomainSection {...props} />
@@ -429,6 +431,47 @@ function SettlementSection({ firmId, settlement }: FirmSettingsProps) {
           autoCapitalize="off"
           hint="Starts with ACCT_ and is followed by letters and digits. Copy it from your Paystack dashboard. Leave it empty to stop taking money altogether — not only new prepaid bookings, but every invoice already issued and still unpaid."
         />
+        <SaveButton pending={pending} />
+      </form>
+      <Outcome result={result} />
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------- matter walls
+
+function WallsSection({ firmId, matterWalls }: FirmSettingsProps) {
+  const { pending, result, run } = useSave();
+  const [enabled, setEnabled] = useState(matterWalls);
+
+  return (
+    <Section
+      title="Matter walls"
+      hint="Off, every member of the firm sees every matter — the default. On, a matter's team can restrict it to themselves."
+    >
+      <form
+        className="space-y-4"
+        onSubmit={(e) => {
+          e.preventDefault();
+          run(() => updateMatterWalls(firmId, enabled));
+        }}
+      >
+        <label className="flex min-h-[44px] items-start gap-3 rounded-lg border border-gray-200 px-3.5 py-3">
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />
+          <span className="text-sm text-gray-800">
+            <span className="font-medium">Members of a matter's team may restrict that matter to the team.</span>
+            <span className="mt-1 block text-gray-600">
+              A restricted matter — its documents, messages, timeline, tasks, court dates, parties and invoices — is
+              readable and writable only by the people on its team. Owners and admins are not exempt: a wall partners
+              can walk through is not a wall. The client on the matter sees exactly what they saw before. Nothing is
+              restricted by switching this on; each matter is restricted, by its own team, from its Edit tab.
+            </span>
+            <span className="mt-1 block text-gray-600">
+              It cannot be switched off while any matter is still restricted: open those first, one by one, so nobody's
+              file is quietly opened to the whole firm by a checkbox.
+            </span>
+          </span>
+        </label>
         <SaveButton pending={pending} />
       </form>
       <Outcome result={result} />

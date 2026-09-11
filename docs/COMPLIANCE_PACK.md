@@ -126,7 +126,7 @@ Three buckets (migration 4). Object paths carry the tenant, and the storage poli
 `marketing`), `version` (text), `accepted_at`.
 
 - **Insert** requires `user_id = auth.uid()` — nobody can consent on somebody else's behalf.
-- **Read** is `user_id = auth.uid() or is_firm_member(firm_id)` — the person, and the firm.
+- **Read** is `user_id = auth.uid() or is_firm_member(firm_id)` — the person, and the firm. Matter content (the matter, its documents and their bytes, updates, messages, tasks, court events, parties, counsel, process served, invoices) is further gated by `can_see_matter()` since migration 29: a matter a firm has restricted to its team is readable and writable only by that team — owners and admins included — and every definer function that takes a matter asks the same. Off by default; a firm switches it on.
 - **There is no update policy and no delete policy.** In practice the table is append-only: a
   consent record cannot be altered or removed through the API.
 - `ip` and `user_agent` columns exist and are **not populated** by the portal's consent action.

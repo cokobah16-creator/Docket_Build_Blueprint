@@ -120,12 +120,13 @@ interface MatterDetail {
   closed_at: string | null;
   originating_lawyer_id: string | null;
   handling_lawyer_id: string | null;
+  access: "firm" | "team";
 }
 
 const MATTER_COLUMNS =
   "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, next_action_owner_id, next_action_due, court_id, court_name, " +
   "suit_number, judicial_division, judge, next_event_at, next_event_note, awaiting_date, opened_at, closed_at, " +
-  "originating_lawyer_id, handling_lawyer_id";
+  "originating_lawyer_id, handling_lawyer_id, access";
 
 export default async function MatterWorkbench({
   params, searchParams,
@@ -225,6 +226,11 @@ export default async function MatterWorkbench({
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2">
             {status && <StatusChip status={status} />}
+            {matter.access === "team" && (
+              <span className="inline-flex items-center rounded-full border border-[#141414] bg-[#141414] px-2.5 py-0.5 text-xs font-medium text-white" title="Only this matter's team can open it">
+                Restricted
+              </span>
+            )}
             {matter.closed_at && <StatusPill status="closed" />}
           </div>
         </div>
@@ -689,6 +695,13 @@ async function EditSection({
   leadLawyerId: string;
   alsoOn: string[];
 }) {
+  // The firm's walls switch, read here rather than threaded through the page: a control the
+  // database will refuse is worse than none, so the panel only offers restriction when it can be
+  // granted. The team is what the page already loaded.
+  const { data: firmRow } = await ctx.supabase.from("firms").select("matter_walls").eq("id", matter.firm_id).maybeSingle();
+  const wallsEnabled = Boolean((firmRow as { matter_walls: boolean } | null)?.matter_walls);
+  const teamIds = [leadLawyerId, ...alsoOn].filter(Boolean);
+
   const courts = await courtsFor(ctx.supabase, ctx.firmId);
   return (
     <EditPanel
@@ -698,7 +711,10 @@ async function EditSection({
       statuses={statuses}
       courts={courts}
       staff={staffOptions}
+      wallsEnabled={wallsEnabled}
+      onTeam={teamIds.includes(ctx.userId)}
       initial={{
+        access: matter.access,
         reference: matter.reference,
         title: matter.title,
         causeTitle: matter.cause_title ?? "",

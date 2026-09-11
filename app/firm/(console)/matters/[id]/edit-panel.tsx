@@ -12,7 +12,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { setMatterLawyers, updateMatter } from "@/lib/actions/matters";
+import { setMatterAccess, setMatterLawyers, updateMatter } from "@/lib/actions/matters";
 import { CourtPicker } from "@/components/firm/court-picker";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,8 @@ export interface MatterEditInitial {
   leadLawyerId: string;
   alsoOn: string[];
   closedAt: string | null;
+  /** matters.access — 'firm' or 'team'. */
+  access: "firm" | "team";
 }
 
 /** Today as the firm's own calendar day — matters.closed_at is a date, not an instant. */
@@ -47,7 +49,7 @@ function todayIn(tz: string): string {
 }
 
 export function EditPanel({
-  matterId, firmId, timezone, initial, statuses, courts, staff,
+  matterId, firmId, timezone, initial, statuses, courts, staff, wallsEnabled, onTeam,
 }: {
   matterId: string;
   firmId: string;
@@ -56,8 +58,25 @@ export function EditPanel({
   statuses: MatterStatus[];
   courts: CourtRow[];
   staff: Array<{ id: string; label: string }>;
+  /** firms.matter_walls: whether restricting is possible at all in this firm. */
+  wallsEnabled: boolean;
+  /** Whether the signed-in member is on this matter's team. */
+  onTeam: boolean;
 }) {
   const router = useRouter();
+  const [accessBusy, setAccessBusy] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+  const [access, setAccess] = useState<"firm" | "team">(initial.access);
+
+  async function changeAccess(next: "firm" | "team") {
+    setAccessError(null);
+    setAccessBusy(true);
+    const r = await setMatterAccess(matterId, firmId, next);
+    setAccessBusy(false);
+    if (r?.error) { setAccessError(r.error); return; }
+    setAccess(next);
+    router.refresh();
+  }
 
   const [title, setTitle] = useState(initial.title);
   const [causeTitle, setCauseTitle] = useState(initial.causeTitle);
@@ -138,6 +157,32 @@ export function EditPanel({
 
   return (
     <div className="divide-y divide-gray-100">
+
+      {/* Access: who inside the firm may open this file. Shown only when the firm's walls are on;
+          the database refuses restriction otherwise, and a control that is always refused is
+          worse than none. */}
+      {wallsEnabled && (
+        <section className="rounded-lg border border-gray-200 p-4">
+          <h3 className="text-sm font-semibold text-gray-900">Access</h3>
+          <p className="mt-1 text-xs text-gray-600">
+            {access === "team"
+              ? "Restricted to the team on this matter. Owners and admins outside the team cannot open it either."
+              : "Every member of the firm can open this matter — the firm's default."}
+          </p>
+          {accessError && <div className="mt-2"><Alert kind="error">{accessError}</Alert></div>}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {access === "firm" ? (
+              <Button type="button" size="sm" variant="secondary" disabled={accessBusy} onClick={() => changeAccess("team")}>
+                {accessBusy ? "Restricting…" : onTeam ? "Restrict to the team" : "Put me on the team and restrict"}
+              </Button>
+            ) : (
+              <Button type="button" size="sm" variant="secondary" disabled={accessBusy} onClick={() => changeAccess("firm")}>
+                {accessBusy ? "Opening…" : "Open to the whole firm"}
+              </Button>
+            )}
+          </div>
+        </section>
+      )}
       <form onSubmit={save} className="space-y-4 px-4 py-4 sm:px-5">
         {error && <Alert kind="error" title="That was refused">{error}</Alert>}
         {saved && <Alert kind="success">Saved. Your client sees the new details on their next look.</Alert>}

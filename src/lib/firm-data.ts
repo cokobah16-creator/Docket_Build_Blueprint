@@ -194,7 +194,7 @@ export async function firmMatters(
   };
 
   const COLUMNS =
-    "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, next_action_owner_id, next_action_due, court_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at, originating_lawyer_id, handling_lawyer_id";
+    "id, firm_id, reference, title, cause_title, type, status_id, description, next_action, next_action_owner_id, next_action_due, court_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at, originating_lawyer_id, handling_lawyer_id, access";
 
   const searchFilter = opts.search
     ? `title.ilike.%${opts.search}%,reference.ilike.%${opts.search}%,suit_number.ilike.%${opts.search}%`

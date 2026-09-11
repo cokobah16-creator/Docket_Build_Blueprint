@@ -11,6 +11,28 @@ database's own words, not a rewritten version of them.
 
 ---
 
+
+## Matter walls
+
+By default every member of your firm can open every matter — the stance most partnerships want,
+and the one Docket started with. **Settings → Matter walls** switches on the option to restrict a
+matter to its team.
+
+- A matter is restricted from its **Edit** tab, by someone on its team. If you are not on the team
+  yet, the button puts you on it and restricts in one step — a wall you are outside of would lock
+  you out of the file.
+- Once restricted, the matter and everything on it — documents (the files themselves, not only
+  the list), messages, the timeline, tasks, court dates, parties, counsel, process served, invoices
+  — can be opened only by the people on its team. **Owners and admins are not exempt.** The client
+  on the matter sees exactly what they saw before.
+- Anyone on the team can add colleagues to it or open the matter to the whole firm again. The last
+  person on a restricted matter's team cannot be removed: nobody could open the file.
+- Walls cannot be switched off while any matter is still restricted. Open those matters first, one
+  by one, so no file is quietly opened to the whole firm by a checkbox.
+
+This is enforced by the database, not by the screens: a restricted matter is invisible to a
+colleague outside its team through every door, including a direct request to the API.
+
 ## Before anything else: your second factor
 
 **Every change a firm makes to itself requires two-factor authentication.** Not as policy — the
