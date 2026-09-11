@@ -1,5 +1,16 @@
 // Supabase Edge Function — notification dispatcher. pg_cron calls it every minute with the x-cron-secret header (migration 9).
-// Drains `notifications` rows with status 'queued' for email / sms / push. WhatsApp is Phase 2 (marked 'skipped').
+// Claims `notifications` rows through claim_notifications() (migration 37: status 'sending', locked, so
+// two runs never take the same row), sends each for email / sms / push, and finishes each through
+// finish_notification() with what the provider actually said: its message id, the segments, the cost
+// at the rate the platform entered, or the failure and whether it is worth trying again.
+//
+// ACCEPTED IS NOT DELIVERED. A 2xx with a message id means the provider took the message; that is
+// recorded as accepted. Delivery is written only by the delivery-receipts function, from a receipt
+// the provider signed. Web push has no receipt and stops at accepted.
+//
+// A FAILURE IS ONE OF TWO KINDS. A 5xx, a 429, a timeout, an unreachable host: transient — the row
+// goes back in the queue with a growing delay, five times. A 4xx, a rejected number, no address on
+// the profile: permanent — it fails now, and an operator decides.
 //
 // THE WORDS ARE THE FIRM'S WHERE THE FIRM HAS WRITTEN THEM. Every sentence below is Docket's,
 // and a firm may replace any of them for any event through firms.notification_templates
@@ -7,18 +18,49 @@
 // it does not override keeps Docket's words, so an empty object is the normal state and no
 // client is ever left without a message. Placeholders in {braces} are filled here.
 //
-// A RETRY COUNTS, A FAILURE DOES NOT. notifications.attempts (migration 20) belongs to
-// retry_notification(): it increments when an operator puts a failed message back in the queue
-// and refuses the sixth. This function only marks the row 'failed' — counting the failure here
-// as well would make one retry cost two, so a provider outage cannot become an endless loop of
-// texts at a client's expense and an operator is never told they have used tries they have not.
+// TWO COUNTERS, TWO MEANINGS. notifications.attempts (migration 20) belongs to retry_notification():
+// it increments when an operator puts a failed message back in the queue and refuses the sixth.
+// notifications.send_attempts (migration 37) counts this function's claims, and the automatic
+// backoff stops at five. An operator's retry resets the second and advances the first.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3';
 
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') ?? 'mailto:ops@docket.app', Deno.env.get('VAPID_PUBLIC_KEY')!, Deno.env.get('VAPID_PRIVATE_KEY')!);
 
-type Row = { id: string; user_id: string; firm_id: string | null; channel: string; event: string; attempts: number | null; payload: Record<string, any> };
+/** One claimed row, as claim_notifications() returns it: the row, the recipient, the firm. */
+type Row = {
+  id: string; user_id: string; firm_id: string | null; channel: string; event: string; payload: Record<string, any>;
+  send_attempts: number; attempts: number | null;
+  email: string | null; phone: string | null; timezone: string | null; full_name: string | null;
+  firm_name: string | null; notification_templates: Record<string, Template> | null;
+};
+
+/** A send that did not happen, and whether trying again could change that. */
+class SendError extends Error {
+  constructor(message: string, public transient: boolean, public provider: string | null) { super(message); }
+}
+/** Provider answers a retry might change: overloaded, rate-limited, or a server that fell over. */
+function transientStatus(status: number): boolean { return status === 408 || status === 429 || status >= 500; }
+
+type Sent = { provider: string; ref: string | null };
+type Rate = { unit_minor: number; currency: string; per_segment: boolean };
+
+/**
+ * How many SMS an operator is billed for. GSM-7 text fits 160 characters in one message and 153
+ * per part after; a single character outside that alphabet makes the whole text UCS-2, at 70 and
+ * 67. The extended GSM characters count double. The number the provider bills is what it charges
+ * by, so it is computed here, at send time, from the exact text sent.
+ */
+const GSM7 = /^[@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !"#¤%&'()*+,\-./0-9:;<=>?¡A-ZÄÖÑÜ§¿a-zäöñüà^{}\\\[~\]|€]*$/;
+function smsSegments(text: string): number {
+  const gsm = GSM7.test(text);
+  const length = gsm ? text.replace(/[\^{}\\\[~\]|€]/g, 'xx').length : text.length;
+  const single = gsm ? 160 : 70;
+  const part = gsm ? 153 : 67;
+  return length <= single ? 1 : Math.ceil(length / part);
+}
+
 
 /** One firm's override for one event, as validate_notification_templates() leaves it. */
 type Template = { subject?: string | null; text?: string | null };
@@ -128,43 +170,94 @@ function render(n: Row, firm: string, tz: string): { subject: string; text: stri
   }
 }
 
-async function sendEmail(to: string, subject: string, text: string, fromName: string) {
-  const r = await fetch('https://api.resend.com/emails', {
-    method: 'POST', headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: `${fromName} <${Deno.env.get('EMAIL_FROM')}>`, to, subject, text, html: `<p>${text}</p>` }),
-  });
-  if (!r.ok) throw new Error(`resend ${r.status}`);
+async function readJson(r: Response): Promise<Record<string, any>> {
+  try { return await r.json(); } catch { return {}; }
 }
 
-async function sendSms(to: string, text: string) {
-  if (to.startsWith('+234')) {
-    const r = await fetch('https://api.ng.termii.com/api/sms/send', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ api_key: Deno.env.get('TERMII_API_KEY'), to, from: Deno.env.get('TERMII_SENDER_ID') ?? 'Docket', sms: text, type: 'plain', channel: 'dnd' }),
+async function sendEmail(to: string, subject: string, text: string, fromName: string): Promise<Sent> {
+  let r: Response;
+  try {
+    r = await fetch('https://api.resend.com/emails', {
+      method: 'POST', headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: `${fromName} <${Deno.env.get('EMAIL_FROM')}>`, to, subject, text, html: `<p>${text}</p>` }),
     });
-    if (!r.ok) throw new Error(`termii ${r.status}`);
-  } else {
-    const sid = Deno.env.get('TWILIO_ACCOUNT_SID')!;
-    const r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+  } catch (e: any) { throw new SendError(`resend unreachable: ${String(e?.message ?? e)}`, true, 'resend'); }
+  const j = await readJson(r);
+  if (!r.ok) throw new SendError(`resend ${r.status}${j?.message ? `: ${j.message}` : ''}`, transientStatus(r.status), 'resend');
+  return { provider: 'resend', ref: typeof j?.id === 'string' ? j.id : null };
+}
+
+async function sendSms(to: string, text: string): Promise<Sent> {
+  if (to.startsWith('+234')) {
+    let r: Response;
+    try {
+      r = await fetch('https://api.ng.termii.com/api/sms/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ api_key: Deno.env.get('TERMII_API_KEY'), to, from: Deno.env.get('TERMII_SENDER_ID') ?? 'Docket', sms: text, type: 'plain', channel: 'dnd' }),
+      });
+    } catch (e: any) { throw new SendError(`termii unreachable: ${String(e?.message ?? e)}`, true, 'termii'); }
+    const j = await readJson(r);
+    if (!r.ok) throw new SendError(`termii ${r.status}${j?.message ? `: ${j.message}` : ''}`, transientStatus(r.status), 'termii');
+    // Termii answers 200 to a request it did not take; the body says whether it did.
+    if (String(j?.code ?? '').toLowerCase() !== 'ok') throw new SendError(`termii: ${j?.message ?? j?.code ?? 'not accepted'}`, false, 'termii');
+    return { provider: 'termii', ref: typeof j?.message_id === 'string' ? j.message_id : j?.message_id != null ? String(j.message_id) : null };
+  }
+  const sid = Deno.env.get('TWILIO_ACCOUNT_SID')!;
+  const params: Record<string, string> = { To: to, From: Deno.env.get('TWILIO_FROM')!, Body: text };
+  // Twilio reports delivery only to a callback it was given at send time; the receipts function
+  // verifies that callback against this same URL.
+  const callback = Deno.env.get('TWILIO_STATUS_CALLBACK_URL');
+  if (callback) params.StatusCallback = callback;
+  let r: Response;
+  try {
+    r = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
       method: 'POST',
       headers: { Authorization: 'Basic ' + btoa(`${sid}:${Deno.env.get('TWILIO_AUTH_TOKEN')}`), 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ To: to, From: Deno.env.get('TWILIO_FROM')!, Body: text }),
+      body: new URLSearchParams(params),
     });
-    if (!r.ok) throw new Error(`twilio ${r.status}`);
-  }
+  } catch (e: any) { throw new SendError(`twilio unreachable: ${String(e?.message ?? e)}`, true, 'twilio'); }
+  const j = await readJson(r);
+  if (!r.ok) throw new SendError(`twilio ${r.status}${j?.message ? `: ${j.message}` : ''}${j?.code ? ` (${j.code})` : ''}`, transientStatus(r.status), 'twilio');
+  return { provider: 'twilio', ref: typeof j?.sid === 'string' ? j.sid : null };
 }
 
-async function sendPush(userId: string, subject: string, text: string, url: string) {
-  const { data: subs } = await supabase.from('push_subscriptions').select('id, endpoint, keys').eq('user_id', userId);
-  if (!subs?.length) throw new Error('no push subscription');
+/** Returns how many subscriptions took the push. A subscription the browser has withdrawn is deleted. */
+async function sendPush(userId: string, subject: string, text: string, url: string): Promise<number> {
+  const { data: subs, error } = await supabase.from('push_subscriptions').select('id, endpoint, keys').eq('user_id', userId);
+  if (error) throw new SendError(`push subscriptions unreadable: ${error.message}`, true, 'webpush');
+  if (!subs?.length) throw new SendError('no push subscription', false, 'webpush');
+  let delivered = 0; let transient = false; let last = '';
   for (const s of subs) {
     try {
       await webpush.sendNotification({ endpoint: s.endpoint, keys: s.keys as any }, JSON.stringify({ title: subject, body: text, url }));
+      delivered += 1;
     } catch (e: any) {
-      if (e?.statusCode === 404 || e?.statusCode === 410) await supabase.from('push_subscriptions').delete().eq('id', s.id);
-      else throw e;
+      const code = Number(e?.statusCode ?? 0);
+      if (code === 404 || code === 410) { await supabase.from('push_subscriptions').delete().eq('id', s.id); continue; }
+      last = `push ${code || 'error'}: ${String(e?.body ?? e?.message ?? e).slice(0, 120)}`;
+      if (code === 0 || transientStatus(code)) transient = true;
     }
   }
+  if (delivered === 0) throw new SendError(last || 'every push subscription had been withdrawn', last ? transient : false, 'webpush');
+  return delivered;
+}
+
+/** The rate in force for a provider and channel, read once per run. Null means the platform has entered none. */
+const rates = new Map<string, Rate | null>();
+async function rateFor(provider: string, channel: string): Promise<Rate | null> {
+  const key = `${provider}:${channel}`;
+  if (rates.has(key)) return rates.get(key)!;
+  const { data, error } = await supabase.rpc('current_provider_rate', { p_provider: provider, p_channel: channel });
+  const row = Array.isArray(data) ? data[0] : data;
+  const rate = !error && row && row.unit_minor != null ? { unit_minor: Number(row.unit_minor), currency: String(row.currency), per_segment: Boolean(row.per_segment) } : null;
+  if (error) console.error('current_provider_rate failed', error.message);
+  rates.set(key, rate);
+  return rate;
+}
+
+async function finish(id: string, args: Record<string, unknown>) {
+  const { error } = await supabase.rpc('finish_notification', { p_id: id, ...args });
+  if (error) console.error('finish_notification failed', id, error.message);
 }
 
 Deno.serve(async (req: Request) => {
@@ -173,28 +266,24 @@ Deno.serve(async (req: Request) => {
   if (!secret || !(await cronSecretMatches(req.headers.get('x-cron-secret'), secret))) {
     return new Response('unauthorized', { status: 401 });
   }
-  const { data: rows, error } = await supabase
-    .from('notifications')
-    .select('id, user_id, firm_id, channel, event, attempts, payload, profiles!inner(email, phone, timezone, full_name), firms(name, notification_templates)')
-    .eq('status', 'queued').lte('send_after', new Date().toISOString())
-    .in('channel', ['email', 'sms', 'push', 'whatsapp'])
-    .order('created_at').limit(50);
+  // The claim is the lock: these rows are 'sending' and no other run can take them.
+  const { data: rows, error } = await supabase.rpc('claim_notifications', { p_limit: 50 });
   if (error) return new Response(error.message, { status: 500 });
 
-  let sent = 0, failed = 0, skipped = 0;
-  for (const r of rows ?? []) {
-    const prof: any = (r as any).profiles; const firm = (r as any).firms?.name ?? 'Docket';
-    const tz = prof?.timezone ?? 'Africa/Lagos';
-    const built = render(r as any, firm, tz);
+  let sent = 0, failed = 0, requeued = 0;
+  for (const r of (rows ?? []) as Row[]) {
+    const firm = r.firm_name ?? 'Docket';
+    const tz = r.timezone ?? 'Africa/Lagos';
+    const built = render(r, firm, tz);
     const url = built.url;
 
     // The firm's own words win where the firm has written them.
-    const templates = ((r as any).firms?.notification_templates ?? {}) as Record<string, Template>;
+    const templates = (r.notification_templates ?? {}) as Record<string, Template>;
     const override = templates[r.event];
     let subject = built.subject;
     let text = built.text;
     if (override && typeof override.text === 'string' && override.text.trim().length > 0) {
-      const vars = placeholders(r as any, firm, tz);
+      const vars = placeholders(r, firm, tz);
       text = fill(override.text, vars);
       // A firm may replace the sentence and leave Docket's subject line alone.
       if (typeof override.subject === 'string' && override.subject.trim().length > 0) {
@@ -204,21 +293,35 @@ Deno.serve(async (req: Request) => {
 
     const appUrl = (Deno.env.get('APP_URL') ?? '') + url;
     try {
-      if (r.channel === 'whatsapp') { await supabase.from('notifications').update({ status: 'skipped', error: 'whatsapp is phase 2' }).eq('id', r.id); skipped++; continue; }
-      if (r.channel === 'email') { if (!prof?.email) throw new Error('no email'); await sendEmail(prof.email, subject, `${text}\n\n${appUrl}`, firm); }
-      if (r.channel === 'sms')   { if (!prof?.phone) throw new Error('no phone'); await sendSms(prof.phone, `${text} ${appUrl}`); }
-      if (r.channel === 'push')  { await sendPush(r.user_id, subject, text, url); }
-      await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', r.id); sent++;
+      let result: Sent;
+      let segments = 1;
+      if (r.channel === 'email') {
+        if (!r.email) throw new SendError('no email address on the profile', false, 'resend');
+        result = await sendEmail(r.email, subject, `${text}\n\n${appUrl}`, firm);
+      } else if (r.channel === 'sms') {
+        if (!r.phone) throw new SendError('no phone number on the profile', false, null);
+        const body = `${text} ${appUrl}`;
+        result = await sendSms(r.phone, body);
+        segments = smsSegments(body);
+      } else if (r.channel === 'push') {
+        segments = await sendPush(r.user_id, subject, text, url);
+        result = { provider: 'webpush', ref: null };
+      } else {
+        throw new SendError(`channel ${r.channel} is not sent by this function`, false, null);
+      }
+      // Priced only at a rate the platform entered. Web push has no provider charge; anything
+      // else without a rate is recorded as unpriced, never as free.
+      const rate = await rateFor(result.provider, r.channel);
+      const cost = rate ? (rate.per_segment ? rate.unit_minor * Math.max(segments, 1) : rate.unit_minor) : result.provider === 'webpush' ? 0 : null;
+      await finish(r.id, { p_outcome: 'sent', p_provider: result.provider, p_provider_ref: result.ref, p_segments: segments, p_cost_minor: cost, p_cost_currency: rate?.currency ?? null });
+      sent++;
     } catch (e: any) {
-      // attempts is NOT touched here. retry_notification() (migration 20) owns that counter: it
-      // increments on every re-queue and refuses the sixth. Counting the send failure as well
-      // would make one retry cycle cost two, so an operator would get two tries and be told they
-      // had used five.
-      await supabase.from('notifications')
-        .update({ status: 'failed', error: String(e?.message ?? e).slice(0, 500) })
-        .eq('id', r.id);
-      failed++;
+      // Anything that is not a classified send failure — a bug here, a provider library throwing —
+      // is treated as transient: the row comes back, bounded, rather than dying on a guess.
+      const se = e instanceof SendError ? e : new SendError(String(e?.message ?? e), true, null);
+      await finish(r.id, { p_outcome: 'failed', p_provider: se.provider, p_error: se.message.slice(0, 500), p_failure_kind: se.transient ? 'transient' : 'permanent' });
+      if (se.transient && r.send_attempts < 5) requeued++; else failed++;
     }
   }
-  return new Response(JSON.stringify({ sent, failed, skipped }), { headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ sent, failed, requeued }), { headers: { 'Content-Type': 'application/json' } });
 });

@@ -154,6 +154,7 @@ Migrations apply in filename order, which is chronological:
 20260910000034_onboarding_and_import.sql  matters.legacy_reference; firm_onboarding_steps; firm_readiness(); import_batches/import_rows, process_import_batch(), preview_import_duplicates(), discard_import_batch(); normalise_scn() checks the number only when it changes
 20260910000035_pre_consultation_checkin.sql firms.checkin_before_confirm; document_requests and conflict_checks reach a consultation; appointment_readiness(), amend_intake_response(), confirm_appointment(); book_appointment/record_payment/reminders/release learn the hold
 20260910000036_drafts_and_retries.sql     updates.client_ref (a retry returns the posting already made); a document with no file answers no request; retire_empty_document(); storage_integrity() counts rows without a version
+20260910000037_notifications_reliability.sql notifications: provider, provider_ref, accepted_at, delivered_at, delivery_status, failure_kind, send_attempts, segments, cost; dedupe_key; claim_notifications()/finish_notification(); record_delivery_receipt(); provider_rates + set_provider_rate(); platform_notification_cost, platform_firm_active_matters
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -188,13 +189,14 @@ must enrol TOTP before `/admin` will let it do anything, because every platform 
 
 ## 3. The Edge Functions
 
-Four functions, and **three of them must be deployed with `--no-verify-jwt`**, because their callers
+Five functions, and **four of them must be deployed with `--no-verify-jwt`**, because their callers
 hold no Supabase session. There is no `supabase/config.toml` in this repository, so the flag has to
 be on the command line every time.
 
 ```bash
 supabase functions deploy paystack-webhook        --project-ref <ref> --no-verify-jwt
 supabase functions deploy dispatch-notifications  --project-ref <ref> --no-verify-jwt
+supabase functions deploy delivery-receipts       --project-ref <ref> --no-verify-jwt
 supabase functions deploy storage-manifest        --project-ref <ref> --no-verify-jwt
 supabase functions deploy video-session           --project-ref <ref>
 ```
@@ -204,7 +206,24 @@ supabase functions deploy video-session           --project-ref <ref>
   time, and re-verifies the charge against Paystack's own `/transaction/verify` before any figure
   reaches `record_payment()`.
 - **`dispatch-notifications`** is called by `pg_cron`, which sends `x-cron-secret` and nothing else.
-  That secret is its only credential and is compared as a digest, not as a string.
+  That secret is its only credential and is compared as a digest, not as a string. From v9
+  (migration 37) it claims rows through `claim_notifications()` and finishes them through
+  `finish_notification()` with the provider's own message id, the SMS segment count and the cost
+  at the rate the platform entered; a 5xx or a timeout comes back with a growing delay, five
+  times, and a 4xx or a missing address fails at once.
+- **`delivery-receipts`** is called by the providers with what became of a message, at three
+  doors: `/functions/v1/delivery-receipts/resend` (Resend's email events, signed by Svix —
+  enter that URL in Resend's dashboard with the `email.delivered`, `email.bounced`,
+  `email.delivery_delayed` and `email.complained` events, and set the signing secret as
+  `RESEND_WEBHOOK_SECRET`), `/twilio` (Twilio's status callback — nothing to enter at Twilio: the
+  dispatcher passes `TWILIO_STATUS_CALLBACK_URL` with every message, and the function verifies
+  `X-Twilio-Signature` against that same URL, so the two must be the exact same string), and
+  `/termii?token=<TERMII_WEBHOOK_TOKEN>` (Termii signs nothing, so the token is the door — enter the
+  URL with the token in Termii's dashboard as the delivery-report webhook). A delivery that does
+  not verify is recorded in `webhook_events` as `unverified`, rate-limited, and never applied; a
+  verified one writes `delivered_at` / `delivery_status` through `record_delivery_receipt()` by the
+  provider's message id. Without this function every message stops at *accepted*, which the
+  health screen says in words.
 - **`storage-manifest`** is called by `pg_cron` every ten minutes with the same `x-cron-secret`
   (migration 28). It downloads a bounded batch of objects from the `documents` and
   `intake-uploads` buckets, hashes them against `document_versions.checksum`, and writes
@@ -226,8 +245,15 @@ supabase secrets set --project-ref <ref> \
   RESEND_API_KEY=... EMAIL_FROM=notifications@example \
   TERMII_API_KEY=... TERMII_SENDER_ID=... \
   TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_FROM=+1... \
+  TWILIO_STATUS_CALLBACK_URL=https://<ref>.supabase.co/functions/v1/delivery-receipts/twilio \
+  RESEND_WEBHOOK_SECRET=whsec_... TERMII_WEBHOOK_TOKEN="$(openssl rand -hex 24)" \
   VAPID_PUBLIC_KEY=... VAPID_PRIVATE_KEY=... VAPID_SUBJECT=mailto:ops@example
 ```
+
+The three receipt secrets are new with migration 37. `TWILIO_STATUS_CALLBACK_URL` is read by both
+the dispatcher (sent with every message) and the receipts function (verified against); Resend's
+signing secret comes from the webhook it creates; the Termii token is yours to mint, and goes into
+Termii's dashboard inside the URL.
 
 `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase — do
 not set them. Generate the VAPID pair once and keep both halves: the public half also goes on
@@ -236,7 +262,8 @@ signed with a different private one.
 
 **Proves it worked:** `curl -X POST https://<ref>.supabase.co/functions/v1/dispatch-notifications`
 with no header returns `unauthorized` (401), and with the right `x-cron-secret` returns
-`{"sent":0,"failed":0,"skipped":0}`. The same call to `/functions/v1/storage-manifest` returns
+`{"sent":0,"failed":0,"requeued":0}`. `curl -X POST https://<ref>.supabase.co/functions/v1/delivery-receipts/termii`
+with no token returns `unverified` (401) and leaves an `unverified` row in `webhook_events`. The same call to `/functions/v1/storage-manifest` returns
 `forbidden` (403) without the header and a JSON count of what it verified with it; within an hour
 `/admin/health` should show every object verified and none missing.
 
@@ -411,7 +438,13 @@ changes nothing the deployed front end selects. 36 is safe either side: `post_co
 trailing defaulted parameter (the deployed form passes named arguments and resolves to it), the new
 column is nullable and unindexed until set, and the one refusal it adds — a document with no file
 cannot answer a request — is a case the deployed front end could only reach by an upload that had
-already failed.
+already failed. 37 goes **first, then the functions**: the deployed dispatcher (v8) keeps working
+against 37 — it updates rows as the service role, which the column rule lets through, and simply
+records nothing new — while v9 calls `claim_notifications()`, which exists only after 37, so v9
+deployed ahead of 37 sends nothing and answers 500 every minute. Apply 37, deploy
+`dispatch-notifications` v9 and `delivery-receipts`, set the three receipt secrets, then enter the
+provider rates on `/admin/health`; nothing the front end reads changes except the two health views
+gaining columns at the end.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

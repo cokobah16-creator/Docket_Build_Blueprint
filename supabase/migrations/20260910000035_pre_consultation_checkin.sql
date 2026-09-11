@@ -486,7 +486,7 @@ begin
       end if;
     end if;
     perform enqueue_notification(v_inv.client_id, v_inv.firm_id, 'payment_confirmed',
-      jsonb_build_object('invoice_number', v_inv.number, 'amount_minor', p_amount_minor, 'currency', p_currency));
+      jsonb_build_object('invoice_number', v_inv.number, 'amount_minor', p_amount_minor, 'currency', p_currency, 'provider_ref', p_provider_ref));
   end if;
 
   perform audit('payment.' || p_status, 'payment', v_pay, v_inv.firm_id,

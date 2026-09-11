@@ -618,14 +618,25 @@ Refuses:
 
 ### `retry_notification(p_notification uuid)`
 Returns `void`. Puts one failed message back in the queue with `send_after = now()` and
-`attempts + 1`. The dispatcher only ever reads `queued`, so without this a failed message was
-permanent.
+`attempts + 1`, and (migration 37) resets `send_attempts` and `failure_kind`, so the dispatcher's
+own bounded retry cycle starts again. `attempts` is the operator's counter; `send_attempts` is the
+dispatcher's.
 
 Refuses:
 - `not permitted` *(42501)*
 - `notification not found`
 - `only a failed notification can be sent again`
 - `this notification has already been tried N times` — the ceiling is five attempts
+
+### `set_provider_rate(p_provider text, p_channel channel, p_currency currency, p_unit_minor bigint, p_effective_from date = current_date, p_per_segment boolean = true, p_note text = null)`
+Returns `void`. **Who:** a platform admin with MFA. Records what a provider (`resend`, `termii`,
+`twilio`, `webpush`) charges per message — or per SMS segment — from the day given
+(`provider_rates`, migration 37); the same provider, channel and day is replaced. Every message
+accepted from then on carries `cost_minor` and `cost_currency` at the rate in force; a message
+accepted with no rate is **unpriced**, never free. Audits `provider_rate.set`, which the platform
+can read.
+
+Refuses: `not permitted` *(42501)* · `unknown provider <p>` · `a rate is zero or more, in minor units`
 
 ### Reference data
 There is no RPC. A platform admin with MFA writes `courts` (only rows with `firm_id is null`),
@@ -645,7 +656,12 @@ writes the audit trail and the notification queue.
 |---|---|
 | `audit(p_action, p_entity, p_entity_id, p_firm, p_meta = '{}')` | the only writer of `audit_log`, which is otherwise append-only by grant |
 | `next_reference(p_firm uuid, p_kind text) → text` | the per-firm, per-year counter behind `AK-2026-000123`. Reads `firms.reference_prefix` **live**, which is why changing the prefix mid-year splits one year's numbering across two prefixes |
-| `enqueue_notification(p_user, p_firm, p_event, p_payload, p_send_after = now())` | one row in `notifications`, honouring the recipient's channel preferences and quiet hours |
+| `enqueue_notification(p_user, p_firm, p_event, p_payload, p_send_after = now())` | one row per channel in `notifications`, honouring the recipient's channel preferences and quiet hours. Migration 37: the row carries `dedupe_key` (person, channel, event, the payload, the UTC day) under a unique index, so the same message to the same person is one row a day — a producer that fires twice, or a cron that runs twice, makes one |
+| `notification_dedupe_key(p_user, p_channel, p_event, p_payload)` | that key |
+| `claim_notifications(p_limit = 50)` | **the dispatcher's, as the service role only** (no API role may execute it, and a caller with a session is refused): marks up to `p_limit` due rows `sending` under `FOR UPDATE SKIP LOCKED` — two runs never take the same row — counting a `send_attempt`, and returns each with its recipient and firm. A claim older than ten minutes is put back first; a `whatsapp` row is skipped |
+| `finish_notification(p_id, p_outcome, p_provider, p_provider_ref, p_error, p_failure_kind, p_segments, p_cost_minor, p_cost_currency)` | the dispatcher's, as above. `sent`: the provider took it — `accepted_at`, `delivery_status = 'accepted'`, its message id, the segments and the cost. `failed` + `transient`: back in the queue after 2, 4, 8, 16 minutes, then failed for good; `failed` + `permanent`: failed now. `skipped`: not sent, with the reason |
+| `record_delivery_receipt(p_provider, p_provider_ref, p_status, p_at = now(), p_note)` | the receipts function's, as the service role only: finds the notification by the provider's message id and writes `delivered` (with `delivered_at`), `bounced`, `undelivered`, or a `note` that decides nothing. Returns the notification id, or null when no message carries that id |
+| `current_provider_rate(p_provider, p_channel)` | the rate in force today, for the dispatcher |
 | `enqueue_firm_notification(p_firm, p_event, p_payload, p_roles = {owner,admin})` | the same, to every member of a firm in those roles |
 | `seed_firm_defaults(p_firm uuid)` | matter statuses, one inactive unpriced consultation, a consultation intake form, and a `0-draft` policies skeleton. Idempotent |
 | `record_payment(p_provider, p_provider_ref, p_invoice_number, p_amount_minor, p_currency, p_status, p_raw = '{}', p_subaccount = null)` | **service role only** — the Paystack webhook. See below |
@@ -700,7 +716,10 @@ one of them.
 | `service_inbox` | the served firm | the served firm's **only** read path — never the `process_service` row, the serving firm's note, its proof, or its `documents` row |
 | `partner_attribution` | firm members | originating and handling partner attribution |
 | `reference_data_coverage` | any signed-in user | how far the reference data reaches: holidays through which year, upcoming vacations, vacations through which date, platform court count |
-| `platform_notification_health` | platform admins | the queue **grouped** by firm, status, channel and event: counts, oldest and newest, how many are overdue, most attempts, one representative error. **Never the payload and never the recipient** |
+| `platform_notification_health` | platform admins | the queue **grouped** by firm, status, channel and event: counts, oldest and newest, how many are overdue, most attempts, one representative error, and (migration 37) how many are accepted, delivered, bounced and undelivered, and the most dispatcher sends. **Never the payload and never the recipient** |
+| `platform_failed_notifications` | platform admins | one row per failed message, so it can be retried: id, firm, channel, event, attempts, error, when — and (37) `failure_kind`, `send_attempts`, `provider`. No payload, no recipient |
+| `platform_notification_cost` | platform admins | what went out, per firm and month, by provider, channel and **currency**: messages, segments, `cost_minor` at the rates entered, and how many were unpriced. Naira and dollars are never summed |
+| `platform_firm_active_matters` | platform admins | each firm's count of open matters — the denominator for cost per active matter, and the one new per-firm number the platform reads (a count, stated as a disclosure in migration 37's header) |
 | `platform_settlement_health` | platform admins | payments that are not `succeeded`: invoice number, amount, currency, both Paystack subaccount codes, `settlement_mismatch`. A deliberate narrowing of "platform admins never see matter content" — reconciling a mis-settled charge is impossible without it. No line items, no matter, no client |
 | `webhook_events` (table) | platform admins | what a provider sent, whether the signature verified, what Docket did. Written only by the Edge Function with the service role; `insert`, `update` and `delete` are revoked from `anon` and `authenticated`, so it is append-only exactly like `audit_log` |
 

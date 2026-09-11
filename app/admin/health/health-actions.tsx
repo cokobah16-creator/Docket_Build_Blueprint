@@ -1,4 +1,5 @@
-// The one thing an operator can DO from the health screen: put a failed message back in the queue.
+// The two things an operator can DO from the health screen: put a failed message back in the
+// queue, and enter what a provider charges.
 //
 // The grouped health view carries no notification id on purpose — no id means no payload and no
 // recipient, which is the boundary migration 20 drew. But retry_notification() works on ONE
@@ -36,7 +37,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 async function retryOneNotification(formData: FormData): Promise<void> {
   "use server";
 
-  const id = String(formData.get("notification") ?? "").trim();
+  const id = String(formData.get("notificationId") ?? "").trim();
   const qs = new URLSearchParams();
 
   if (!UUID_RE.test(id)) {
@@ -72,6 +73,95 @@ async function retryOneNotification(formData: FormData): Promise<void> {
   }
 
   redirect(`/admin/health?${qs.toString()}#queue`);
+}
+
+/** Enter a provider's rate. The database checks the operator, the second factor and the provider; refusals are shown word for word. */
+async function setProviderRateAction(formData: FormData): Promise<void> {
+  "use server";
+
+  const qs = new URLSearchParams();
+  const provider = String(formData.get("provider") ?? "").trim();
+  const channel = String(formData.get("channel") ?? "").trim();
+  const currency = String(formData.get("currency") ?? "").trim();
+  const amount = String(formData.get("amount") ?? "").trim();
+  const effectiveFrom = String(formData.get("effective_from") ?? "").trim();
+  const perSegment = formData.get("per_segment") === "on";
+  const note = String(formData.get("note") ?? "").trim();
+
+  const minor = Math.round(Number(amount) * 100);
+  if (!/^\d+(\.\d{1,2})?$/.test(amount) || !Number.isFinite(minor) || minor < 0) {
+    qs.set("error", "A rate is an amount like 4.00 — the currency's major unit, up to two decimals.");
+    redirect(`/admin/health?${qs.toString()}#cost`);
+  }
+  if (effectiveFrom && !/^\d{4}-\d{2}-\d{2}$/.test(effectiveFrom)) {
+    qs.set("error", "The day a rate starts is a calendar day, YYYY-MM-DD.");
+    redirect(`/admin/health?${qs.toString()}#cost`);
+  }
+  const supabase = await supabaseServer();
+  if (!supabase) {
+    qs.set("error", "Supabase is not configured on this deployment.");
+    redirect(`/admin/health?${qs.toString()}#cost`);
+  }
+  const { error } = await supabase.rpc("set_provider_rate", {
+    p_provider: provider, p_channel: channel, p_currency: currency, p_unit_minor: minor,
+    p_effective_from: effectiveFrom || null, p_per_segment: perSegment, p_note: note || null,
+  });
+  if (error) qs.set("error", error.message);
+  else { revalidatePath("/admin/health"); qs.set("done", `Rate recorded: ${provider} ${channel} at ${amount} ${currency}${perSegment ? " per segment" : " per message"}.`); }
+  redirect(`/admin/health?${qs.toString()}#cost`);
+}
+
+const RATE_PROVIDERS = ["termii", "twilio", "resend", "webpush"] as const;
+const RATE_CHANNELS = ["sms", "email", "push"] as const;
+const inputClass = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+
+/** The form that enters a rate. No client JavaScript: it posts and redirects like the retry does. */
+export function RatesForm() {
+  return (
+    <form action={setProviderRateAction} className="grid gap-3 sm:grid-cols-3">
+      <div>
+        <label htmlFor="rate-provider" className="text-sm font-medium text-gray-900">Provider</label>
+        <select id="rate-provider" name="provider" className={inputClass} defaultValue="termii">
+          {RATE_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="rate-channel" className="text-sm font-medium text-gray-900">Channel</label>
+        <select id="rate-channel" name="channel" className={inputClass} defaultValue="sms">
+          {RATE_CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+      <div>
+        <label htmlFor="rate-currency" className="text-sm font-medium text-gray-900">Currency</label>
+        <select id="rate-currency" name="currency" className={inputClass} defaultValue="NGN">
+          <option value="NGN">NGN</option>
+          <option value="USD">USD</option>
+        </select>
+      </div>
+      <div>
+        <label htmlFor="rate-amount" className="text-sm font-medium text-gray-900">Rate</label>
+        <p className="text-xs text-gray-500">In the currency's major unit, e.g. 4.00</p>
+        <input id="rate-amount" name="amount" type="text" inputMode="decimal" required className={inputClass} />
+      </div>
+      <div>
+        <label htmlFor="rate-from" className="text-sm font-medium text-gray-900">From</label>
+        <p className="text-xs text-gray-500">A calendar day. Blank means today.</p>
+        <input id="rate-from" name="effective_from" type="date" className={inputClass} />
+      </div>
+      <div className="flex items-end">
+        <label className="flex min-h-[44px] items-center gap-2 text-sm text-gray-900">
+          <input type="checkbox" name="per_segment" defaultChecked className="h-5 w-5" /> Per segment (SMS)
+        </label>
+      </div>
+      <div className="sm:col-span-2">
+        <label htmlFor="rate-note" className="text-sm font-medium text-gray-900">Note</label>
+        <input id="rate-note" name="note" type="text" maxLength={300} className={inputClass} placeholder="Which contract, which route" />
+      </div>
+      <div className="flex items-end">
+        <button type="submit" className="min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white">Record the rate</button>
+      </div>
+    </form>
+  );
 }
 
 /**
@@ -110,6 +200,13 @@ export function FailedNotifications({ rows, timezone }: { rows: FailedNotificati
               </p>
             </div>
             {row.error && <p className="mt-1 break-words text-xs text-red-800">{row.error}</p>}
+            {(row.failure_kind || row.send_attempts > 0) && (
+              <p className="mt-1 text-xs text-gray-500">
+                {row.failure_kind === "transient" ? "Transient: the dispatcher tried" : row.failure_kind === "permanent" ? "Permanent: the dispatcher tried" : "Tried"}
+                {" "}{row.send_attempts} time{row.send_attempts === 1 ? "" : "s"}{row.provider ? ` with ${row.provider}` : ""}
+                {row.failure_kind === "permanent" ? " and stopped — a retry sends the same message to the same address" : ""}.
+              </p>
+            )}
             <p className="mt-1 text-xs text-gray-500">
               Queued {formatWhen(row.created_at, timezone, { dateStyle: "medium", timeStyle: "short" })}
             </p>

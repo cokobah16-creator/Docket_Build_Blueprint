@@ -847,6 +847,7 @@ export interface WebhookEventRow {
   firm_id: string | null;
   invoice_id: string | null;
   received_at: string;
+  notification_id?: string | null;
 }
 
 /** One row per firm × status × channel × event. Counts, never payloads. */
@@ -863,6 +864,48 @@ export interface NotificationHealthRow {
   overdue: number;
   most_attempts: number;
   last_error: string | null;
+  /** Migration 37: what the provider and its receipts said, as counts. */
+  accepted: number;
+  delivered: number;
+  bounced: number;
+  undelivered: number;
+  most_send_attempts: number;
+}
+
+/** platform_notification_cost (migration 37): what went out and what it cost, per firm and month, by currency. */
+export interface NotificationCostRow {
+  firm_id: string | null;
+  firm_name: string | null;
+  firm_slug: string | null;
+  month: string;
+  provider: string | null;
+  channel: string;
+  cost_currency: "NGN" | "USD" | null;
+  messages: number;
+  segments: number;
+  /** Null when nothing in the group was priced. */
+  cost_minor: number | null;
+  /** Messages accepted at no entered rate: unpriced, not free. */
+  unpriced: number;
+}
+
+export interface FirmActiveMattersRow {
+  firm_id: string;
+  firm_name: string;
+  firm_slug: string;
+  active_matters: number;
+}
+
+export interface ProviderRateRow {
+  provider: string;
+  channel: string;
+  currency: "NGN" | "USD";
+  unit_minor: number;
+  per_segment: boolean;
+  effective_from: string;
+  note: string | null;
+  set_by: string | null;
+  created_at: string;
 }
 
 /** A payment that did not settle cleanly, down to what reconciling it needs. */
@@ -895,6 +938,9 @@ export interface FailedNotificationRow {
   error: string | null;
   created_at: string;
   send_after: string;
+  failure_kind: "transient" | "permanent" | null;
+  send_attempts: number;
+  provider: string | null;
 }
 
 /** A firm's override of the sentence a client reads for one event. */
