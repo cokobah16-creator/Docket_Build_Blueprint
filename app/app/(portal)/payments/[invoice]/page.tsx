@@ -128,6 +128,13 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               {covers ? ` · ${covers}` : ""}
               {issued ? ` · ${issued}` : ""}
             </p>
+            {/* The firm is the one party a receipt has to identify, and it was
+                being named only in the Paystack footnote — which renders only
+                while the invoice is still payable, so a settled receipt named
+                nobody. */}
+            <p className="mt-1 text-[13px] font-semibold text-dk-strong">
+              {settled ? "Paid to" : "Payable to"} {firmName}
+            </p>
           </AppCardBody>
         </AppCard>
 

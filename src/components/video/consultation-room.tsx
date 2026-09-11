@@ -310,7 +310,16 @@ export function ConsultationRoom({
     "very-low": "Connection poor",
     unknown: "Connecting…",
   };
-  const connectionLabel = audioOnly && !weak ? "Audio only · connection good" : qualityLabel[quality];
+  // "unknown" is the state before any network-quality-change has fired, which
+  // includes the whole of preflight. It must not read as a measured good
+  // connection — the pre-branch code kept it as its own grey "Connecting…"
+  // and collapsing it into the green branch was a claim the app cannot make.
+  const measured = quality !== "unknown";
+  const connectionLabel = !measured
+    ? qualityLabel.unknown
+    : audioOnly && !weak
+      ? "Audio only · connection good"
+      : qualityLabel[quality];
 
   return (
     <>
@@ -370,7 +379,7 @@ export function ConsultationRoom({
                 aria-hidden="true"
                 className={cn(
                   "h-[7px] w-[7px] flex-none rounded-full",
-                  weak ? "bg-[#D97706]" : "bg-[#16A34A]",
+                  !measured ? "bg-gray-300" : weak ? "bg-[#D97706]" : "bg-[#16A34A]",
                 )}
               />
               {connectionLabel}
@@ -418,9 +427,11 @@ export function ConsultationRoom({
               aria-live="polite"
               className={cn(
                 "inline-flex flex-none items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold",
-                weak
-                  ? "border-[rgba(251,191,36,0.34)] bg-[rgba(180,83,9,0.2)] text-[#FDE68A]"
-                  : "border-[rgba(167,216,190,0.4)] bg-[rgba(5,96,58,0.24)] text-[#A7F3D0]",
+                !measured
+                  ? "border-white/15 bg-white/10 text-white/60"
+                  : weak
+                    ? "border-[rgba(251,191,36,0.34)] bg-[rgba(180,83,9,0.2)] text-[#FDE68A]"
+                    : "border-[rgba(167,216,190,0.4)] bg-[rgba(5,96,58,0.24)] text-[#A7F3D0]",
               )}
             >
               <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-current" />

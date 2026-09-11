@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { CheckIcon, ChevronDownIcon } from "@/components/ui/icons";
 
@@ -103,13 +104,32 @@ export function FirmSwitcher({
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
 
+  const sheet = useRef<HTMLDivElement>(null);
+
+  // aria-modal is a promise to a screen reader, not a mechanism: on its own the
+  // page and the tab bar behind the scrim stayed in the focus order, so Tab
+  // walked straight out of the sheet into controls hidden underneath it. The
+  // same defect was fixed on the consent gate; this is the same remedy, and the
+  // reason the sheet is portalled to <body> — it cannot inert an ancestor of
+  // itself.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+
+    const behind = [
+      document.getElementById("app-content"),
+      document.querySelector<HTMLElement>('nav[aria-label="Primary"]'),
+    ].filter((el): el is HTMLElement => el !== null);
+    behind.forEach((el) => el.setAttribute("inert", ""));
+    sheet.current?.focus();
+
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      behind.forEach((el) => el.removeAttribute("inert"));
+    };
   }, [open]);
 
   const close = () => {
@@ -129,14 +149,14 @@ export function FirmSwitcher({
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="-mx-1 flex min-h-[28px] items-center gap-1.5 rounded px-1 text-[13px] text-dk-soft"
+        className="-mx-1 -my-2 flex min-h-[44px] items-center gap-1.5 rounded px-1 py-2 text-[13px] text-dk-soft"
       >
         {firmName}
         <ChevronDownIcon size={13} className="text-gray-400" />
         <span className="sr-only">Switch firm</span>
       </button>
 
-      {open && (
+      {open && createPortal(
         <div className="fixed inset-0 z-50">
           <button
             type="button"
@@ -145,10 +165,12 @@ export function FirmSwitcher({
             className="absolute inset-0 bg-[rgba(17,24,39,0.42)]"
           />
           <div
+            ref={sheet}
             role="dialog"
             aria-modal="true"
             aria-label="Your firms"
-            className="dk-rise absolute inset-x-0 bottom-0 rounded-t-[18px] bg-white pb-[18px] pt-2 shadow-sheet"
+            tabIndex={-1}
+            className="dk-rise absolute inset-x-0 bottom-0 rounded-t-[18px] bg-white pb-[18px] pt-2 shadow-sheet focus:outline-none"
           >
             <div className="mx-auto mb-3 mt-1.5 h-1 w-[38px] rounded-full bg-dk-line" />
             <div className="px-[18px] pb-2.5">
@@ -162,7 +184,8 @@ export function FirmSwitcher({
               <Row key={f.id} firm={f} className="px-[18px] py-3.5" />
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );

@@ -71,11 +71,11 @@ export default async function MattersPage() {
         )}
       </AppCard>
       <Footnote>
-        Timeline, documents, messages and invoices sit inside each matter. Court dates are also on{" "}
+        Timeline, documents, messages and invoices sit inside each matter. Every{" "}
         <Link href="/app/court-dates" className="font-medium text-dk-pri underline underline-offset-2">
-          your phone calendar
-        </Link>
-        .
+          court date
+        </Link>{" "}
+        is listed together, and can be downloaded for your own calendar.
       </Footnote>
     </AppScreen>
   );

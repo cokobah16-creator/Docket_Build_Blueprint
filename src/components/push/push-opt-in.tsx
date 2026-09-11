@@ -85,7 +85,7 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
         <p className="mt-0.5 text-[12px] leading-snug text-dk-muted">
           {state === "denied"
             ? "Blocked for this site. Allow notifications in your browser settings to turn them on."
-            : "Court updates and consultation reminders on this device — 24 hours, 1 hour and 10 minutes before each one."}
+            : "Court updates and consultation reminders on this device. A consultation is flagged 24 hours, 1 hour and 10 minutes before; a court date 3 days and 1 day before."}
         </p>
         {message && <p className="mt-1 text-[12px] text-red-800">{message}</p>}
       </div>

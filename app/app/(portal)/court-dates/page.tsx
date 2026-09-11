@@ -102,7 +102,7 @@ export default async function CourtDatesPage() {
         {upcoming.length === 0 ? (
           <AppEmpty
             title="No upcoming court dates"
-            hint="Your lawyer posts the next date after each sitting, and it appears here and on your phone calendar."
+            hint="Your lawyer posts the next date after each sitting, and it appears here."
           />
         ) : (
           <AppCardList>{upcoming.map(row)}</AppCardList>

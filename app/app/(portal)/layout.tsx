@@ -20,7 +20,9 @@ export default async function PortalLayout({ children }: { children: ReactNode }
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
       <ToastProvider>
         <ServiceWorkerRegistrar />
-        <div className="mx-auto w-full max-w-lg pb-28">{children}</div>
+        <div id="app-content" className="mx-auto w-full max-w-lg pb-28">
+          {children}
+        </div>
         <TabBar shell="client" />
       </ToastProvider>
     </AppShell>

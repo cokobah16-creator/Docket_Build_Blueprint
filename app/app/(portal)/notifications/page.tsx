@@ -32,6 +32,7 @@ export default async function NotificationsPage() {
         </SubHeader>
       }
     >
+      <h1 className="sr-only">Notifications</h1>
       <AppCard>
         <NotificationsList rows={rows} firmNames={firmNames} timezone={tz} />
       </AppCard>
