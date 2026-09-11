@@ -5,6 +5,7 @@
 
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
+import { firmSiteHref } from "@/lib/tenant";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
@@ -100,7 +101,7 @@ export default async function AdminPage() {
                         {f.legal_name && <p className="text-xs text-gray-500">{f.legal_name}</p>}
                       </TD>
                       <TD>
-                        <a className="text-brand underline" href={`/?firm=${f.slug}`}>{f.slug}</a>
+                        <a className="text-brand underline" href={firmSiteHref(f)}>{f.slug}</a>
                         {f.custom_domain && <p className="text-xs text-gray-500">{f.custom_domain}</p>}
                       </TD>
                       <TD>{f.state_code ?? "—"}</TD>

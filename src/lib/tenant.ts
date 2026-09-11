@@ -2,7 +2,7 @@
 // Reads only the anon-safe firm_public view over PostgREST — never the firms
 // table, never with the service role.
 
-import { restHeaders, supabaseAnonKey, supabaseUrl } from "@/lib/env";
+import { isProductionDeployment, restHeaders, supabaseAnonKey, supabaseUrl } from "@/lib/env";
 import type { FirmPublic } from "@/lib/db/types";
 
 const CACHE_TTL_MS = 60_000;
@@ -49,10 +49,29 @@ export async function firmByCustomDomain(host: string): Promise<FirmPublic | nul
 }
 
 /**
+ * The address a firm's public site is actually served from — the inverse of
+ * resolveFirm(). In production that is the firm's own domain, or its
+ * {slug}.docket.app subdomain. Outside production neither host exists, so the
+ * ?firm= fallback is the only way to reach it, which is what resolveFirm
+ * allows there and nowhere else.
+ */
+export function firmSiteHref(firm: { slug: string; custom_domain?: string | null }): string {
+  if (!isProductionDeployment()) return `/?firm=${encodeURIComponent(firm.slug)}`;
+  if (firm.custom_domain) return `https://${firm.custom_domain}`;
+  return `https://${firm.slug}.docket.app`;
+}
+
+/**
  * Resolve the request host to a firm:
  *  1. custom domain (firm_public.custom_domain)
  *  2. {slug}.docket.app subdomain
- *  3. ?firm= query parameter (dev and preview deployments)
+ *  3. ?firm= query parameter, outside production only
+ *
+ * The query parameter is a development and preview affordance, not a routing
+ * rule. A preview host is neither a firm's custom domain nor a docket.app
+ * subdomain, so without it no tenant site is reachable on a preview at all.
+ * In production the host is the only thing that selects a tenant, so that a
+ * firm's site is only ever served from an address that belongs to that firm.
  */
 export async function resolveFirm(
   host: string | null,
@@ -71,6 +90,6 @@ export async function resolveFirm(
     if (byDomain) return byDomain;
   }
 
-  if (firmParam) return firmBySlug(firmParam.toLowerCase());
+  if (firmParam && !isProductionDeployment()) return firmBySlug(firmParam.toLowerCase());
   return null;
 }
