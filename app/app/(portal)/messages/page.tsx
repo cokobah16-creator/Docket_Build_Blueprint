@@ -2,7 +2,9 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { clientTimezone, firmNamesFor } from "@/lib/portal-data";
-import { Card, CardBody, EmptyState } from "@/components/ui/card";
+import { selectedFirm } from "@/lib/portal-firm";
+import { Card, EmptyState } from "@/components/ui/card";
+import { Screen, ScreenTitle } from "@/components/portal/screen";
 import type { MessageRow } from "@/lib/db/types";
 
 export const metadata = { title: "Messages" };
@@ -14,11 +16,21 @@ export default async function MessagesPage() {
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/app/login");
+  const firm = await selectedFirm(supabase);
+
+  let matterQuery = supabase.from("matters").select("id, firm_id, reference, title").is("deleted_at", null);
+  let apptQuery = supabase.from("appointments").select("id, firm_id, reference, starts_at, status");
+  let msgQuery = supabase.from("messages").select("id, firm_id, matter_id, appointment_id, sender_id, body, attachments, read_at, created_at");
+  if (firm) {
+    matterQuery = matterQuery.eq("firm_id", firm.id);
+    apptQuery = apptQuery.eq("firm_id", firm.id);
+    msgQuery = msgQuery.eq("firm_id", firm.id);
+  }
 
   const [{ data: matterRows }, { data: apptRows }, { data: msgRows }, tz] = await Promise.all([
-    supabase.from("matters").select("id, firm_id, reference, title").is("deleted_at", null).order("opened_at", { ascending: false }).limit(50),
-    supabase.from("appointments").select("id, firm_id, reference, starts_at, status").order("starts_at", { ascending: false }).limit(20),
-    supabase.from("messages").select("id, firm_id, matter_id, appointment_id, sender_id, body, attachments, read_at, created_at").order("created_at", { ascending: false }).limit(300),
+    matterQuery.order("opened_at", { ascending: false }).limit(50),
+    apptQuery.order("starts_at", { ascending: false }).limit(20),
+    msgQuery.order("created_at", { ascending: false }).limit(300),
     clientTimezone(supabase, user.id),
   ]);
   const matters = (matterRows ?? []) as Array<{ id: string; firm_id: string; reference: string; title: string }>;
@@ -39,26 +51,41 @@ export default async function MessagesPage() {
   ].sort((a, b) => (b.last?.created_at ?? "").localeCompare(a.last?.created_at ?? ""));
 
   return (
-    <div className="space-y-5">
-      <h1 className="font-heading text-2xl font-semibold text-brand">Messages</h1>
+    <Screen>
+      <ScreenTitle>Messages</ScreenTitle>
       <Card>
         {threads.length === 0 ? (
           <EmptyState title="No conversations yet" hint="Each matter and consultation has its own secure thread with your firm." />
         ) : (
-          <CardBody className="divide-y divide-gray-100 p-0">
+          <ul>
             {threads.map((t) => (
-              <Link key={t.key} href={t.href} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-gray-50">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900">{t.title}</p>
-                  <p className="truncate text-xs text-gray-500">{t.subtitle}</p>
-                  {t.last && <p className="mt-1 truncate text-xs text-gray-600">{t.last.sender_id === user.id ? "You: " : ""}{t.last.body ?? "📎 attachment"} · {fmt.format(new Date(t.last.created_at))}</p>}
-                </div>
-                {t.unread > 0 && <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-brand-on">{t.unread}</span>}
-              </Link>
+              <li key={t.key}>
+                <Link href={t.href} className="flex items-start justify-between gap-3 border-t border-gray-100 px-4 py-3.5 first:border-t-0 hover:bg-gray-50">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold leading-snug text-gray-900">{t.title}</p>
+                    <p className="mt-0.5 truncate text-xs text-gray-500">{t.subtitle}</p>
+                    {t.last && (
+                      <p className="mt-1 truncate text-xs text-gray-600">
+                        {t.last.sender_id === user.id ? "You: " : ""}
+                        {t.last.body ?? "Attachment"} · {fmt.format(new Date(t.last.created_at))}
+                      </p>
+                    )}
+                  </div>
+                  {t.unread > 0 && (
+                    <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-brand-on">
+                      <span className="sr-only">Unread messages: </span>
+                      {t.unread}
+                    </span>
+                  )}
+                </Link>
+              </li>
             ))}
-          </CardBody>
+          </ul>
         )}
       </Card>
-    </div>
+      <p className="text-[11.5px] leading-relaxed text-gray-500">
+        Each matter and consultation has its own secure thread with {firm?.name ?? "your firm"}.
+      </p>
+    </Screen>
   );
 }

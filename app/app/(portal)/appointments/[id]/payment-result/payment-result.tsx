@@ -4,15 +4,17 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { startPayment } from "@/lib/actions/booking";
 
 export function PaymentResult({
-  appointmentId, reference, initialStatus, holdExpiresAt, startsAt, timezone, invoiceId, bookHref,
+  appointmentId, reference, initialStatus, holdExpiresAt, startsAt, timezone, invoiceId, invoiceNumber, amount, bookHref,
 }: {
   appointmentId: string; reference: string; initialStatus: string; holdExpiresAt: string | null;
-  startsAt: string; timezone: string; invoiceId: string | null; bookHref: string;
+  startsAt: string; timezone: string; invoiceId: string | null; invoiceNumber: string | null;
+  amount: string | null; bookHref: string;
 }) {
   const [status, setStatus] = useState(initialStatus);
   const [expiresAt, setExpiresAt] = useState(holdExpiresAt);
@@ -61,18 +63,46 @@ export function PaymentResult({
 
   if (status === "confirmed" || status === "rescheduled" || status === "completed") {
     return (
-      <Card>
-        <CardHeader title="You're booked" />
-        <CardBody className="space-y-4">
-          <Alert kind="success" title="Payment received">
-            Consultation {reference} is confirmed for {when} ({timezone}).
-          </Alert>
-          <div className="flex flex-wrap gap-3">
-            <Link href={`/app/appointments/${appointmentId}`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">View appointment</Link>
-            {invoiceId && <Link href={`/app/payments/${invoiceId}`} className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">Receipt</Link>}
-          </div>
-        </CardBody>
-      </Card>
+      <div className="flex flex-col gap-4 pt-3">
+        <div className="flex flex-col items-center gap-3 px-2 pb-1 pt-2 text-center">
+          <span className="grid size-[62px] place-items-center rounded-full border border-[#A7D8BE] bg-[#ECFDF3] text-[#05603A]">
+            <Icon name="check" size={30} strokeWidth={2.4} />
+          </span>
+          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">
+            Booked and paid
+          </h1>
+          <p className="max-w-[280px] text-[13.5px] leading-relaxed text-gray-600">
+            {when} ({timezone}). A receipt is on its way to your email.
+          </p>
+        </div>
+        <Card>
+          <dl>
+            <div className="flex justify-between gap-3 border-b border-gray-100 px-4 py-3 text-[13px]">
+              <dt className="text-gray-500">Reference</dt>
+              <dd className="font-mono font-semibold text-gray-900">{reference}</dd>
+            </div>
+            {invoiceNumber && (
+              <div className="flex justify-between gap-3 border-b border-gray-100 px-4 py-3 text-[13px]">
+                <dt className="text-gray-500">Invoice</dt>
+                <dd className="font-mono font-semibold text-gray-900">{invoiceNumber}</dd>
+              </div>
+            )}
+            {amount && (
+              <div className="flex justify-between gap-3 px-4 py-3 text-[13px]">
+                <dt className="text-gray-500">Paid</dt>
+                <dd className="font-bold text-gray-900">{amount}</dd>
+              </div>
+            )}
+          </dl>
+        </Card>
+        <Link href={`/app/appointments/${appointmentId}`} className={buttonClasses("primary", "lg", "w-full")}>
+          See the appointment
+        </Link>
+        <div className="flex gap-2.5">
+          <Link href="/app" className={buttonClasses("ghost", "lg", "flex-1")}>Back to home</Link>
+          {invoiceId && <Link href={`/app/payments/${invoiceId}`} className={buttonClasses("ghost", "lg", "flex-1")}>Receipt</Link>}
+        </div>
+      </div>
     );
   }
 
@@ -82,9 +112,9 @@ export function PaymentResult({
         <CardHeader title="Your hold expired" />
         <CardBody className="space-y-4">
           <Alert kind="warning">
-            We didn't receive payment in time, so the slot was released. Nothing has been charged.
+            We didn&apos;t receive payment in time, so the slot was released. Nothing has been charged.
           </Alert>
-          <Link href={bookHref} className="inline-block rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Book again</Link>
+          <Link href={bookHref} className={buttonClasses("primary", "lg", "w-full")}>Book again</Link>
         </CardBody>
       </Card>
     );
@@ -93,20 +123,20 @@ export function PaymentResult({
   return (
     <Card>
       <CardHeader title="Confirming your payment…" />
-      <CardBody className="space-y-4">
-        <p className="text-sm text-gray-700">
-          We're waiting for the payment provider to confirm. This page updates by itself — no need to refresh.
+      <CardBody className="space-y-3.5">
+        <p className="text-[13.5px] leading-relaxed text-gray-700">
+          We&apos;re waiting for the payment provider to confirm. This page updates by itself — no need to refresh.
         </p>
         {expiresAt && remainingMs > 0 && (
-          <p className="text-sm text-gray-600">
+          <p className="text-[13px] text-gray-600">
             Slot held for <span className="font-mono font-semibold text-gray-900">{mm}:{String(ss).padStart(2, "0")}</span>
           </p>
         )}
         {error && <Alert kind="error">{error}</Alert>}
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={retry}>Haven't paid yet? Pay now</Button>
-          <Link href={`/app/appointments/${appointmentId}`} className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">Appointment details</Link>
-        </div>
+        <Button onClick={retry} size="lg" className="w-full">Haven&apos;t paid yet? Pay now</Button>
+        <Link href={`/app/appointments/${appointmentId}`} className={buttonClasses("ghost", "lg", "w-full")}>
+          Appointment details
+        </Link>
       </CardBody>
     </Card>
   );

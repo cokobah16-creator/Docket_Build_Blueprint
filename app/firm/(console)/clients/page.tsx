@@ -19,8 +19,8 @@ import { formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
 import { normalizeNigerianPhone } from "@/lib/nigeria";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 
 export const metadata = { title: "Clients" };
@@ -41,7 +41,9 @@ const INVOICE_SCAN = 1000;
 const UPDATE_SCAN = 1000;
 const SHOW = 200;
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+// 16px so iOS Safari does not zoom the page when the field takes focus.
+const field =
+  "w-full min-w-0 border-0 bg-transparent py-2 text-base text-[#141414] placeholder:text-gray-500 focus:outline-none";
 
 /** Statuses that mean the person actually turned up (or was billed for turning up). */
 const SEEN_STATUSES = new Set(["confirmed", "rescheduled", "completed"]);
@@ -322,39 +324,34 @@ export default async function FirmClientsPage({
 
   const chipClass = (active: boolean) =>
     cn(
-      "flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm",
-      active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+      "flex min-h-10 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
+      active ? "border-[#141414] bg-[#141414] text-white" : "border-[#D6D3CE] bg-white text-[#57534E]",
     );
 
   const bookingHref = firm ? `/${firm.slug}/book` : null;
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold text-brand">Clients</h1>
-          <p className="text-sm text-gray-600">
-            {ctx.firmName} · {everyone.length} {everyone.length === 1 ? "person" : "people"} the firm acts for · times in {tz}
-          </p>
-        </div>
-        {bookingHref && (
-          <Link
-            href={bookingHref}
-            className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
-          >
-            Booking page
-          </Link>
-        )}
+    <div className="flex flex-col gap-3">
+      <header>
+        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Clients</h1>
+        <p className="mt-0.5 text-[12.5px] text-[#57534E]">
+          {ctx.firmName} · {everyone.length} {everyone.length === 1 ? "person" : "people"} the firm acts for
+        </p>
       </header>
 
-      {everyone.length > 0 && totalOutstanding.size > 0 && (
-        <Alert kind="info" title="Outstanding across these clients">
-          {moneyLabel(totalOutstanding)} on invoices that are issued, part-paid or overdue.{" "}
-          <Link href="/firm/invoices" className="font-medium underline">Go to invoices</Link>.
-        </Alert>
-      )}
+      <form method="get" action="/firm/clients" className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-[#DDD9D2] bg-white px-3.5">
+        {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
+        {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
+        <Icon name="search" size={17} strokeWidth={1.8} className="shrink-0 text-[#57534E]" />
+        <input
+          id="q" name="q" type="search" inputMode="search" defaultValue={search} maxLength={80}
+          placeholder="Name, company, phone or email" aria-label="Search clients"
+          className={field}
+        />
+        {filtered && <Link href="/firm/clients" className="shrink-0 text-[11.5px] font-medium text-[#57534E] underline underline-offset-2">Clear</Link>}
+      </form>
 
-      <nav aria-label="Filter clients" className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+      <nav aria-label="Filter clients" className="-mx-4 flex gap-[7px] overflow-x-auto px-4 pb-0.5">
         {FILTERS.map(([key, label]) => (
           <Link
             key={key}
@@ -368,37 +365,24 @@ export default async function FirmClientsPage({
         ))}
       </nav>
 
-      <Card>
-        <form method="get" action="/firm/clients" className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-end">
-          {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
-          {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
-          <div>
-            <label htmlFor="q" className="text-sm font-medium text-gray-900">Search</label>
-            <input
-              id="q" name="q" type="search" inputMode="search" defaultValue={search} maxLength={80}
-              placeholder="Name, company, phone or email" className={field}
-            />
-          </div>
-          <div className="flex items-center gap-3">
-            <button type="submit" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">
-              Search
-            </button>
-            {filtered && <Link href="/firm/clients" className="text-sm text-brand underline">Clear</Link>}
-          </div>
-        </form>
-      </Card>
+      {everyone.length > 0 && totalOutstanding.size > 0 && (
+        <Alert kind="warning" title="Outstanding across these clients">
+          {moneyLabel(totalOutstanding)} on invoices that are issued, part-paid or overdue.{" "}
+          <Link href="/firm/invoices" className="font-medium underline underline-offset-2">Go to invoices</Link>.
+        </Alert>
+      )}
 
       <Card>
         <CardHeader
           title={filtered ? `Matching clients (${matched.length})` : `All clients (${matched.length})`}
-          action={<Link href="/firm/matters/new" className="text-sm text-brand underline">Open a matter →</Link>}
+          action={<Link href="/firm/matters/new" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Open a matter</Link>}
         />
         {shown.length === 0 ? (
           filtered ? (
             <EmptyState
               title="Nobody matches"
               hint="Try part of a name, a company, an email address, or the last few digits of a phone number."
-              action={<Link href="/firm/clients" className="text-sm text-brand underline">Clear the search</Link>}
+              action={<Link href="/firm/clients" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Clear the search</Link>}
             />
           ) : (
             <EmptyState
@@ -413,50 +397,56 @@ export default async function FirmClientsPage({
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <Link
                       href={bookingHref}
-                      className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+                      className="flex min-h-11 items-center rounded-[9px] bg-[#141414] px-5 text-sm font-semibold text-white"
                     >
                       Open the booking page
                     </Link>
-                    <Link href="/firm/matters/new" className="text-sm text-brand underline">Open a matter instead</Link>
+                    <Link href="/firm/matters/new" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Open a matter instead</Link>
                   </div>
                 ) : (
-                  <Link href="/firm/matters/new" className="text-sm text-brand underline">Open a matter</Link>
+                  <Link href="/firm/matters/new" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Open a matter</Link>
                 )
               }
             />
           )
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul>
             {shown.map((c) => {
               const owed = moneyLabel(c.outstanding);
+              // A missing email is called out, because a receipt cannot be sent
+              // without one and nobody finds that out until it fails.
+              const noEmail = !c.email;
               return (
                 <li key={c.id}>
                   <Link
                     href={`/firm/clients/${c.id}${sp.firm ? `?firm=${sp.firm}` : ""}`}
-                    className="block px-5 py-4 hover:bg-gray-50"
+                    className="block border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-gray-50"
                   >
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900">
-                          {c.name}
-                          {c.clientType === "business" && <Badge className="ml-2">business</Badge>}
-                        </p>
-                        {c.company && c.company.trim() !== c.name && (
-                          <p className="mt-0.5 text-xs text-gray-600">{c.company}</p>
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <p className="truncate text-[13.5px] font-semibold text-[#141414]">{c.name}</p>
+                        {c.clientType === "business" && (
+                          <span className="shrink-0 rounded bg-[#F0EEEA] px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.03em] text-[#57534E]">
+                            business
+                          </span>
                         )}
                       </div>
                       {owed && (
-                        <p className="shrink-0 text-sm font-semibold text-amber-800">{owed} due</p>
+                        <p className="shrink-0 whitespace-nowrap text-[12.5px] font-bold text-[#92400E]">{owed} due</p>
                       )}
                     </div>
 
-                    <p className="mt-1 text-xs text-gray-600">
+                    {c.company && c.company.trim() !== c.name && (
+                      <p className="mt-0.5 text-[11.5px] text-[#57534E]">{c.company}</p>
+                    )}
+
+                    <p className={cn("mt-1 text-[11.5px] leading-[1.45]", noEmail ? "text-[#92400E]" : "text-[#57534E]")}>
                       {c.phone ?? "no phone on file"}
                       {" · "}
-                      {c.email ? c.email : <span className="font-medium text-amber-800">no email — receipts cannot be sent</span>}
+                      {c.email ?? "no email — receipts cannot be sent"}
                     </p>
 
-                    <p className="mt-1 text-xs text-gray-600">
+                    <p className="mt-0.5 text-[11.5px] leading-[1.45] text-[#57534E]">
                       {c.matters === 0
                         ? "No matter"
                         : `${c.matters} ${c.matters === 1 ? "matter" : "matters"}${c.openMatters > 0 ? ` (${c.openMatters} open)` : ""}`}
@@ -465,13 +455,11 @@ export default async function FirmClientsPage({
                         ? "no consultations"
                         : `${c.appointments} ${c.appointments === 1 ? "consultation" : "consultations"}`}
                       {" · "}
-                      {c.lastSeen
-                        ? `last seen ${formatWhen(c.lastSeen, tz, { dateStyle: "medium" })} (${sinceLabel(c.lastSeen, nowMs)})`
-                        : "not seen yet"}
+                      {c.lastSeen ? `last seen ${sinceLabel(c.lastSeen, nowMs)}` : "not seen yet"}
                     </p>
 
                     {c.nextAt && (
-                      <p className="mt-1 text-xs font-medium text-brand">
+                      <p className="mt-1 text-[11.5px] font-semibold text-[#141414]">
                         Next consultation {formatWhen(c.nextAt, tz, { dateStyle: "medium", timeStyle: "short" })}
                       </p>
                     )}
@@ -483,7 +471,7 @@ export default async function FirmClientsPage({
         )}
       </Card>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-[11px] leading-[1.5] text-[#57534E]">
         &ldquo;Last seen&rdquo; is the later of the most recent consultation that had already begun and was not cancelled,
         and the most recent entry posted on one of their matters. Outstanding is what is left on invoices that are issued,
         part-paid or overdue, in the currency each was billed in.

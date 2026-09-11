@@ -1,8 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { Card, EmptyState, CardBody } from "@/components/ui/card";
+import { selectedFirm } from "@/lib/portal-firm";
+import { Card, EmptyState } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
+import { buttonClasses } from "@/components/ui/button";
+import { Screen, ScreenTitle } from "@/components/portal/screen";
 
 export const metadata = { title: "Appointments" };
 
@@ -13,6 +16,7 @@ interface AppointmentRow {
   status: string;
   mode: string;
   client_timezone: string | null;
+  service_id: string | null;
 }
 
 export default async function AppointmentsPage() {
@@ -22,17 +26,25 @@ export default async function AppointmentsPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/app/login");
+  const firm = await selectedFirm(supabase);
 
-  const { data } = await supabase
+  let query = supabase
     .from("appointments")
-    .select("id, reference, starts_at, status, mode, client_timezone")
-    .order("starts_at", { ascending: false })
-    .limit(20);
+    .select("id, reference, starts_at, status, mode, client_timezone, service_id");
+  if (firm) query = query.eq("firm_id", firm.id);
+  const { data } = await query.order("starts_at", { ascending: false }).limit(20);
   const appointments = (data ?? []) as AppointmentRow[];
 
+  // One lookup for the service names rather than one per row.
+  const serviceIds = Array.from(new Set(appointments.map((a) => a.service_id).filter((v): v is string => Boolean(v))));
+  const { data: serviceRows } = serviceIds.length
+    ? await supabase.from("services").select("id, name").in("id", serviceIds)
+    : { data: [] as Array<{ id: string; name: string }> };
+  const serviceName = new Map(((serviceRows ?? []) as Array<{ id: string; name: string }>).map((s) => [s.id, s.name]));
+
   return (
-    <div className="space-y-5">
-      <h1 className="font-heading text-2xl font-semibold text-brand">Appointments</h1>
+    <Screen>
+      <ScreenTitle>Appointments</ScreenTitle>
       <Card>
         {appointments.length === 0 ? (
           <EmptyState
@@ -40,27 +52,40 @@ export default async function AppointmentsPage() {
             hint="Your booked consultations appear here with their status and join button."
           />
         ) : (
-          <CardBody className="divide-y divide-gray-100 p-0">
+          <ul>
             {appointments.map((a) => (
-              <Link key={a.id} href={`/app/appointments/${a.id}`} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-gray-50">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {new Intl.DateTimeFormat("en-GB", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                      timeZone: a.client_timezone ?? "Africa/Lagos",
-                    }).format(new Date(a.starts_at))}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {a.reference} · {a.mode}
-                  </p>
-                </div>
-                <StatusPill status={a.status as Status} />
-              </Link>
+              <li key={a.id}>
+                <Link
+                  href={`/app/appointments/${a.id}`}
+                  className="flex items-center justify-between gap-3 border-t border-gray-100 px-4 py-3.5 first:border-t-0 hover:bg-gray-50"
+                >
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">
+                      {new Intl.DateTimeFormat("en-GB", {
+                        dateStyle: "medium",
+                        timeStyle: "short",
+                        timeZone: a.client_timezone ?? "Africa/Lagos",
+                      }).format(new Date(a.starts_at))}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      <span className="font-mono">{a.reference}</span> · {a.mode.replace("_", " ")}
+                    </p>
+                    {a.service_id && serviceName.has(a.service_id) && (
+                      <p className="mt-0.5 text-xs text-gray-600">{serviceName.get(a.service_id)}</p>
+                    )}
+                  </div>
+                  <StatusPill status={a.status as Status} />
+                </Link>
+              </li>
             ))}
-          </CardBody>
+          </ul>
         )}
       </Card>
-    </div>
+      {firm && (
+        <Link href={`/${firm.slug}/book`} className={buttonClasses("primary", "lg", "w-full")}>
+          Book a Consultation
+        </Link>
+      )}
+    </Screen>
   );
 }

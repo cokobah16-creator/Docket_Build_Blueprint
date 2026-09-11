@@ -318,7 +318,7 @@ export default async function FirmClientPage({
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold text-brand">
+          <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">
             {name}
             {profile?.client_type === "business" && <Badge className="ml-2 align-middle">business</Badge>}
           </h1>

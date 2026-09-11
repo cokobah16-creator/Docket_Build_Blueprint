@@ -5,10 +5,12 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { siteOrigin } from "@/lib/site";
-import { paymentProviderFor, type Currency } from "@/lib/providers/payments";
+import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
+import { SELECTED_FIRM_COOKIE, clientFirms } from "@/lib/portal-firm";
 import type { MessageAttachment } from "@/lib/db/types";
 
 type Err = { error: string } | undefined;
@@ -21,7 +23,7 @@ async function userClient() {
 }
 
 /** Pay any open invoice (consultation or matter). Redirects to the provider checkout. */
-export async function startInvoicePayment(invoiceId: string): Promise<Err> {
+export async function startInvoicePayment(invoiceId: string, channel?: PaymentChannel | null): Promise<Err> {
   const { supabase, user } = await userClient();
   if (!supabase) return { error: "Payments are not configured yet." };
   if (!user) redirect("/app/login");
@@ -63,6 +65,7 @@ export async function startInvoicePayment(invoiceId: string): Promise<Err> {
       callbackUrl: `${origin}${resultPath}`,
       cancelUrl: `${origin}/app/payments/${invoice.id}`,
       subaccount,
+      channel: channel ?? null,
     });
     checkoutUrl = result.checkoutUrl;
   } catch (err) {
@@ -254,4 +257,39 @@ export async function signOutEverywhere(): Promise<void> {
   const supabase = await supabaseServer();
   if (supabase) await supabase.auth.signOut({ scope: "global" });
   redirect("/app/login");
+}
+
+const selectFirmSchema = z.object({ firmId: z.string().uuid() });
+
+/**
+ * Switch which firm the portal is reading — its name, its colours, its rows.
+ *
+ * The cookie is only ever set to a firm that already acts for this client, so
+ * a forged form post selects nothing. It is a view preference either way: RLS
+ * decides what every query returns, not this cookie.
+ */
+export async function selectFirm(formData: FormData): Promise<void> {
+  const parsed = selectFirmSchema.safeParse({ firmId: formData.get("firmId") });
+  if (!parsed.success) return;
+
+  const supabase = await supabaseServer();
+  if (!supabase) return;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const firms = await clientFirms(supabase);
+  if (!firms.some((f) => f.id === parsed.data.firmId)) return;
+
+  const jar = await cookies();
+  jar.set(SELECTED_FIRM_COOKIE, parsed.data.firmId, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/app",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+
+  revalidatePath("/app", "layout");
 }

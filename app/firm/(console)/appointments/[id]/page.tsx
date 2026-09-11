@@ -4,8 +4,9 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { firmById } from "@/lib/tenant";
 import { formatWhen } from "@/lib/time";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import { Badge, StatusPill, type Status } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
 import { Alert } from "@/components/ui/alert";
 import { ConsultationRoom } from "@/components/video/consultation-room";
 import { markNoShow } from "@/lib/actions/video";
@@ -68,129 +69,144 @@ export default async function FirmAppointmentPage({
     redirect(`/firm/appointments/${appointmentId}${r?.error ? `?error=${encodeURIComponent(r.error)}` : ""}`);
   };
 
+  const notesWritten = Boolean(notes?.client_summary);
+
   return (
-    <div className="space-y-5">
-      <p className="text-sm"><Link href="/firm/appointments" className="text-brand underline">← Appointments</Link></p>
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold text-brand">{svc?.name ?? "Consultation"} · {cl?.full_name ?? "Client"}</h1>
-          <p className="text-sm text-gray-600">
-            {appt.reference} · {formatWhen(appt.starts_at, tz, { dateStyle: "full", timeStyle: "short" })} ({tz}) · {svc?.duration_min ?? Math.round((endMs - startMs) / 60000)} min · {appt.mode.replace("_", " ")}
-          </p>
+    <div className="flex flex-col gap-3.5">
+      <p>
+        <Link href="/firm/appointments" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#141414]">
+          <Icon name="chevron-left" size={15} strokeWidth={2} />
+          Consultations
+        </Link>
+      </p>
+      <header>
+        <h1 className="font-heading text-xl font-bold leading-tight tracking-[-0.02em] text-[#141414]">
+          {cl?.full_name ?? "Client"}
+        </h1>
+        <p className="mt-1 text-[12.5px] text-[#57534E]">
+          {svc?.name ?? "Consultation"} · {appt.mode.replace("_", " ")} · {svc?.duration_min ?? Math.round((endMs - startMs) / 60000)} minutes
+        </p>
+        <div className="mt-2.5 flex flex-wrap items-center gap-[7px]">
+          <StatusPill status={appt.status as Status} />
+          <Badge>{formatWhen(appt.starts_at, tz, { dateStyle: "medium", timeStyle: "short" })}</Badge>
+          <Badge className="font-mono">{appt.reference}</Badge>
         </div>
-        <StatusPill status={appt.status as Status} />
       </header>
 
       {actionError && <Alert kind="error">{actionError}</Alert>}
-      {saved && <Alert kind="success">Notes saved. {appt.status === "completed" ? "The appointment is marked completed and the client can see the summary." : ""}</Alert>}
+      {saved && <Alert kind="success">Notes saved. {appt.status === "completed" ? "The consultation is marked completed and the client can see the summary." : ""}</Alert>}
       {appt.status === "cancelled" && appt.cancellation_reason && <Alert kind="warning">Cancelled: {appt.cancellation_reason}</Alert>}
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
-          {roomOpen && (
-            <Card>
-              <CardHeader title="Consultation room" />
-              <CardBody>
-                <ConsultationRoom
-                  appointmentId={appt.id}
-                  role="owner"
-                  startsAt={appt.starts_at}
-                  endsAt={appt.ends_at}
-                  counterpartLabel={cl?.full_name ?? "the client"}
-                  accent={firm?.brand?.colours?.primary ?? "#0F2A44"}
-                  notesHref={`/firm/appointments/${appt.id}?notes=1#notes`}
-                  doneHref={`/firm/appointments/${appt.id}`}
-                />
-              </CardBody>
-            </Card>
-          )}
+      {roomOpen && (
+        <Card>
+          <CardHeader title="Consultation room" />
+          <CardBody>
+            <ConsultationRoom
+              appointmentId={appt.id}
+              role="owner"
+              startsAt={appt.starts_at}
+              endsAt={appt.ends_at}
+              counterpartLabel={cl?.full_name ?? "the client"}
+              contextLabel={appt.reference}
+              // The console is the platform's own tool, so the room wears
+              // Docket's ink rather than this firm's brand colour.
+              accent="#141414"
+              notesHref={`/firm/appointments/${appt.id}?notes=1#notes`}
+              doneHref={`/firm/appointments/${appt.id}`}
+            />
+          </CardBody>
+        </Card>
+      )}
 
-          {(live || appt.status === "completed") && (
-            <Card>
-              <CardHeader title={notes ? "Consultation notes" : "Write consultation notes"} />
-              <CardBody>
-                <div id="notes" />
-                <NotesForm
-                  appointmentId={appt.id}
-                  initial={{
-                    clientSummary: notes?.client_summary ?? "",
-                    adviceGiven: notes?.advice_given ?? "",
-                    followUp: notes?.follow_up ?? "",
-                    internalNotes: internal?.body ?? "",
-                  }}
-                  canComplete={live}
-                />
-              </CardBody>
-            </Card>
-          )}
-        </div>
+      {(live || appt.status === "completed") && (
+        <Card>
+          <CardHeader
+            title="Consultation notes"
+            action={
+              notesWritten
+                ? <Badge tone="settled" icon="check">Saved · client notified</Badge>
+                : <Badge tone="waiting" icon="clock">Not written yet</Badge>
+            }
+          />
+          <CardBody>
+            <div id="notes" />
+            <NotesForm
+              appointmentId={appt.id}
+              initial={{
+                clientSummary: notes?.client_summary ?? "",
+                adviceGiven: notes?.advice_given ?? "",
+                followUp: notes?.follow_up ?? "",
+                internalNotes: internal?.body ?? "",
+              }}
+              canComplete={live}
+            />
+          </CardBody>
+        </Card>
+      )}
 
-        <div className="space-y-5">
-          <Card>
-            <CardHeader title="Client" />
-            <CardBody>
-              <dl className="space-y-2 text-sm">
-                <div><dt className="text-gray-500">Name</dt><dd className="font-medium text-gray-900">{cl?.full_name ?? "—"}</dd></div>
-                <div><dt className="text-gray-500">Phone</dt><dd className="font-medium text-gray-900">{cl?.phone ?? "—"}</dd></div>
-                <div><dt className="text-gray-500">Email</dt><dd className="font-medium text-gray-900">{cl?.email ?? "—"}</dd></div>
-                {appt.client_timezone && appt.client_timezone !== tz && (
-                  <div><dt className="text-gray-500">Client's time</dt><dd className="font-medium text-gray-900">{formatWhen(appt.starts_at, appt.client_timezone)} ({appt.client_timezone})</dd></div>
-                )}
-              </dl>
-            </CardBody>
-          </Card>
+      <Card>
+        <CardHeader title="Client" />
+        <CardBody>
+          <dl className="space-y-2 text-sm">
+            <div><dt className="text-gray-500">Name</dt><dd className="font-medium text-gray-900">{cl?.full_name ?? "—"}</dd></div>
+            <div><dt className="text-gray-500">Phone</dt><dd className="font-medium text-gray-900">{cl?.phone ?? "—"}</dd></div>
+            <div><dt className="text-gray-500">Email</dt><dd className="font-medium text-gray-900">{cl?.email ?? "—"}</dd></div>
+            {appt.client_timezone && appt.client_timezone !== tz && (
+              <div><dt className="text-gray-500">Client's time</dt><dd className="font-medium text-gray-900">{formatWhen(appt.starts_at, appt.client_timezone)} ({appt.client_timezone})</dd></div>
+            )}
+          </dl>
+        </CardBody>
+      </Card>
 
-          {answers && Object.keys(answers).length > 0 && (
-            <Card>
-              <CardHeader title="Intake answers" />
-              <CardBody>
-                <dl className="space-y-2 text-sm">
-                  {Object.entries(answers).map(([k, v]) => (
-                    <div key={k}>
-                      <dt className="text-gray-500">{k.replace(/_/g, " ")}</dt>
-                      <dd className="whitespace-pre-wrap font-medium text-gray-900">
-                        {Array.isArray(v) ? v.map((x) => (typeof x === "object" && x && "name" in (x as object) ? String((x as { name: string }).name) : String(x))).join(", ") : typeof v === "object" ? JSON.stringify(v) : String(v)}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardBody>
-            </Card>
-          )}
+      {answers && Object.keys(answers).length > 0 && (
+        <Card>
+          <CardHeader title="Intake answers" />
+          <CardBody>
+            <dl className="space-y-2 text-sm">
+              {Object.entries(answers).map(([k, v]) => (
+                <div key={k}>
+                  <dt className="text-gray-500">{k.replace(/_/g, " ")}</dt>
+                  <dd className="whitespace-pre-wrap font-medium text-gray-900">
+                    {Array.isArray(v) ? v.map((x) => (typeof x === "object" && x && "name" in (x as object) ? String((x as { name: string }).name) : String(x))).join(", ") : typeof v === "object" ? JSON.stringify(v) : String(v)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </CardBody>
+        </Card>
+      )}
 
-          {session && (
-            <Card>
-              <CardHeader title="Session" />
-              <CardBody>
-                <dl className="space-y-1 text-sm">
-                  <div className="flex justify-between gap-2"><dt className="text-gray-500">Started</dt><dd>{session.started_at ? formatWhen(session.started_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-gray-500">Client admitted</dt><dd>{session.client_admitted_at ? formatWhen(session.client_admitted_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-gray-500">Ended</dt><dd>{session.ended_at ? formatWhen(session.ended_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
-                </dl>
-              </CardBody>
-            </Card>
-          )}
+      {session && (
+        <Card>
+          <CardHeader title="Session" />
+          <CardBody>
+            <dl className="space-y-1 text-sm">
+              <div className="flex justify-between gap-2"><dt className="text-gray-500">Started</dt><dd>{session.started_at ? formatWhen(session.started_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
+              <div className="flex justify-between gap-2"><dt className="text-gray-500">Client admitted</dt><dd>{session.client_admitted_at ? formatWhen(session.client_admitted_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
+              <div className="flex justify-between gap-2"><dt className="text-gray-500">Ended</dt><dd>{session.ended_at ? formatWhen(session.ended_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
+            </dl>
+          </CardBody>
+        </Card>
+      )}
 
-          {live && (
-            <Card>
-              <CardHeader title="Reschedule" />
-              <CardBody>
-                <RescheduleForm appointmentId={appt.id} firmId={appt.firm_id} lawyerId={appt.lawyer_id} serviceId={appt.service_id} timezone={tz} />
-              </CardBody>
-            </Card>
-          )}
+      {live && (
+        <Card>
+          <CardHeader title="Reschedule" />
+          <CardBody>
+            <RescheduleForm appointmentId={appt.id} firmId={appt.firm_id} lawyerId={appt.lawyer_id} serviceId={appt.service_id} timezone={tz} />
+          </CardBody>
+        </Card>
+      )}
 
-          {canNoShow && (
-            <Card>
-              <CardHeader title="Client did not attend?" />
-              <CardBody className="space-y-2">
-                <p className="text-sm text-gray-600">Marks the appointment as a no-show. The client keeps their receipt; nothing is refunded automatically.</p>
-                <form action={noShow}><Button type="submit" variant="ghost">Mark as no-show</Button></form>
-              </CardBody>
-            </Card>
-          )}
-        </div>
-      </div>
+      {canNoShow && (
+        <Card>
+          <CardHeader title="Client did not attend?" />
+          <CardBody className="space-y-2">
+            <p className="text-sm text-gray-600">Marks the appointment as a no-show. The client keeps their receipt; nothing is refunded automatically.</p>
+            <form action={noShow}><Button type="submit" variant="ghost">Mark as no-show</Button></form>
+          </CardBody>
+        </Card>
+      )}
     </div>
   );
 }

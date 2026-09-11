@@ -4,6 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { formatMoneyMinor } from "@/lib/money";
 import { Card, CardBody, EmptyState } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
+import { Screen } from "@/components/portal/screen";
 
 export const metadata = { title: "Payments" };
 
@@ -23,7 +24,7 @@ export default async function PaymentsPage() {
   const invoices = (data ?? []) as InvoiceRow[];
 
   return (
-    <div className="space-y-5">
+    <Screen>
       <h1 className="font-heading text-2xl font-semibold text-brand">Payments</h1>
       <Card>
         {invoices.length === 0 ? (
@@ -42,6 +43,6 @@ export default async function PaymentsPage() {
           </CardBody>
         )}
       </Card>
-    </div>
+    </Screen>
   );
 }

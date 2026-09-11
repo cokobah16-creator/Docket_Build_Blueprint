@@ -1,10 +1,48 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+// Two boxes, two audiences.
+//
+// Everything in the first group reaches the client's app the moment it saves;
+// the internal note has no client-facing path at all. Which is which is the
+// single most important thing on this screen, so each field says so on its own
+// label rather than relying on the lawyer remembering the convention.
+
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { saveConsultationNotes } from "@/lib/actions/video";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+
+const field =
+  // 16px so iOS Safari does not zoom the page when the field takes focus.
+  "mt-1.5 w-full rounded-[9px] border border-[#D6D3CE] bg-white px-3 py-[11px] text-base leading-relaxed text-[#3F3B36] focus:border-[#141414] focus:outline-none";
+
+function AudienceLabel({
+  htmlFor,
+  children,
+  badge,
+  tone,
+}: {
+  htmlFor: string;
+  children: ReactNode;
+  badge: string;
+  tone: "client" | "internal";
+}) {
+  return (
+    <label htmlFor={htmlFor} className="flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-700">
+      {children}
+      <span
+        className={
+          tone === "client"
+            ? "rounded border border-[#A7D8BE] bg-[#ECFDF3] px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.03em] text-[#05603A]"
+            : "rounded border border-[#E5C4C4] bg-[#FEF3F2] px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.03em] text-[#912018]"
+        }
+      >
+        {badge}
+      </span>
+    </label>
+  );
+}
 
 export function NotesForm({
   appointmentId, initial, canComplete,
@@ -33,35 +71,46 @@ export function NotesForm({
     router.refresh();
   }
 
-  const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
-
   return (
-    <form onSubmit={onSubmit} className="space-y-4">
+    <form onSubmit={onSubmit} className="space-y-3.5">
       {error && <Alert kind="error">{error}</Alert>}
+
       <div>
-        <label htmlFor="client_summary" className="text-sm font-medium text-gray-900">Summary for the client <span className="text-red-700">*</span></label>
-        <p className="text-xs text-gray-500">Plain language. This is what the client reads in their app.</p>
+        <AudienceLabel htmlFor="client_summary" badge="Client sees" tone="client">
+          Summary for the client <span className="font-normal text-[#B42318]">*</span>
+        </AudienceLabel>
+        <p className="mt-1 text-[11.5px] text-[#57534E]">Plain language. This is what the client reads in their app.</p>
         <textarea id="client_summary" required rows={5} maxLength={4000} value={clientSummary} onChange={(e) => setClientSummary(e.target.value)} className={field} />
       </div>
+
       <div>
-        <label htmlFor="advice_given" className="text-sm font-medium text-gray-900">Advice given</label>
+        <AudienceLabel htmlFor="advice_given" badge="Client sees" tone="client">Advice given</AudienceLabel>
         <textarea id="advice_given" rows={3} maxLength={4000} value={adviceGiven} onChange={(e) => setAdviceGiven(e.target.value)} className={field} />
       </div>
+
       <div>
-        <label htmlFor="follow_up" className="text-sm font-medium text-gray-900">Next steps / follow-up</label>
+        <AudienceLabel htmlFor="follow_up" badge="Client sees" tone="client">Next steps / follow-up</AudienceLabel>
         <textarea id="follow_up" rows={3} maxLength={4000} value={followUp} onChange={(e) => setFollowUp(e.target.value)} className={field} />
       </div>
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-        <label htmlFor="internal_notes" className="text-sm font-medium text-amber-900">Internal notes (never shown to the client)</label>
+
+      <div className="border-t border-[#F0EEEA] pt-3.5">
+        <AudienceLabel htmlFor="internal_notes" badge="Never reaches the client" tone="internal">Internal note</AudienceLabel>
+        <p className="mt-1 text-[11.5px] text-[#57534E]">
+          For the file and for colleagues. It has no client-facing path at all.
+        </p>
         <textarea id="internal_notes" rows={4} maxLength={8000} value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} className={field} />
       </div>
+
       {canComplete && (
-        <label className="flex items-center gap-2 text-sm text-gray-800">
-          <input type="checkbox" checked={markCompleted} onChange={(e) => setMarkCompleted(e.target.checked)} className="h-4 w-4" />
-          Mark the appointment as completed
+        <label className="flex items-center gap-2.5 text-[13px] text-[#141414]">
+          <input type="checkbox" checked={markCompleted} onChange={(e) => setMarkCompleted(e.target.checked)} className="size-4" />
+          Mark the consultation as completed
         </label>
       )}
-      <Button type="submit" disabled={busy}>{busy ? "Saving…" : "Save notes"}</Button>
+
+      <Button type="submit" variant="neutral" size="lg" className="w-full" disabled={busy}>
+        {busy ? "Saving…" : canComplete && markCompleted ? "Save and mark completed" : "Save notes"}
+      </Button>
     </form>
   );
 }

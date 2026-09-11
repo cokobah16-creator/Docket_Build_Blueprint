@@ -5,6 +5,7 @@ import { firmById } from "@/lib/tenant";
 import { clientTimezone } from "@/lib/portal-data";
 import { Card, CardHeader } from "@/components/ui/card";
 import { MessagesThread } from "@/components/portal/messages-thread";
+import { Screen, ScreenHeader } from "@/components/portal/screen";
 import type { MessageRow } from "@/lib/db/types";
 
 export const metadata = { title: "Conversation" };
@@ -30,12 +31,15 @@ export default async function ThreadPage({ params }: { params: Promise<{ kind: s
   const law = lawyer as { id: string; full_name: string | null; title: string | null } | null;
   const senderNames = law ? { [law.id]: law.full_name ?? law.title ?? firm?.name ?? "Your lawyer" } : {};
   return (
-    <div className="space-y-5">
-      <p className="text-sm"><Link href="/app/messages" className="text-brand underline">← Messages</Link></p>
-      <Card>
-        <CardHeader title={`Consultation ${appt.reference}`} action={<Link href={`/app/appointments/${appt.id}`} className="text-sm text-brand underline">Details</Link>} />
-        <MessagesThread firmId={appt.firm_id} matterId={null} appointmentId={appt.id} userId={user.id} initial={(msgs ?? []) as MessageRow[]} timezone={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />
-      </Card>
-    </div>
+    <>
+      <ScreenHeader back="/app/messages" backLabel="Back to messages" title={`Consultation ${appt.reference}`}>
+        <Link href={`/app/appointments/${appt.id}`} className="shrink-0 text-[12.5px] font-medium text-brand underline underline-offset-2">Details</Link>
+      </ScreenHeader>
+      <Screen>
+        <Card>
+          <MessagesThread firmId={appt.firm_id} matterId={null} appointmentId={appt.id} userId={user.id} initial={(msgs ?? []) as MessageRow[]} timezone={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />
+        </Card>
+      </Screen>
+    </>
   );
 }
