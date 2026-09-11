@@ -91,7 +91,6 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                   <option value="sms">SMS</option>
                   <option value="email">Email</option>
                   <option value="push">Push</option>
-                  <option value="whatsapp">WhatsApp (coming later)</option>
                   <option value="in_app">In-app only</option>
                 </select>
               </div>

@@ -212,7 +212,8 @@ const profileSchema = z.object({
   fullName: z.string().trim().max(120),
   email: z.string().trim().email().max(200).or(z.literal("")),
   timezone: z.string().min(1).max(64),
-  preferredChannel: z.enum(["in_app", "push", "email", "sms", "whatsapp"]),
+  // No whatsapp: nothing delivers on it yet, and a channel that delivers nothing is not a choice.
+  preferredChannel: z.enum(["in_app", "push", "email", "sms"]),
   quietStart: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).or(z.literal("")),
   quietEnd: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).or(z.literal("")),
 });
