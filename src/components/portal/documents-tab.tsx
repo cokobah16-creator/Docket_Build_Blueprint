@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { recordDocumentOpen } from "@/lib/document-open";
 import { createDocument, finalizeDocumentVersion, fulfilDocumentRequest } from "@/lib/actions/portal";
 import { isLowData } from "@/lib/low-data";
 import { Button } from "@/components/ui/button";
@@ -45,7 +46,8 @@ export function DocumentsTab({
   const upload = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
-    if (!file) return;
+    // A cancelled picker leaves no request pending: the next generic upload must not answer it.
+    if (!file) { setForRequest(null); return; }
     setError(null);
     if (file.size > MAX_BYTES) { setError("Files must be 25 MB or smaller."); return; }
     const supabase = supabaseBrowser();
@@ -76,8 +78,8 @@ export function DocumentsTab({
     if (!supabase) return;
     // The read is recorded first, and the record is what the storage policy checks (migration
     // 30): without it the signed URL is refused. Not a courtesy log — the door.
-    const { error: openErr } = await supabase.rpc("open_document_version", { p_version: doc.version.id });
-    if (openErr) { setError(openErr.message); setPreview(null); return; }
+    const refused = await recordDocumentOpen(supabase, doc.version.id);
+    if (refused) { setError(refused); setPreview(null); return; }
     const { data, error: sErr } = await supabase.storage.from("documents").createSignedUrl(doc.version.storage_path, 120);
     if (sErr || !data?.signedUrl) { setError(sErr?.message ?? "Could not open the document."); setPreview(null); return; }
     setPreview({ doc, url: data.signedUrl, loading: false });
@@ -101,7 +103,10 @@ export function DocumentsTab({
       {canUpload && (
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
           <p className="text-xs text-gray-500">PDF, Word, JPEG, PNG or HEIC · up to 25 MB · shared with your firm</p>
-          <label className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">
+          <label
+            onClick={() => setForRequest(null)}
+            className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
+          >
             {busy ?? "Upload a document"}
             <input ref={fileInput} type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
           </label>

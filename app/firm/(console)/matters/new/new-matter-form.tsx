@@ -521,7 +521,7 @@ export function NewMatterForm({
               <button
                 key={mode}
                 type="button"
-                onClick={() => { setClientMode(mode); setError(null); }}
+                onClick={() => { setClientMode(mode); setError(null); setCheck(null); }}
                 aria-pressed={clientMode === mode}
                 className={cn(
                   "flex min-h-[44px] items-center rounded-full border px-4 text-sm",
@@ -567,7 +567,7 @@ export function NewMatterForm({
                     <p className="text-sm font-medium text-gray-900">{client.full_name ?? "Client"}</p>
                     <p className="text-xs text-gray-600">{[client.phone, client.email].filter(Boolean).join(" · ") || "No contact details on file"}</p>
                   </div>
-                  <button type="button" onClick={() => setClient(null)} className="text-sm text-gray-600 underline">Change</button>
+                  <button type="button" onClick={() => { setClient(null); setCheck(null); }} className="text-sm text-gray-600 underline">Change</button>
                 </div>
               )}
 
@@ -577,7 +577,7 @@ export function NewMatterForm({
                     <li key={p.id}>
                       <button
                         type="button"
-                        onClick={() => { setClient(p); setHits([]); }}
+                        onClick={() => { setClient(p); setHits([]); setCheck(null); }}
                         className="flex min-h-[44px] w-full flex-col justify-center rounded-lg border border-gray-200 px-3 py-2 text-left hover:border-brand"
                       >
                         <span className="text-sm font-medium text-gray-900">{p.full_name ?? "Client"}</span>
@@ -658,9 +658,10 @@ export function NewMatterForm({
             <label htmlFor="other_side" className="text-sm font-medium text-gray-900">Who is on the other side</label>
             <p className="text-xs text-gray-500">
               One per line, as on the process. Other spellings after a slash, separated by commas:{" "}
-              <em>Emeka Eze / E. Eze, Chief Eze</em>. Recorded on the matter; never shown to the client.
+              <em>Emeka Eze / E. Eze, Chief Eze</em>. Recorded on the matter; never shown to the client. Changing
+              this, or the client, discards a check already run: the database admits only the names it searched.
             </p>
-            <textarea id="other_side" rows={3} maxLength={4000} value={otherSide} onChange={(e) => setOtherSide(e.target.value)} className={field} />
+            <textarea id="other_side" rows={3} maxLength={4000} value={otherSide} onChange={(e) => { setOtherSide(e.target.value); setCheck(null); }} className={field} />
           </div>
           <div>
             <label htmlFor="extra_names" className="text-sm font-medium text-gray-900">Also check</label>

@@ -153,5 +153,29 @@ begin
   perform t_reset();
 end $$;
 
+-- ---------------------------------------------------------------- 7. the review round (migration 33): invitations, acceptance, the last member
+do $$
+declare a uuid := (select v from fx where k='a'); b uuid := (select v from fx where k='b'); ad uuid := (select v from fx where k='admin'); f uuid := (select v from fx where k='firm'); m uuid := (select v from fx where k='matter'); m2 uuid; r jsonb; tok text; ok bool;
+begin
+  -- walls back on; B alone on the team; the matter restricted again
+  perform t_as(ad); update firms set matter_walls = true where id = f; perform t_reset();
+  perform t_as(b); update matters set access = 'team' where id = m;
+  r := invite_matter_party(m, '+2348030000077', null, 'client');
+  tok := r ->> 'token';
+  perform t_check('B, on the team, invites a client', tok is not null);
+  perform t_reset(); perform t_as(a);
+  perform t_check('A, outside the wall, cannot read the invitation — nor its token', not exists (select 1 from invites where matter_id = m));
+  perform t_check('and cannot accept it as a member of the firm', t_refused(format('select accept_invite(%L)', tok), '42501'));
+  perform t_check('A is not on the matter', not exists (select 1 from matter_parties where matter_id = m and user_id = a));
+  perform t_reset();
+  insert into matters (firm_id, reference, title, type, handling_lawyer_id) values (f, 'WL-M-2026-000002', 'Elsewhere', 'advisory', b);
+  select id into m2 from matters where reference = 'WL-M-2026-000002';
+  perform t_as(b);
+  ok := t_refused(format('update matter_lawyers set matter_id = %L where matter_id = %L and user_id = %L', m2, m, b), '42501');
+  perform t_check('the last member cannot move off a restricted matter by update either', ok);
+  perform t_check('the team still stands', exists (select 1 from matter_lawyers where matter_id = m and user_id = b));
+  perform t_reset();
+end $$;
+
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
 rollback;

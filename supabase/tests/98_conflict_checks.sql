@@ -186,13 +186,13 @@ begin
   perform t_check('open_matter with a client and no check is refused',
     t_fails(format('select open_matter(%L, ''Blocked'', ''advisory'', %L)', f, c2), 'cleared conflict check'));
   -- a check run before the matter exists, decided conflict, does not open it
-  r := run_conflict_check(f, null, array['Amina Bello']);
+  r := run_conflict_check(f, null, array['Amina Bello', 'Bello Holdings Ltd']);
   c := (r ->> 'check_id')::uuid;
   perform t_check('open_matter refuses an undecided check', t_fails(format('select open_matter(%L, ''Blocked'', ''advisory'', %L, null, null, null, null, null, null, null, ''new_inquiry'', null, %L)', f, c2, c), 'decide the conflict check'));
   perform decide_conflict_check(c, 'conflict', 'We act against Bello Holdings in CC-M-2026-000001');
   perform t_check('a check that found a conflict does not clear the matter', t_fails(format('select open_matter(%L, ''Blocked'', ''advisory'', %L, null, null, null, null, null, null, null, ''new_inquiry'', null, %L)', f, c2, c), 'cleared conflict check'));
   -- a second check, waived with a note, opens it and is attached
-  r := run_conflict_check(f, null, array['Amina Bello']);
+  r := run_conflict_check(f, null, array['Amina Bello', 'Bello Holdings Ltd', 'Kola Adeyemi']);
   c := (r ->> 'check_id')::uuid;
   perform decide_conflict_check(c, 'waived', 'Both clients gave informed consent in writing, 10 Sep 2026');
   r := open_matter(f, 'Bello advisory', 'advisory', c2, null, null, null, null, null, null, null, 'new_inquiry', null, c,
@@ -205,6 +205,16 @@ begin
   -- M2 is cleared: the client joins by invitation
   r := invite_matter_party(m2, '+2348030000003', null, 'client');
   perform t_check('a cleared matter takes a client invitation', r ? 'token');
+  -- the review round (migration 33)
+  perform t_check('a client row cannot be moved onto an unchecked matter',
+    t_fails(format('update matter_parties set matter_id = %L where matter_id = %L and user_id = %L', mnew, (select matter_id from conflict_checks where id = c), c2), 'cleared conflict check'));
+  r := run_conflict_check(f, null, array['Somebody Else']);
+  c := (r ->> 'check_id')::uuid;
+  perform decide_conflict_check(c, 'clear', null);
+  perform t_check('a check that searched other names does not admit this client',
+    t_fails(format('select open_matter(%L, ''Wrong check'', ''advisory'', %L, null, null, null, null, null, null, null, ''new_inquiry'', null, %L)', f, c2, c), 'did not search for'));
+  perform t_check('nor the other side it did not search',
+    t_fails(format('select open_matter(%L, ''Wrong check'', ''advisory'', null, null, null, null, null, null, null, null, ''new_inquiry'', null, %L, ''[{"name": "Unsearched Person"}]''::jsonb)', f, c), 'unsearched person'));
   perform t_reset();
 end $$;
 

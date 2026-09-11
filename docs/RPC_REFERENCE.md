@@ -166,10 +166,12 @@ Refuses:
 ### `accept_invite(p_token text)`
 Returns `jsonb`. **Who:** any signed-in person holding the token.
 
-Joins the matter a staff member invited them to, as the invited `party_role`.
+Joins the matter a staff member invited them to, as the invited `party_role`. A member of the firm
+can never accept an invitation into that firm's own matter (migration 33): the invitation is for
+the client, and a colleague outside a wall must not walk in through it.
 
 Refuses:
-- `not authenticated` *(42501)*
+- `not authenticated` *(42501)* · `a member of the firm cannot join its own matter as a party — the invitation is for the client` *(42501)*
 - `invite invalid or expired` — one sentence for a wrong token, a used token and an expired one, on purpose
 
 ### `invoice_settlement(p_invoice uuid)`
@@ -186,7 +188,9 @@ Returns `void`. **Who:** a party to the matter, or firm staff who can see it (th
 Answers a request the firm made (`document_requests`, migration 31) with an uploaded document:
 marks it fulfilled once, audits `document_request.fulfilled`, and tells the lawyer who asked
 (`document_received`). Staff create requests by plain insert and withdraw them by setting
-`cancelled_at`; nobody can delete one.
+`cancelled_at`; nobody can delete one. The API's update grant covers only `title`, `why`, `due_on`
+and `cancelled_at` (migration 33), so fulfilment and who-asked-when are the function's alone, and
+`guard_document_request()` keeps a withdrawal withdrawn.
 
 Refuses:
 - `not authenticated` · `not permitted` *(42501)* — also what an unknown request returns
@@ -215,6 +219,7 @@ Refuses: `not permitted` *(42501)* · `matter title is required` · `client acco
 `a member of the firm cannot be its client on a matter` · `handling lawyer is not a member of the firm` ·
 `originating lawyer is not a member of the firm` · `conflict check not found` ·
 `that conflict check belongs to another matter` · `decide the conflict check before opening the matter on it` ·
+`the conflict check did not search for <names>: run it again` (migration 33 — the check's keys must cover the client's name and company and every name on the other side) ·
 `this firm requires a cleared conflict check before a client joins a matter` (the trigger, with the switch on)
 
 ### `post_court_update(p_matter uuid, p_outcome text, p_occurred_at timestamptz = now(), p_court_name text = null, p_adjourned_at_instance_of text = null, p_next_date timestamptz = null, p_next_purpose text = null, p_note_to_client text = null, p_internal_note text = null, p_court_id uuid = null, p_judicial_division text = null, p_allow_non_sitting bool = false, p_judge text = null, p_courtroom text = null, p_purpose_kind text = null)`
@@ -597,7 +602,9 @@ that fired them:
 | `validate_policies()` | `firms.policies` | **nothing.** Keeps `privacy`, `terms`, `engagement` and `cancellation`, each with its **own** `version`, plus `title`, `text`, an `https://` `url` and a numeric `free_cancel_hours`; strips `<` and `>`; drops any other document. A top-level `version` is kept but is read by nothing |
 | `validate_notification_templates()` | `firms.notification_templates` | **nothing.** Keeps `{subject, text}` per event key, strips angle brackets, and drops any entry whose `text` is empty |
 | `check_staff_invite_role()` | `staff_invites` | `only an owner may invite another owner` *(42501)* |
-| `guard_conflict_clearance()` | `matter_parties` | `this firm requires a cleared conflict check before a client joins a matter` — only with `firms.conflict_checks_required` on, only for `role = 'client'` |
+| `guard_conflict_clearance()` | `matter_parties` | `this firm requires a cleared conflict check before a client joins a matter` — only with `firms.conflict_checks_required` on, only for `role = 'client'`, on insert and on any update that moves the row (migration 33) |
+| `guard_document_request()` | `document_requests` | `a withdrawn request stays withdrawn — ask again with a new request` · `an answered request cannot be withdrawn` |
+| `guard_matter_team()` | `matter_lawyers` | `this is the last member of a restricted matter's team — set the matter to firm-wide first, or add someone else` *(42501)* — on delete, and on an update that moves the row off the matter |
 | `check_row_firm()` | every matter-linked table | `row does not belong to the firm that owns the matter` · `row does not belong to the firm that owns the appointment` |
 | `check_matter_court()` | `matters` | `court <id> is not available to this firm` |
 | `check_court_visible()` | court-bearing rows | `court <id> is not available to this firm` |

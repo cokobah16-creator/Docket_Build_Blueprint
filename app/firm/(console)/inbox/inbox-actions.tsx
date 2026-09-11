@@ -20,6 +20,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { linkServiceToMatter, revokeService } from "@/lib/actions/service";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { recordDocumentOpen } from "@/lib/document-open";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -173,8 +174,8 @@ export function OpenProcessButton({
       return;
     }
     // The served firm records its read like anyone else (migration 30); the record is the gate.
-    const { error: openError } = await supabase.rpc("open_document_version", { p_version: version.id });
-    if (openError) { setError(openError.message); return; }
+    const refused = await recordDocumentOpen(supabase, version.id);
+    if (refused) { setBusy(false); setError(refused); return; }
     const { data: signed, error: signError } = await supabase.storage.from("documents").createSignedUrl(version.storage_path, 120);
     setBusy(false);
     if (signError || !signed?.signedUrl) { setError(signError?.message ?? "The document could not be opened."); return; }

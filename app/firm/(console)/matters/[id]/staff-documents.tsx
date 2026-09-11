@@ -21,6 +21,7 @@ import { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } fr
 import { useRouter } from "next/navigation";
 import { requestDocument, cancelDocumentRequest } from "@/lib/actions/matters";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { recordDocumentOpen } from "@/lib/document-open";
 import { isLowData } from "@/lib/low-data";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -221,8 +222,8 @@ export function StaffDocuments({
     if (!supabase) { setPreview(null); setError("Not configured."); return; }
     // Record the read first: the storage policy requires it (migration 30), and it is what the
     // audit log shows as document.opened.
-    const { error: openError } = await supabase.rpc("open_document_version", { p_version: target.id });
-    if (openError) { setError(openError.message); return; }
+    const refused = await recordDocumentOpen(supabase, target.id);
+    if (refused) { setError(refused); setPreview(null); return; }
     const { data, error: signError } = await supabase.storage.from("documents").createSignedUrl(target.storage_path, 120);
     if (signError || !data?.signedUrl) { setError(signError?.message ?? "Could not open the document."); setPreview(null); return; }
     setPreview({ doc: shown, url: data.signedUrl, loading: false });

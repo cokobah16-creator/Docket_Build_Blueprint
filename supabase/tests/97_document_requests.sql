@@ -12,6 +12,8 @@ create or replace function t_check(name text, ok bool) returns void language plp
 begin if ok then raise notice 'PASS  %', name; else raise exception 'FAIL  %', name; end if; end $$;
 create or replace function t_refused(stmt text, code text) returns bool language plpgsql as $$
 begin execute stmt; return false; exception when others then return sqlstate = code; end $$;
+create or replace function t_fails(stmt text, fragment text) returns bool language plpgsql as $$
+begin execute stmt; return false; exception when others then return sqlerrm like '%' || fragment || '%'; end $$;
 
 create temp table fx (k text primary key, v uuid);
 insert into fx select 'firm', id from firms where slug = 'attorneys-klinique';
@@ -72,6 +74,9 @@ begin
   perform t_check('a document on another matter cannot answer it', ok);
   update document_requests set cancelled_at = now() where id = rq;
   perform t_check('staff withdraw a request', (select cancelled_at is not null from document_requests where id = rq));
+  perform t_check('and cannot un-withdraw it', t_fails(format('update document_requests set cancelled_at = null where id = %L', rq), 'stays withdrawn'));
+  perform t_check('nor answer a request by hand', t_refused(format('update document_requests set fulfilled_at = now() where id = %L', rq), '42501'));
+  perform t_check('nor rewrite who asked', t_refused(format('update document_requests set requested_by = %L where id = %L', a, rq), '42501'));
   ok := t_refused(format('delete from document_requests where id = %L', rq), '42501');
   perform t_check('and can never delete one', ok);
   perform t_reset();
