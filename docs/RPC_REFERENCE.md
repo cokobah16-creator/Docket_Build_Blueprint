@@ -423,17 +423,24 @@ Refuses: `service record not found` · `not permitted` *(42501)*
 ### `firm_readiness(p_firm uuid)`
 Returns `jsonb`. **Who:** any member of the firm. Where the firm stands, from one place
 (migration 34): `book_appointment()`'s gates in its order — `status`, `policies_published`,
-`active_services`, `availability_rules`, `public_lawyers`, `public_lawyers_with_hours` (public
+`active_services` (and `payable_services`: the active ones the settlement state lets a client
+book), `availability_rules`, `public_lawyers`, `public_lawyers_with_hours` (public
 profiles whose owner has hours of their own: the booking page lists public profiles and
 `available_slots()` reads the chosen lawyer's rules, so hours on one lawyer and a profile on
 another offer nobody a time), `settlement_account` against `needs_settlement` (any priced service
 switched on — every priced booking raises an invoice, and an invoice is paid through Docket only
 into the account) — the setup facts (`members`, `owners`, `lawyers`, `intake_forms`,
-`brand_colours`, `brand_logo`, `address_for_service`, `reference_prefix`, `reference_issued`,
-`matters`, `clients`, `pending_invites`, `imports_processed`, `custom_domain`, `domain_request`),
+`all_intake_forms`, `brand_colours`, `brand_logo`, `address_for_service`, `reference_prefix`,
+`reference_issued`, `matters`, `clients`, `pending_invites`, `imports_processed`, `custom_domain`,
+`domain_request`),
 the `skipped` steps, and three `gates`: `site_open`, `bookable` (active, published, a public
-lawyer with hours, a service the settlement state allows), `payment_ready`. The admin overview
-and the services page both read it, so they cannot disagree.
+lawyer with hours, a payable service), `payment_ready`. The admin overview and the services page
+both read it, so they cannot disagree.
+
+Migration 34 also re-creates `normalise_scn()` (migration 14) so the verified-duplicate check on
+an enrolment number runs when the number is set or changed, not on every save of the row: the
+practitioner's own editor on Me updates `lawyer_profiles` by hand, and a bio must not be refused
+for a number the form never touched.
 
 Refuses: `not permitted` *(42501)*
 

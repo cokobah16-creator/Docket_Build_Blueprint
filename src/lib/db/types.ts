@@ -453,6 +453,8 @@ export interface FirmReadiness {
   needs_settlement: boolean;
   active_services: number;
   all_services: number;
+  /** Active services the settlement state lets a client book: the account is set, or the service is not priced-and-prepaid. */
+  payable_services: number;
   availability_rules: number;
   public_lawyers: number;
   /** Public profiles whose owner has hours of their own — the only lawyers the booking page can offer a time for. */
@@ -461,6 +463,7 @@ export interface FirmReadiness {
   owners: number;
   lawyers: number;
   intake_forms: number;
+  all_intake_forms: number;
   brand_colours: boolean;
   brand_logo: boolean;
   address_for_service: boolean;

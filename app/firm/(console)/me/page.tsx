@@ -40,11 +40,12 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
     // The practitioner's own row: lawyer_profiles_select is the firm's; the write is their own.
     supabase.from("lawyer_profiles").select("title, bio, practice_areas, category, is_public, slug").eq("firm_id", firmId).eq("user_id", userId).maybeSingle(),
     supabase.from("services").select("lawyer_category").eq("firm_id", firmId).limit(200),
-    supabase.from("firms").select("slug").eq("id", firmId).maybeSingle(),
+    supabase.from("firms").select("slug, status").eq("id", firmId).maybeSingle(),
   ]);
   const profile = (profileRow ?? null) as PractitionerProfile | null;
   const categories = Array.from(new Set(((categoryRows ?? []) as Array<{ lawyer_category: string | null }>).map((r) => (r.lawyer_category ?? "").trim()).filter(Boolean))).sort();
-  const firmSlug = (firmRow as { slug: string } | null)?.slug ?? "";
+  const firmSlug = (firmRow as { slug: string; status: "pending" | "active" | "suspended" } | null)?.slug ?? "";
+  const firmStatus = (firmRow as { slug: string; status: "pending" | "active" | "suspended" } | null)?.status ?? "pending";
 
   const me = staff.find((m) => m.user_id === userId) ?? null;
   const name = me ? staffLabel(me) : "You";
@@ -113,7 +114,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
       {profile && (
         <Card>
           <CardHeader title="My profile on the firm's site" />
-          <ProfileEditor firmId={firmId} userId={userId} firmSlug={firmSlug} profile={profile} categories={categories} />
+          <ProfileEditor firmId={firmId} userId={userId} firmSlug={firmSlug} firmStatus={firmStatus} profile={profile} categories={categories} />
         </Card>
       )}
 

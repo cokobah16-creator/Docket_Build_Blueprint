@@ -204,6 +204,7 @@ export default async function FirmAdminPage({ searchParams }: { searchParams: Pr
           {readiness.availability_rules === 0 && "No lawyer has a working week. "}
           {readiness.public_lawyers === 0 && "No practitioner profile is public. "}
           {readiness.availability_rules > 0 && readiness.public_lawyers > 0 && readiness.public_lawyers_with_hours === 0 && "The lawyer with hours is not the one with a public profile, so the booking page can offer no time. "}
+          {activeServices > 0 && readiness.payable_services === 0 && "Every service switched on asks for payment first and no settlement account is set — set the account, price a service at zero, or turn off payment-first. "}
           Until each is done a visitor can read about the firm and no more.
         </Alert>
       )}
@@ -285,11 +286,13 @@ export default async function FirmAdminPage({ searchParams }: { searchParams: Pr
             />
             <Line
               label="Intake questions"
-              value={`${intakeCount} ${intakeCount === 1 ? "form" : "forms"}`}
+              value={`${intakeCount} of ${readiness.all_intake_forms} switched on`}
               meaning={
                 intakeCount > 0
                   ? "What a client is asked before a consultation. The answers land on the appointment for the lawyer to read."
-                  : "No form, so a client books with nothing but their name and the time. Add one and the lawyer walks in prepared."
+                  : readiness.all_intake_forms > 0
+                    ? "No form is switched on, so a client books with nothing but their name and the time. Switch one on and the lawyer walks in prepared."
+                    : "No form, so a client books with nothing but their name and the time. Add one and the lawyer walks in prepared."
               }
               href="/firm/admin/intake"
               action="Edit the intake questions"

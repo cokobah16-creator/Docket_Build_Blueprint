@@ -54,6 +54,7 @@ export async function updatePractitionerProfile(firmId: string, userId: string, 
     .update({ title: d.title || null, bio: d.bio || null, practice_areas: d.practiceAreas, category: d.category || null, is_public: d.isPublic, slug }, { count: "exact" })
     .eq("firm_id", firmId)
     .eq("user_id", userId);
+  if (error && error.code === "23505") return { error: `The web name "${slug}" is already used by a colleague at this firm — choose another.` };
   if (error) return { error: error.message };
   if (count === 0) return { error: "Nothing was changed: this is not your profile, or your session has no second factor." };
   revalidatePath("/firm/me");

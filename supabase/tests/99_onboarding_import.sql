@@ -73,7 +73,11 @@ begin
   perform t_check('payment_ready is the account, or nothing priced',
     (r -> 'gates' ->> 'payment_ready')::bool = ((select paystack_subaccount is not null from firms where id = f) or not (r ->> 'needs_settlement')::bool));
   perform t_check('the counts are the tables'' counts', (r ->> 'matters')::int = (select count(*) from matters where firm_id = f and deleted_at is null)
-                                                     and (r ->> 'clients')::int = (select count(distinct user_id) from matter_parties where firm_id = f and role = 'client'));
+                                                     and (r ->> 'clients')::int = (select count(distinct user_id) from matter_parties where firm_id = f and role = 'client')
+                                                     and (r ->> 'all_intake_forms')::int = (select count(*) from intake_forms where firm_id = f)
+                                                     and (r ->> 'intake_forms')::int = (select count(*) from intake_forms where firm_id = f and is_active)
+                                                     and (r ->> 'payable_services')::int = (select count(*) from services s where s.firm_id = f and s.is_active
+                                                                                               and ((select paystack_subaccount is not null from firms where id = f) or not (s.requires_prepayment and s.price_minor > 0))));
   perform t_as(st);
   perform t_check('a stranger is refused', t_refused(format('select firm_readiness(%L)', f), '42501'));
   perform t_reset();
@@ -118,6 +122,23 @@ begin
   perform t_reset();
   update firms set paystack_subaccount = v_sub where id = f;
   update services set requires_prepayment = true where firm_id = f and is_active and price_minor > 0;
+end $$;
+
+-- The enrolment-number check belongs to the number, not to every save of the row.
+do $$
+declare l uuid := (select v from fx where k='lawyer'); ad uuid := (select v from fx where k='admin'); f uuid := (select v from fx where k='firm');
+begin
+  insert into lawyer_profiles (firm_id, user_id, slug, scn) values (f, l, 'ob-lawyer', 'SCN/12345/2010');
+  insert into lawyer_profiles (firm_id, user_id, slug, scn) values (f, ad, 'ob-admin', 'SCN/12345/2010');
+  update lawyer_profiles set scn_verified_at = now() where firm_id = f and user_id = ad;
+  perform t_as(l);
+  update lawyer_profiles set bio = 'Called to the Bar in 2010.' where firm_id = f and user_id = l;
+  perform t_check('a practitioner whose unverified number another, verified, practitioner holds can still save a bio',
+    (select bio = 'Called to the Bar in 2010.' from lawyer_profiles where firm_id = f and user_id = l));
+  perform t_check('but cannot take that number afresh', t_fails(format('update lawyer_profiles set scn = ''scn/12345/2010'' where firm_id = %L and user_id = %L and false', f, l), 'x')
+    or t_fails('update lawyer_profiles set scn = ''SCN/99999/2011'' where firm_id = ' || quote_literal(f) || ' and user_id = ' || quote_literal(l) || '; update lawyer_profiles set scn = ''SCN/12345/2010'' where firm_id = ' || quote_literal(f) || ' and user_id = ' || quote_literal(l), 'cannot be registered'));
+  perform t_reset();
+  delete from lawyer_profiles where firm_id = f and user_id in (l, ad);
 end $$;
 
 -- ---------------------------------------------------------------- 2. a skipped step is stored, with who and why; a fact never is

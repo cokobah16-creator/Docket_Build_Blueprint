@@ -68,14 +68,16 @@ grant  execute on function public.resume_onboarding_step(uuid, text) to authenti
 -- ---------------------------------------------------------------- 3. where the firm stands: one function, book_appointment()'s order
 create or replace function public.firm_readiness(p_firm uuid)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
-declare f firms%rowtype; v jsonb; v_active int; v_all int; v_rules int; v_public int; v_with_hours int; v_needs_settlement bool;
-        v_members int; v_owners int; v_lawyers int; v_intake int; v_matters int; v_clients int; v_invites int; v_imports int;
+declare f firms%rowtype; v jsonb; v_active int; v_all int; v_payable int; v_rules int; v_public int; v_with_hours int; v_needs_settlement bool;
+        v_members int; v_owners int; v_lawyers int; v_intake int; v_intake_all int; v_matters int; v_clients int; v_invites int; v_imports int;
         v_issued bool; v_published bool; v_skipped jsonb; v_domain text;
 begin
   if not is_firm_member(p_firm) then raise exception 'not permitted' using errcode = '42501'; end if;
   select * into f from firms where id = p_firm;
   v_published := firm_policies_published(p_firm);
-  select count(*) filter (where is_active), count(*) into v_active, v_all from services where firm_id = p_firm;
+  select count(*) filter (where is_active), count(*),
+         count(*) filter (where is_active and (f.paystack_subaccount is not null or not (requires_prepayment and price_minor > 0)))
+    into v_active, v_all, v_payable from services where firm_id = p_firm;
   -- Every priced service raises an invoice (book_appointment() issues one whether or not payment
   -- comes first), and an invoice settles only to a settlement account. So the account is needed
   -- the day ANY priced service is on, not only a prepaid one.
@@ -90,7 +92,7 @@ begin
      and exists (select 1 from availability_rules a where a.firm_id = p_firm and a.lawyer_id = lp.user_id);
   select count(*) into v_imports from import_batches where firm_id = p_firm and processed_at is not null;
   select count(*), count(*) filter (where role = 'owner'), count(*) filter (where role in ('owner', 'admin', 'lawyer')) into v_members, v_owners, v_lawyers from firm_members where firm_id = p_firm;
-  select count(*) into v_intake from intake_forms where firm_id = p_firm and is_active;
+  select count(*) filter (where is_active), count(*) into v_intake, v_intake_all from intake_forms where firm_id = p_firm;
   select count(*) into v_matters from matters where firm_id = p_firm and deleted_at is null;
   select count(distinct user_id) into v_clients from matter_parties where firm_id = p_firm and role = 'client';
   select count(*) into v_invites from invites where firm_id = p_firm and accepted_by is null and expires_at > now();
@@ -104,10 +106,10 @@ begin
     'policies_published', v_published,
     'reference_prefix', f.reference_prefix, 'reference_issued', v_issued,
     'settlement_account', f.paystack_subaccount is not null, 'needs_settlement', v_needs_settlement,
-    'active_services', v_active, 'all_services', v_all,
+    'active_services', v_active, 'all_services', v_all, 'payable_services', v_payable,
     'availability_rules', v_rules, 'public_lawyers', v_public, 'public_lawyers_with_hours', v_with_hours,
     'members', v_members, 'owners', v_owners, 'lawyers', v_lawyers,
-    'intake_forms', v_intake,
+    'intake_forms', v_intake, 'all_intake_forms', v_intake_all,
     'brand_colours', (f.brand -> 'colours' ->> 'primary') is not null,
     'brand_logo', (f.brand ->> 'logo_path') is not null,
     'address_for_service', nullif(btrim(coalesce(f.address_for_service ->> 'chambers', '')), '') is not null,
@@ -119,15 +121,36 @@ begin
   -- The three states a firm is in, from the booking engine's own gates, in its order.
   v := v || jsonb_build_object('gates', jsonb_build_object(
     'site_open', f.status = 'active',
-    'bookable', f.status = 'active' and v_published and v_with_hours > 0
-                and exists (select 1 from services s where s.firm_id = p_firm and s.is_active
-                             and (f.paystack_subaccount is not null or not (s.requires_prepayment and s.price_minor > 0))),
+    'bookable', f.status = 'active' and v_published and v_with_hours > 0 and v_payable > 0,
     'payment_ready', f.paystack_subaccount is not null or not v_needs_settlement
   ));
   return v;
 end $$;
 revoke execute on function public.firm_readiness(uuid) from public, anon;
 grant  execute on function public.firm_readiness(uuid) to authenticated;
+
+-- The practitioner's own editor (Me) is the first screen to UPDATE lawyer_profiles by hand, and
+-- normalise_scn() (migration 14) re-ran the verified-duplicate check on every update — so a
+-- practitioner whose unverified number another, verified, practitioner also holds could not save
+-- a bio. The check belongs to the number: it runs when the number is set or changed, not when
+-- the row is touched. Everything else the trigger does is unchanged.
+create or replace function public.normalise_scn() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if new.scn is not null then
+    new.scn := upper(regexp_replace(new.scn, '\s+', '', 'g'));
+    -- a verified practitioner owns the number; unverified duplicates are resolved at verification
+    if (tg_op = 'INSERT' or new.scn is distinct from old.scn)
+       and exists (select 1 from lawyer_profiles lp where lp.scn = new.scn and lp.user_id <> new.user_id and lp.scn_verified_at is not null) then
+      raise exception 'this enrolment number cannot be registered — contact Docket support';
+    end if;
+  end if;
+  if (new.scn_verified_at is distinct from (case when tg_op = 'UPDATE' then old.scn_verified_at end))
+     and auth.uid() is not null and not is_platform_admin() then
+    raise exception 'SCN verification is recorded by the platform' using errcode = '42501';
+  end if;
+  return new;
+end $$;
 
 -- ---------------------------------------------------------------- 4. the import, staged
 create table public.import_batches (

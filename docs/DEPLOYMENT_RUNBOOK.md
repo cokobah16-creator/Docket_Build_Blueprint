@@ -151,7 +151,7 @@ Migrations apply in filename order, which is chronological:
 20260910000031_document_requests.sql      document_requests: asked, answered once through fulfil_document_request(), withdrawn — never deleted
 20260910000032_conflict_checks.sql        matter_adverse_parties; conflict_checks shaped; run_conflict_check(), decide_conflict_check(); firms.conflict_checks_required
 20260910000033_wave_two_review.sql        the review round: invitations walled, last member by update, fulfilment columns, clearance on every move, a check bound to its names
-20260910000034_onboarding_and_import.sql  matters.legacy_reference; firm_onboarding_steps; firm_readiness(); import_batches/import_rows, process_import_batch(), preview_import_duplicates(), discard_import_batch()
+20260910000034_onboarding_and_import.sql  matters.legacy_reference; firm_onboarding_steps; firm_readiness(); import_batches/import_rows, process_import_batch(), preview_import_duplicates(), discard_import_batch(); normalise_scn() checks the number only when it changes
 20260910000035_pre_consultation_checkin.sql firms.checkin_before_confirm; document_requests and conflict_checks reach a consultation; appointment_readiness(), amend_intake_response(), confirm_appointment(); book_appointment/record_payment/reminders/release learn the hold
 20260910000036_drafts_and_retries.sql     updates.client_ref (a retry returns the posting already made); a document with no file answers no request; retire_empty_document(); storage_integrity() counts rows without a version
 ```

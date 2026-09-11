@@ -15,6 +15,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import type { OnboardingStep } from "@/lib/db/types";
+import { IMPORT_FIELDS } from "@/lib/import-fields";
 
 type Err = { error: string } | undefined;
 
@@ -52,13 +53,8 @@ export async function resumeOnboardingStep(firmId: string, step: OnboardingStep)
 }
 
 // ---------------------------------------------------------------- the import
-/** The columns an import row may carry. Anything else the screen mapped is dropped before staging. */
-export const IMPORT_FIELDS = [
-  "title", "cause_title", "type", "status", "court", "suit_number", "judicial_division",
-  "handling_lawyer", "originating_lawyer", "opened_on", "closed_on", "legacy_reference",
-  "client_name", "client_phone", "client_email", "opposing_party", "description", "next_action",
-] as const;
-export type ImportField = (typeof IMPORT_FIELDS)[number];
+// The columns an import row may carry are IMPORT_FIELDS (src/lib/import-fields.ts); anything
+// else the screen mapped is dropped before staging. Only async functions are exported from here.
 
 const rowSchema = z.object({
   row_no: z.number().int().min(1).max(100000),

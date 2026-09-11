@@ -19,7 +19,7 @@ export interface PractitionerProfile {
   slug: string | null;
 }
 
-export function ProfileEditor({ firmId, userId, firmSlug, profile, categories }: { firmId: string; userId: string; firmSlug: string; profile: PractitionerProfile; categories: string[] }) {
+export function ProfileEditor({ firmId, userId, firmSlug, firmStatus, profile, categories }: { firmId: string; userId: string; firmSlug: string; firmStatus: "pending" | "active" | "suspended"; profile: PractitionerProfile; categories: string[] }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [title, setTitle] = useState(profile.title ?? "");
@@ -47,7 +47,18 @@ export function ProfileEditor({ firmId, userId, firmSlug, profile, categories }:
       }}
     >
       {result?.error && <Alert kind="error">{result.error}</Alert>}
-      {result?.ok && <Alert kind="success">Saved. {isPublic ? `Your profile is public at /${firmSlug}, and the booking page can offer you.` : "Your profile is private: the booking page does not list you."}</Alert>}
+      {result?.ok && (
+        <Alert kind="success">
+          Saved.{" "}
+          {!isPublic
+            ? "Your profile is private: the booking page does not list you."
+            : firmStatus === "active"
+              ? `Your profile is public at /${firmSlug}, and the booking page can offer you.`
+              : firmStatus === "pending"
+                ? "Your profile will be on the firm's site, and bookable, the moment Docket opens the firm."
+                : "Your profile is marked public; the firm's site is not open while the firm is suspended."}
+        </Alert>
+      )}
       <div>
         <label htmlFor="pp-title" className="text-sm font-medium text-gray-900">Title</label>
         <p className="text-xs text-gray-500">As it should read on the firm's site: Partner, Associate, Head of Chambers.</p>
