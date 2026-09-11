@@ -95,7 +95,7 @@ export function MessagesThread({
           const name = mine ? "You" : (m.sender_id && senderNames[m.sender_id]) || firmName;
           return (
             <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-brand text-white" : "bg-gray-100 text-gray-900"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-brand text-brand-on" : "bg-gray-100 text-gray-900"}`}>
                 {!mine && <p className="mb-0.5 text-xs font-semibold opacity-80">{name}</p>}
                 {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
                 {m.attachments?.length > 0 && (

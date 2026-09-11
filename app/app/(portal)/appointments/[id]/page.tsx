@@ -131,7 +131,7 @@ export default async function AppointmentPage({
               <strong>{new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: tz }).format(opensAt)}</strong>, 10 minutes before
               your consultation. Test your camera and microphone there, then wait for your lawyer to admit you.
             </p>
-            <Link href={`/app/appointments/${appt.id}/waiting-room`} className="inline-flex w-full items-center justify-center rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-white hover:opacity-90">
+            <Link href={`/app/appointments/${appt.id}/waiting-room`} className="inline-flex w-full items-center justify-center rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-brand-on hover:opacity-90">
               Go to the waiting room
             </Link>
           </CardBody>

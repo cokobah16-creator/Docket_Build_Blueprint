@@ -15,6 +15,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { firmSiteHref } from "@/lib/tenant";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
@@ -165,7 +166,7 @@ export default async function AdminFirmsPage() {
                     <CardBody className="space-y-4">
                       <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <Field label="Docket address">
-                          <Link href={`/?firm=${f.slug}`} className="text-brand underline">
+                          <Link href={firmSiteHref(f)} className="text-brand underline">
                             {f.slug}
                           </Link>
                         </Field>

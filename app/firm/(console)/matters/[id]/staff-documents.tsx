@@ -221,7 +221,7 @@ export function StaffDocuments({
         <p className="text-xs text-gray-500">
           PDF, Word, JPEG, PNG or HEIC · up to 25 MB · uploaded here it stays with the firm until you share it.
         </p>
-        <label className="inline-flex min-h-[44px] cursor-pointer items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90">
+        <label className="inline-flex min-h-[44px] cursor-pointer items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">
           {busy?.startsWith("Uploading") ? busy : "Upload a document"}
           <input type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
         </label>
@@ -332,7 +332,7 @@ export function StaffDocuments({
         ) : (
           <div className="space-y-3">
             <p className="text-sm text-gray-700">This file type has no in-app preview.</p>
-            <a href={preview.url} className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white" download={preview.doc.name}>Download</a>
+            <a href={preview.url} className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on" download={preview.doc.name}>Download</a>
           </div>
         ))}
         <p className="mt-3 text-xs text-gray-500">Links expire after two minutes.</p>

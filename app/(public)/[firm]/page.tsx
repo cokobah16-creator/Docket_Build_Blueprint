@@ -58,7 +58,7 @@ export default async function FirmHome({
         <div className="mt-8 flex flex-wrap gap-3">
           <Link
             href={`${base}/book`}
-            className="rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-white hover:opacity-90"
+            className="rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-brand-on hover:opacity-90"
           >
             {firm.brand.cta ?? "Book a Consultation"}
           </Link>

@@ -32,6 +32,5 @@ export function legalServiceJsonLd(firm: FirmPublic, origin: string) {
     email: c.email ?? undefined,
     address: c.address ? { "@type": "PostalAddress", streetAddress: c.address, addressCountry: "NG" } : undefined,
     areaServed: "NG",
-    priceRange: "₦₦",
   };
 }

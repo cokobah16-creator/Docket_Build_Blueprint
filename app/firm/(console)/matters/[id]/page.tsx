@@ -434,7 +434,7 @@ async function InvoicesSection({
         <EmptyState
           title="Nothing billed on this matter yet"
           hint="Raise an invoice with your own items and VAT; issue it and the client can pay from their app."
-          action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90">Raise an invoice</Link>}
+          action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">Raise an invoice</Link>}
         />
       </>
     );
@@ -444,7 +444,7 @@ async function InvoicesSection({
     <>
       <CardHeader
         title={outstandingLabel ? `Invoices · ${outstandingLabel} outstanding` : "Invoices"}
-        action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90">Raise an invoice</Link>}
+        action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">Raise an invoice</Link>}
       />
       <ul className="divide-y divide-gray-100">
         {invoices.map((inv) => {

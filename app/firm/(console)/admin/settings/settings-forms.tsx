@@ -673,13 +673,19 @@ function BrandSection({ firmId, firmName, brand }: FirmSettingsProps) {
         </div>
 
         <Labelled label="How it looks">
+          {/* text-brand-on and text-brand-on-accent, NOT text-white. This panel is inside
+              brandStyle(preview), so bg-brand here is the firm's own colour, and the real
+              site draws its foreground with readableForeground() — ink on a pale brand,
+              paper on a dark one. Hard-coding white would make the preview disagree with
+              the page it is previewing: a firm that picks pale gold would see illegible
+              white-on-gold here and go and change a colour that was never wrong. */}
           <div style={brandStyle(preview)} className="rounded-card border border-gray-200 bg-brand-surface p-4">
             <p className="font-heading text-lg font-semibold text-brand">{firmName}</p>
             {tagline && <p className="mt-1 font-body text-sm text-gray-700">{tagline}</p>}
-            <span className="mt-3 inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white">
+            <span className="mt-3 inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on">
               {cta || "Book a consultation"}
             </span>
-            <span className="ml-2 inline-flex min-h-[44px] items-center rounded-lg bg-brand-accent px-4 py-2.5 text-sm font-medium text-white">
+            <span className="ml-2 inline-flex min-h-[44px] items-center rounded-lg bg-brand-accent px-4 py-2.5 text-sm font-medium text-brand-on-accent">
               Our services
             </span>
           </div>

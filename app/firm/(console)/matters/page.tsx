@@ -125,7 +125,7 @@ export default async function FirmMattersPage({
   const chipClass = (active: boolean) =>
     cn(
       "flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm",
-      active ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+      active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
     );
 
   return (
@@ -142,7 +142,7 @@ export default async function FirmMattersPage({
         </div>
         <Link
           href="/firm/matters/new"
-          className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90"
+          className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
         >
           Open a matter
         </Link>
@@ -189,7 +189,7 @@ export default async function FirmMattersPage({
             </select>
           </div>
           <div className="flex items-center gap-3">
-            <button type="submit" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90">
+            <button type="submit" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">
               Apply
             </button>
             {filtered && <Link href="/firm/matters" className="text-sm text-brand underline">Clear</Link>}
@@ -214,7 +214,7 @@ export default async function FirmMattersPage({
               title="No matters yet"
               hint="Open the first one: give it a title and a type, point it at a court, and invite the client so they can follow it in their app."
               action={
-                <Link href="/firm/matters/new" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90">
+                <Link href="/firm/matters/new" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">
                   Open a matter
                 </Link>
               }

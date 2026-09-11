@@ -51,7 +51,7 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
             key={key}
             href={`/firm/appointments?view=${key}`}
             aria-current={view === key ? "page" : undefined}
-            className={cn("rounded-full border px-3 py-1.5 text-sm", view === key ? "border-brand bg-brand text-white" : "border-gray-300 text-gray-700 hover:border-brand")}
+            className={cn("rounded-full border px-3 py-1.5 text-sm", view === key ? "border-brand bg-brand text-brand-on" : "border-gray-300 text-gray-700 hover:border-brand")}
           >
             {label}
           </Link>

@@ -272,7 +272,7 @@ export function NewMatterForm({
                     href={whatsapp}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90"
+                    className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
                   >
                     Send on WhatsApp
                   </a>
@@ -296,7 +296,7 @@ export function NewMatterForm({
         <div className="flex flex-wrap gap-3">
           <Link
             href={`/firm/matters/${opened.matterId}`}
-            className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90"
+            className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
           >
             Open the matter
           </Link>
@@ -460,7 +460,7 @@ export function NewMatterForm({
                 aria-pressed={clientMode === mode}
                 className={cn(
                   "flex min-h-[44px] items-center rounded-full border px-4 text-sm",
-                  clientMode === mode ? "border-brand bg-brand text-white" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+                  clientMode === mode ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
                 )}
               >
                 {label}

@@ -233,7 +233,7 @@ export function InvoiceComposer({
           <div className="flex flex-wrap gap-3">
             <Link
               href={`/firm/matters/new${firmQuery}`}
-              className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-white hover:opacity-90"
+              className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
             >
               Open a matter and invite the client
             </Link>

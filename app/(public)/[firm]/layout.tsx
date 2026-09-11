@@ -82,7 +82,7 @@ export default async function FirmLayout({
             </Link>
             <Link
               href={`${base}/book`}
-              className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90"
+              className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
             >
               {firm.brand.cta ?? "Book a Consultation"}
             </Link>

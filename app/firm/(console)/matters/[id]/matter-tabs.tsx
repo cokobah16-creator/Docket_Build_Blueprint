@@ -47,7 +47,7 @@ export function MatterTabs({
                 className={cn(
                   "flex min-h-[44px] shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-sm font-medium",
                   current
-                    ? "border-brand bg-brand text-white"
+                    ? "border-brand bg-brand text-brand-on"
                     : "border-gray-300 bg-white text-gray-700 hover:border-brand",
                 )}
               >

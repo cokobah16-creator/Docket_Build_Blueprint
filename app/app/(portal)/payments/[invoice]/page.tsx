@@ -60,7 +60,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
       {actionError && <Alert kind="error">{actionError}</Alert>}
       {payable && (
         <form action={pay}>
-          <button type="submit" className="w-full rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-white hover:opacity-90">Pay {fmt(outstanding)}</button>
+          <button type="submit" className="w-full rounded-lg bg-brand px-6 py-3.5 text-base font-medium text-brand-on hover:opacity-90">Pay {fmt(outstanding)}</button>
         </form>
       )}
 
@@ -103,7 +103,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white hover:opacity-90">Download PDF</a>
+        <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Download PDF</a>
         <Link href="/app/payments" className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">All payments</Link>
       </div>
     </div>

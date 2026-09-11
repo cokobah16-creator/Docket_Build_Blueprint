@@ -235,7 +235,7 @@ export function PartiesPanel({
                     href={`https://wa.me/${digitsOf(invited.phone)}?text=${encodeURIComponent(messageFor(invited.token))}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-3 text-sm font-medium text-white hover:opacity-90"
+                    className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-3 text-sm font-medium text-brand-on hover:opacity-90"
                   >
                     Send on WhatsApp
                   </a>

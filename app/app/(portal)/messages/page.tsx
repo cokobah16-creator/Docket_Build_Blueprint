@@ -53,7 +53,7 @@ export default async function MessagesPage() {
                   <p className="truncate text-xs text-gray-500">{t.subtitle}</p>
                   {t.last && <p className="mt-1 truncate text-xs text-gray-600">{t.last.sender_id === user.id ? "You: " : ""}{t.last.body ?? "📎 attachment"} · {fmt.format(new Date(t.last.created_at))}</p>}
                 </div>
-                {t.unread > 0 && <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-white">{t.unread}</span>}
+                {t.unread > 0 && <span className="shrink-0 rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-brand-on">{t.unread}</span>}
               </Link>
             ))}
           </CardBody>
