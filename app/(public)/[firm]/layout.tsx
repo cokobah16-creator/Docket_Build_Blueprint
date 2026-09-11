@@ -1,12 +1,28 @@
 // Tenant public site shell: brand tokens from firms.brand as CSS variables,
 // tenant header/footer and site navigation. Served by the middleware rewrite
 // from the firm's own host (or ?firm= in dev).
+//
+// STEP ONE OF THE FUNNEL LIVES HERE. Every page of a firm's site — home, services, a lawyer's
+// profile, the booking wizard — renders inside this layout, so this is the one place that sees
+// every visit, and site_viewed is emitted from here rather than from any single page.
+//
+// The distinct id is the visitor cookie middleware.ts mints (VISITOR_COOKIE), not a person:
+// nobody has signed in yet at this point in the funnel. identify() in app/auth/callback/route.ts
+// later stitches that anonymous id to the account. Only firm_id and firm_slug travel with the
+// event — data about which site was viewed, never anything about who viewed it.
+//
+// Reading cookies() here also settles how this route renders: a Dynamic API makes the whole
+// tenant subtree render per request, which is the only way a server-side capture can fire on
+// every visit. A statically rendered route would emit this once, at build time, and never again.
 
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { firmBySlug } from "@/lib/tenant";
 import { brandFontsUrl, brandStyle } from "@/lib/brand";
+import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
+import { after } from "next/server";
 
 const NAV = [
   { href: "/about", label: "About" },
@@ -25,6 +41,20 @@ export default async function FirmLayout({
   const { firm: slug } = await params;
   const firm = await firmBySlug(slug);
   if (!firm) notFound();
+
+  // Fired and ignored. A visitor with no cookie (a request the middleware matcher never saw)
+  // is simply not counted rather than counted as somebody made up.
+  const visitorId = (await cookies()).getAll().find((c) => c.name === VISITOR_COOKIE)?.value;
+  if (visitorId) {
+    // after() runs this once the response has been sent. An un-awaited fetch in a serverless
+    // function is not guaranteed to finish — the instance can be frozen the moment the response
+    // flushes — so a bare `void capture(...)` loses events, most of all on small fast responses.
+    after(() =>
+      capture(FUNNEL.siteViewed, visitorId, { firm_id: firm.id, firm_slug: firm.slug }).catch(
+        () => undefined,
+      ),
+    );
+  }
 
   const fontsUrl = brandFontsUrl(firm.brand);
   const base = `/${firm.slug}`;

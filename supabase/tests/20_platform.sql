@@ -151,7 +151,14 @@ begin
   perform t_check('verification sees the owners and their SCNs',          (select owners from firm_admin where id = fu) like '%SCN445566%' and (select policies_published from firm_admin where id = fu) = false);
   perform t_check('platform admin sees firm memberships',                  (select count(*) from firm_members where firm_id = fu) = 1);
   perform t_check('platform admin sees no matters',                        (select count(*) from matters) = 0);
-  perform t_check('platform admin sees no firm audit trail beyond lifecycle', (select count(*) from audit_log where entity not in ('firms','firm_members','firm')) = 0);
+  -- Migration 20 widened this policy to the platform's own objects (domain requests, platform
+  -- reference data, a retried notification). The line that matters is the one below it: no
+  -- audit row about a firm's WORK may ever reach a platform operator.
+  perform t_check('platform admin sees no audit trail of a firm''s work',
+                  (select count(*) from audit_log
+                    where entity in ('matters','invoices','documents','updates','messages',
+                                     'appointments','payments','process_service','consultation_notes',
+                                     'matter_parties','matter_counsel','tasks','intake_responses')) = 0);
   perform set_firm_status(fu, 'active', 'RC1234567 checked on CAC portal');
   perform t_check('platform admin verifies and activates a firm',         (select status from firm_admin where id = fu) = 'active' and (select verified_at from firm_admin where id = fu) is not null);
   update firms set paystack_subaccount = 'ACCT_evil' where id = fu;

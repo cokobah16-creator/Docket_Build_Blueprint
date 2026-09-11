@@ -3,11 +3,116 @@
 // Booking server actions. Payment is initialised server-side with the
 // provider secret and the client is redirected to checkout; NOTHING here
 // marks anything paid — only the provider webhook → record_payment() does.
+//
+// TWO THINGS SLICE 5 ADDED, AND WHY THEY ARE BOTH HERE
+//
+// 1. THE RATE LIMITS (migration 21's rate_limit_hit, via src/lib/rate-limit.ts). Both buckets
+//    protect something that costs: a booking takes a slot out of a lawyer's diary, and a
+//    checkout creates a live transaction at Paystack. A limit is only worth having where the
+//    caller cannot walk around it, which means server-side — a browser calling the RPC directly
+//    can simply not call rate_limit_hit first. So bookAppointment() below wraps the RPC and asks
+//    the bucket first. Said plainly, because it matters: the booking wizard
+//    (app/(public)/[firm]/book/booking-wizard.tsx) still calls supabase.rpc("book_appointment")
+//    from the browser, and until that one call becomes bookAppointment(), the booking bucket
+//    counts nothing and booking_started is emitted for nobody. The checkout bucket in
+//    startPayment() below is live now, because the wizard already calls that action.
+//
+// 2. STEP TWO OF THE FUNNEL, booking_started, emitted after book_appointment() returns — a
+//    booking the database refused is not a booking that started. The distinct id is the same
+//    visitor cookie the tenant site counted on arrival, so the two steps join up without this
+//    file needing to know who the person is; identify() at /auth/callback ties that id to the
+//    account. Properties are facts about the booking (firm, service, amount, currency), never
+//    a name, phone or email. Step three, booking_paid, is NOT emitted anywhere in app/ or src/:
+//    the only honest source is the Paystack webhook after record_payment() succeeds.
+//
+// Nothing here decides anything. book_appointment() checks the firm, the service, the slot and
+// the lawyer, and its refusal is returned word for word (law 1).
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { siteOrigin } from "@/lib/site";
+import { paymentProviderFor, type Currency } from "@/lib/providers/payments";
+import { allow, tooFast } from "@/lib/rate-limit";
+import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
+import type { BookingResult } from "@/lib/db/types";
+import { after } from "next/server";
+
+/** The appointment_mode enum in migration 1. The database is what refuses anything else. */
+export type BookingMode = "virtual" | "in_person" | "phone";
+
+/** The anonymous id the tenant site was counted under, so the funnel stays one chain. */
+async function visitorId(): Promise<string | null> {
+  const jar = await cookies();
+  return jar.getAll().find((c) => c.name === VISITOR_COOKIE)?.value ?? null;
+}
+
+export interface BookAppointmentInput {
+  firmId: string;
+  /** Carried for the funnel only — the database identifies the firm by id. */
+  firmSlug: string;
+  serviceId: string;
+  lawyerId: string;
+  /** UTC instant of the slot, exactly as available_slots() offered it. */
+  startsAt: string;
+  mode: BookingMode;
+  /** The visitor's own zone, so reminders and the diary read in it (law 4). */
+  clientTimezone: string;
+  intake: Record<string, unknown> | null;
+  intakeFormId: string | null;
+}
+
+export type BookAppointmentResult = { error: string } | { booking: BookingResult };
+
+/**
+ * Take the slot.
+ *
+ * book_appointment() is a security-definer function that runs as the signed-in client: it
+ * re-checks the service, the lawyer's availability and the slot, mints the reference, raises the
+ * invoice and decides whether the appointment is confirmed outright or awaiting payment. This
+ * action adds exactly two things around it — the booking rate limit before, and the funnel event
+ * after — and passes every refusal back in the database's own words.
+ */
+export async function bookAppointment(input: BookAppointmentInput): Promise<BookAppointmentResult> {
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+
+  // Keyed on auth.uid() inside the function, where it cannot be forged.
+  if (!(await allow(supabase, "booking", true))) return { error: tooFast("booking") };
+
+  const { data, error } = await supabase.rpc("book_appointment", {
+    p_firm: input.firmId,
+    p_service: input.serviceId,
+    p_lawyer: input.lawyerId,
+    p_starts_at: input.startsAt,
+    p_mode: input.mode,
+    p_client_timezone: input.clientTimezone,
+    p_intake: input.intake,
+    p_intake_form: input.intakeFormId,
+  });
+  if (error) return { error: error.message };
+
+  const booking = (data ?? null) as BookingResult | null;
+  if (!booking?.appointment_id) return { error: "The booking could not be completed. Try again." };
+
+  const visitor = await visitorId();
+  if (visitor) {
+    // after() so the event survives the response. An un-awaited fetch in a serverless function
+    // can be cut off the instant the response flushes.
+    after(() =>
+      capture(FUNNEL.bookingStarted, visitor, {
+        firm_id: input.firmId,
+        firm_slug: input.firmSlug,
+        service_id: input.serviceId,
+        amount_minor: booking.amount_minor,
+        currency: booking.currency,
+      }).catch(() => undefined),
+    );
+  }
+
+  return { booking };
+}
 import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
 
 export async function startPayment(
@@ -58,6 +163,11 @@ export async function startPayment(
   const { data: settlement } = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
   const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
   if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
+
+  // Everything above this line is a read or a redirect. From here a real transaction is created
+  // at the provider, so the checkout bucket is asked last — a client sent back to a result page
+  // they have already paid for has not spent a checkout.
+  if (!(await allow(supabase, "checkout", true))) return { error: tooFast("checkout") };
 
   const origin = await siteOrigin();
   let checkoutUrl: string;

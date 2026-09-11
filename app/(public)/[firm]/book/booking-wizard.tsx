@@ -25,6 +25,8 @@ import { SignInForms } from "@/components/auth/sign-in-forms";
 import { Button } from "@/components/ui/button";
 import { Input, Select, chipClasses, choiceCardClasses } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
+import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { bookAppointment, startPayment, saveContactEmail } from "@/lib/actions/booking";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 import { startPayment, saveContactEmail } from "@/lib/actions/booking";
@@ -253,25 +255,29 @@ export function BookingWizard({
         }
         uploaded[key] = paths;
       }
-      const { data, error: rpcErr } = await supabase.rpc("book_appointment", {
-        p_firm: firm.id,
-        p_service: service.id,
-        p_lawyer: lawyerId,
-        p_starts_at: slot.starts_at,
-        p_mode: mode,
-        p_client_timezone: visitorTz,
-        p_intake: form ? { ...answers, ...uploaded } : null,
-        p_intake_form: form?.id ?? null,
+      // Through the server action, not straight at the RPC. The action is where the booking rate
+      // limit is applied and where the funnel's "booking started" is recorded — calling the RPC
+      // from here would skip both, which is exactly what used to happen.
+      const booked = await bookAppointment({
+        firmId: firm.id,
+        firmSlug: firm.slug,
+        serviceId: service.id,
+        lawyerId,
+        startsAt: slot.starts_at,
+        mode,
+        clientTimezone: visitorTz,
+        intake: form ? { ...answers, ...uploaded } : null,
+        intakeFormId: form?.id ?? null,
       });
-      if (rpcErr) {
-        if (rpcErr.message.includes("slot unavailable")) {
+      if ("error" in booked) {
+        if (booked.error.includes("slot unavailable")) {
           setSlot(null);
           setStepIdx(steps.indexOf("when"));
           throw new Error("That time was just taken. Please pick another slot.");
         }
-        throw new Error(rpcErr.message);
+        throw new Error(booked.error);
       }
-      const result = data as BookingResult;
+      const result = booked.booking;
       try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
       if (result.status === "awaiting_payment") {
         const r = await startPayment(result.appointment_id);

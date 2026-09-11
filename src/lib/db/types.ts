@@ -631,3 +631,103 @@ export const SERVICE_METHODS: Array<{ value: string; label: string; hint?: strin
 
 export const MATTER_TYPES = ["litigation", "property", "corporate", "estate", "family", "employment",
   "debt_recovery", "ip", "regulatory", "immigration", "advisory", "criminal", "arbitration", "other"] as const;
+
+// ---------------------------------------------------------------- slice 5: admin surfaces (migration 20)
+
+/** A firm asking the platform to point a hostname at its public site. */
+export interface DomainRequestRow {
+  id: string;
+  firm_id: string;
+  hostname: string;
+  status: "requested" | "verifying" | "live" | "rejected" | "withdrawn";
+  /** The records the firm has to add at its registrar, as the provider returned them. */
+  verification: Record<string, unknown>;
+  note: string | null;
+  requested_by: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** What a provider sent and what Docket did about it. Platform-read only. */
+export interface WebhookEventRow {
+  id: string;
+  provider: string;
+  event_type: string | null;
+  provider_ref: string | null;
+  signature_ok: boolean;
+  outcome: "processed" | "ignored" | "unverified" | "unreadable" | "error";
+  error: string | null;
+  firm_id: string | null;
+  invoice_id: string | null;
+  received_at: string;
+}
+
+/** One row per firm × status × channel × event. Counts, never payloads. */
+export interface NotificationHealthRow {
+  firm_id: string | null;
+  firm_name: string | null;
+  firm_slug: string | null;
+  status: string;
+  channel: string;
+  event: string;
+  rows: number;
+  oldest: string;
+  newest: string;
+  overdue: number;
+  most_attempts: number;
+  last_error: string | null;
+}
+
+/** A payment that did not settle cleanly, down to what reconciling it needs. */
+export interface SettlementHealthRow {
+  payment_id: string;
+  firm_id: string;
+  firm_name: string | null;
+  firm_slug: string | null;
+  invoice_number: string;
+  amount_minor: number;
+  currency: string;
+  status: string;
+  provider_ref: string;
+  paid_at: string | null;
+  created_at: string;
+  reported_subaccount: string | null;
+  expected_subaccount: string | null;
+  settlement_mismatch: boolean;
+}
+
+/** One failed message, reachable so it can be retried. No payload, no recipient. */
+export interface FailedNotificationRow {
+  id: string;
+  firm_id: string | null;
+  firm_name: string | null;
+  firm_slug: string | null;
+  channel: string;
+  event: string;
+  attempts: number;
+  error: string | null;
+  created_at: string;
+  send_after: string;
+}
+
+/** A firm's override of the sentence a client reads for one event. */
+export interface NotificationTemplate {
+  subject?: string;
+  text: string;
+}
+
+// FirmAdminRow, FirmPlan and FirmStatus are already declared above — the lifecycle view and its
+// two enums came with the platform slice.
+export const FIRM_PLANS: readonly FirmPlan[] = ["free", "standard", "enterprise"];
+export const FIRM_STATUSES: readonly FirmStatus[] = ["pending", "active", "suspended"];
+export const DOMAIN_REQUEST_STATUSES = ["requested", "verifying", "live", "rejected", "withdrawn"] as const;
+
+/** The roles a firm has. Only an owner may appoint or stand down another owner. */
+export const FIRM_ROLES: Array<{ value: string; label: string; hint: string }> = [
+  { value: "owner", label: "Owner", hint: "Everything, including appointing other owners and closing the firm" },
+  { value: "admin", label: "Administrator", hint: "Settings, services, people, billing — everything except owners" },
+  { value: "lawyer", label: "Lawyer", hint: "Matters, court updates, consultations and their own diary" },
+  { value: "staff", label: "Staff", hint: "Matters and consultations, but not the firm's settings" },
+];

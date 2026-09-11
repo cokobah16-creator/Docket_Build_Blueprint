@@ -4,7 +4,7 @@
 
 This repository is the platform: the multi-tenant Postgres schema and row-level security, the server-side business flows (firm creation, booking, payment cascade, court updates, consultation notes, service of process, invites, jobs), the Nigerian reference data (states, courts, holidays), the provider adapters, the payment webhooks, the notification dispatcher, the Next.js app (tenant public sites, client PWA, staff console, platform admin), Klinique's seed data, and test suites that prove isolation between firms and between clients.
 
-**Validated:** all sixteen migrations, the seed and four SQL suites run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`.
+**Validated:** all twenty-one migrations, the seed and six SQL suites (354 checks) run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`; every server function is catalogued in `docs/RPC_REFERENCE.md`.
 
 ## Any firm, the same way
 
@@ -41,6 +41,13 @@ supabase/
     20260910000019_console_review.sql          console review: an invoice filed against a matter must name a party to it (issuing posts a client-visible
                                                fee entry there); firm_overview money is one figure per currency, never kobo added to cents; documents
                                                gain reviewed_at so "client uploads to review" can reach zero
+    20260910000020_admin_surfaces.sql          what the two admin consoles write: domain_requests (a firm asks, the platform maps), set_firm_domain/
+                                               set_firm_plan, set_member_role/remove_member (never yourself, never the last owner, never a lawyer with
+                                               consultations still ahead), validated policies and notification_templates, webhook_events, the three
+                                               platform health views and retry_notification()
+    20260910000021_hardening.sql               the security pass: RLS on ng_states, a pinned search_path on every definer function, no EXECUTE on a
+                                               trigger function, auth.uid() evaluated once per query, FOR ALL write policies split so they stop granting
+                                               SELECT, rate_limits + rate_limit_hit(), and an index on every foreign key
   seed.sql                           Attorneys Klinique: brand, policies, 14 services, intake form — then seed_firm_defaults()
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
@@ -53,6 +60,7 @@ supabase/
     30_nigeria.sql                   states, court directory (platform vs firm-private), holidays, practitioner fields
     40_counsel_service.sql           service of process: served firm sees the record + document and nothing else
     50_staff_console.sql             VAT and line arithmetic, drafts invisible to clients, invitations, the chase list clearing
+    60_admin_surfaces.sql            domain requests, role changes and removals, policy/template validation, platform health, the rate limiter
 src/lib/providers/
   payments/   PaymentProvider — Paystack (all currencies; decision 0002)
   video/      VideoProvider   — Daily (private rooms, knocking, per-user tokens, no recording)
@@ -69,7 +77,9 @@ app/
   firm/(auth)/join         staff-invite landing → accept_staff_invite()
   firm/(auth)/security/mfa TOTP enrolment; firm/(console) staff console
   firm/(console)/          today · overview · sittings · matters · clients · invoices · service inbox · availability
-  admin/                   platform admin (platform_admins gate; lifecycle only)
+  firm/(console)/admin/    the firm's own: settings · services · intake form · people · audit log (owner/admin only)
+  admin/                   platform admin (platform_admins gate; lifecycle only) — firms · domains · plans · health · reference data
+  api/report/              the browser error sink; the DSN stays server-side and the CSP names no third-party origin
 scripts/db-test-local.sh
 .env.example
 ```
@@ -101,6 +111,14 @@ scripts/db-test-local.sh
     matter invitations (`invite_matter_party` / `revoke_matter_invite`) and two firm-wide reads, `firm_overview` and
     `firm_sittings_due`, so Today and the Overview are one round trip each. `firm_sittings_due` is the console's standing
     chase list: a court date whose day has passed with no update posted. It clears the moment `post_court_update()` runs.
+12. **Slice 5 (admin and hardening).** Migrations 20 and 21. On Vercel set `VERCEL_TOKEN` and `VERCEL_PROJECT_ID` (plus
+    `VERCEL_TEAM_ID` on a team account) so `/admin` can attach a firm's custom domain through the Domains API, and
+    `SENTRY_DSN` / `POSTHOG_KEY` to turn on
+    reporting (both are server-only and optional — absent, the calls are no-ops, and the CSP deliberately names no
+    third-party origin). Turn on **leaked-password protection** in Auth → Policies. Enable **PITR** on the project and
+    rehearse `docs/RESTORE_RUNBOOK.md` before launch. Redeploy the Edge Functions: `dispatch-notifications` now compares
+    the cron secret in constant time and renders each firm's own `notification_templates`; `paystack-webhook` records every
+    delivery in `webhook_events` and no longer retries what a retry cannot fix.
 
 ## Run the tests locally
 
@@ -110,7 +128,9 @@ Requires PostgreSQL 16+ (superuser). Never run the stub against Supabase.
 DATABASE_URL=postgres://postgres@localhost:5432/postgres bash scripts/db-test-local.sh
 ```
 
-Each suite ends with `NOTICE:  ALL CHECKS PASSED` (245 `PASS` lines in total). Coverage: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, the hold-release job; self-serve firm creation and its defaults, slug validation, the three-firm cap, platform admins seeing lifecycle rows and no content; the court directory (platform-wide vs firm-private), holidays and vacations, practitioner fields; service of process across firms (record + served document visible to the served firm, nothing else; acknowledgement once; clients see progress).
+Each suite ends with `NOTICE:  ALL CHECKS PASSED` (354 `PASS` lines in total). Coverage: client isolation (matters, updates, documents, invoices), staff isolation across firms, MFA gating of staff writes, the anonymous surface, slot computation with breaks, booking and double-booking, the 15-minute hold, the payment cascade and duplicate-webhook idempotency, the court-update form, consultation notes (internal notes invisible to clients), audit-log access and immutability, the hold-release job; self-serve firm creation and its defaults, slug validation, the three-firm cap, platform admins seeing lifecycle rows and no content; the court directory (platform-wide vs firm-private), holidays and vacations, practitioner fields; service of process across firms (record + served document visible to the served firm, nothing else; acknowledgement once; clients see progress); manual invoicing and the chase list; and the admin surfaces — domain requests, role changes and member removal, policy and template validation, what a platform admin can and cannot see on the health screens, and the rate limiter.
+
+`.github/workflows/ci.yml` runs the same script on every push, so a change that loosens row-level security fails the build rather than the launch. It also runs a real `next build` and checks the route table against the content security policy (`scripts/check-prerendered-routes.mjs`): a page Next.js prerenders carries inline scripts that can hold no per-request nonce, so a route that becomes static without the policy knowing ships as HTML that never hydrates.
 
 ## Rules the code enforces (don't undo them in later slices)
 
@@ -129,6 +149,8 @@ Each suite ends with `NOTICE:  ALL CHECKS PASSED` (245 `PASS` lines in total). C
 - **Lifecycle columns are the platform's.** `firms.status`, `plan` and `verified_at` change only through a platform admin (trigger); `lawyer_profiles.scn_verified_at` likewise.
 
 ## Server functions (RPC)
+
+The table below is the shape of the API. **`docs/RPC_REFERENCE.md` is the full reference** — every argument, every error a caller can provoke, and what each function audits.
 
 | Function | Who | What |
 |---|---|---|
@@ -159,7 +181,13 @@ Each suite ends with `NOTICE:  ALL CHECKS PASSED` (245 `PASS` lines in total). C
 | `vacate_court_event(event, reason, new_date, new_purpose)` | staff (MFA) | the registry vacated a date: reminders and the sittings digest skip it; refixed date opens a new event; client told |
 | `set_firm_status(firm, status, note)` | platform admin (MFA) | the only write platform admins have on a firm: pending → active (stamps `verified_at`, notifies the firm) or suspended |
 | `invoice_settlement(invoice)` | the invoice's client, or the firm | the Paystack subaccount the checkout must route to |
-| `firm_admin`, `service_inbox`, `firm_service_directory`, `firm_cause_list`, `reference_data_coverage` | views | lifecycle-only tenant list for platform admins; the served firm's only read path (with the served document's name, mime and checksum); active firms' addresses for service and opt-in, for firm staff picking counsel; today's sittings by court; how far the reference data reaches |
+| `request_firm_domain(firm, hostname, note)` / `withdraw_firm_domain_request(request)` | owner/admin (MFA) | the firm asks for its own domain and can take the ask back; the platform decides |
+| `set_firm_domain(firm, domain, note)`, `set_firm_plan(firm, plan, note)` | platform admin (MFA) | maps the hostname and moves the plan; both audited |
+| `set_member_role(firm, user, role)` | owner/admin (MFA) | refuses your own account, refuses to touch an owner unless you are one, refuses to leave the firm without an owner |
+| `remove_member(firm, user)` | owner/admin (MFA) | refuses a lawyer with consultations still ahead; clears their availability and takes their profile off the public site |
+| `retry_notification(notification)` | platform admin (MFA) | puts a failed message back in the queue and counts the attempt; refuses a sixth |
+| `rate_limit_hit(bucket, limit, window, key)` | authenticated, anon | fixed-window counter; a signed-in caller is keyed on their own id, never on what they sent |
+| `firm_admin`, `service_inbox`, `firm_service_directory`, `firm_cause_list`, `reference_data_coverage`, `platform_notification_health`, `platform_failed_notifications`, `platform_settlement_health` | views | lifecycle-only tenant list for platform admins; the served firm's only read path (with the served document's name, mime and checksum); active firms' addresses for service and opt-in, for firm staff picking counsel; today's sittings by court; how far the reference data reaches; and the three platform health reads — queued and failed messages, the failures themselves, and payments that settled to the wrong subaccount |
 | `release_expired_holds()`, `enqueue_appointment_reminders()`, `enqueue_court_reminders()`, `mark_overdue_invoices()`, `digest_sittings_without_update()` | pg_cron | jobs |
 
 ## Decisions still open before launch (blueprint §14)
@@ -168,11 +196,23 @@ Platform domain · platform entity · which entity holds the platform Paystack a
 
 ## Platform data the operator maintains
 
-`courts` (platform rows), `court_vacations` (from each court's practice direction, with whether time runs), `public_holidays` (national and state-declared; movable Eid dates when declared; 2026–2027 fixed dates seeded), `platform_admins`. Platform admins with MFA write the first three through the API (`/admin` UI in slice 5); `reference_data_coverage` shows how far the data reaches. See `docs/DOCKET_PLATFORM_MODEL.md` §2.
+`courts` (platform rows), `court_vacations` (from each court's practice direction, with whether time runs), `public_holidays` (national and state-declared; movable Eid dates when declared; 2026–2027 fixed dates seeded), `platform_admins`. Platform admins with MFA write the first three at `/admin/reference` (holidays, including movable Eid dates once declared, and each court's vacation); `reference_data_coverage` shows how far the data reaches. See `docs/DOCKET_PLATFORM_MODEL.md` §2.
+
+## Guides and runbooks
+
+| Document | For |
+|---|---|
+| `docs/ADMIN_GUIDE.md` | the two consoles: what a firm's owner changes, and what only the platform can |
+| `docs/CLIENT_GUIDE.md` | what a client can do in the app, in their words |
+| `docs/RPC_REFERENCE.md` | every server function: arguments, errors, what it audits |
+| `docs/DEPLOYMENT_RUNBOOK.md` | a project from nothing to serving, and what to check after each deploy |
+| `docs/RESTORE_RUNBOOK.md` | PITR, the restore rehearsal, and the RPO/RTO this platform commits to |
+| `docs/COMPLIANCE_PACK.md` | the privacy notice and DPA wired to `firms.policies`, the DSR and breach runbooks, the NDPC checklist |
+| `docs/ONBOARDING_A_FIRM.md` | taking a new firm from registration to live |
 
 ## Next slices
 
-See `BUILD_PROMPTS.md` — six self-contained prompts for Claude Code that build the Next.js app on top of this foundation, in the order of the 90-day plan.
+See `BUILD_PROMPTS.md` — six self-contained prompts for Claude Code that build the Next.js app on top of this foundation, in the order of the 90-day plan. Slices 1–5 are built; slice 6 is the launch slice.
 
 ## Source requirements
 

@@ -1,17 +1,100 @@
 // Supabase Edge Function — notification dispatcher. pg_cron calls it every minute with the x-cron-secret header (migration 9).
 // Drains `notifications` rows with status 'queued' for email / sms / push. WhatsApp is Phase 2 (marked 'skipped').
-// Templates are minimal and branded by firm name; move them to firms.brand once the design system lands.
+//
+// THE WORDS ARE THE FIRM'S WHERE THE FIRM HAS WRITTEN THEM. Every sentence below is Docket's,
+// and a firm may replace any of them for any event through firms.notification_templates
+// (migration 20). An override is used INSTEAD of the built-in copy for that event; every event
+// it does not override keeps Docket's words, so an empty object is the normal state and no
+// client is ever left without a message. Placeholders in {braces} are filled here.
+//
+// A RETRY COUNTS, A FAILURE DOES NOT. notifications.attempts (migration 20) belongs to
+// retry_notification(): it increments when an operator puts a failed message back in the queue
+// and refuses the sixth. This function only marks the row 'failed' — counting the failure here
+// as well would make one retry cost two, so a provider outage cannot become an endless loop of
+// texts at a client's expense and an operator is never told they have used tries they have not.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3';
 
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') ?? 'mailto:ops@docket.app', Deno.env.get('VAPID_PUBLIC_KEY')!, Deno.env.get('VAPID_PRIVATE_KEY')!);
 
-type Row = { id: string; user_id: string; firm_id: string | null; channel: string; event: string; payload: Record<string, any> };
+type Row = { id: string; user_id: string; firm_id: string | null; channel: string; event: string; attempts: number | null; payload: Record<string, any> };
+
+/** One firm's override for one event, as validate_notification_templates() leaves it. */
+type Template = { subject?: string | null; text?: string | null };
 
 function fmt(iso: string | undefined, tz: string) {
   if (!iso) return '';
   return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: tz }).format(new Date(iso));
+}
+
+/** A bare YYYY-MM-DD, which is a calendar day and not an instant. */
+const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A DATE column is the day it says, everywhere. invoices.due_at is a date, and running it through
+ * fmt() would parse it as UTC midnight and then shift it — so a client in Lagos reads the right
+ * day and a client in New York reads the day before, for the same invoice.
+ */
+function fmtDay(day: string) {
+  return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+/** Walks both strings whole, so the time taken says nothing about where they differ. */
+function timingSafeEqualHex(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+/**
+ * The cron secret is the ONLY credential on this function (verify_jwt is off), so comparing it
+ * with !== would let a caller learn it a character at a time. Both sides are hashed first: the
+ * digests are the same length whatever the secret's length, so not even that leaks.
+ */
+async function cronSecretMatches(provided: string | null, expected: string): Promise<boolean> {
+  if (!provided) return false;
+  const [a, b] = await Promise.all([sha256Hex(provided), sha256Hex(expected)]);
+  return timingSafeEqualHex(a, b);
+}
+
+/**
+ * Fill {placeholders} in a firm's own sentence.
+ *
+ * What a firm can use: {firm}, {when} (the event's time in the recipient's zone) and any key of
+ * the notification payload — {reference}, {invoice_number}, {amount}, and so on. A key ending in
+ * _at is rendered as a date and time in that same zone; money arrives as {amount}, already
+ * carrying its currency, because minor units mean nothing to a reader.
+ *
+ * A placeholder nobody recognises is LEFT AS IT WAS TYPED. Blanking it would hide the firm's
+ * mistake from the only person who can fix it, and inventing a value would be worse.
+ */
+function fill(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{([a-z0-9_]+)\}/gi, (whole, key: string) =>
+    Object.prototype.hasOwnProperty.call(vars, key) ? vars[key] : whole,
+  );
+}
+
+function placeholders(n: Row, firm: string, tz: string): Record<string, string> {
+  const p = n.payload ?? {};
+  const vars: Record<string, string> = { firm, when: fmt(p.starts_at ?? p.scheduled_at, tz) };
+  for (const [key, value] of Object.entries(p)) {
+    if (value === null || value === undefined) continue;
+    if (typeof value === 'object') continue;                       // never paste raw JSON into a message
+    const raw = String(value);
+    // Shape, not suffix: due_at is a calendar day and starts_at is an instant, and both end _at.
+    vars[key] = DAY_ONLY.test(raw) ? fmtDay(raw) : key.endsWith('_at') && typeof value === 'string' ? fmt(value, tz) : raw;
+  }
+  if (p.amount_minor !== undefined && p.amount_minor !== null) {
+    vars.amount = `${p.currency ?? ''} ${(Number(p.amount_minor) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`.trim();
+  }
+  return vars;
 }
 
 function render(n: Row, firm: string, tz: string): { subject: string; text: string; url: string } {
@@ -25,7 +108,7 @@ function render(n: Row, firm: string, tz: string): { subject: string; text: stri
     case 'appointment_reminder_now': return { subject: `${firm}: your consultation is ready`, text: `Your consultation is ready. Join now.`, url: `/app/appointments/${p.appointment_id}/waiting-room` };
     case 'appointment_cancelled':    return { subject: `${firm}: consultation ${p.reference} cancelled`, text: `Your consultation scheduled for ${when} has been cancelled.`, url: `/app/appointments/${p.appointment_id}` };
     case 'appointment_rescheduled':  return { subject: `${firm}: consultation rescheduled`, text: `Your consultation has been moved to ${when}.`, url: `/app/appointments/${p.appointment_id}` };
-    case 'invoice_issued':           return { subject: `${firm}: invoice ${p.invoice_number}`, text: `${firm} has issued invoice ${p.invoice_number} for ${p.currency} ${(Number(p.amount_minor) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}${p.due_at ? `, due ${fmt(p.due_at, tz)}` : ''}. Open the app to pay.`, url: `/app/payments/${p.invoice_id}` };
+    case 'invoice_issued':           return { subject: `${firm}: invoice ${p.invoice_number}`, text: `${firm} has issued invoice ${p.invoice_number} for ${p.currency} ${(Number(p.amount_minor) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}${p.due_at ? `, due ${fmtDay(String(p.due_at))}` : ''}. Open the app to pay.`, url: `/app/payments/${p.invoice_id}` };
     case 'payment_confirmed':        return { subject: `${firm}: payment received`, text: `We received your payment for invoice ${p.invoice_number}. Your receipt is in the app.`, url: `/app/payments` };
     case 'matter_update':            return { subject: `${firm}: update on your matter`, text: `${p.title}. Open the app for details.`, url: `/app/matters/${p.matter_id}` };
     case 'court_date_t3':            return { subject: `${firm}: court date in 3 days`, text: `Your matter comes up on ${when}${p.purpose ? ` for ${p.purpose}` : ''}.`, url: `/app/matters/${p.matter_id}` };
@@ -82,10 +165,12 @@ async function sendPush(userId: string, subject: string, text: string, url: stri
 Deno.serve(async (req: Request) => {
   // Invoked by pg_cron (net.http_post) every minute; the shared secret is the only credential (verify_jwt is off).
   const secret = Deno.env.get('CRON_SECRET');
-  if (!secret || req.headers.get('x-cron-secret') !== secret) return new Response('unauthorized', { status: 401 });
+  if (!secret || !(await cronSecretMatches(req.headers.get('x-cron-secret'), secret))) {
+    return new Response('unauthorized', { status: 401 });
+  }
   const { data: rows, error } = await supabase
     .from('notifications')
-    .select('id, user_id, firm_id, channel, event, payload, profiles!inner(email, phone, timezone, full_name), firms(name)')
+    .select('id, user_id, firm_id, channel, event, attempts, payload, profiles!inner(email, phone, timezone, full_name), firms(name, notification_templates)')
     .eq('status', 'queued').lte('send_after', new Date().toISOString())
     .in('channel', ['email', 'sms', 'push', 'whatsapp'])
     .order('created_at').limit(50);
@@ -94,7 +179,24 @@ Deno.serve(async (req: Request) => {
   let sent = 0, failed = 0, skipped = 0;
   for (const r of rows ?? []) {
     const prof: any = (r as any).profiles; const firm = (r as any).firms?.name ?? 'Docket';
-    const { subject, text, url } = render(r as any, firm, prof?.timezone ?? 'Africa/Lagos');
+    const tz = prof?.timezone ?? 'Africa/Lagos';
+    const built = render(r as any, firm, tz);
+    const url = built.url;
+
+    // The firm's own words win where the firm has written them.
+    const templates = ((r as any).firms?.notification_templates ?? {}) as Record<string, Template>;
+    const override = templates[r.event];
+    let subject = built.subject;
+    let text = built.text;
+    if (override && typeof override.text === 'string' && override.text.trim().length > 0) {
+      const vars = placeholders(r as any, firm, tz);
+      text = fill(override.text, vars);
+      // A firm may replace the sentence and leave Docket's subject line alone.
+      if (typeof override.subject === 'string' && override.subject.trim().length > 0) {
+        subject = fill(override.subject, vars);
+      }
+    }
+
     const appUrl = (Deno.env.get('APP_URL') ?? '') + url;
     try {
       if (r.channel === 'whatsapp') { await supabase.from('notifications').update({ status: 'skipped', error: 'whatsapp is phase 2' }).eq('id', r.id); skipped++; continue; }
@@ -103,7 +205,14 @@ Deno.serve(async (req: Request) => {
       if (r.channel === 'push')  { await sendPush(r.user_id, subject, text, url); }
       await supabase.from('notifications').update({ status: 'sent', sent_at: new Date().toISOString() }).eq('id', r.id); sent++;
     } catch (e: any) {
-      await supabase.from('notifications').update({ status: 'failed', error: String(e?.message ?? e).slice(0, 500) }).eq('id', r.id); failed++;
+      // attempts is NOT touched here. retry_notification() (migration 20) owns that counter: it
+      // increments on every re-queue and refuses the sixth. Counting the send failure as well
+      // would make one retry cycle cost two, so an operator would get two tries and be told they
+      // had used five.
+      await supabase.from('notifications')
+        .update({ status: 'failed', error: String(e?.message ?? e).slice(0, 500) })
+        .eq('id', r.id);
+      failed++;
     }
   }
   return new Response(JSON.stringify({ sent, failed, skipped }), { headers: { 'Content-Type': 'application/json' } });

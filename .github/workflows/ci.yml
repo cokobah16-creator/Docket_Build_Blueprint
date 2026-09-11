@@ -1,0 +1,298 @@
+# Docket — continuous integration.
+#
+# Four things can be checked without a Supabase project, a Paystack account or a domain, and
+# all four are checked on every push:
+#
+#   sql        the migrations apply in order against an empty Postgres 16, the seed loads, and
+#              every suite in supabase/tests passes. This is the one that matters: the database
+#              IS the authorization layer, so a broken policy is a broken product, and the suite
+#              exercises each read and write from both sides of every wall.
+#   typecheck  TypeScript, strict, over app/, src/, middleware.ts and the tests.
+#   deno       the three Edge Functions type-check. They are Deno, not Node: tsconfig.json
+#              excludes supabase/functions and the typecheck job never looks at them.
+#   routes     a real `next build`, checked against the content security policy: every route
+#              Next.js prerenders must be one the nonce policy accounts for, or the page ships
+#              as dead HTML. See scripts/check-prerendered-routes.mjs.
+#
+# A fifth, e2e, needs a configured Supabase project and is therefore GATED — see the bottom of
+# this file for exactly what it needs and why it is skipped without it.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------- the database
+  sql:
+    name: Migrations, seed and the RLS suite
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        # Steps start the moment the container is up; without this the first psql races it.
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The runner image already carries a psql, but not necessarily a 16 one, and a client
+      # older than the server garbles \copy and the newer error formats. Pin it from PGDG.
+      - name: Install the PostgreSQL 16 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-16
+          psql --version
+
+      - name: Run the suite
+        # A BARE url on purpose. scripts/db-test-local.sh builds the test database's connection
+        # string as "${DATABASE_URL%/*}/docket_test" — it keeps everything before the final
+        # slash — so a "?sslmode=..." or any other query string would be silently swallowed and
+        # the script would connect to a database nobody asked for.
+        #
+        # The suite needs a SUPERUSER: tests/00_local_auth_stub.sql creates the anon,
+        # authenticated and service_role roles and an auth schema, sets default privileges, and
+        # the tests SET ROLE between them. The postgres user of the service container is one.
+        # It also drops and recreates a database called docket_test, which is why this is only
+        # ever pointed at a throwaway Postgres and never at a Supabase project.
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
+          PGPASSWORD: postgres
+        run: |
+          set -euo pipefail
+          bash scripts/db-test-local.sh 2>&1 | tee db-test.log
+
+      - name: Every suite must have finished, and finished passing
+        # The script already fails the job on the first FAIL: t_check() raises, psql runs with
+        # ON_ERROR_STOP=1, and the loop tests PIPESTATUS. This step is the second lock. It
+        # catches the case that failure mode cannot: a suite that never ran at all — a file
+        # added to supabase/tests and skipped, or output that stopped part way — which would
+        # otherwise leave the job green with checks that were never made.
+        run: |
+          set -euo pipefail
+          suites=$(ls supabase/tests/[1-9]*.sql | wc -l | tr -d '[:space:]')
+          passed=$(grep -c 'ALL CHECKS PASSED' db-test.log || true)
+          passed=$(printf '%s' "$passed" | tr -d '[:space:]')
+          echo "suites in supabase/tests: $suites — suites that reported passing: $passed"
+          if grep -q '^ERROR\|FAIL  ' db-test.log; then
+            echo "::error::a check failed or a statement errored — see the log above"
+            exit 1
+          fi
+          if [ "$passed" -ne "$suites" ]; then
+            echo "::error::$suites suites exist but only $passed reported ALL CHECKS PASSED"
+            exit 1
+          fi
+
+      - name: Keep the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-test-log
+          path: db-test.log
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------- the app
+  typecheck:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          # No `cache: npm` here: actions/setup-node's npm cache is keyed on a lockfile, and
+          # this repository has none yet (see below).
+
+      # `npm install`, NOT `npm ci`. npm ci requires package-lock.json and there is no lockfile
+      # in this repository: it was built in an environment with the npm registry closed, where a
+      # lockfile cannot be generated. That means this job resolves dependency versions afresh on
+      # every run and can go red because of somebody else's release rather than this repository's
+      # change. Generating a lockfile is the fix, it has to be done somewhere with registry
+      # access, and DEPLOYMENT_RUNBOOK.md says how — after which this line becomes `npm ci` and
+      # `cache: npm` can go back on the step above.
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  # ---------------------------------------------------------------- the Edge Functions
+  deno:
+    name: Edge Functions typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Deno ships as a single binary from its GitHub releases, so this step needs nothing from
+      # the npm registry to install — which is why the Edge Functions can be checked in CI even
+      # though they import npm: specifiers.
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Type-check every function
+        # supabase/functions/*/index.ts is the whole surface: one entry point per function, each
+        # deployed on its own. `deno check` resolves the npm: imports and their types the same
+        # way the Supabase runtime does.
+        #
+        # --node-modules-dir=none is required and is not a detail. Without it deno looks for a
+        # node_modules directory, does not find one, and refuses before it checks anything. With
+        # `auto` it would instead walk up to the repository's own package.json and install the
+        # whole Next.js tree — react, playwright, tailwind — to check three Deno files that
+        # import none of it. `none` resolves npm: specifiers from deno's own cache, which fetches
+        # exactly what the functions import: @supabase/supabase-js and web-push. That is also
+        # how the Supabase Edge runtime resolves them, so it is the honest check as well as the
+        # cheap one.
+        run: deno check --node-modules-dir=none supabase/functions/*/index.ts
+
+  # ---------------------------------------------------------------- the policy vs the build
+  #
+  # src/lib/csp.ts hands every route a nonce-based script-src except a hand-written set of
+  # prerendered shells. A page rendered at BUILD time has no request, so its inline bootstrap
+  # scripts carry no nonce and the strict policy blocks them: the HTML arrives, React never
+  # hydrates, and every control on the page is dead. Which routes those are cannot be read off
+  # the source — only off the route table of a real build — and the set was once wrong by four
+  # routes, among them firm registration, TOTP enrolment and the platform console.
+  routes:
+    name: Prerendered routes match the policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build
+        # PLACEHOLDER SUPABASE VALUES, ON PURPOSE, and they are never contacted. src/lib/env.ts
+        # returns null when these are unset and src/lib/supabase/server.ts then returns early
+        # WITHOUT calling cookies() — so on an unconfigured build a page that reads the session
+        # touches no dynamic API and Next prerenders it. That would make this job's route table
+        # a different shape from a real deployment's and the check meaningless. With the pair
+        # set, every such page reaches cookies() and is dynamic, exactly as in production.
+        # Nothing is fetched from them: the pages that hold them are dynamic by then, so they
+        # do not render during the build.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: sb_publishable_ci_placeholder_not_a_real_key
+        run: |
+          set -euo pipefail
+          npm run build 2>&1 | tee build.log
+
+      - name: Every prerendered route must be one the policy knows about
+        run: node scripts/check-prerendered-routes.mjs build.log
+
+      - name: Keep the log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------- browser smoke tests
+  #
+  # tests/e2e/smoke.spec.ts has four tests: the platform landing, a tenant's public home,
+  # /firm/start and /app/login. Without a configured Supabase the tenant test SKIPS itself
+  # outright, and two of the others drop their real assertions — the sign-in forms render a
+  # "not configured" notice instead of the Phone and Email tabs, because a tenant is resolved
+  # from firm_public and there is nothing to resolve against. What is left is one page load.
+  # That is a green tick that proves nothing, so this job is gated instead of run empty.
+  #
+  # TO TURN IT ON, set three repository secrets:
+  #   NEXT_PUBLIC_SUPABASE_URL       the project URL
+  #   NEXT_PUBLIC_SUPABASE_ANON_KEY  its anon / publishable key
+  #   E2E_FIRM_SLUG                  the slug of a firm that is ACTIVE in that project — the
+  #                                  fallback in the spec file names one particular firm, which
+  #                                  will not exist in your project
+  #
+  # These tests only read public pages. They sign nobody in and write nothing. Even so, point
+  # them at a staging project rather than the one your firms are using.
+  #
+  # The `secrets` context cannot be read in a job-level `if:`, so the presence check is its own
+  # job and the answer travels as an output.
+  e2e-preflight:
+    name: Are the e2e secrets set?
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        env:
+          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          FIRM_SLUG: ${{ secrets.E2E_FIRM_SLUG }}
+        run: |
+          set -euo pipefail
+          # All three, because the e2e job passes all three. Checking two of them would let the
+          # job start with no anon key and fail as though the app were broken.
+          if [ -n "${SUPABASE_URL:-}" ] && [ -n "${SUPABASE_ANON_KEY:-}" ] && [ -n "${FIRM_SLUG:-}" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "e2e skipped: set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and E2E_FIRM_SLUG as repository secrets to run it."
+          fi
+
+  e2e:
+    name: Playwright smoke (mobile)
+    runs-on: ubuntu-latest
+    needs: [e2e-preflight, typecheck]
+    if: needs.e2e-preflight.outputs.configured == 'true'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      # playwright.config.ts runs one project, "mobile-chrome" on a Pixel 7, so only Chromium
+      # is needed. Mobile first: 390px is the width Docket is designed at.
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      # With no PLAYWRIGHT_BASE_URL the config starts `npm run dev` itself and waits for it.
+      - name: Run the smoke tests
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          E2E_FIRM_SLUG: ${{ secrets.E2E_FIRM_SLUG }}
+        run: npm run test:e2e
+
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
