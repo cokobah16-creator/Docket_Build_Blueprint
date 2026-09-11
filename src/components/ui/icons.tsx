@@ -198,6 +198,58 @@ export const DocumentIcon = (p: IconProps) => (
   </Icon>
 );
 
+/* ── Timeline kinds ──────────────────────────────────────────────────── */
+
+// The matter timeline names ten kinds of update. Five of them already had a
+// glyph above — consultation, appointment, filing, correspondence and
+// document — so only these five are new. They were emoji (⚖ ★ ₦ ✎ ⇄) until
+// now, which is the one thing the artboard never draws: the weight is the
+// platform's, not ours, and ₦ in particular rendered as a letter rather than
+// as a mark at 15px.
+
+/** court_sitting: a balance, for a day in court. */
+export const ScalesIcon = (p: IconProps) => (
+  <Icon strokeWidth={1.6} {...p}>
+    <path d="M12 4.2v16M8 20.2h8M4.8 7.4h14.4" />
+    <path d="M4.8 7.4 2.2 13.2h5.2zM19.2 7.4l-2.6 5.8h5.2z" />
+    <path d="M2.2 13.2a2.6 2.6 0 0 0 5.2 0M16.6 13.2a2.6 2.6 0 0 0 5.2 0" />
+  </Icon>
+);
+
+/** milestone: the one update on a matter worth marking. */
+export const StarIcon = (p: IconProps) => (
+  <Icon strokeWidth={1.6} {...p}>
+    <path d="M12 3.6 14.6 8.9 20.4 9.75 16.2 13.85 17.2 19.6 12 16.9 6.8 19.6 7.8 13.85 3.6 9.75 9.4 8.9Z" />
+  </Icon>
+);
+
+/** fee: the naira mark drawn as a mark — an N barred twice. */
+export const NairaIcon = (p: IconProps) => (
+  <Icon strokeWidth={1.8} {...p}>
+    <path d="M6.6 19.4V4.6l10.8 14.8V4.6" />
+    <path d="M4.2 9.8h15.6M4.2 14.2h15.6" />
+  </Icon>
+);
+
+/** note: a lawyer's own line on the record. */
+export const PencilIcon = (p: IconProps) => (
+  <Icon strokeWidth={1.6} {...p}>
+    <path d="M16.4 3.9a2.5 2.5 0 0 1 3.4 3.4L8.5 18.5l-4.4 1.2 1.2-4.4z" />
+    <path d="m14.4 5.9 3.4 3.4" />
+  </Icon>
+);
+
+/**
+ * status_change: a two-way cycle. Deliberately curved and deliberately not
+ * TransferIcon, whose straight pair of arrows means a bank transfer.
+ */
+export const SwapIcon = (p: IconProps) => (
+  <Icon strokeWidth={1.6} {...p}>
+    <path d="M4.4 12A7.6 7.6 0 0 1 17.4 6.6M13.9 5.9 17.4 6.6 16.7 3.1" />
+    <path d="M19.6 12A7.6 7.6 0 0 1 6.6 17.4M10.1 18.1 6.6 17.4 7.3 20.9" />
+  </Icon>
+);
+
 /* ── State ───────────────────────────────────────────────────────────── */
 
 export const CheckIcon = (p: IconProps) => (

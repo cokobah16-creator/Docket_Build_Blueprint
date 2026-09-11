@@ -1,9 +1,21 @@
-import Link from "next/link";
+// A consultation's message thread: a pushed screen back to Messages. The
+// sub-header carries the reference in mono and the way through to the
+// appointment itself; the card carries nothing but the thread, because the
+// bubbles are already the screen.
+
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { firmById } from "@/lib/tenant";
 import { clientTimezone } from "@/lib/portal-data";
-import { Card, CardHeader } from "@/components/ui/card";
+import {
+  AppCard,
+  AppCardHeader,
+  AppLink,
+  Footnote,
+  PushedScreen,
+  SubHeader,
+  SubHeaderRef,
+} from "@/components/app";
 import { MessagesThread } from "@/components/portal/messages-thread";
 import type { MessageRow } from "@/lib/db/types";
 
@@ -28,14 +40,48 @@ export default async function ThreadPage({ params }: { params: Promise<{ kind: s
     appt.lawyer_id ? supabase.from("lawyer_public").select("id, full_name, title").eq("id", appt.lawyer_id).maybeSingle() : Promise.resolve({ data: null }),
   ]);
   const law = lawyer as { id: string; full_name: string | null; title: string | null } | null;
+  const firmName = firm?.name ?? "Your firm";
   const senderNames = law ? { [law.id]: law.full_name ?? law.title ?? firm?.name ?? "Your lawyer" } : {};
+  // Who the thread is with: the lawyer when the consultation has one, the firm
+  // otherwise. Never both, and never a name that is not on the record.
+  const counterparty = law?.full_name ?? law?.title ?? firmName;
+  const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(appt.starts_at));
+
   return (
-    <div className="space-y-5">
-      <p className="text-sm"><Link href="/app/messages" className="text-brand underline">← Messages</Link></p>
-      <Card>
-        <CardHeader title={`Consultation ${appt.reference}`} action={<Link href={`/app/appointments/${appt.id}`} className="text-sm text-brand underline">Details</Link>} />
-        <MessagesThread firmId={appt.firm_id} matterId={null} appointmentId={appt.id} userId={user.id} initial={(msgs ?? []) as MessageRow[]} timezone={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />
-      </Card>
-    </div>
+    <PushedScreen
+      header={
+        <SubHeader backHref="/app/messages" backLabel="Back to messages">
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-2.5">
+            <SubHeaderRef>{appt.reference}</SubHeaderRef>
+            <AppLink
+              href={`/app/appointments/${appt.id}`}
+              className="inline-flex min-h-[44px] flex-none items-center"
+            >
+              Details
+            </AppLink>
+          </div>
+        </SubHeader>
+      }
+    >
+      <h1 className="sr-only">Messages about consultation {appt.reference}</h1>
+
+      <AppCard>
+        <AppCardHeader title={counterparty} />
+        <MessagesThread
+          firmId={appt.firm_id}
+          matterId={null}
+          appointmentId={appt.id}
+          userId={user.id}
+          initial={(msgs ?? []) as MessageRow[]}
+          timezone={tz}
+          senderNames={senderNames}
+          firmName={firmName}
+        />
+      </AppCard>
+
+      <Footnote>
+        This thread is about your consultation on {when} ({tz}).
+      </Footnote>
+    </PushedScreen>
   );
 }

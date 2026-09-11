@@ -1,9 +1,18 @@
 "use client";
 
+// The event × channel matrix.
+//
+// It is the one thing in the phone app that scrolls sideways: twelve events
+// against three channels does not fit a phone's width, and stacking it into
+// twelve little cards loses the grid that makes it readable at a glance. So
+// the table keeps its shape and takes its own horizontal scroller, the event
+// names never wrap, and each checkbox sits in a 44px target so a thumb can
+// find it.
+
 import { useState } from "react";
 import { savePreferences } from "@/lib/actions/portal";
 import { PREFERENCE_CHANNELS, PREFERENCE_EVENTS } from "@/lib/notifications-copy";
-import { Button } from "@/components/ui/button";
+import { AppButton } from "@/components/app";
 import { Alert } from "@/components/ui/alert";
 import type { NotificationPreference } from "@/lib/db/types";
 
@@ -30,25 +39,57 @@ export function PreferencesForm({ initial }: { initial: NotificationPreference[]
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-3.5">
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="min-w-full border-collapse">
+          <caption className="sr-only">
+            Which notifications to send on which channel
+          </caption>
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
-              <th className="py-2 pr-2">Event</th>
-              {PREFERENCE_CHANNELS.map((c) => <th key={c.channel} className="py-2 text-center">{c.label}</th>)}
+            <tr className="border-b border-dk-rule">
+              <th
+                scope="col"
+                className="whitespace-nowrap py-2 pr-3 text-left text-[11px] font-semibold uppercase tracking-[0.07em] text-dk-muted"
+              >
+                Event
+              </th>
+              {PREFERENCE_CHANNELS.map((c) => (
+                <th
+                  key={c.channel}
+                  scope="col"
+                  className="w-11 whitespace-nowrap px-1 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.07em] text-dk-muted"
+                >
+                  {c.label}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-dk-rule">
             {PREFERENCE_EVENTS.map((e) => (
               <tr key={e.event}>
-                <td className="py-2 pr-2 text-gray-800">{e.label}</td>
+                <th
+                  scope="row"
+                  className="whitespace-nowrap py-1 pr-3 text-left text-[13px] font-medium text-dk-body"
+                >
+                  {e.label}
+                </th>
                 {PREFERENCE_CHANNELS.map((c) => {
                   const k = `${e.event}|${c.channel}`;
                   return (
-                    <td key={k} className="py-2 text-center">
-                      <input type="checkbox" aria-label={`${e.label} by ${c.label}`} className="h-4 w-4" checked={state[k]} onChange={(ev) => setState((s) => ({ ...s, [k]: ev.target.checked }))} />
+                    <td key={k} className="px-1 py-1 text-center">
+                      {/* The label is the 44px target; the input keeps its own
+                          announced name, since the column heading alone would
+                          not say which row it belongs to. */}
+                      <label className="inline-flex h-11 w-11 cursor-pointer items-center justify-center">
+                        <input
+                          type="checkbox"
+                          aria-label={`${e.label} by ${c.label}`}
+                          className="h-[18px] w-[18px] accent-dk-pri"
+                          checked={state[k]}
+                          onChange={(ev) => setState((s) => ({ ...s, [k]: ev.target.checked }))}
+                        />
+                      </label>
                     </td>
                   );
                 })}
@@ -57,7 +98,9 @@ export function PreferencesForm({ initial }: { initial: NotificationPreference[]
           </tbody>
         </table>
       </div>
-      <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save preferences"}</Button>
+      <AppButton onClick={save} disabled={busy}>
+        {busy ? "Saving…" : "Save preferences"}
+      </AppButton>
     </div>
   );
 }

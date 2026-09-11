@@ -1,12 +1,54 @@
 "use client";
 
+// The waiting screen after a booking payment (the twin of the invoice's paid
+// screen): a medallion, one line of reassurance, the rows that make up what
+// was held, and the way onward.
+//
+// Nothing here confirms anything — the Paystack webhook and record_payment()
+// do that, and this page only watches. Realtime on our own appointment row
+// (RLS-scoped) with a 5s poll behind it, and a 1s tick for the hold countdown.
+//
+// The countdown stays on screen when it reaches 0:00 rather than disappearing:
+// a timer that vanishes reads as a timer that was met, and the honest state at
+// zero is that the hold has run out while the provider may still answer.
+
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { startPayment } from "@/lib/actions/booking";
+import { Alert } from "@/components/ui/alert";
+import { CheckIcon, ClockIcon, WarningIcon } from "@/components/ui/icons";
+import {
+  AppButton,
+  AppButtonLink,
+  AppCard,
+  AppCardList,
+  AppScreen,
+  Footnote,
+  appButtonClass,
+} from "@/components/app";
+
+/** One label/value line of the receipt-shaped card. */
+function Row({
+  label,
+  children,
+  mono,
+}: {
+  label: string;
+  children: ReactNode;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex justify-between gap-3 px-4 py-3.5 text-[13px]">
+      <span className="flex-none text-dk-muted">{label}</span>
+      <span
+        className={`text-right font-semibold text-dk-strong${mono ? " font-mono" : ""}`}
+      >
+        {children}
+      </span>
+    </div>
+  );
+}
 
 export function PaymentResult({
   appointmentId, reference, initialStatus, holdExpiresAt, startsAt, timezone, invoiceId, bookHref,
@@ -52,6 +94,8 @@ export function PaymentResult({
   const mm = Math.max(0, Math.floor(remainingMs / 60000));
   const ss = Math.max(0, Math.floor((remainingMs % 60000) / 1000));
   const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: timezone }).format(new Date(startsAt));
+  const held = Boolean(expiresAt);
+  const lapsed = held && remainingMs <= 0;
 
   async function retry() {
     setError(null);
@@ -59,55 +103,123 @@ export function PaymentResult({
     if (r?.error) setError(r.error);
   }
 
+  // The medallions use the app's own semantic pair — the green and amber the
+  // pills are drawn in, and the red kept for actual bad news — never the
+  // firm's colours, because this says whether money moved. The glyph and the
+  // heading say it too, so the colour is never carrying it alone.
   if (status === "confirmed" || status === "rescheduled" || status === "completed") {
     return (
-      <Card>
-        <CardHeader title="You're booked" />
-        <CardBody className="space-y-4">
-          <Alert kind="success" title="Payment received">
-            Consultation {reference} is confirmed for {when} ({timezone}).
-          </Alert>
-          <div className="flex flex-wrap gap-3">
-            <Link href={`/app/appointments/${appointmentId}`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">View appointment</Link>
-            {invoiceId && <Link href={`/app/payments/${invoiceId}`} className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">Receipt</Link>}
+      <AppScreen>
+        <div className="flex flex-col items-center gap-3.5 px-2 pb-1 pt-3 text-center">
+          <span className="grid h-[62px] w-[62px] flex-none place-items-center rounded-full border border-[#A7D8BE] bg-[#ECFDF3] text-[#05603A]">
+            <CheckIcon size={30} />
+          </span>
+          <h1 className="font-app-head text-[22px] font-semibold leading-[1.25] tracking-[-0.015em] text-dk-pri">
+            You&rsquo;re booked
+          </h1>
+          <p className="max-w-[280px] text-[13.5px] leading-[1.5] text-dk-soft">
+            Payment received. Consultation <span className="font-mono">{reference}</span> is
+            confirmed.
+          </p>
+        </div>
+
+        <AppCard>
+          <AppCardList>
+            <Row label="Consultation" mono>{reference}</Row>
+            <Row label="When">{when}</Row>
+            <Row label="Timezone">{timezone}</Row>
+          </AppCardList>
+        </AppCard>
+
+        <AppButtonLink href={`/app/appointments/${appointmentId}`}>
+          View appointment
+        </AppButtonLink>
+        {invoiceId && (
+          <div className="flex">
+            <Link href={`/app/payments/${invoiceId}`} className={appButtonClass("ghost")}>
+              Receipt
+            </Link>
           </div>
-        </CardBody>
-      </Card>
+        )}
+      </AppScreen>
     );
   }
 
   if (status === "cancelled") {
     return (
-      <Card>
-        <CardHeader title="Your hold expired" />
-        <CardBody className="space-y-4">
-          <Alert kind="warning">
-            We didn't receive payment in time, so the slot was released. Nothing has been charged.
-          </Alert>
-          <Link href={bookHref} className="inline-block rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Book again</Link>
-        </CardBody>
-      </Card>
+      <AppScreen>
+        <div className="flex flex-col items-center gap-3.5 px-2 pb-1 pt-3 text-center">
+          <span className="grid h-[62px] w-[62px] flex-none place-items-center rounded-full border border-[#E5C4C4] bg-[#FEF3F2] text-[#912018]">
+            <WarningIcon size={30} />
+          </span>
+          <h1 className="font-app-head text-[22px] font-semibold leading-[1.25] tracking-[-0.015em] text-dk-pri">
+            Your hold expired
+          </h1>
+          <p className="max-w-[280px] text-[13.5px] leading-[1.5] text-dk-soft">
+            We didn&rsquo;t receive payment in time, so the slot was released. Nothing has
+            been charged.
+          </p>
+        </div>
+
+        <AppCard>
+          <AppCardList>
+            <Row label="Consultation" mono>{reference}</Row>
+            <Row label="Slot held">{when}</Row>
+          </AppCardList>
+        </AppCard>
+
+        <AppButtonLink href={bookHref}>Book again</AppButtonLink>
+        <div className="flex">
+          <Link href={`/app/appointments/${appointmentId}`} className={appButtonClass("ghost")}>
+            Appointment details
+          </Link>
+        </div>
+      </AppScreen>
     );
   }
 
   return (
-    <Card>
-      <CardHeader title="Confirming your payment…" />
-      <CardBody className="space-y-4">
-        <p className="text-sm text-gray-700">
-          We're waiting for the payment provider to confirm. This page updates by itself — no need to refresh.
+    <AppScreen>
+      <div className="flex flex-col items-center gap-3.5 px-2 pb-1 pt-3 text-center">
+        <span className="grid h-[62px] w-[62px] flex-none place-items-center rounded-full border border-[#F3DDA4] bg-[#FFFAEB] text-[#92400E]">
+          <ClockIcon size={30} />
+        </span>
+        <h1 className="font-app-head text-[22px] font-semibold leading-[1.25] tracking-[-0.015em] text-dk-pri">
+          Confirming your payment
+        </h1>
+        <p className="max-w-[280px] text-[13.5px] leading-[1.5] text-dk-soft">
+          We&rsquo;re waiting for the payment provider to confirm. This page updates by
+          itself — no need to refresh.
         </p>
-        {expiresAt && remainingMs > 0 && (
-          <p className="text-sm text-gray-600">
-            Slot held for <span className="font-mono font-semibold text-gray-900">{mm}:{String(ss).padStart(2, "0")}</span>
-          </p>
-        )}
-        {error && <Alert kind="error">{error}</Alert>}
-        <div className="flex flex-wrap gap-3">
-          <Button onClick={retry}>Haven't paid yet? Pay now</Button>
-          <Link href={`/app/appointments/${appointmentId}`} className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">Appointment details</Link>
-        </div>
-      </CardBody>
-    </Card>
+      </div>
+
+      {error && <Alert kind="error">{error}</Alert>}
+
+      <AppCard>
+        <AppCardList>
+          <Row label="Consultation" mono>{reference}</Row>
+          <Row label="When">{when}</Row>
+          {held && (
+            <Row label={lapsed ? "Hold ran out" : "Slot held for"} mono>
+              {mm}:{String(ss).padStart(2, "0")}
+            </Row>
+          )}
+        </AppCardList>
+      </AppCard>
+
+      <AppButton onClick={retry}>Haven&rsquo;t paid yet? Pay now</AppButton>
+      <div className="flex">
+        <Link href={`/app/appointments/${appointmentId}`} className={appButtonClass("ghost")}>
+          Appointment details
+        </Link>
+      </div>
+
+      {lapsed && (
+        <Footnote>
+          The hold on this slot has run out. If your payment did go through, this page
+          will still say so as soon as the provider confirms it.
+        </Footnote>
+      )}
+    </AppScreen>
   );
 }

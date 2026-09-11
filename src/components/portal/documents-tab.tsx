@@ -4,15 +4,25 @@
 // documents/{firm}/{document}/{version}.{ext} through the storage policy,
 // previews PDFs and images through short signed URLs, lists versions.
 // Low-data mode defers every preview until tapped.
+//
+// It renders in both shells, so every colour below is a dk-* token the shell
+// redefines — the firm's brand reaches the client side and nothing reaches the
+// console. The three things you tap that used to be underlined words inside a
+// line of grey type — the uploader, "{n} versions" and a version's "Open" —
+// are real controls now, each at least 44px tall, because a file list is one
+// of the few screens a client uses one-handed and in a hurry.
 
 import { useCallback, useEffect, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { createDocument, finalizeDocumentVersion } from "@/lib/actions/portal";
 import { isLowData } from "@/lib/low-data";
-import { Button } from "@/components/ui/button";
+import { AppButton, appButtonClass } from "@/components/app/button";
+import { AppEmpty } from "@/components/app/card";
 import { Alert } from "@/components/ui/alert";
 import { Modal } from "@/components/ui/modal";
+import { ChevronDownIcon, DocumentIcon, UploadIcon } from "@/components/ui/icons";
+import { cn } from "@/lib/cn";
 import type { DocumentRow, DocumentVersionRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
 
@@ -83,74 +93,147 @@ export function DocumentsTab({
 
   return (
     <div>
-      {error && <div className="px-5 pt-4"><Alert kind="error">{error}</Alert></div>}
+      {error && <div className="px-4 pt-3.5"><Alert kind="error">{error}</Alert></div>}
       {canUpload && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
-          <p className="text-xs text-gray-500">PDF, Word, JPEG, PNG or HEIC · up to 25 MB · shared with your firm</p>
-          <label className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">
-            {busy ?? "Upload a document"}
-            <input type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
-          </label>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dk-rule px-4 py-3">
+          <p className="text-[11.5px] leading-snug text-dk-muted">
+            PDF, Word, JPEG, PNG or HEIC · up to 25 MB · shared with your firm
+          </p>
+          {/* The input is the control; the label is its face and its tap
+              target, so the focus ring has to come from focus-within. The
+              wrapper is here so the button variant's own `self-start` does not
+              fight the row's centring when the hint above wraps. */}
+          <div className="flex-none">
+            <label
+              className={appButtonClass(
+                "primary-sm",
+                "max-w-full cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-dk-pri",
+              )}
+            >
+              <UploadIcon size={15} className="flex-none" />
+              <span className="truncate">{busy ?? "Upload a document"}</span>
+              <input type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
+            </label>
+          </div>
         </div>
       )}
       {documents.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-gray-500">No documents yet. Upload one, or wait for your lawyer to share.</p>
+        <AppEmpty
+          title="No documents yet"
+          hint={canUpload
+            ? "Upload one above, or wait for your lawyer to share."
+            : "Documents your lawyer shares on this matter appear here."}
+        />
       ) : (
-        <ul className="divide-y divide-gray-100">
-          {documents.map((d) => (
-            <li key={d.id} className="px-5 py-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900">{d.name}</p>
-                  <p className="text-xs text-gray-500">
-                    {fmt.format(new Date(d.created_at))}{d.version?.size_bytes ? ` · ${fmtSize(d.version.size_bytes)}` : ""}{d.category ? ` · ${d.category.replace(/_/g, " ")}` : ""}
-                    {d.version_count > 1 && (
-                      <> · <button type="button" className="underline" onClick={() => loadVersions(d)}>{d.version_count} versions</button></>
-                    )}
-                  </p>
+        <ul className="divide-y divide-dk-rule">
+          {documents.map((d) => {
+            const open = Boolean(versions[d.id]);
+            return (
+              <li key={d.id} className="px-4 py-[13px]">
+                <div className="flex items-start gap-[11px]">
+                  <span
+                    aria-hidden="true"
+                    className="mt-[1px] grid h-7 w-7 flex-none place-items-center rounded-full bg-dk-rule text-dk-soft"
+                  >
+                    <DocumentIcon size={15} />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13.5px] font-semibold leading-[1.35] text-dk-strong">{d.name}</p>
+                    <p className="mt-[3px] text-[11.5px] leading-snug text-dk-muted">
+                      {fmt.format(new Date(d.created_at))}
+                      {d.version?.size_bytes ? ` · ${fmtSize(d.version.size_bytes)}` : ""}
+                      {d.category ? ` · ${d.category.replace(/_/g, " ")}` : ""}
+                    </p>
+                  </div>
+                  <AppButton
+                    variant="ghost-sm"
+                    className="h-11"
+                    onClick={() => openPreview(d)}
+                    disabled={!d.version}
+                  >
+                    {isImage(d.version?.mime) || isPdf(d.version?.mime) ? "Preview" : "Download"}
+                  </AppButton>
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => openPreview(d)} disabled={!d.version}>
-                  {isImage(d.version?.mime) || isPdf(d.version?.mime) ? "Preview" : "Download"}
-                </Button>
-              </div>
-              {versions[d.id] && (
-                <ul className="mt-2 space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
-                  {versions[d.id].map((v, i) => (
-                    <li key={v.id} className="flex justify-between gap-2">
-                      <span>Version {versions[d.id].length - i} · {fmt.format(new Date(v.created_at))} · {fmtSize(v.size_bytes)}</span>
-                      <button type="button" className="underline" onClick={() => openPreview({ ...d, version: v }, true)}>Open</button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </li>
-          ))}
+
+                {d.version_count > 1 && (
+                  <div className="mt-1.5 pl-[39px]">
+                    <AppButton
+                      variant="ghost-sm"
+                      className="h-11"
+                      aria-expanded={open}
+                      aria-controls={`versions-${d.id}`}
+                      onClick={() => loadVersions(d)}
+                    >
+                      {d.version_count} versions
+                      <ChevronDownIcon
+                        size={14}
+                        className={cn("flex-none transition-transform", open && "rotate-180")}
+                      />
+                    </AppButton>
+                  </div>
+                )}
+
+                {versions[d.id] && (
+                  <ul id={`versions-${d.id}`} className="mt-2 divide-y divide-dk-line rounded-[10px] border border-dk-line bg-dk-tint px-3">
+                    {versions[d.id].map((v, i) => (
+                      <li key={v.id} className="flex items-center justify-between gap-3 py-1.5">
+                        <span className="min-w-0 text-[12px] leading-snug text-dk-soft">
+                          Version {versions[d.id].length - i} · {fmt.format(new Date(v.created_at))} · {fmtSize(v.size_bytes)}
+                        </span>
+                        <AppButton
+                          variant="ghost-sm"
+                          className="h-11"
+                          aria-label={`Open version ${versions[d.id].length - i} of ${d.name}`}
+                          onClick={() => openPreview({ ...d, version: v }, true)}
+                        >
+                          Open
+                        </AppButton>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
 
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title={preview?.doc.name ?? "Document"}>
         {preview && (preview.loading ? (
-          <p className="text-sm text-gray-600">Preparing a secure link…</p>
+          <p className="text-[13.5px] leading-relaxed text-dk-body">Preparing a secure link…</p>
         ) : !preview.url ? (
           <div className="space-y-3">
-            <p className="text-sm text-gray-700">Low-data mode is on. Load this {fmtSize(preview.doc.version?.size_bytes) || "file"} preview?</p>
-            <Button onClick={() => openPreview(preview.doc, true)}>Load preview</Button>
+            <p className="text-[13.5px] leading-relaxed text-dk-body">
+              Low-data mode is on. Load this {fmtSize(preview.doc.version?.size_bytes) || "file"} preview?
+            </p>
+            <AppButton variant="primary-sm" onClick={() => openPreview(preview.doc, true)}>
+              Load preview
+            </AppButton>
           </div>
         ) : isImage(preview.doc.version?.mime) ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview.url} alt={preview.doc.name} className="max-h-[70vh] w-full rounded-lg object-contain" />
+          <img src={preview.url} alt={preview.doc.name} className="max-h-[70vh] w-full rounded-[10px] object-contain" />
         ) : isPdf(preview.doc.version?.mime) ? (
           <div className="space-y-3">
-            <iframe src={preview.url} title={preview.doc.name} className="h-[70vh] w-full rounded-lg border border-gray-200" />
-            <a href={preview.url} target="_blank" rel="noreferrer" className="text-sm text-brand underline">Open in a new tab</a>
+            <iframe src={preview.url} title={preview.doc.name} className="h-[70vh] w-full rounded-[10px] border border-dk-line" />
+            <a
+              href={preview.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-[44px] items-center text-[12.5px] font-medium text-dk-pri underline underline-offset-2"
+            >
+              Open in a new tab
+            </a>
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-700">This file type has no in-app preview.</p>
-            <a href={preview.url} className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on" download={preview.doc.name}>Download</a>
+            <p className="text-[13.5px] leading-relaxed text-dk-body">This file type has no in-app preview.</p>
+            <a href={preview.url} className={appButtonClass("primary-sm")} download={preview.doc.name}>
+              Download
+            </a>
           </div>
         ))}
-        <p className="mt-3 text-xs text-gray-500">Links expire after two minutes.</p>
+        <p className="mt-3 text-[11.5px] leading-relaxed text-dk-muted">Links expire after two minutes.</p>
       </Modal>
     </div>
   );
