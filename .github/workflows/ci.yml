@@ -159,7 +159,16 @@ jobs:
         # supabase/functions/*/index.ts is the whole surface: one entry point per function, each
         # deployed on its own. `deno check` resolves the npm: imports and their types the same
         # way the Supabase runtime does.
-        run: deno check supabase/functions/*/index.ts
+        #
+        # --node-modules-dir=none is required and is not a detail. Without it deno looks for a
+        # node_modules directory, does not find one, and refuses before it checks anything. With
+        # `auto` it would instead walk up to the repository's own package.json and install the
+        # whole Next.js tree — react, playwright, tailwind — to check three Deno files that
+        # import none of it. `none` resolves npm: specifiers from deno's own cache, which fetches
+        # exactly what the functions import: @supabase/supabase-js and web-push. That is also
+        # how the Supabase Edge runtime resolves them, so it is the honest check as well as the
+        # cheap one.
+        run: deno check --node-modules-dir=none supabase/functions/*/index.ts
 
   # ---------------------------------------------------------------- the policy vs the build
   #
