@@ -180,6 +180,19 @@ Returns `jsonb` — the Paystack subaccount the checkout must route to, and the 
 Refuses:
 - `not permitted` *(42501)* — also what a missing invoice returns, so an id cannot be probed
 
+### `fulfil_document_request(p_request uuid, p_document uuid)`
+Returns `void`. **Who:** a party to the matter, or firm staff who can see it (the wall applies).
+
+Answers a request the firm made (`document_requests`, migration 31) with an uploaded document:
+marks it fulfilled once, audits `document_request.fulfilled`, and tells the lawyer who asked
+(`document_received`). Staff create requests by plain insert and withdraw them by setting
+`cancelled_at`; nobody can delete one.
+
+Refuses:
+- `not authenticated` · `not permitted` *(42501)* — also what an unknown request returns
+- `this request was withdrawn` · `this request has already been answered`
+- `that document is not on this matter` — a document on another matter, or a deleted one
+
 ---
 
 ## 4. What firm staff may call
@@ -561,7 +574,7 @@ that fired them:
 | `audit_row_change()` | several tables | never refuses; writes `audit_log` |
 | `handle_new_user()` | `auth.users` | never refuses; opens the `profiles` row |
 | `document_version_set_current()` | `document_versions` | never refuses; points `documents.current_version_id` at the newest version |
-| `notify_matter_update()`, `notify_appointment_status()`, `notify_message()` | their tables | never refuse; enqueue notifications |
+| `notify_matter_update()`, `notify_appointment_status()`, `notify_message()`, `notify_document_request()` | their tables | never refuse; enqueue notifications (`document_requested` goes to every party on the matter) |
 
 **The three silent rewrites are the ones that bite.** `brand`, `policies` and
 `notification_templates` are all stored differently from how they were sent, with no error. Any

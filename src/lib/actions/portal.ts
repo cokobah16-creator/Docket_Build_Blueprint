@@ -120,6 +120,21 @@ export async function createDocument(input: z.infer<typeof createDocumentSchema>
   return { ok: true, documentId, versionId, storagePath };
 }
 
+/**
+ * Link an upload to the request it answers. fulfil_document_request() (migration 31) is the one
+ * door: it checks the document is on the same matter and that the request is open, marks it
+ * answered once, and tells whoever asked.
+ */
+export async function fulfilDocumentRequest(requestId: string, documentId: string): Promise<Err> {
+  if (!z.string().uuid().safeParse(requestId).success || !z.string().uuid().safeParse(documentId).success) return { error: "Unknown request." };
+  const { supabase, user } = await userClient();
+  if (!supabase || !user) return { error: "Sign in first." };
+  const { error } = await supabase.rpc("fulfil_document_request", { p_request: requestId, p_document: documentId });
+  if (error) return { error: error.message };
+  revalidatePath("/app");
+  return undefined;
+}
+
 /** Step 2: after the browser uploaded the file, record the version (trigger sets current_version_id). */
 export async function finalizeDocumentVersion(input: {
   documentId: string; versionId: string; storagePath: string; mime: string; sizeBytes: number;

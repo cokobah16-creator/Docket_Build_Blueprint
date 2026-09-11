@@ -145,7 +145,8 @@ again. The app itself always shows the current dates, and tells you three days a
 
 Docket sends you a message when something happens: a consultation confirmed, reminders 24 hours, an
 hour and ten minutes before, a consultation moved or cancelled, a new invoice, a payment received,
-an update on your matter, a court date in three days, a court date tomorrow, and a new message.
+an update on your matter, a court date in three days, a court date tomorrow, a new message, and a
+document your firm has asked you for.
 
 **You control which of these reach you.** Under **notifications → preferences**, choose the events
 you want and whether each comes by push, email or SMS. You can also set **quiet hours** — nothing
@@ -213,6 +214,9 @@ database for them to read it.
 - **Documents are never hard-deleted** through the app. Legal records stay records.
 - **You can upload too** — on a matter, or on a consultation. What you upload is visible to your
   firm and to you.
+- **Your firm may ask you for a document.** The request appears at the top of the matter's
+  Documents tab, with why and by when. **Upload this** answers it, and your firm is told the moment
+  the file arrives. A request your firm withdraws simply disappears from the list.
 - Up to 25 MB per file: PDF, Word, and JPEG, PNG or HEIC photographs.
 
 ---

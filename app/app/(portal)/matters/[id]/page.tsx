@@ -14,7 +14,7 @@ import { DocumentsTab, type DocumentWithVersion } from "@/components/portal/docu
 import { MessagesThread } from "@/components/portal/messages-thread";
 import { Screen, ScreenHeader } from "@/components/portal/screen";
 import { cn } from "@/lib/cn";
-import type { DocumentRow, DocumentVersionRow, MatterRow, MatterStatus, MessageRow, UpdateRow } from "@/lib/db/types";
+import type { DocumentRow, DocumentVersionRow, MatterRow, MatterStatus, MessageRow, UpdateRow, DocumentRequestRow } from "@/lib/db/types";
 
 export const metadata = { title: "Matter" };
 
@@ -123,7 +123,13 @@ async function DocumentsSection({ supabase, matter, tz }: { supabase: SB; matter
     version: versions.find((v) => v.id === d.current_version_id) ?? versions.filter((v) => v.document_id === d.id).sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null,
     version_count: versions.filter((v) => v.document_id === d.id).length,
   }));
-  return <DocumentsTab firmId={matter.firm_id} matterId={matter.id} appointmentId={null} documents={withVersion} timezone={tz} />;
+  const { data: requestRows } = await supabase
+    .from("document_requests")
+    .select("id, firm_id, matter_id, title, why, due_on, requested_by, requested_at, fulfilled_document_id, fulfilled_at, cancelled_at")
+    .eq("matter_id", matter.id)
+    .order("requested_at", { ascending: false })
+    .limit(50);
+  return <DocumentsTab firmId={matter.firm_id} matterId={matter.id} appointmentId={null} documents={withVersion} timezone={tz} requests={(requestRows ?? []) as DocumentRequestRow[]} />;
 }
 
 async function MessagesSection({ supabase, matter, userId, tz, senderNames, firmName }: { supabase: SB; matter: MatterRow; userId: string; tz: string; senderNames: Record<string, string>; firmName: string }) {

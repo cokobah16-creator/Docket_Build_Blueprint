@@ -148,6 +148,7 @@ Migrations apply in filename order, which is chronological:
 20260910000027_structured_client_update.sqlwhat it means / next / what you must do / when you will hear
 20260910000029_matter_walls.sql           opt-in matter walls: firms.matter_walls, matters.access, can_see_matter()
 20260910000030_document_reads.sql         document_reads as the door to the bytes — APPLY ONLY WITH ITS FRONT END
+20260910000031_document_requests.sql      document_requests: asked, answered once through fulfil_document_request(), withdrawn — never deleted
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -390,7 +391,10 @@ a release nobody can name is the state this section exists to end.
 `mark_thread_read()`; call `open_document_version()` before asking Storage for a file), so each goes
 live only after production is READY on the front end that does it — otherwise threads stop clearing,
 or documents stop opening. 29 is safe either side: it is default-off and identical in effect to the
-policies it replaces until a firm switches walls on.
+policies it replaces until a firm switches walls on. 31 is additive and goes **first** — the matter
+screens that ship with it select from `document_requests`, so the table must exist before they
+deploy — and `dispatch-notifications` must carry the `document_requested` / `document_received`
+renderers (v8) before the first request is made.
 
 | | As of 11 Sep 2026, 13:35 UTC | Reconciled against |
 |---|---|---|

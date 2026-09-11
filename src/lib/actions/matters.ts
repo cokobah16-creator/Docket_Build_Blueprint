@@ -273,6 +273,49 @@ export async function setMatterLawyers(
   return undefined;
 }
 
+// ---------------------------------------------------------------- documents the client is asked for
+const requestSchema = z.object({
+  title: z.string().trim().min(2, "Say what document you need.").max(200),
+  why: z.string().trim().max(2000).optional(),
+  // A calendar day, never an instant: document_requests.due_on is a DATE.
+  dueOn: plainDay.nullable().optional(),
+});
+
+/** Ask the client on a matter for a named document. Under document_requests_insert (the wall applies). */
+export async function requestDocument(matterId: string, firmId: string, input: z.input<typeof requestSchema>): Promise<Err> {
+  if (!z.string().uuid().safeParse(matterId).success || !z.string().uuid().safeParse(firmId).success) return { error: "Unknown matter." };
+  const parsed = requestSchema.safeParse(input);
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in first." };
+  const { error } = await supabase.from("document_requests").insert({
+    firm_id: firmId, matter_id: matterId, title: parsed.data.title, why: parsed.data.why || null,
+    due_on: parsed.data.dueOn ?? null, requested_by: user.id,
+  });
+  if (error) return { error: error.message };
+  refreshMatter(matterId);
+  return undefined;
+}
+
+/** Withdraw a request. Never deleted: what was asked for is part of the file's history. */
+export async function cancelDocumentRequest(requestId: string, matterId: string): Promise<Err> {
+  if (!z.string().uuid().safeParse(requestId).success) return { error: "Unknown request." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error, count } = await supabase
+    .from("document_requests")
+    .update({ cancelled_at: new Date().toISOString() }, { count: "exact" })
+    .eq("id", requestId)
+    .is("fulfilled_at", null)
+    .is("cancelled_at", null);
+  if (error) return { error: error.message };
+  if (count === 0) return { error: "That request was already answered or withdrawn." };
+  refreshMatter(matterId);
+  return undefined;
+}
+
 // ---------------------------------------------------------------- the client on the matter
 const inviteSchema = z.object({
   phone: z.string().trim().max(40).optional(),

@@ -34,7 +34,7 @@ import { MessagesThread } from "@/components/portal/messages-thread";
 import { cn } from "@/lib/cn";
 import { formatDay, todayIn } from "@/lib/days";
 import { relativeLabel } from "@/lib/relative";
-import type { FirmThread } from "@/lib/db/types";
+import type { FirmThread, DocumentRequestRow } from "@/lib/db/types";
 import type {
   DocumentRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
   ServiceDirectoryRow, TaskRow,
@@ -414,6 +414,14 @@ async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; mat
     : { data: [] as DocumentVersionRow[] };
   const versions = (versionRows ?? []) as DocumentVersionRow[];
 
+  const { data: requestRows } = await ctx.supabase
+    .from("document_requests")
+    .select("id, firm_id, matter_id, title, why, due_on, requested_by, requested_at, fulfilled_document_id, fulfilled_at, cancelled_at")
+    .eq("matter_id", matter.id)
+    .order("requested_at", { ascending: false })
+    .limit(100);
+  const requests = (requestRows ?? []) as DocumentRequestRow[];
+
   const documents: StaffDocument[] = docs.map((d) => ({
     ...d,
     version:
@@ -425,6 +433,7 @@ async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; mat
 
   return (
     <StaffDocuments
+      requests={requests}
       firmId={matter.firm_id}
       matterId={matter.id}
       userId={ctx.userId}

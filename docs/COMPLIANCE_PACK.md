@@ -75,6 +75,8 @@ somebody you share a matter or an appointment with. Nothing broader.
 | `tasks`, `conflict_checks` | internal |
 | `process_service` | `served_on_name`, `served_on_capacity`, `served_at_address`, `server_name`, the note and the proof |
 | `documents`, `document_versions` | the filename, who uploaded it, size, mime, checksum, and the storage path |
+| `document_requests` | what the firm asked the client for, why, and by when — `why` is free text a lawyer typed about the client's matter. The client reads their own requests; never deleted |
+| `document_reads` | who opened which document version, when (migration 30). Staff who can see the matter read it; the client never does |
 
 **Docket does not classify sensitivity and cannot.** `matter_type` includes `family`, `employment`,
 `immigration`, `regulatory` and `debt_recovery`, and a matter's description, its documents and its

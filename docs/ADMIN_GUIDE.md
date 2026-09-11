@@ -33,6 +33,18 @@ matter to its team.
 This is enforced by the database, not by the screens: a restricted matter is invisible to a
 colleague outside its team through every door, including a direct request to the API.
 
+## Asking a client for a document
+
+A matter's **Documents** tab has a panel, **Asked of the client**. Name the document, say why if it
+helps, and give a day it is needed by. The client is told, sees the request on their own Documents
+tab with an **Upload this** button, and their upload answers it: the request shows *answered*,
+with the file, and whoever asked is told it arrived.
+
+- A request is answered once. A second file on the same subject is just another document.
+- You may **withdraw** a request while it is open. Requests are never deleted: what was asked for
+  is part of the file's history, withdrawn or answered.
+- On a restricted matter, requests are behind the wall like everything else on it.
+
 ## Before anything else: your second factor
 
 **Every change a firm makes to itself requires two-factor authentication.** Not as policy — the
@@ -410,6 +422,7 @@ The remedy is with Docket, not in the console. Your data is untouched throughout
 | Price and activate services | `/firm/admin/services` |
 | Write the booking questions | `/firm/admin/intake` |
 | Invite, promote or remove colleagues | `/firm/admin/people` |
+| Ask the client for a document | the matter → Documents → Asked of the client |
 | Read the audit trail | `/firm/admin/audit` |
 | Set a lawyer's working week | `/firm/availability` |
 | Enrol two-factor | `/firm/security/mfa` |

@@ -380,6 +380,22 @@ export interface DocumentRow {
   created_at: string;
 }
 
+/** A document staff asked the client for (migration 31). */
+export interface DocumentRequestRow {
+  id: string;
+  firm_id: string;
+  matter_id: string;
+  title: string;
+  why: string | null;
+  /** YYYY-MM-DD or null — a calendar day. */
+  due_on: string | null;
+  requested_by: string | null;
+  requested_at: string;
+  fulfilled_document_id: string | null;
+  fulfilled_at: string | null;
+  cancelled_at: string | null;
+}
+
 export interface DocumentVersionRow {
   id: string;
   document_id: string;
