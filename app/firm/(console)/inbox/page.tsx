@@ -15,17 +15,36 @@
 // timestamps are UTC in the database and rendered in the viewer's zone; nothing
 // is firm-specific, the firm comes from context.
 
-import Link from "next/link";
+import type { ReactNode } from "react";
 import { staffContext, requestedFirmId, firmMatters } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
+import {
+  AppCard,
+  AppCardHeader,
+  AppCardList,
+  AppEmpty,
+  AppLink,
+  AppPill,
+  Footnote,
+  ScreenTitle,
+} from "@/components/app";
+import { DocumentIcon, ShieldIcon } from "@/components/ui/icons";
 import { formatWhen, zonedDayRange } from "@/lib/time";
+import { cn } from "@/lib/cn";
 import type { ServiceInboxRow } from "@/lib/db/types";
 import { AcknowledgeButton } from "./acknowledge-button";
 import { FileServiceForm, OpenProcessButton, RevokeServiceForm, type FileableMatter } from "./inbox-actions";
 
 export const metadata = { title: "Service inbox" };
+
+/** The quiet grey chip that marks a process as originating or substituted. */
+function MetaChip({ children }: { children: ReactNode }) {
+  return (
+    <span className="ml-2 inline-flex flex-none items-center rounded-full bg-dk-rule px-2 py-px align-middle text-[10px] font-bold uppercase tracking-[0.03em] text-dk-soft">
+      {children}
+    </span>
+  );
+}
 
 /** A date column is a calendar day, not an instant: render it as the day it is. */
 function dayLabel(ymd: string): string {
@@ -44,8 +63,8 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
 
   if (!ctx) {
     return (
-      <div className="space-y-5">
-        <h1 className="font-heading text-2xl font-semibold text-brand">Service inbox</h1>
+      <div className="dk-rise flex flex-col gap-3.5">
+        <ScreenTitle>Service inbox</ScreenTitle>
         <Alert kind="warning" title="Nothing to show yet">
           This account is not a member of a firm on Docket, so no process can have been served on it.
         </Alert>
@@ -94,17 +113,22 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
   const unfiled = received.filter((r) => !r.recipient_matter_id);
 
   return (
-    <div className="space-y-5">
-      <h1 className="font-heading text-2xl font-semibold text-brand">Service inbox</h1>
-      <p className="text-sm text-gray-600">
-        Processes served on {myFirmIds.size > 1 ? "your firms" : ctx.firmName} through Docket, and the ones
-        they served. Times in {timezone}.
-      </p>
+    <div className="dk-rise flex flex-col gap-3.5">
+      <header>
+        <ScreenTitle>Service inbox</ScreenTitle>
+        <p className="mt-[3px] text-[12.5px] leading-snug text-dk-soft">
+          Processes served on {myFirmIds.size > 1 ? "your firms" : ctx.firmName} through Docket, and the ones
+          they served. Times in {timezone}.
+        </p>
+      </header>
 
-      <Card>
-        <CardHeader title="Response diary" />
+      {/* This screen is evidence: a served process and its acknowledgement are
+          what an affidavit of service is built on, so every timestamp, name and
+          checksum below is kept, spelled out, and left legible. */}
+      <AppCard>
+        <AppCardHeader title="Response diary" />
         {diary.length === 0 ? (
-          <EmptyState
+          <AppEmpty
             title="Nothing is diarised"
             hint={
               unfiled.length > 0
@@ -113,94 +137,131 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
             }
           />
         ) : (
-          <CardBody className="p-0">
-            <ul className="divide-y divide-gray-100">
+          <>
+            <AppCardList>
               {diary.map((r) => {
                 const due = r.response_due_on as string;
                 const overdue = due < today;
                 const dueToday = due === today;
                 return (
-                  <li key={`diary-${r.id}`} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
+                  <div key={`diary-${r.id}`} className="flex items-start justify-between gap-3 px-[15px] py-[13px]">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{r.process_title}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">{r.process_title}</p>
+                      <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">
                         {r.recipient_matter_id ? matterLabels.get(r.recipient_matter_id) ?? "one of your matters" : "not filed against a matter"}
                         {" · from "}{firmName(r.serving_firm_id)}
                       </p>
                     </div>
-                    <p className={overdue ? "text-sm font-semibold text-red-700" : dueToday ? "text-sm font-semibold text-amber-800" : "text-sm text-gray-700"}>
+                    {/* Late and due-today carry the console's two inks, and both
+                        say which they are in words. */}
+                    <p
+                      className={cn(
+                        "flex-none text-right text-[11.5px] leading-[1.4]",
+                        overdue
+                          ? "font-semibold text-[#B42318]"
+                          : dueToday
+                            ? "font-semibold text-[#92400E]"
+                            : "text-dk-soft",
+                      )}
+                    >
                       {overdue ? "Overdue — was due " : dueToday ? "Due today, " : "Due "}
                       {dayLabel(due)}
                     </p>
-                  </li>
+                  </div>
                 );
               })}
-            </ul>
+            </AppCardList>
             {unfiled.length > 0 && (
-              <p className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">
-                {unfiled.length} process{unfiled.length === 1 ? "" : "es"} below {unfiled.length === 1 ? "has" : "have"} not been filed against a matter yet.
-              </p>
+              <div className="border-t border-dk-rule px-[17px] py-[13px]">
+                <Footnote>
+                  {unfiled.length} process{unfiled.length === 1 ? "" : "es"} below {unfiled.length === 1 ? "has" : "have"} not been filed against a matter yet.
+                </Footnote>
+              </div>
             )}
-          </CardBody>
+          </>
         )}
-      </Card>
+      </AppCard>
 
-      <Card>
-        <CardHeader title="Served on your firm" />
+      <AppCard>
+        <AppCardHeader title={`Served on your firm (${received.length})`} />
         {received.length === 0 ? (
-          <EmptyState
+          <AppEmpty
             title="Nothing served on you through Docket"
             hint="Processes served by other firms on Docket appear here for acknowledgement, filing and your response date."
-            action={<Link href="/firm/matters" className="text-sm font-medium text-brand underline">Open your matters</Link>}
+            action={<AppLink href="/firm/matters">Open your matters</AppLink>}
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <AppCardList>
             {received.map((r) => {
               const due = r.response_due_on;
               const overdue = Boolean(due && due < today);
               const matters = mattersByFirm.get(r.served_firm_id) ?? [];
               return (
-                <li key={r.id} className="space-y-2 px-5 py-4">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-medium text-gray-900">
+                <div key={r.id} className="flex flex-col gap-2 px-[15px] py-[15px]">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 text-[14px] font-bold leading-[1.35] text-dk-strong">
                       {r.process_title}
-                      {r.is_originating && <Badge className="ml-2">originating</Badge>}
-                      {r.substituted_by_order && <Badge className="ml-2">substituted service</Badge>}
+                      {r.is_originating && <MetaChip>originating</MetaChip>}
+                      {r.substituted_by_order && <MetaChip>substituted service</MetaChip>}
                     </p>
-                    <p className="text-sm text-gray-500">{fmt(r.served_at)}</p>
+                    {/* When it was served. The instant is the evidence, so it is
+                        kept in full rather than shortened to "2 days ago". */}
+                    <p className="flex-none text-right text-[11.5px] leading-[1.4] text-dk-soft">{fmt(r.served_at)}</p>
                   </div>
-                  <p className="text-sm text-gray-700">
+
+                  <p className="text-[12.5px] leading-[1.45] text-dk-body">
                     {r.case_title ?? "—"}{r.suit_number ? ` · ${r.suit_number}` : ""}{r.court_name ? ` · ${r.court_name}` : ""}
                     {r.served_for_party ? ` · for ${r.served_for_party}` : ""}
                   </p>
-                  <p className="text-sm text-gray-500">
+
+                  {/* Who served it, on whom, and when it is deemed served: the
+                      names an affidavit of service is sworn on. */}
+                  <p className="text-[11.5px] leading-[1.5] text-dk-soft">
                     From {firmName(r.serving_firm_id)} · served by {r.served_by_name ?? "counsel"}
                     {r.served_by_scn ? ` (${r.served_by_scn})` : ""}
                     {r.served_on_name ? ` · served on ${r.served_on_name}` : ""}
                     {r.deemed_served_on ? ` · deemed served ${dayLabel(r.deemed_served_on)}` : ""}
                   </p>
-                  <p className="text-sm text-gray-500">
-                    {r.document_name}
-                    {r.document_size_bytes ? ` · ${fileSize(r.document_size_bytes)}` : ""}
-                    {r.checksum ? ` · ${r.checksum}` : ""}
-                  </p>
+
+                  {/* The document and its checksum. The checksum is what proves
+                      the copy you opened is the copy that was served, so it gets
+                      its own line, monospaced and unabridged. */}
+                  <div className="rounded-[9px] border border-dk-line bg-dk-tint px-3 py-2.5">
+                    <p className="flex items-start gap-2 text-[12.5px] font-semibold leading-[1.4] text-dk-strong">
+                      <DocumentIcon size={15} className="mt-px flex-none text-dk-soft" />
+                      <span className="min-w-0 break-all">
+                        {r.document_name}
+                        {r.document_size_bytes ? ` · ${fileSize(r.document_size_bytes)}` : ""}
+                      </span>
+                    </p>
+                    {r.checksum && (
+                      <p className="mt-1.5 flex items-start gap-2 text-[11px] leading-[1.45] text-dk-soft">
+                        <ShieldIcon size={13} className="mt-px flex-none" />
+                        <span className="min-w-0">
+                          <span className="font-semibold">Checksum</span>{" "}
+                          <span className="break-all font-mono text-dk-body">{r.checksum}</span>
+                        </span>
+                      </p>
+                    )}
+                  </div>
+
                   <OpenProcessButton versionId={r.document_version_id} documentName={r.document_name} />
 
                   {r.recipient_matter_id ? (
-                    <p className="text-sm">
-                      <span className="text-gray-700">
+                    <p className="text-[12.5px] leading-[1.45]">
+                      <span className="text-dk-body">
                         Filed against {matterLabels.get(r.recipient_matter_id) ?? "one of your matters"}
                       </span>
                       {due ? (
-                        <span className={overdue ? "font-semibold text-red-700" : "text-gray-700"}>
+                        <span className={overdue ? "font-semibold text-[#B42318]" : "text-dk-body"}>
                           {" · "}{overdue ? "response was due " : "response due "}{dayLabel(due)}
                         </span>
                       ) : (
-                        <span className="text-gray-500">{" · no response date set"}</span>
+                        <span className="text-dk-muted">{" · no response date set"}</span>
                       )}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-500">Not filed against a matter yet.</p>
+                    <p className="text-[12.5px] leading-[1.45] text-dk-muted">Not filed against a matter yet.</p>
                   )}
 
                   <FileServiceForm
@@ -211,60 +272,72 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
                   />
 
                   {r.acknowledged_at ? (
-                    <p className="text-sm text-green-800">
-                      Acknowledged {fmt(r.acknowledged_at)}{r.acknowledged_by_name ? ` by ${r.acknowledged_by_name}` : ""}
-                    </p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <AppPill kind="confirmed">Acknowledged</AppPill>
+                      <span className="text-[11.5px] leading-[1.4] text-dk-soft">
+                        {fmt(r.acknowledged_at)}{r.acknowledged_by_name ? ` by ${r.acknowledged_by_name}` : ""}
+                      </span>
+                    </div>
                   ) : (
                     <AcknowledgeButton serviceId={r.id} />
                   )}
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </AppCardList>
         )}
-      </Card>
+      </AppCard>
 
-      <Card>
-        <CardHeader title="Served by your firm through Docket" />
+      <AppCard>
+        <AppCardHeader title={`Served by your firm through Docket (${sent.length})`} />
         {sent.length === 0 ? (
-          <EmptyState
+          <AppEmpty
             title="No platform service yet"
             hint="Record counsel on a matter and serve a process; acknowledgements show here."
-            action={<Link href="/firm/matters" className="text-sm font-medium text-brand underline">Go to a matter</Link>}
+            action={<AppLink href="/firm/matters">Go to a matter</AppLink>}
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <AppCardList>
             {sent.map((r) => (
-              <li key={r.id} className="space-y-2 px-5 py-4">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="font-medium text-gray-900">
-                      {r.process_title}
-                      {r.is_originating && <Badge className="ml-2">originating</Badge>}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {r.case_title ?? "—"}{r.suit_number ? ` · ${r.suit_number}` : ""}
-                      {r.served_for_party ? ` · served for ${r.served_for_party}` : ""}
-                    </p>
-                    <p className="text-sm text-gray-500">On {firmName(r.served_firm_id)}</p>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    {fmt(r.served_at)} · {r.acknowledged_at ? `acknowledged ${fmt(r.acknowledged_at)}` : "awaiting acknowledgement"}
-                    {r.acknowledged_by_name ? ` by ${r.acknowledged_by_name}` : ""}
+              <div key={r.id} className="flex flex-col gap-2 px-[15px] py-[15px]">
+                <div className="min-w-0">
+                  <p className="text-[14px] font-bold leading-[1.35] text-dk-strong">
+                    {r.process_title}
+                    {r.is_originating && <MetaChip>originating</MetaChip>}
                   </p>
+                  <p className="mt-[3px] text-[12.5px] leading-[1.45] text-dk-body">
+                    {r.case_title ?? "—"}{r.suit_number ? ` · ${r.suit_number}` : ""}
+                    {r.served_for_party ? ` · served for ${r.served_for_party}` : ""}
+                  </p>
+                  <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">On {firmName(r.served_firm_id)}</p>
                 </div>
+
+                {/* Served at, and acknowledged at — the pair an affidavit of
+                    service needs. Waiting on the other firm is the console's
+                    amber, and the pill says "awaiting" as well. */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <AppPill kind={r.acknowledged_at ? "confirmed" : "awaiting"}>
+                    {r.acknowledged_at ? "Acknowledged" : "Awaiting acknowledgement"}
+                  </AppPill>
+                  <span className="text-[11.5px] leading-[1.4] text-dk-soft">
+                    Served {fmt(r.served_at)}
+                    {r.acknowledged_at ? ` · acknowledged ${fmt(r.acknowledged_at)}` : ""}
+                    {r.acknowledged_by_name ? ` by ${r.acknowledged_by_name}` : ""}
+                  </span>
+                </div>
+
                 {adminFirmIds.has(r.serving_firm_id) ? (
                   <RevokeServiceForm serviceId={r.id} />
                 ) : (
-                  <p className="text-xs text-gray-500">
+                  <Footnote>
                     Served in error? An owner or admin of your firm can withdraw it — the database allows nobody else.
-                  </p>
+                  </Footnote>
                 )}
-              </li>
+              </div>
             ))}
-          </ul>
+          </AppCardList>
         )}
-      </Card>
+      </AppCard>
     </div>
   );
 }

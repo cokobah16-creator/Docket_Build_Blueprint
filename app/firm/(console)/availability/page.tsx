@@ -20,11 +20,20 @@
 //  · Nothing fake. With no active service the wizard can offer nothing at all,
 //    so the preview says exactly that rather than inventing slots.
 
-import Link from "next/link";
 import { firmStaff, requestedFirmId, staffContext, staffLabel, availabilityFor, WEEKDAYS } from "@/lib/firm-data";
 import { zonedDayRange } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
-import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
+import {
+  AppButton,
+  AppButtonLink,
+  AppCard,
+  AppCardHeader,
+  AppCardList,
+  AppEmpty,
+  AppLink,
+  Footnote,
+  ScreenTitle,
+} from "@/components/app";
 import { cn } from "@/lib/cn";
 import type { AppointmentSlot, AvailabilityException, ServiceRow } from "@/lib/db/types";
 import { AvailabilityEditor } from "./availability-editor";
@@ -33,7 +42,10 @@ export const metadata = { title: "Availability" };
 
 const PREVIEW_DAYS = 14;
 const BOOKED_STATUSES = ["pending", "awaiting_payment", "confirmed", "rescheduled"];
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+// The console's own field: neutral edge, 44px of thumb, and a focus ring in the
+// shell's ink rather than any firm's colour.
+const field =
+  "mt-1.5 min-h-[44px] w-full rounded-[9px] border border-dk-field bg-white px-3 py-[11px] text-[14px] text-dk-strong focus:border-dk-pri focus:outline-none";
 
 /** Calendar-date arithmetic on a YYYY-MM-DD, done at noon UTC so no zone can shift the day. */
 function addDays(ymd: string, days: number): string {
@@ -231,29 +243,28 @@ export default async function AvailabilityPage({
   }
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div className="dk-rise flex flex-col gap-3.5">
+      <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold text-brand">Availability</h1>
-          <p className="text-sm text-gray-600">
+          <ScreenTitle>Availability</ScreenTitle>
+          <p className="mt-[3px] text-[12.5px] leading-snug text-dk-soft">
             {ctx.firmName} · {isSelf ? "your week" : `${lawyerName}'s week`} · hours in {lawyerTz}
             {zonesDiffer ? `, slot times shown in ${viewerTz}` : ""}
           </p>
         </div>
-        <Link
-          href="/firm/appointments"
-          className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:border-brand"
-        >
+        <AppButtonLink href="/firm/appointments" variant="ghost-sm" className="self-start">
           Consultations
-        </Link>
+        </AppButtonLink>
       </header>
 
       {isAdmin && staff.length > 1 ? (
-        <Card>
-          <form method="get" action="/firm/availability" className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-end">
+        <AppCard>
+          {/* One row, ending flush: the select grows and the 44px control sits
+              on its baseline at every width. */}
+          <form method="get" action="/firm/availability" className="flex items-end gap-2 px-[17px] py-[15px]">
             {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
-            <div>
-              <label htmlFor="lawyer" className="text-sm font-medium text-gray-900">Whose week</label>
+            <div className="min-w-0 flex-1">
+              <label htmlFor="lawyer" className="text-[13px] font-semibold text-dk-strong">Whose week</label>
               <select id="lawyer" name="lawyer" defaultValue={lawyerId} className={field}>
                 {staff.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
@@ -262,14 +273,11 @@ export default async function AvailabilityPage({
                 ))}
               </select>
             </div>
-            <button
-              type="submit"
-              className="flex min-h-[44px] items-center justify-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
-            >
+            <AppButton type="submit" variant="ghost-sm">
               Open
-            </button>
+            </AppButton>
           </form>
-        </Card>
+        </AppCard>
       ) : (
         !isAdmin && (
           <Alert kind="info">
@@ -292,57 +300,53 @@ export default async function AvailabilityPage({
         initialExceptions={exceptions}
       />
 
-      <Card>
-        <CardHeader
+      <AppCard>
+        <AppCardHeader
           title="What a client would be offered"
           action={
             service ? (
-              <span className="hidden text-xs text-gray-500 sm:inline">
+              <span className="hidden flex-none text-[11.5px] text-dk-soft sm:inline">
                 next {PREVIEW_DAYS} days · {totalSlots} slot{totalSlots === 1 ? "" : "s"}
               </span>
             ) : undefined
           }
         />
         {!service ? (
-          <EmptyState
+          <AppEmpty
             title="No active service, so nothing can be booked at all"
             hint={
               services.length > 0
                 ? `The wizard offers slots for a service, and ${services.map((s) => s.name).join(", ")} ${services.length === 1 ? "is" : "are"} in the catalogue but not active. Until an owner or admin activates one — with a fee and a length — this week changes nothing a client can see.`
                 : "The wizard offers slots for a service, and this firm has none in its catalogue yet. Until an owner or admin adds one — with a fee and a length — this week changes nothing a client can see."
             }
-            action={
-              <Link href="/firm/appointments" className="text-sm font-medium text-brand underline">
-                See the consultations already booked
-              </Link>
-            }
+            action={<AppLink href="/firm/appointments">See the consultations already booked</AppLink>}
           />
         ) : (
-          <CardBody className="space-y-4 p-0">
+          <>
             {previewError && (
-              <div className="px-5 pt-4">
+              <div className="px-[17px] pt-[15px]">
                 <Alert kind="error" title="The booking engine refused this">{previewError}</Alert>
               </div>
             )}
-            <p className="px-5 pt-4 text-sm text-gray-600">
+            <p className="px-[17px] py-[15px] text-[12.5px] leading-[1.55] text-dk-soft">
               Computed by the booking engine itself for{" "}
-              <span className="font-medium text-gray-900">{service.name}</span> ({service.duration_min} minutes), the
+              <span className="font-semibold text-dk-strong">{service.name}</span> ({service.duration_min} minutes), the
               first active service. A longer or shorter service produces different times.
               {zonesDiffer ? ` Times below are in your zone, ${viewerTz}.` : ""}
             </p>
-            <ul className="divide-y divide-gray-100">
+            <AppCardList className="border-t border-dk-rule">
               {preview.map((day) => {
                 const first = day.slots[0];
                 const last = day.slots[day.slots.length - 1];
                 const isToday = day.ymd === todayYmd;
                 return (
-                  <li key={day.ymd} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
+                  <div key={day.ymd} className="flex items-start justify-between gap-3 px-[15px] py-[13px]">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">
                         {dayLabel(day.ymd)}
                         {isToday ? " · today" : ""}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">
                         {day.slots.length > 0 ? (
                           <>
                             {first && last
@@ -357,33 +361,35 @@ export default async function AvailabilityPage({
                         )}
                       </p>
                     </div>
+                    {/* A count, not a status: a day with nothing free is neither
+                        late nor unpaid, so it stays in the console's greys. */}
                     <span
                       className={cn(
-                        "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                        "flex-none whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[11.5px] font-semibold",
                         day.slots.length > 0
-                          ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                          : "border-gray-200 bg-gray-50 text-gray-600",
+                          ? "border-dk-line bg-white text-dk-strong"
+                          : "border-dk-rule bg-dk-tint text-dk-muted",
                       )}
                     >
                       {day.slots.length === 0 ? "nothing free" : `${day.slots.length} slot${day.slots.length === 1 ? "" : "s"}`}
                     </span>
-                  </li>
+                  </div>
                 );
               })}
-            </ul>
-            <div className="space-y-1 border-t border-gray-100 px-5 py-4 text-xs text-gray-500">
-              <p>
+            </AppCardList>
+            <div className="flex flex-col gap-1.5 border-t border-dk-rule px-[17px] py-[15px]">
+              <Footnote>
                 Two things trim a day even when the week says it is open. Nothing starting within{" "}
-                <span className="font-medium text-gray-700">two hours</span> of now is ever offered — the lead time is
+                <span className="font-semibold text-dk-soft">two hours</span> of now is ever offered — the lead time is
                 fixed in the booking engine, so today always looks shorter than tomorrow. And the{" "}
-                <span className="font-medium text-gray-700">daily cap</span> counts the appointments already in the diary
+                <span className="font-semibold text-dk-soft">daily cap</span> counts the appointments already in the diary
                 that day: once they reach the cap, the whole day stops being offered, however many hours are left in it.
-              </p>
-              <p>A slot also disappears when it overlaps a break, a blocked range, or an appointment already booked.</p>
+              </Footnote>
+              <Footnote>A slot also disappears when it overlaps a break, a blocked range, or an appointment already booked.</Footnote>
             </div>
-          </CardBody>
+          </>
         )}
-      </Card>
+      </AppCard>
     </div>
   );
 }

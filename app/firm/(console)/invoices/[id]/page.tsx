@@ -28,16 +28,35 @@ import { formatWhen } from "@/lib/time";
 import { isE164, normalizeNigerianPhone } from "@/lib/nigeria";
 import { cancelInvoice, issueInvoice } from "@/lib/actions/invoices";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import {
+  AppButton,
+  AppCard,
+  AppCardBody,
+  AppCardHeader,
+  AppDetail,
+  AppStatusPill,
+  Footnote,
+  SubHeader,
+  SubHeaderRef,
+  appButtonClass,
+} from "@/components/app";
+import { DocumentIcon, MailIcon } from "@/components/ui/icons";
+import { type Status } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import type { InvoiceItemRow, InvoiceRow } from "@/lib/db/types";
 import { CopyLink } from "../new/invoice-composer";
 
 export const metadata = { title: "Invoice" };
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+// The console's own field: neutral edge, 44px of thumb, and a focus ring in the
+// shell's ink rather than any firm's colour.
+const field =
+  "mt-1.5 min-h-[44px] w-full rounded-[9px] border border-dk-field bg-white px-3 py-[11px] text-[14px] text-dk-strong placeholder:text-dk-muted focus:border-dk-pri focus:outline-none";
+const labelClass = "text-[13px] font-semibold text-dk-strong";
+const hintClass = "mt-0.5 text-[11.5px] leading-snug text-dk-muted";
+/** Required is said in words, never in a colour: colour here means late or unpaid. */
+const requiredMark = <span className="font-normal text-dk-muted">(required)</span>;
+const prose = "text-[12.5px] leading-[1.55] text-dk-soft";
 
 const OWING = new Set(["issued", "partially_paid", "overdue"]);
 
@@ -167,326 +186,345 @@ export default async function FirmInvoicePage({
     : null;
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm">
-        <Link href={listHref} className="text-brand underline">← Invoices</Link>
-      </p>
+    // The console layout's <main> owns the page gutter, so the sub-header
+    // reclaims it to run edge to edge and the body below puts it back.
+    <div className="dk-rise -mx-4 -mt-3.5 md:mx-0 md:mt-0">
+      <SubHeader backHref={listHref} backLabel="Back to invoices">
+        <div className="flex min-w-0 flex-1 items-center justify-between gap-2.5">
+          <SubHeaderRef>{inv.number}</SubHeaderRef>
+          <AppStatusPill status={inv.status as Status} />
+        </div>
+      </SubHeader>
 
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold text-brand">
+      <div className="flex flex-col gap-3.5 px-4 pt-3.5 md:px-0">
+        <header>
+          <h1 className="font-app-head text-[20px] font-bold leading-[1.25] tracking-[-0.02em] text-dk-strong">
             {isPaid ? "Receipt" : "Invoice"} {inv.number}
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="mt-1 text-[12.5px] leading-snug text-dk-soft">
             {clientName} · {firmName}
             {matter ? " · " : ""}
             {matter && (
-              <Link href={`/firm/matters/${matter.id}?tab=invoices`} className="text-brand underline">
+              <Link href={`/firm/matters/${matter.id}?tab=invoices`} className="text-dk-pri underline underline-offset-2">
                 {matter.reference} · {matter.cause_title ?? matter.title}
               </Link>
             )}
             {!matter && inv.appointment_id ? " · consultation fee" : ""}
           </p>
-        </div>
-        <StatusPill status={inv.status as Status} />
-      </header>
+        </header>
 
-      {sp.error && <Alert kind="error" title="The database refused this">{sp.error}</Alert>}
-      {sp.issued && <Alert kind="success">Issued. {clientName} has been told and can pay from their app.</Alert>}
-      {sp.cancelled && <Alert kind="success">Cancelled. It no longer appears as money owed, and the client cannot pay it.</Alert>}
+        {/* The figure the screen exists for. What is still owed leads when
+            anything is owed; otherwise the total does, and each is named. */}
+        <AppCard>
+          <AppCardBody className="flex flex-col gap-1">
+            <p className="text-[12px] uppercase tracking-[0.07em] text-dk-muted">
+              {owing ? "Still outstanding" : isPaid ? "Paid in full" : "Invoice total"}
+            </p>
+            <p
+              className={cn(
+                "font-app-head text-[34px] font-semibold leading-[1.1] tracking-[-0.02em]",
+                owing ? "text-[#92400E]" : "text-dk-strong",
+              )}
+            >
+              {money(owing ? outstanding : Number(inv.total_minor))}
+            </p>
+            <p className="mt-0.5 text-[12.5px] leading-[1.5] text-dk-soft">
+              {owing ? `of ${money(Number(inv.total_minor))} billed` : `${money(Number(inv.total_minor))} billed`}
+              {inv.due_at ? ` · falls due ${dayLabel(inv.due_at)}` : " · no due date"}
+            </p>
+          </AppCardBody>
+        </AppCard>
 
-      {isDraft && (
-        <Alert kind="warning" title="This is still a draft">
-          Nobody outside the firm can see it. Issue it below and {clientName} is notified at once.
-        </Alert>
-      )}
-      {isCancelled && (
-        <Alert kind="info" title="This invoice was cancelled">
-          It is kept for the firm&rsquo;s records and counts as nothing owed. Raise a fresh invoice if the work is
-          still to be billed.
-        </Alert>
-      )}
+        {sp.error && <Alert kind="error" title="The database refused this">{sp.error}</Alert>}
+        {sp.issued && <Alert kind="success">Issued. {clientName} has been told and can pay from their app.</Alert>}
+        {sp.cancelled && <Alert kind="success">Cancelled. It no longer appears as money owed, and the client cannot pay it.</Alert>}
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
-          <Card>
-            <CardHeader title="What was billed" />
-            <CardBody>
-              {items.length === 0 ? (
-                <p className="text-sm text-gray-600">
-                  No lines are recorded against this invoice. Its totals below are the ones the database holds.
-                </p>
-              ) : (
-                <ul className="divide-y divide-gray-100">
-                  {items.map((item) => {
+        {isDraft && (
+          <Alert kind="warning" title="This is still a draft">
+            Nobody outside the firm can see it. Issue it below and {clientName} is notified at once.
+          </Alert>
+        )}
+        {isCancelled && (
+          <Alert kind="info" title="This invoice was cancelled">
+            It is kept for the firm&rsquo;s records and counts as nothing owed. Raise a fresh invoice if the work is
+            still to be billed.
+          </Alert>
+        )}
+
+        <div className="grid gap-3.5 lg:grid-cols-3">
+          <div className="flex flex-col gap-3.5 lg:col-span-2">
+            <AppCard>
+              <AppCardHeader title="What was billed" />
+              <AppCardBody className="flex flex-col gap-3">
+                {items.length === 0 ? (
+                  <p className={prose}>
+                    No lines are recorded against this invoice. Its totals below are the ones the database holds.
+                  </p>
+                ) : (
+                  items.map((item) => {
                     const quantity = Number(item.quantity);
                     const lineMinor = Math.round(Number(item.unit_minor) * quantity);
                     return (
-                      <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm text-gray-900">{item.description}</p>
+                      <div key={item.id} className="flex justify-between gap-4 text-[13.5px]">
+                        <span className="min-w-0 leading-[1.4] text-dk-body">
+                          {item.description}
                           {quantity !== 1 && (
-                            <p className="text-xs text-gray-500">
+                            <span className="mt-0.5 block text-[11.5px] text-dk-muted">
                               {quantity} × {money(Number(item.unit_minor))}
-                            </p>
+                            </span>
                           )}
-                        </div>
-                        <p className="shrink-0 text-sm font-medium text-gray-900">{money(lineMinor)}</p>
-                      </li>
+                        </span>
+                        <span className="flex-none font-semibold text-dk-strong">{money(lineMinor)}</span>
+                      </div>
                     );
-                  })}
-                </ul>
-              )}
+                  })
+                )}
+              </AppCardBody>
 
-              <dl className="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm">
+              <div className="flex flex-col gap-3 border-t border-dk-rule px-[17px] py-[15px]">
+                <AppDetail label="Subtotal">{money(Number(inv.subtotal_minor))}</AppDetail>
+                <AppDetail label="VAT">{money(Number(inv.vat_minor))}</AppDetail>
                 <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-gray-600">Subtotal</dt>
-                  <dd className="text-gray-900">{money(Number(inv.subtotal_minor))}</dd>
+                  <span className="text-[13px] font-semibold text-dk-soft">Total</span>
+                  <span className="font-app-head text-[20px] font-bold leading-none text-dk-strong">
+                    {money(Number(inv.total_minor))}
+                  </span>
                 </div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-gray-600">VAT</dt>
-                  <dd className="text-gray-900">{money(Number(inv.vat_minor))}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="font-heading text-base font-semibold text-brand">Total</dt>
-                  <dd className="font-heading text-base font-semibold text-brand">{money(Number(inv.total_minor))}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-gray-600">Paid</dt>
-                  <dd className="text-gray-900">{money(Number(inv.paid_minor))}</dd>
-                </div>
-                <div className="flex items-baseline justify-between gap-4 border-t border-gray-100 pt-2">
-                  <dt className={cn("font-medium", outstanding > 0 ? "text-amber-800" : "text-emerald-800")}>
+                <AppDetail label="Paid">{money(Number(inv.paid_minor))}</AppDetail>
+                {/* Outstanding carries the console's amber, and says "outstanding"
+                    in words, so the colour is never the only signal. */}
+                <div className="flex items-baseline justify-between gap-4 border-t border-dk-rule pt-3">
+                  <span className={cn("text-[13px] font-semibold", outstanding > 0 ? "text-[#92400E]" : "text-dk-soft")}>
                     {outstanding > 0 ? "Outstanding" : "Nothing outstanding"}
-                  </dt>
-                  <dd className={cn("font-semibold", outstanding > 0 ? "text-amber-800" : "text-emerald-800")}>
+                  </span>
+                  <span
+                    className={cn(
+                      "font-app-head text-[20px] font-bold leading-none",
+                      outstanding > 0 ? "text-[#92400E]" : "text-dk-strong",
+                    )}
+                  >
                     {money(outstanding)}
-                  </dd>
+                  </span>
                 </div>
-              </dl>
+              </div>
 
-              {Number(inv.vat_minor) > 0 && firm?.tin && (
-                <p className="mt-3 text-xs text-gray-500">VAT charged under TIN {firm.tin}.</p>
-              )}
-              <p className="mt-3 text-xs text-gray-500">
-                Raised {formatWhen(inv.created_at, tz, { dateStyle: "medium", timeStyle: "short" })}
-                {inv.issued_at ? ` · issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium", timeStyle: "short" })}` : " · not issued yet"}
-                {inv.due_at ? ` · falls due ${dayLabel(inv.due_at)}` : " · no due date set"} · times in {tz}.
-              </p>
-            </CardBody>
-          </Card>
+              <div className="border-t border-dk-rule px-[17px] py-[13px]">
+                {Number(inv.vat_minor) > 0 && firm?.tin && (
+                  <Footnote>VAT charged under TIN {firm.tin}.</Footnote>
+                )}
+                <Footnote className={Number(inv.vat_minor) > 0 && firm?.tin ? "mt-1" : undefined}>
+                  Raised {formatWhen(inv.created_at, tz, { dateStyle: "medium", timeStyle: "short" })}
+                  {inv.issued_at ? ` · issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium", timeStyle: "short" })}` : " · not issued yet"}
+                  {inv.due_at ? ` · falls due ${dayLabel(inv.due_at)}` : " · no due date set"} · times in {tz}.
+                </Footnote>
+              </div>
+            </AppCard>
 
-          <Card>
-            <CardHeader title="Payments" />
-            <CardBody>
-              {payments.length === 0 ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-700">Nothing has been paid against this invoice yet.</p>
-                  <p className="text-sm text-gray-600">
-                    {isDraft
-                      ? "Issue it and the client can pay from their app; the payment is recorded here the moment the provider confirms it."
-                      : isCancelled
-                        ? "A cancelled invoice cannot be paid."
-                        : "Send the client the link below. Payments are recorded here by the payment provider — never by hand — and the money settles into the firm's own account."}
-                  </p>
-                </div>
-              ) : (
-                <ul className="divide-y divide-gray-100">
-                  {payments.map((p) => (
-                    <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
+            <AppCard>
+              <AppCardHeader title="Payments" />
+              <AppCardBody className="flex flex-col gap-3">
+                {payments.length === 0 ? (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-[13.5px] font-semibold text-dk-strong">Nothing has been paid against this invoice yet.</p>
+                    <p className={prose}>
+                      {isDraft
+                        ? "Issue it and the client can pay from their app; the payment is recorded here the moment the provider confirms it."
+                        : isCancelled
+                          ? "A cancelled invoice cannot be paid."
+                          : "Send the client the link below. Payments are recorded here by the payment provider — never by hand — and the money settles into the firm's own account."}
+                    </p>
+                  </div>
+                ) : (
+                  payments.map((p) => (
+                    <div key={p.id} className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-gray-900">
+                        <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">
                           {formatMoneyMinor(Number(p.amount_minor), p.currency)} · {p.status.replace(/_/g, " ")}
                         </p>
-                        <p className="break-all text-xs text-gray-500">
+                        {/* The provider's own reference: the thing a reconciliation
+                            is done against, so it stays monospaced and unabridged. */}
+                        <p className="mt-[3px] break-all font-mono text-[11.5px] leading-[1.45] text-dk-soft">
                           {p.provider} · {p.provider_ref}
                         </p>
                       </div>
-                      <p className="shrink-0 text-xs text-gray-600">
+                      <p className="flex-none text-right text-[11.5px] leading-[1.45] text-dk-soft">
                         {p.paid_at ? formatWhen(p.paid_at, tz, { dateStyle: "medium", timeStyle: "short" }) : "not settled"}
                       </p>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </CardBody>
-          </Card>
-        </div>
+                    </div>
+                  ))
+                )}
+              </AppCardBody>
+            </AppCard>
+          </div>
 
-        <div className="space-y-5">
-          <Card>
-            <CardHeader title={isPaid ? "The client's receipt" : "The client's pay link"} />
-            <CardBody className="space-y-3">
-              {isDraft ? (
-                <p className="text-sm text-gray-600">
-                  The link works once the invoice is issued. Until then the client&rsquo;s app shows them nothing.
-                </p>
-              ) : isCancelled ? (
-                <p className="text-sm text-gray-600">
-                  This invoice was cancelled, so the link only tells the client it can no longer be paid.
-                </p>
-              ) : (
-                <>
-                  <p className="text-sm text-gray-600">
-                    {isPaid
-                      ? "This opens the receipt in the client's own app."
-                      : `This signs ${clientName} in to their own app on this invoice. Anyone holding it can see the invoice, so send it only to the client.`}
+          <div className="flex flex-col gap-3.5">
+            <AppCard>
+              <AppCardHeader title={isPaid ? "The client's receipt" : "The client's pay link"} />
+              <AppCardBody className="flex flex-col gap-3">
+                {isDraft ? (
+                  <p className={prose}>
+                    The link works once the invoice is issued. Until then the client&rsquo;s app shows them nothing.
                   </p>
-                  <CopyLink value={payLink} label="Copy the link" />
-                  <div className="flex flex-wrap gap-2">
-                    {whatsappHref && (
-                      <a
-                        href={whatsappHref}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
-                      >
-                        Send on WhatsApp
-                      </a>
-                    )}
-                    {mailHref && (
-                      <a
-                        href={mailHref}
-                        className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
-                      >
-                        Send by email
-                      </a>
-                    )}
-                  </div>
-                  {!whatsappHref && !mailHref && (
-                    <p className="text-xs text-amber-800">
-                      {clientName} has neither a phone number nor an email address on file, so copy the link and send
-                      it however they prefer.
+                ) : isCancelled ? (
+                  <p className={prose}>
+                    This invoice was cancelled, so the link only tells the client it can no longer be paid.
+                  </p>
+                ) : (
+                  <>
+                    <p className={prose}>
+                      {isPaid
+                        ? "This opens the receipt in the client's own app."
+                        : `This signs ${clientName} in to their own app on this invoice. Anyone holding it can see the invoice, so send it only to the client.`}
                     </p>
-                  )}
-                </>
-              )}
-              <a
-                href={`/app/payments/${inv.id}/pdf`}
-                target="_blank"
-                rel="noreferrer"
-                className="flex min-h-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
-              >
-                Open the PDF {isPaid ? "receipt" : "invoice"}
-              </a>
-            </CardBody>
-          </Card>
+                    <CopyLink value={payLink} label="Copy the link" />
+                    <div className="flex flex-wrap gap-2">
+                      {whatsappHref && (
+                        <a href={whatsappHref} target="_blank" rel="noreferrer" className={appButtonClass("primary-sm")}>
+                          Send on WhatsApp
+                        </a>
+                      )}
+                      {mailHref && (
+                        <a href={mailHref} className={appButtonClass("ghost-sm")}>
+                          <MailIcon size={15} />
+                          Send by email
+                        </a>
+                      )}
+                    </div>
+                    {!whatsappHref && !mailHref && (
+                      <p className="text-[11.5px] font-semibold leading-snug text-[#92400E]">
+                        {clientName} has neither a phone number nor an email address on file, so copy the link and send
+                        it however they prefer.
+                      </p>
+                    )}
+                  </>
+                )}
+                <a
+                  href={`/app/payments/${inv.id}/pdf`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={appButtonClass("ghost", "w-full flex-none")}
+                >
+                  <DocumentIcon size={16} />
+                  Open the PDF {isPaid ? "receipt" : "invoice"}
+                </a>
+              </AppCardBody>
+            </AppCard>
 
-          <Card>
-            <CardHeader title="Billed to" />
-            <CardBody>
-              <dl className="space-y-2 text-sm">
+            <AppCard>
+              <AppCardHeader title="Billed to" />
+              <AppCardBody className="flex flex-col gap-3">
                 <div>
-                  <dt className="text-gray-500">Client</dt>
-                  <dd className="font-medium text-gray-900">
-                    <Link href={`/firm/clients/${inv.client_id}${firmQuery}`} className="text-brand underline">
+                  <p className="text-[11px] uppercase tracking-[0.06em] text-dk-muted">Client</p>
+                  <p className="mt-0.5 text-[13.5px] font-semibold text-dk-strong">
+                    <Link href={`/firm/clients/${inv.client_id}${firmQuery}`} className="text-dk-pri underline underline-offset-2">
                       {clientName}
                     </Link>
-                  </dd>
+                  </p>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Phone</dt>
-                  <dd className="font-medium text-gray-900">{client?.phone ?? "—"}</dd>
+                  <p className="text-[11px] uppercase tracking-[0.06em] text-dk-muted">Phone</p>
+                  <p className="mt-0.5 text-[13.5px] font-semibold text-dk-strong">{client?.phone ?? "—"}</p>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Email</dt>
-                  <dd className="break-all font-medium text-gray-900">
-                    {client?.email ?? <span className="text-amber-800">none on file — no receipt can be emailed</span>}
-                  </dd>
+                  <p className="text-[11px] uppercase tracking-[0.06em] text-dk-muted">Email</p>
+                  <p className="mt-0.5 break-all text-[13.5px] font-semibold text-dk-strong">
+                    {client?.email ?? (
+                      <span className="text-[#92400E]">none on file &mdash; no receipt can be emailed</span>
+                    )}
+                  </p>
                 </div>
                 {matter && (
                   <div>
-                    <dt className="text-gray-500">Matter</dt>
-                    <dd className="font-medium text-gray-900">
-                      <Link href={`/firm/matters/${matter.id}?tab=invoices`} className="text-brand underline">
+                    <p className="text-[11px] uppercase tracking-[0.06em] text-dk-muted">Matter</p>
+                    <p className="mt-0.5 text-[13.5px] font-semibold text-dk-strong">
+                      <Link href={`/firm/matters/${matter.id}?tab=invoices`} className="text-dk-pri underline underline-offset-2">
                         {matter.reference} · {matter.title}
                       </Link>
-                    </dd>
+                    </p>
                   </div>
                 )}
-              </dl>
-            </CardBody>
-          </Card>
+              </AppCardBody>
+            </AppCard>
 
-          {isDraft && (
-            <Card>
-              <CardHeader title="Issue it" />
-              <CardBody className="space-y-3">
-                <form action={issue} className="space-y-3">
-                  <div>
-                    <label htmlFor="dueOn" className="text-sm font-medium text-gray-900">Falls due on</label>
-                    <p className="text-xs text-gray-500">
-                      Optional. {inv.due_at ? `Currently ${dayLabel(inv.due_at)}; leave it empty to keep that day.` : "Leave it empty for no due date."}
-                    </p>
-                    <input id="dueOn" name="dueOn" type="date" defaultValue="" className={field} />
-                  </div>
-                  <p className="text-sm text-gray-600">
-                    Issuing tells {clientName} straight away and lets them pay {money(Number(inv.total_minor))} from
-                    their app.
-                  </p>
-                  <Button type="submit" size="lg">Issue the invoice</Button>
-                </form>
-              </CardBody>
-            </Card>
-          )}
-
-          {!isCancelled && !isPaid && Number(inv.paid_minor) === 0 && (
-            <Card>
-              <CardHeader title="Cancel it" />
-              <CardBody className="space-y-3">
-                {inv.appointment_id ? (
-                  <p className="text-sm text-gray-600">
-                    This is a consultation fee. Cancel the appointment instead and its invoice follows — the database
-                    refuses to cancel it on its own.
-                  </p>
-                ) : isAdmin ? (
-                  <form action={cancel} className="space-y-3">
+            {isDraft && (
+              <AppCard>
+                <AppCardHeader title="Issue it" />
+                <AppCardBody>
+                  <form action={issue} className="flex flex-col gap-3">
                     <div>
-                      <label htmlFor="reason" className="text-sm font-medium text-gray-900">
-                        Why <span className="text-red-700">*</span>
-                      </label>
-                      <p className="text-xs text-gray-500">Kept in the firm&rsquo;s audit trail. The client is not sent this.</p>
-                      <textarea id="reason" name="reason" rows={3} required minLength={3} maxLength={500} className={field} />
+                      <label htmlFor="dueOn" className={labelClass}>Falls due on</label>
+                      <p className={hintClass}>
+                        Optional. {inv.due_at ? `Currently ${dayLabel(inv.due_at)}; leave it empty to keep that day.` : "Leave it empty for no due date."}
+                      </p>
+                      <input id="dueOn" name="dueOn" type="date" defaultValue="" className={field} />
                     </div>
-                    <p className="text-sm text-gray-600">
-                      Once cancelled the client cannot pay it. A part-paid or paid invoice can never be cancelled —
-                      raise a credit note instead.
+                    <p className={prose}>
+                      Issuing tells {clientName} straight away and lets them pay {money(Number(inv.total_minor))} from
+                      their app.
                     </p>
-                    <Button type="submit" variant="danger">Cancel this invoice</Button>
+                    <AppButton type="submit" variant="primary">Issue the invoice</AppButton>
                   </form>
-                ) : (
-                  <p className="text-sm text-gray-600">
-                    An owner or an admin of {firm?.name ?? ctx.firmName} can cancel an unpaid invoice. The database
-                    allows nobody else, so ask one of them.
-                  </p>
-                )}
-              </CardBody>
-            </Card>
-          )}
+                </AppCardBody>
+              </AppCard>
+            )}
 
-          {owing && (
-            <Card>
-              <CardHeader title="Chase it" />
-              <CardBody className="space-y-2">
-                <p className="text-sm text-gray-700">
-                  {money(outstanding)} is still owed
-                  {inv.due_at ? `, due ${dayLabel(inv.due_at)}` : ""}.
-                </p>
-                <p className="text-sm text-gray-600">
-                  Send the link above again, or open the matter and message the client on the file so the exchange is
-                  kept with it.
-                </p>
-                {matter && (
-                  <Link
-                    href={`/firm/matters/${matter.id}?tab=messages`}
-                    className="flex min-h-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
-                  >
-                    Message the client on the matter
-                  </Link>
-                )}
-              </CardBody>
-            </Card>
-          )}
+            {!isCancelled && !isPaid && Number(inv.paid_minor) === 0 && (
+              <AppCard>
+                <AppCardHeader title="Cancel it" />
+                <AppCardBody>
+                  {inv.appointment_id ? (
+                    <p className={prose}>
+                      This is a consultation fee. Cancel the appointment instead and its invoice follows &mdash; the database
+                      refuses to cancel it on its own.
+                    </p>
+                  ) : isAdmin ? (
+                    <form action={cancel} className="flex flex-col gap-3">
+                      <div>
+                        <label htmlFor="reason" className={labelClass}>
+                          Why {requiredMark}
+                        </label>
+                        <p className={hintClass}>Kept in the firm&rsquo;s audit trail. The client is not sent this.</p>
+                        <textarea id="reason" name="reason" rows={3} required minLength={3} maxLength={500} className={field} />
+                      </div>
+                      <p className={prose}>
+                        Once cancelled the client cannot pay it. A part-paid or paid invoice can never be cancelled &mdash;
+                        raise a credit note instead.
+                      </p>
+                      {/* Neutral, not red: in this console red means late or unpaid,
+                          and the button already says what it does. */}
+                      <AppButton type="submit" variant="ghost" className="w-full">Cancel this invoice</AppButton>
+                    </form>
+                  ) : (
+                    <p className={prose}>
+                      An owner or an admin of {firm?.name ?? ctx.firmName} can cancel an unpaid invoice. The database
+                      allows nobody else, so ask one of them.
+                    </p>
+                  )}
+                </AppCardBody>
+              </AppCard>
+            )}
+
+            {owing && (
+              <AppCard>
+                <AppCardHeader title="Chase it" />
+                <AppCardBody className="flex flex-col gap-2.5">
+                  <p className="text-[13.5px] font-semibold leading-[1.4] text-[#92400E]">
+                    {money(outstanding)} is still owed
+                    {inv.due_at ? `, due ${dayLabel(inv.due_at)}` : ""}.
+                  </p>
+                  <p className={prose}>
+                    Send the link above again, or open the matter and message the client on the file so the exchange is
+                    kept with it.
+                  </p>
+                  {matter && (
+                    <Link href={`/firm/matters/${matter.id}?tab=messages`} className={appButtonClass("ghost", "w-full flex-none")}>
+                      Message the client on the matter
+                    </Link>
+                  )}
+                </AppCardBody>
+              </AppCard>
+            )}
+          </div>
         </div>
       </div>
     </div>

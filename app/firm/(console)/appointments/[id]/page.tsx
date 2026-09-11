@@ -1,11 +1,37 @@
+// One consultation, on the console's phone kit (design/pwa artboard, LAWYER ·
+// APPOINTMENT + NOTES): the reference rides in the sub-header, the client's
+// name is the screen, and the rest is cards — who they are, what they said at
+// booking, the two notes boxes, and the room.
+//
+// The console wears no firm's colours. Everything here is the neutral ink, and
+// the only colour on the screen is the pair of badges on the notes form, which
+// mark the one distinction that matters on this screen: what the client reads
+// against what they must never see. Both say it in words as well.
+//
+// Presentation only: every query, action and redirect below is the one that
+// was here before.
+
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { firmById } from "@/lib/tenant";
 import { formatWhen } from "@/lib/time";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import {
+  AppCard,
+  AppCardBody,
+  AppCardHeader,
+  AppCardList,
+  AppDetail,
+  AppPill,
+  AppStatusPill,
+  Footnote,
+  SubHeader,
+  SubHeaderRef,
+  AppButton,
+} from "@/components/app";
+import { ClockIcon, DocumentIcon } from "@/components/ui/icons";
+import type { Status } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { ConsultationRoom } from "@/components/video/consultation-room";
 import { markNoShow } from "@/lib/actions/video";
@@ -17,6 +43,40 @@ export const metadata = { title: "Appointment" };
 interface Appt {
   id: string; firm_id: string; reference: string; status: string; mode: string; starts_at: string; ends_at: string;
   client_id: string; lawyer_id: string | null; service_id: string | null; client_timezone: string | null; cancellation_reason: string | null;
+}
+
+/** The artboard's quiet pill: a fact about the booking, in no colour at all. */
+function MetaPill({ children }: { children: ReactNode }) {
+  return (
+    <span className="inline-flex flex-none items-center gap-1.5 whitespace-nowrap rounded-full border border-dk-line bg-white px-2.5 py-1 text-[11.5px] font-semibold text-dk-soft">
+      {children}
+    </span>
+  );
+}
+
+/**
+ * The booking wizard stores an intake upload as the storage path it wrote it
+ * to — `${firm}/${user}/${epoch}-${index}-${filename}`. This pulls the file
+ * name back out so a document reads as a document. It is only the name: the
+ * page issues no signed URL, so nothing here is a link.
+ */
+const UPLOAD_PATH = /^[^/]+\/[^/]+\/\d{10,}-\d+-(.+)$/;
+
+function uploadFileName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const match = UPLOAD_PATH.exec(value);
+  return match ? match[1] : null;
+}
+
+/** Unchanged from the first cut: arrays join, objects with a name give it, everything else stringifies. */
+function answerText(value: unknown): string {
+  if (Array.isArray(value)) {
+    return value
+      .map((x) => (typeof x === "object" && x && "name" in (x as object) ? String((x as { name: string }).name) : String(x)))
+      .join(", ");
+  }
+  if (typeof value === "object" && value !== null) return JSON.stringify(value);
+  return String(value);
 }
 
 export default async function FirmAppointmentPage({
@@ -68,128 +128,249 @@ export default async function FirmAppointmentPage({
     redirect(`/firm/appointments/${appointmentId}${r?.error ? `?error=${encodeURIComponent(r.error)}` : ""}`);
   };
 
+  const minutes = svc?.duration_min ?? Math.round((endMs - startMs) / 60000);
+  // The client's waiting room opens ten minutes before the start — the same
+  // rule the client app and the room component itself keep.
+  const opensAtLabel = formatWhen(new Date(startMs - 10 * 60 * 1000).toISOString(), tz, { timeStyle: "short" });
+  const whenPill = formatWhen(appt.starts_at, tz, {
+    weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+  });
+
+  const intakeEntries = answers
+    ? Object.entries(answers).map(([key, value]) => {
+        const files = Array.isArray(value)
+          ? value.map(uploadFileName).filter((name): name is string => name !== null)
+          : [];
+        const isFiles = Array.isArray(value) && value.length > 0 && files.length === value.length;
+        return { key, label: key.replace(/_/g, " "), files, isFiles, text: isFiles ? "" : answerText(value) };
+      })
+    : [];
+  const hasUploads = intakeEntries.some((entry) => entry.isFiles);
+
   return (
-    <div className="space-y-5">
-      <p className="text-sm"><Link href="/firm/appointments" className="text-brand underline">← Appointments</Link></p>
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-heading text-2xl font-semibold text-brand">{svc?.name ?? "Consultation"} · {cl?.full_name ?? "Client"}</h1>
-          <p className="text-sm text-gray-600">
-            {appt.reference} · {formatWhen(appt.starts_at, tz, { dateStyle: "full", timeStyle: "short" })} ({tz}) · {svc?.duration_min ?? Math.round((endMs - startMs) / 60000)} min · {appt.mode.replace("_", " ")}
+    // The console layout's <main> owns the page gutter, so the sub-header
+    // reclaims it to run edge to edge and the body below puts it back.
+    <div className="dk-rise -mx-4 -mt-3.5 md:mx-0 md:mt-0">
+      <SubHeader backHref="/firm/appointments" backLabel="Back to consultations">
+        <SubHeaderRef>{appt.reference}</SubHeaderRef>
+      </SubHeader>
+
+      <div className="flex flex-col gap-3.5 px-4 pt-3.5 md:px-0">
+        <header>
+          <h1 className="font-app-head text-[20px] font-bold leading-[1.25] tracking-[-0.02em] text-dk-strong">
+            {cl?.full_name ?? "Client"}
+          </h1>
+          <p className="mt-1 text-[12.5px] leading-snug text-dk-soft">
+            {svc?.name ?? "Consultation"} · {appt.mode.replace("_", " ")} · {minutes} minutes
           </p>
-        </div>
-        <StatusPill status={appt.status as Status} />
-      </header>
+          <div className="mt-[9px] flex flex-wrap items-center gap-[7px]">
+            <AppStatusPill status={appt.status as Status} />
+            <MetaPill>
+              <ClockIcon size={12} />
+              {whenPill}
+            </MetaPill>
+          </div>
+        </header>
 
-      {actionError && <Alert kind="error">{actionError}</Alert>}
-      {saved && <Alert kind="success">Notes saved. {appt.status === "completed" ? "The appointment is marked completed and the client can see the summary." : ""}</Alert>}
-      {appt.status === "cancelled" && appt.cancellation_reason && <Alert kind="warning">Cancelled: {appt.cancellation_reason}</Alert>}
+        {actionError && <Alert kind="error">{actionError}</Alert>}
+        {saved && (
+          <Alert kind="success">
+            Notes saved.{" "}
+            {appt.status === "completed" ? "The appointment is marked completed and the client can see the summary." : ""}
+          </Alert>
+        )}
+        {appt.status === "cancelled" && appt.cancellation_reason && (
+          <Alert kind="warning">Cancelled: {appt.cancellation_reason}</Alert>
+        )}
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
-          {roomOpen && (
-            <Card>
-              <CardHeader title="Consultation room" />
-              <CardBody>
-                <ConsultationRoom
-                  appointmentId={appt.id}
-                  role="owner"
-                  startsAt={appt.starts_at}
-                  endsAt={appt.ends_at}
-                  counterpartLabel={cl?.full_name ?? "the client"}
-                  accent={firm?.brand?.colours?.primary ?? "#0F2A44"}
-                  notesHref={`/firm/appointments/${appt.id}?notes=1#notes`}
-                  doneHref={`/firm/appointments/${appt.id}`}
-                />
-              </CardBody>
-            </Card>
-          )}
+        {roomOpen && (
+          <AppCard>
+            <AppCardHeader
+              title="Room open"
+              action={
+                <MetaPill>
+                  <ClockIcon size={12} />
+                  From {opensAtLabel}
+                </MetaPill>
+              }
+            />
+            <AppCardBody className="flex flex-col gap-3">
+              <p className="text-[12.5px] leading-[1.5] text-dk-soft">
+                The client can knock from {opensAtLabel}. You admit them from here.
+              </p>
+              {/* accent is the console's own ink, not the firm's. The client's
+                  waiting room passes the firm's primary, because a client is
+                  dealing with their lawyers; a lawyer is holding the same
+                  working tool whichever firm they opened it for, so the room's
+                  chrome here is #141414 — the literal .dk-shell-console sets,
+                  written out because Daily's theme takes a colour value rather
+                  than a CSS variable. */}
+              <ConsultationRoom
+                appointmentId={appt.id}
+                role="owner"
+                startsAt={appt.starts_at}
+                endsAt={appt.ends_at}
+                counterpartLabel={cl?.full_name ?? "the client"}
+                accent="#141414"
+                notesHref={`/firm/appointments/${appt.id}?notes=1#notes`}
+                doneHref={`/firm/appointments/${appt.id}`}
+              />
+            </AppCardBody>
+          </AppCard>
+        )}
 
-          {(live || appt.status === "completed") && (
-            <Card>
-              <CardHeader title={notes ? "Consultation notes" : "Write consultation notes"} />
-              <CardBody>
-                <div id="notes" />
-                <NotesForm
-                  appointmentId={appt.id}
-                  initial={{
-                    clientSummary: notes?.client_summary ?? "",
-                    adviceGiven: notes?.advice_given ?? "",
-                    followUp: notes?.follow_up ?? "",
-                    internalNotes: internal?.body ?? "",
-                  }}
-                  canComplete={live}
-                />
-              </CardBody>
-            </Card>
-          )}
-        </div>
+        <AppCard>
+          <AppCardHeader title="Client" />
+          <AppCardList>
+            <div className="flex items-center justify-between gap-4 px-[17px] py-[13px] text-[13.5px]">
+              <span className="flex-none text-dk-muted">Name</span>
+              <span className="text-right font-semibold text-dk-strong">{cl?.full_name ?? "—"}</span>
+            </div>
+            {/* A lawyer reading this is holding a phone, so the number dials
+                and the address opens a mail app. Both rows are 52px tall. */}
+            <div className="flex min-h-[52px] items-center justify-between gap-4 px-[17px] py-[13px] text-[13.5px]">
+              <span className="flex-none text-dk-muted">Phone</span>
+              {cl?.phone ? (
+                <a href={`tel:${cl.phone}`} className="flex min-h-[44px] items-center justify-end text-right font-semibold text-dk-pri underline underline-offset-2">
+                  {cl.phone}
+                </a>
+              ) : (
+                <span className="text-right font-semibold text-dk-strong">—</span>
+              )}
+            </div>
+            <div className="flex min-h-[52px] items-center justify-between gap-4 px-[17px] py-[13px] text-[13.5px]">
+              <span className="flex-none text-dk-muted">Email</span>
+              {cl?.email ? (
+                <a href={`mailto:${cl.email}`} className="flex min-h-[44px] min-w-0 items-center justify-end break-all text-right font-semibold text-dk-pri underline underline-offset-2">
+                  {cl.email}
+                </a>
+              ) : (
+                <span className="text-right font-semibold text-dk-strong">—</span>
+              )}
+            </div>
+            {appt.client_timezone && appt.client_timezone !== tz && (
+              <div className="px-[17px] py-[13px]">
+                <AppDetail label="Client's time">
+                  {formatWhen(appt.starts_at, appt.client_timezone)} ({appt.client_timezone})
+                </AppDetail>
+              </div>
+            )}
+          </AppCardList>
+        </AppCard>
 
-        <div className="space-y-5">
-          <Card>
-            <CardHeader title="Client" />
-            <CardBody>
-              <dl className="space-y-2 text-sm">
-                <div><dt className="text-gray-500">Name</dt><dd className="font-medium text-gray-900">{cl?.full_name ?? "—"}</dd></div>
-                <div><dt className="text-gray-500">Phone</dt><dd className="font-medium text-gray-900">{cl?.phone ?? "—"}</dd></div>
-                <div><dt className="text-gray-500">Email</dt><dd className="font-medium text-gray-900">{cl?.email ?? "—"}</dd></div>
-                {appt.client_timezone && appt.client_timezone !== tz && (
-                  <div><dt className="text-gray-500">Client's time</dt><dd className="font-medium text-gray-900">{formatWhen(appt.starts_at, appt.client_timezone)} ({appt.client_timezone})</dd></div>
-                )}
-              </dl>
-            </CardBody>
-          </Card>
+        {intakeEntries.length > 0 && (
+          <AppCard>
+            <AppCardHeader title="Intake" />
+            <AppCardBody className="flex flex-col gap-[10px] text-[12.5px]">
+              {intakeEntries.map((entry) => (
+                <div key={entry.key}>
+                  <span className="text-dk-soft">{entry.label}</span>
+                  {entry.isFiles ? (
+                    <ul className="mt-1.5 flex flex-col gap-1.5">
+                      {entry.files.map((name, i) => (
+                        <li key={`${entry.key}-${i}`} className="flex items-start gap-2 text-dk-strong">
+                          <DocumentIcon size={15} className="mt-px flex-none text-dk-soft" />
+                          <span className="min-w-0 break-all font-semibold">{name}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : entry.text.length > 70 ? (
+                    <p className="mt-[3px] whitespace-pre-wrap leading-[1.5] text-dk-body">{entry.text}</p>
+                  ) : (
+                    <p className="mt-0.5 whitespace-pre-wrap font-semibold text-dk-strong">{entry.text}</p>
+                  )}
+                </div>
+              ))}
+              {hasUploads && <Footnote>Documents the client attached when booking, by name.</Footnote>}
+            </AppCardBody>
+          </AppCard>
+        )}
 
-          {answers && Object.keys(answers).length > 0 && (
-            <Card>
-              <CardHeader title="Intake answers" />
-              <CardBody>
-                <dl className="space-y-2 text-sm">
-                  {Object.entries(answers).map(([k, v]) => (
-                    <div key={k}>
-                      <dt className="text-gray-500">{k.replace(/_/g, " ")}</dt>
-                      <dd className="whitespace-pre-wrap font-medium text-gray-900">
-                        {Array.isArray(v) ? v.map((x) => (typeof x === "object" && x && "name" in (x as object) ? String((x as { name: string }).name) : String(x))).join(", ") : typeof v === "object" ? JSON.stringify(v) : String(v)}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
-              </CardBody>
-            </Card>
-          )}
+        {(live || appt.status === "completed") && (
+          <AppCard>
+            <AppCardHeader
+              title="Consultation notes"
+              action={
+                notes?.client_summary ? (
+                  <AppPill kind="confirmed">
+                    Saved {formatWhen(notes.updated_at, tz, { dateStyle: "medium" })}
+                  </AppPill>
+                ) : (
+                  <AppPill kind="awaiting">Not written yet</AppPill>
+                )
+              }
+            />
+            <AppCardBody>
+              <div id="notes" />
+              <NotesForm
+                appointmentId={appt.id}
+                initial={{
+                  clientSummary: notes?.client_summary ?? "",
+                  adviceGiven: notes?.advice_given ?? "",
+                  followUp: notes?.follow_up ?? "",
+                  internalNotes: internal?.body ?? "",
+                }}
+                canComplete={live}
+              />
+            </AppCardBody>
+          </AppCard>
+        )}
 
-          {session && (
-            <Card>
-              <CardHeader title="Session" />
-              <CardBody>
-                <dl className="space-y-1 text-sm">
-                  <div className="flex justify-between gap-2"><dt className="text-gray-500">Started</dt><dd>{session.started_at ? formatWhen(session.started_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-gray-500">Client admitted</dt><dd>{session.client_admitted_at ? formatWhen(session.client_admitted_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-gray-500">Ended</dt><dd>{session.ended_at ? formatWhen(session.ended_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
-                </dl>
-              </CardBody>
-            </Card>
-          )}
+        {session && (
+          <AppCard>
+            <AppCardHeader title="Session" />
+            <AppCardBody className="flex flex-col gap-2.5">
+              <AppDetail label="Started">
+                {session.started_at ? formatWhen(session.started_at, tz, { timeStyle: "short" }) : "—"}
+              </AppDetail>
+              <AppDetail label="Client admitted">
+                {session.client_admitted_at ? formatWhen(session.client_admitted_at, tz, { timeStyle: "short" }) : "—"}
+              </AppDetail>
+              <AppDetail label="Ended">
+                {session.ended_at ? formatWhen(session.ended_at, tz, { timeStyle: "short" }) : "—"}
+              </AppDetail>
+            </AppCardBody>
+          </AppCard>
+        )}
 
-          {live && (
-            <Card>
-              <CardHeader title="Reschedule" />
-              <CardBody>
-                <RescheduleForm appointmentId={appt.id} firmId={appt.firm_id} lawyerId={appt.lawyer_id} serviceId={appt.service_id} timezone={tz} />
-              </CardBody>
-            </Card>
-          )}
+        {live && (
+          <AppCard>
+            <AppCardHeader title="Reschedule" />
+            <AppCardBody>
+              <RescheduleForm
+                appointmentId={appt.id}
+                firmId={appt.firm_id}
+                lawyerId={appt.lawyer_id}
+                serviceId={appt.service_id}
+                timezone={tz}
+              />
+            </AppCardBody>
+          </AppCard>
+        )}
 
-          {canNoShow && (
-            <Card>
-              <CardHeader title="Client did not attend?" />
-              <CardBody className="space-y-2">
-                <p className="text-sm text-gray-600">Marks the appointment as a no-show. The client keeps their receipt; nothing is refunded automatically.</p>
-                <form action={noShow}><Button type="submit" variant="ghost">Mark as no-show</Button></form>
-              </CardBody>
-            </Card>
-          )}
-        </div>
+        {canNoShow && (
+          <AppCard>
+            <AppCardHeader title="Client did not attend?" />
+            <AppCardBody className="flex flex-col gap-3">
+              <p className="text-[12.5px] leading-[1.5] text-dk-soft">
+                Marks the appointment as a no-show. The client keeps their receipt; nothing is refunded automatically.
+              </p>
+              <form action={noShow}>
+                <AppButton type="submit" variant="ghost" className="w-full">
+                  Mark as no-show
+                </AppButton>
+              </form>
+            </AppCardBody>
+          </AppCard>
+        )}
+
+        <Footnote>
+          Times on this screen are shown in {tz}, from your profile.{" "}
+          <Link href="/firm/appointments" className="text-dk-pri underline underline-offset-2">
+            All consultations
+          </Link>
+          .
+        </Footnote>
       </div>
     </div>
   );

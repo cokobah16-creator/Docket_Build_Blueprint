@@ -7,6 +7,14 @@
 // see internal timeline entries, which are marked so nobody pastes one to a
 // client; UTC in the database, rendered in ctx.timezone; money is integer minor
 // units through formatMoneyMinor; the firm comes from context, never from code.
+//
+// Drawn on the phone kit (design/pwa). Two things changed shape for the phone:
+// the activity feed's emoji kind column is now the app's own line icons, on the
+// same pattern as src/components/portal/timeline.tsx and with the kind carried
+// as screen-reader text; and the attribution table is a list of rows rather
+// than a four-column grid, because a 36rem table on a 390px screen is a
+// sideways scroll. Colour is the console's one exception to neutral: overdue
+// tasks, unacknowledged service and money still owed, each named in words too.
 
 import Link from "next/link";
 import {
@@ -15,9 +23,31 @@ import {
 import { formatMoneyByCurrency, formatMoneyMinor } from "@/lib/money";
 import { zonedDayRange, formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
-import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
+import {
+  AppButtonLink,
+  AppCard,
+  AppCardBody,
+  AppCardHeader,
+  AppCardList,
+  AppEmpty,
+  AppLink,
+  Footnote,
+  ScreenTitle,
+} from "@/components/app";
+import type { IconProps } from "@/components/ui/icons";
+import {
+  CalendarIcon,
+  DocumentIcon,
+  LockIcon,
+  MailIcon,
+  NairaIcon,
+  PaperclipIcon,
+  PencilIcon,
+  ScalesIcon,
+  StarIcon,
+  SwapIcon,
+  VideoIcon,
+} from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import type { CauseListRow } from "@/lib/db/types";
 
@@ -27,9 +57,25 @@ const CALENDAR_DAYS = 14;
 /** How many attributed payments the fee column adds up. A cap that bites is disclosed. */
 const FEE_SCAN = 5000;
 
-const KIND_ICON: Record<string, string> = {
-  court_sitting: "⚖", consultation: "🎥", appointment: "📅", filing: "📄", correspondence: "✉",
-  milestone: "★", fee: "₦", document: "📎", note: "✎", status_change: "⇄",
+type IconGlyph = (p: IconProps) => React.JSX.Element;
+
+/**
+ * The ten `update_kind` values, each with its mark and its name — the same map
+ * the client timeline uses, for the same reason: an emoji carries a weight and
+ * a colour the design did not choose. Typed as possibly-missing because the
+ * enum can grow in a migration before it grows here.
+ */
+const KINDS: Record<string, { Icon: IconGlyph; label: string } | undefined> = {
+  court_sitting: { Icon: ScalesIcon, label: "Court sitting" },
+  consultation: { Icon: VideoIcon, label: "Consultation" },
+  appointment: { Icon: CalendarIcon, label: "Appointment" },
+  filing: { Icon: DocumentIcon, label: "Filing" },
+  correspondence: { Icon: MailIcon, label: "Correspondence" },
+  milestone: { Icon: StarIcon, label: "Milestone" },
+  fee: { Icon: NairaIcon, label: "Fee" },
+  document: { Icon: PaperclipIcon, label: "Document" },
+  note: { Icon: PencilIcon, label: "Note" },
+  status_change: { Icon: SwapIcon, label: "Status change" },
 };
 
 type Sitting = Pick<CauseListRow,
@@ -162,18 +208,21 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
   const unattributedOriginated = matters.filter((x) => !x.originating_lawyer_id || !staffIds.has(x.originating_lawyer_id)).length;
   const unattributedHandling = matters.filter((x) => !x.handling_lawyer_id || !staffIds.has(x.handling_lawyer_id)).length;
 
+  // `ink` is the console's one use of colour: a number that means somebody is
+  // late, that process is sitting unacknowledged, or that money is owed. Each
+  // one says the same thing in its label.
   const tiles = overview
     ? [
-        { label: "Open matters", value: String(overview.open_matters), href: "/firm/matters" },
-        { label: "Sittings to chase", value: String(overview.sittings_due), href: "/firm" },
-        { label: "Court dates, 30 days", value: String(overview.court_dates_30d), href: "/firm/matters" },
-        { label: "Upcoming consultations", value: String(overview.upcoming_appointments), href: "/firm/appointments?view=upcoming" },
-        { label: "Unread client messages", value: String(overview.unread_messages), href: "/firm/matters" },
-        { label: "Overdue tasks", value: String(overview.overdue_tasks), href: "/firm/matters" },
-        { label: "Client uploads to review", value: String(overview.client_uploads), href: "/firm/matters" },
-        { label: "Service to acknowledge", value: String(overview.service_to_acknowledge), href: "/firm/inbox" },
-        { label: "Outstanding", value: formatMoneyByCurrency(overview.outstanding_by_currency, currency), href: "/firm/invoices" },
-        { label: "Collected this month", value: formatMoneyByCurrency(overview.collected_this_month_by_currency, currency), href: "/firm/invoices" },
+        { label: "Open matters", value: String(overview.open_matters), href: "/firm/matters", ink: "text-dk-strong" },
+        { label: "Sittings to chase", value: String(overview.sittings_due), href: "/firm", ink: "text-[#92400E]" },
+        { label: "Court dates, 30 days", value: String(overview.court_dates_30d), href: "/firm/matters", ink: "text-dk-strong" },
+        { label: "Upcoming consultations", value: String(overview.upcoming_appointments), href: "/firm/appointments?view=upcoming", ink: "text-dk-strong" },
+        { label: "Unread client messages", value: String(overview.unread_messages), href: "/firm/matters", ink: "text-dk-strong" },
+        { label: "Overdue tasks", value: String(overview.overdue_tasks), href: "/firm/matters", ink: "text-[#B42318]" },
+        { label: "Client uploads to review", value: String(overview.client_uploads), href: "/firm/matters", ink: "text-dk-strong" },
+        { label: "Service to acknowledge", value: String(overview.service_to_acknowledge), href: "/firm/inbox", ink: "text-[#92400E]" },
+        { label: "Outstanding", value: formatMoneyByCurrency(overview.outstanding_by_currency, currency), href: "/firm/invoices", ink: "text-[#92400E]" },
+        { label: "Collected this month", value: formatMoneyByCurrency(overview.collected_this_month_by_currency, currency), href: "/firm/invoices", ink: "text-dk-strong" },
       ]
     : [];
 
@@ -189,23 +238,33 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
   };
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div className="dk-rise flex flex-col gap-3.5">
+      <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold text-brand">Firm overview</h1>
-          <p className="text-sm text-gray-600">{ctx.firmName} · everything in {tz}</p>
+          <ScreenTitle>Firm overview</ScreenTitle>
+          <p className="mt-[3px] text-[12.5px] leading-snug text-dk-soft">
+            {ctx.firmName} · everything in {tz}
+          </p>
         </div>
-        <Link href="/firm" className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">
-          Back to Today
-        </Link>
+        <AppButtonLink href="/firm" variant="ghost-sm" className="self-start">
+          Today
+        </AppButtonLink>
       </header>
 
       {overview ? (
-        <section aria-label="Firm totals" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <section aria-label="Firm totals" className="grid grid-cols-2 gap-[9px] sm:grid-cols-3 lg:grid-cols-5">
           {tiles.map((t) => (
-            <Link key={t.label} href={t.href} className="rounded-card border border-gray-200 bg-white p-4 shadow-sm hover:border-brand">
-              <p className="text-xs uppercase tracking-wide text-gray-500">{t.label}</p>
-              <p className="mt-1 font-heading text-xl font-semibold text-brand">{t.value}</p>
+            <Link
+              key={t.label}
+              href={t.href}
+              className="rounded-[11px] border border-dk-line bg-white p-[13px] shadow-card"
+            >
+              <span className="block text-[10.5px] uppercase leading-[1.35] tracking-[0.06em] text-dk-soft">
+                {t.label}
+              </span>
+              <span className={cn("mt-[5px] block font-app-head text-[20px] font-bold leading-tight", t.ink)}>
+                {t.value}
+              </span>
             </Link>
           ))}
         </section>
@@ -216,23 +275,20 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
         </Alert>
       )}
 
-      <Card>
-        <CardHeader
-          title="Next 14 days"
-          action={<Link href="/firm/sittings" className="text-sm text-brand underline">Sittings →</Link>}
-        />
+      <AppCard>
+        <AppCardHeader title="Next 14 days" action={<AppLink href="/firm/sittings" className="-my-3 inline-flex min-h-[44px] items-center">Sittings</AppLink>} />
         {calendarCount === 0 ? (
-          <EmptyState
+          <AppEmpty
             title="Nothing listed in the next fortnight"
             hint="Court dates appear here as you post updates and next dates; consultations appear as clients book."
-            action={<Link href="/firm/sittings" className="text-sm text-brand underline">Post a court update</Link>}
+            action={<AppLink href="/firm/sittings" className="inline-flex min-h-[44px] items-center">Post a court update</AppLink>}
           />
         ) : (
-          <CardBody>
-            <p className="mb-3 text-xs text-gray-500">
+          <AppCardBody>
+            <Footnote className="mb-3">
               Court sittings and consultations, one column per day. On a phone, only days with something listed are shown.
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
+            </Footnote>
+            <div className="grid gap-2.5 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
               {days.map((d, index) => {
                 const daySittings = sittings.filter((s) => bucketOf(s.scheduled_at) === d.ymd);
                 const dayAppointments = appointments.filter((a) => bucketOf(a.starts_at) === d.ymd);
@@ -241,45 +297,57 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                   <div
                     key={d.ymd}
                     className={cn(
-                      "rounded-card border bg-white p-3",
-                      index === 0 ? "border-brand" : "border-gray-200",
+                      "rounded-[11px] border bg-white p-3",
+                      index === 0 ? "border-dk-pri" : "border-dk-line",
                       empty && "hidden sm:block",
                     )}
                   >
-                    <p className="font-heading text-sm font-semibold text-brand">
+                    <p className="font-app-head text-[13px] font-semibold text-dk-strong">
                       {index === 0 ? "Today" : weekdayFmt.format(d.start)}
                     </p>
-                    <p className="text-xs text-gray-500">{dayFmt.format(d.start)}</p>
+                    <p className="text-[11px] text-dk-muted">{dayFmt.format(d.start)}</p>
                     {empty ? (
-                      <p className="mt-2 text-xs text-gray-500">Clear</p>
+                      <p className="mt-2 text-[11px] text-dk-muted">Clear</p>
                     ) : (
-                      <ul className="mt-2 space-y-2">
+                      <ul className="mt-2 flex flex-col gap-2">
                         {daySittings.map((s) => (
                           <li key={s.court_event_id}>
-                            <Link href={`/firm/matters/${s.matter_id}`} className="block rounded-lg bg-brand-surface px-2 py-2 hover:bg-black/5">
-                              <p className="text-xs font-semibold text-brand">
-                                <span aria-hidden="true">⚖ </span>
-                                {formatWhen(s.scheduled_at, tz, { timeStyle: "short" })}
-                              </p>
-                              <p className="text-xs text-gray-800">{s.cause_title}</p>
-                              <p className="text-[11px] text-gray-500">
+                            <Link
+                              href={`/firm/matters/${s.matter_id}`}
+                              className="block rounded-[8px] bg-dk-tint px-2 py-2"
+                            >
+                              <span className="flex items-center gap-1.5 text-[11.5px] font-bold text-dk-strong">
+                                <ScalesIcon size={13} className="flex-none text-dk-soft" />
+                                <span className="sr-only">Court sitting: </span>
+                                <span className="font-mono">{formatWhen(s.scheduled_at, tz, { timeStyle: "short" })}</span>
+                              </span>
+                              <span className="mt-0.5 block text-[11.5px] leading-[1.4] text-dk-body">{s.cause_title}</span>
+                              <span className="mt-0.5 block text-[10.5px] leading-[1.4] text-dk-muted">
                                 {s.suit_number ?? s.reference}
                                 {s.court ? ` · ${s.court}` : ""}
                                 {s.courtroom ? ` · ${s.courtroom}` : ""}
                                 {s.purpose || s.purpose_kind ? ` · ${s.purpose ?? (s.purpose_kind ?? "").replace("_", " ")}` : ""}
-                              </p>
+                              </span>
                             </Link>
                           </li>
                         ))}
                         {dayAppointments.map((a) => (
                           <li key={a.id}>
-                            <Link href={`/firm/appointments/${a.id}`} className="block rounded-lg border border-gray-200 px-2 py-2 hover:bg-gray-50">
-                              <p className="text-xs font-semibold text-gray-800">
-                                <span aria-hidden="true">📅 </span>
-                                {formatWhen(a.starts_at, tz, { timeStyle: "short" })}
-                              </p>
-                              <p className="text-xs text-gray-800">{a.client?.full_name ?? "Client"}</p>
-                              <p className="text-[11px] text-gray-500">{a.reference} · {a.mode.replace("_", " ")} · {a.status.replace("_", " ")}</p>
+                            <Link
+                              href={`/firm/appointments/${a.id}`}
+                              className="block rounded-[8px] border border-dk-line px-2 py-2"
+                            >
+                              <span className="flex items-center gap-1.5 text-[11.5px] font-bold text-dk-strong">
+                                <CalendarIcon size={13} className="flex-none text-dk-soft" />
+                                <span className="sr-only">Consultation: </span>
+                                <span className="font-mono">{formatWhen(a.starts_at, tz, { timeStyle: "short" })}</span>
+                              </span>
+                              <span className="mt-0.5 block text-[11.5px] leading-[1.4] text-dk-body">
+                                {a.client?.full_name ?? "Client"}
+                              </span>
+                              <span className="mt-0.5 block text-[10.5px] leading-[1.4] text-dk-muted">
+                                {a.reference} · {a.mode.replace("_", " ")} · {a.status.replace("_", " ")}
+                              </span>
                             </Link>
                           </li>
                         ))}
@@ -289,39 +357,56 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                 );
               })}
             </div>
-          </CardBody>
+          </AppCardBody>
         )}
-      </Card>
+      </AppCard>
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card>
-          <CardHeader
-            title="Latest activity"
-            action={<Link href="/firm/matters" className="text-sm text-brand underline">All matters →</Link>}
-          />
+      <div className="grid gap-3.5 lg:grid-cols-2">
+        <AppCard>
+          <AppCardHeader title="Latest activity" action={<AppLink href="/firm/matters" className="-my-3 inline-flex min-h-[44px] items-center">All matters</AppLink>} />
           {visibleFeed.length === 0 ? (
-            <EmptyState
+            <AppEmpty
               title="No updates posted yet"
               hint="Every court outcome, filing and note posted on a matter shows here, newest first."
-              action={<Link href="/firm/sittings" className="text-sm text-brand underline">Post a court update</Link>}
+              action={<AppLink href="/firm/sittings" className="inline-flex min-h-[44px] items-center">Post a court update</AppLink>}
             />
           ) : (
             <>
-              <ol className="divide-y divide-gray-100">
+              <ol className="divide-y divide-dk-rule">
                 {visibleFeed.map((u) => {
                   const matter = matterById.get(u.matter_id);
                   const internal = u.visibility === "internal";
+                  const kind = KINDS[u.kind];
+                  const Glyph = kind?.Icon;
                   return (
-                    <li key={u.id} className="flex gap-3 px-5 py-4">
-                      <span aria-hidden="true" className="mt-0.5 w-6 shrink-0 text-center text-base">{KIND_ICON[u.kind] ?? "•"}</span>
+                    <li key={u.id} className="flex gap-[11px] px-[15px] py-[13px]">
+                      <span
+                        aria-hidden="true"
+                        className="mt-[1px] grid h-7 w-7 flex-none place-items-center rounded-full bg-dk-rule text-dk-soft"
+                      >
+                        {Glyph ? <Glyph size={15} /> : <span className="h-[5px] w-[5px] rounded-full bg-dk-muted" />}
+                      </span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900">
+                        {internal && (
+                          <p className="mb-1">
+                            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#E7B84B] bg-[#FFFBEB] px-2 py-[3px] text-[10.5px] font-bold uppercase tracking-[0.03em] text-[#7A3E0A]">
+                              <LockIcon size={12} className="flex-none" />
+                              Internal — never shown to a client
+                            </span>
+                          </p>
+                        )}
+                        <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">
+                          <span className="sr-only">{kind?.label ?? "Update"}. </span>
                           {u.title}
-                          {internal && <Badge className="ml-2 bg-amber-100 text-amber-900">internal</Badge>}
                         </p>
-                        {u.body && <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{u.body}</p>}
-                        <p className="mt-1 text-xs text-gray-500">
-                          <Link href={`/firm/matters/${u.matter_id}`} className="text-brand underline">
+                        {u.body && (
+                          <p className="mt-1 whitespace-pre-wrap text-[13px] leading-relaxed text-dk-body">{u.body}</p>
+                        )}
+                        <p className="mt-[3px] text-[11px] leading-[1.45] text-dk-muted">
+                          <Link
+                            href={`/firm/matters/${u.matter_id}`}
+                            className="font-medium text-dk-pri underline underline-offset-2"
+                          >
                             {matter ? matter.cause_title ?? matter.title : "Open matter"}
                           </Link>
                           {matter ? ` · ${matter.reference}` : ""} · {formatWhen(u.occurred_at, tz)}
@@ -331,71 +416,89 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                   );
                 })}
               </ol>
-              <CardBody className="border-t border-gray-100 text-xs text-gray-500">
-                Entries marked internal are staff-only and never reach a client.
-              </CardBody>
+              <div className="border-t border-dk-rule px-[15px] py-3">
+                <Footnote>Entries marked internal are staff-only and never reach a client.</Footnote>
+              </div>
             </>
           )}
-        </Card>
+        </AppCard>
 
-        <Card>
-          <CardHeader title="Originated against handling" />
+        <AppCard>
+          <AppCardHeader title="Originated against handling" />
           {attribution.length === 0 ? (
-            <EmptyState
+            <AppEmpty
               title="No colleagues on this firm yet"
               hint="Invite the rest of chambers, then set an originating and a handling lawyer on each matter."
-              action={<Link href="/firm/matters" className="text-sm text-brand underline">Open a matter</Link>}
+              action={<AppLink href="/firm/matters" className="inline-flex min-h-[44px] items-center">Open a matter</AppLink>}
             />
           ) : (
             <>
-              <Table>
-                <THead>
-                  <TR>
-                    <TH>Member</TH>
-                    <TH className="text-right">Originated</TH>
-                    <TH className="text-right">Handling</TH>
-                    {feesByLawyer && <TH className="text-right">Fees collected</TH>}
-                  </TR>
-                </THead>
-                <TBody>
-                  {attribution.map((row) => (
-                    <TR key={row.id}>
-                      <TD>
-                        <span className="font-medium text-gray-900">{row.label}</span>
-                        <span className="ml-2 text-xs text-gray-500">{row.role}</span>
-                      </TD>
-                      <TD className="text-right tabular-nums">{row.originated}</TD>
-                      <TD className="text-right tabular-nums">{row.handling}</TD>
-                      {feesByLawyer && <TD className="text-right tabular-nums">{feeLabel(row.fees)}</TD>}
-                    </TR>
-                  ))}
-                  {(unattributedOriginated > 0 || unattributedHandling > 0) && (
-                    <TR>
-                      <TD className="text-gray-500">Not attributed</TD>
-                      <TD className="text-right tabular-nums text-gray-500">{unattributedOriginated}</TD>
-                      <TD className="text-right tabular-nums text-gray-500">{unattributedHandling}</TD>
-                      {feesByLawyer && <TD className="text-right text-gray-500">—</TD>}
-                    </TR>
-                  )}
-                  <TR>
-                    <TD className="font-medium text-gray-900">Total matters</TD>
-                    <TD className="text-right font-medium tabular-nums text-gray-900">{matters.length}</TD>
-                    <TD className="text-right font-medium tabular-nums text-gray-900">{matters.length}</TD>
-                    {feesByLawyer && <TD className="text-right">&nbsp;</TD>}
-                  </TR>
-                </TBody>
-              </Table>
-              <CardBody className="border-t border-gray-100 text-xs text-gray-500">
-                {feesByLawyer
-                  ? "Fees are payments received against invoices on each member's originated matters, in the currency they were paid."
-                  : "Fees collected are not shown: the attribution view could not be read with your access."}
-                {" "}Origination is who brought the work in; handling is who runs it. Set both when you open or edit a matter.
-                {matters.length >= 500 ? " Counts cover the 500 most recently opened matters." : ""}
-                {feesByLawyer && feeRowsCapped ? ` Fees cover the ${FEE_SCAN.toLocaleString("en-GB")} most recent payments.` : ""}
-              </CardBody>
+              {/* One row per member rather than a four-column table: the console is
+                  390px wide before it is anything else, and the numbers read as a
+                  label-and-value line without a sideways scroll. */}
+              <AppCardList>
+                {attribution.map((row) => (
+                  <div key={row.id} className="px-[15px] py-[13px]">
+                    <p className="flex flex-wrap items-baseline gap-x-2 text-[13.5px] font-semibold text-dk-strong">
+                      {row.label}
+                      <span className="text-[11px] font-medium uppercase tracking-[0.04em] text-dk-muted">{row.role}</span>
+                    </p>
+                    <dl className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] leading-[1.45] text-dk-soft">
+                      <div>
+                        <dt className="inline text-dk-muted">Originated: </dt>
+                        <dd className="inline font-semibold tabular-nums text-dk-strong">{row.originated}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline text-dk-muted">Handling: </dt>
+                        <dd className="inline font-semibold tabular-nums text-dk-strong">{row.handling}</dd>
+                      </div>
+                      {feesByLawyer && (
+                        <div>
+                          <dt className="inline text-dk-muted">Fees collected: </dt>
+                          <dd className="inline font-semibold tabular-nums text-dk-strong">{feeLabel(row.fees)}</dd>
+                        </div>
+                      )}
+                    </dl>
+                  </div>
+                ))}
+
+                {(unattributedOriginated > 0 || unattributedHandling > 0) && (
+                  <div className="px-[15px] py-[13px]">
+                    <p className="text-[13.5px] font-semibold text-dk-soft">Not attributed</p>
+                    <dl className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[11.5px] leading-[1.45] text-dk-soft">
+                      <div>
+                        <dt className="inline text-dk-muted">Originated: </dt>
+                        <dd className="inline font-semibold tabular-nums">{unattributedOriginated}</dd>
+                      </div>
+                      <div>
+                        <dt className="inline text-dk-muted">Handling: </dt>
+                        <dd className="inline font-semibold tabular-nums">{unattributedHandling}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between gap-3 bg-dk-tint px-[15px] py-[13px]">
+                  <p className="text-[13.5px] font-semibold text-dk-strong">Total matters</p>
+                  <p className="font-app-head text-[17px] font-bold tabular-nums leading-none text-dk-strong">
+                    {matters.length}
+                  </p>
+                </div>
+              </AppCardList>
+
+              <div className="border-t border-dk-rule px-[15px] py-3">
+                <Footnote>
+                  {feesByLawyer
+                    ? "Fees are payments received against invoices on each member's originated matters, in the currency they were paid."
+                    : "Fees collected are not shown: the attribution view could not be read with your access."}
+                  {" "}Origination is who brought the work in; handling is who runs it. Set both when you open or edit a matter.
+                  {matters.length >= 500 ? " Counts cover the 500 most recently opened matters." : ""}
+                  {feesByLawyer && feeRowsCapped ? ` Fees cover the ${FEE_SCAN.toLocaleString("en-GB")} most recent payments.` : ""}
+                </Footnote>
+              </div>
             </>
           )}
-        </Card>
+        </AppCard>
       </div>
     </div>
   );

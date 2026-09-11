@@ -22,7 +22,8 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { isLowData } from "@/lib/low-data";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { AppButton, appButtonClass } from "@/components/app/button";
+import { LockIcon, UploadIcon, UsersIcon } from "@/components/ui/icons";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
 import type { DocumentRow, DocumentVersionRow } from "@/lib/db/types";
@@ -215,33 +216,34 @@ export function StaffDocuments({
 
   return (
     <div>
-      {error && <div className="px-4 pt-4 sm:px-5"><Alert kind="error" title="That was refused">{error}</Alert></div>}
+      {error && <div className="px-[15px] pt-[15px]"><Alert kind="error" title="That was refused">{error}</Alert></div>}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
-        <p className="text-xs text-gray-500">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-dk-rule px-[15px] py-3">
+        <p className="min-w-0 flex-1 text-[11.5px] leading-snug text-dk-muted">
           PDF, Word, JPEG, PNG or HEIC · up to 25 MB · uploaded here it stays with the firm until you share it.
         </p>
-        <label className="inline-flex min-h-[44px] cursor-pointer items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">
+        <label className={cn(appButtonClass("primary-sm"), "cursor-pointer")}>
+          <UploadIcon size={15} className="flex-none" />
           {busy?.startsWith("Uploading") ? busy : "Upload a document"}
           <input type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
         </label>
       </div>
 
       {documents.length === 0 ? (
-        <p className="px-5 py-10 text-center text-sm text-gray-500">
+        <p className="px-6 py-10 text-center text-[12.5px] leading-relaxed text-dk-muted">
           Nothing filed on this matter yet. Upload the processes, exhibits or correspondence — then share with the client the ones they should have.
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-dk-rule">
           {documents.map((d) => {
             const uploader = d.uploaded_by ? names[d.uploaded_by] ?? null : null;
             const rows = versions[d.id];
             return (
-              <li key={d.id} className="px-4 py-4 sm:px-5">
+              <li key={d.id} className="px-[15px] py-[13px]">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-900">{d.name}</p>
-                    <p className="mt-0.5 text-xs text-gray-500">
+                    <p className="truncate text-[13.5px] font-semibold text-dk-strong">{d.name}</p>
+                    <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-muted">
                       {fmt.format(new Date(d.created_at))}
                       {uploader ? ` · ${uploader}` : ""}
                       {d.version?.size_bytes ? ` · ${fmtSize(d.version.size_bytes)}` : ""}
@@ -249,50 +251,64 @@ export function StaffDocuments({
                       {d.version_count > 1 && (
                         <>
                           {" · "}
-                          <button type="button" className="underline" onClick={() => loadVersions(d)}>
+                          {/* A control, not prose: 44px of thumb, pulled back so
+                              the metadata line keeps its own height. */}
+                          <button
+                            type="button"
+                            className="-my-[13px] inline-flex min-h-[44px] items-center align-middle font-medium text-dk-pri underline underline-offset-2"
+                            onClick={() => loadVersions(d)}
+                          >
                             {d.version_count} versions
                           </button>
                         </>
                       )}
                     </p>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => openPreview(d, null)} disabled={!d.version}>
+                  <AppButton variant="ghost-sm" onClick={() => openPreview(d, null)} disabled={!d.version}>
                     {d.version ? (isImage(d.version.mime) || isPdf(d.version.mime) ? "Preview" : "Download") : "No file yet"}
-                  </Button>
+                  </AppButton>
                 </div>
 
-                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                {/* Shared or staff-only is the distinction that decides what a
+                    client ever reads. It is a checkbox, a mark and a sentence —
+                    never one of the three on its own. */}
+                <div className="mt-3 flex flex-wrap items-center gap-x-3.5 gap-y-2">
                   <label
                     className={cn(
-                      "inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm",
-                      isShared(d) ? "border-emerald-300 bg-emerald-50 text-emerald-900" : "border-gray-300 bg-white text-gray-700",
+                      "inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-[9px] border px-3 text-[12.5px] font-medium",
+                      isShared(d) ? "border-dk-pri bg-dk-tint text-dk-strong" : "border-dk-field bg-white text-dk-soft",
                     )}
                   >
                     <input
                       type="checkbox"
-                      className="h-5 w-5"
+                      className="h-5 w-5 flex-none"
                       checked={isShared(d)}
                       disabled={Boolean(busy)}
                       onChange={() => toggleShared(d)}
                     />
+                    {isShared(d) ? (
+                      <UsersIcon size={15} className="flex-none" />
+                    ) : (
+                      <LockIcon size={15} className="flex-none" />
+                    )}
                     {isShared(d) ? "Your client can see this" : "Staff only — your client cannot see this"}
                   </label>
-                  <label className="cursor-pointer text-sm text-brand underline">
+                  <label className="inline-flex min-h-[44px] cursor-pointer items-center text-[12.5px] font-medium text-dk-pri underline underline-offset-2">
                     Upload a new version
                     <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => uploadVersion(d, e)} disabled={Boolean(busy)} />
                   </label>
                   {isClientUpload(d) &&
                     (isReviewed(d) ? (
-                      <span className="text-sm text-gray-500">Reviewed</span>
+                      <span className="text-[12.5px] text-dk-muted">Reviewed</span>
                     ) : (
-                      <Button size="sm" variant="ghost" onClick={() => markReviewed(d)} disabled={Boolean(busy)}>
+                      <AppButton variant="ghost-sm" onClick={() => markReviewed(d)} disabled={Boolean(busy)}>
                         Mark as reviewed
-                      </Button>
+                      </AppButton>
                     ))}
                 </div>
 
                 {rows && (
-                  <ul className="mt-3 space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+                  <ul className="mt-3 flex flex-col gap-1 rounded-[9px] bg-dk-tint p-3 text-[11.5px] leading-[1.5] text-dk-soft">
                     {rows.length === 0 && <li>No versions recorded — the file was never uploaded.</li>}
                     {rows.map((v, i) => (
                       <li key={v.id} className="flex flex-wrap justify-between gap-2">
@@ -302,7 +318,13 @@ export function StaffDocuments({
                           {v.uploaded_by && names[v.uploaded_by] ? ` · ${names[v.uploaded_by]}` : ""}
                           {v.id === d.current_version_id ? " · current" : ""}
                         </span>
-                        <button type="button" className="underline" onClick={() => openPreview(d, v, true)}>Open</button>
+                        <button
+                          type="button"
+                          className="min-h-[44px] flex-none px-1 font-medium text-dk-pri underline underline-offset-2"
+                          onClick={() => openPreview(d, v, true)}
+                        >
+                          Open
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -315,27 +337,38 @@ export function StaffDocuments({
 
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title={preview?.doc.name ?? "Document"}>
         {preview && (preview.loading ? (
-          <p className="text-sm text-gray-600">Preparing a secure link…</p>
+          <p className="text-[13px] text-dk-soft">Preparing a secure link…</p>
         ) : !preview.url ? (
-          <div className="space-y-3">
-            <p className="text-sm text-gray-700">Low-data mode is on. Load this {fmtSize(preview.doc.version?.size_bytes) || "file"} preview?</p>
-            <Button onClick={() => openPreview(preview.doc, preview.doc.version, true)}>Load preview</Button>
+          <div className="flex flex-col gap-3">
+            <p className="text-[13px] leading-relaxed text-dk-body">
+              Low-data mode is on. Load this {fmtSize(preview.doc.version?.size_bytes) || "file"} preview?
+            </p>
+            <AppButton variant="primary-sm" onClick={() => openPreview(preview.doc, preview.doc.version, true)}>
+              Load preview
+            </AppButton>
           </div>
         ) : isImage(preview.doc.version?.mime) ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={preview.url} alt={preview.doc.name} className="max-h-[70vh] w-full rounded-lg object-contain" />
+          <img src={preview.url} alt={preview.doc.name} className="max-h-[70vh] w-full rounded-[10px] object-contain" />
         ) : isPdf(preview.doc.version?.mime) ? (
-          <div className="space-y-3">
-            <iframe src={preview.url} title={preview.doc.name} className="h-[70vh] w-full rounded-lg border border-gray-200" />
-            <a href={preview.url} target="_blank" rel="noreferrer" className="text-sm text-brand underline">Open in a new tab</a>
+          <div className="flex flex-col gap-3">
+            <iframe src={preview.url} title={preview.doc.name} className="h-[70vh] w-full rounded-[10px] border border-dk-line" />
+            <a
+              href={preview.url}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex min-h-[44px] w-fit items-center text-[12.5px] font-medium text-dk-pri underline underline-offset-2"
+            >
+              Open in a new tab
+            </a>
           </div>
         ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-gray-700">This file type has no in-app preview.</p>
-            <a href={preview.url} className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on" download={preview.doc.name}>Download</a>
+          <div className="flex flex-col gap-3">
+            <p className="text-[13px] leading-relaxed text-dk-body">This file type has no in-app preview.</p>
+            <a href={preview.url} className={appButtonClass("primary-sm")} download={preview.doc.name}>Download</a>
           </div>
         ))}
-        <p className="mt-3 text-xs text-gray-500">Links expire after two minutes.</p>
+        <p className="mt-3 text-[11.5px] leading-snug text-dk-muted">Links expire after two minutes.</p>
       </Modal>
     </div>
   );

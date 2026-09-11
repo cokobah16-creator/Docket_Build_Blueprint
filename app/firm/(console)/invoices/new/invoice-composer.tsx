@@ -25,15 +25,28 @@
 
 import { useMemo, useRef, useState, useTransition, type SyntheticEvent } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { createInvoice } from "@/lib/actions/invoices";
 import { formatMoneyMinor } from "@/lib/money";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import {
+  AppButton,
+  AppButtonLink,
+  AppCard,
+  AppCardBody,
+  AppCardHeader,
+  AppDetail,
+  Footnote,
+} from "@/components/app";
 import { cn } from "@/lib/cn";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+// The console's own field: neutral edge, 44px of thumb, and a focus ring in the
+// shell's ink rather than any firm's colour.
+const field =
+  "mt-1.5 min-h-[44px] w-full rounded-[9px] border border-dk-field bg-white px-3 py-[11px] text-[14px] text-dk-strong placeholder:text-dk-muted focus:border-dk-pri focus:outline-none";
+const labelClass = "text-[13px] font-semibold text-dk-strong";
+const hintClass = "mt-0.5 text-[11.5px] leading-snug text-dk-muted";
+/** Required is said in words, never in a colour: colour here means late or unpaid. */
+const requiredMark = <span className="font-normal text-dk-muted">(required)</span>;
 
 const MAX_ITEMS = 50;
 
@@ -223,44 +236,38 @@ export function InvoiceComposer({
 
   if (clients.length === 0) {
     return (
-      <Card>
-        <CardHeader title="Nobody to bill yet" />
-        <CardBody className="space-y-3">
-          <p className="text-sm text-gray-700">
+      <AppCard>
+        <AppCardHeader title="Nobody to bill yet" />
+        <AppCardBody className="flex flex-col gap-3">
+          <p className="text-[12.5px] leading-[1.55] text-dk-soft">
             An invoice is raised against a person {firmName} already acts for. Nobody has booked a consultation or
             been added to a matter yet, so there is nobody to bill.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href={`/firm/matters/new${firmQuery}`}
-              className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
-            >
+          <div className="flex flex-wrap items-center gap-2.5">
+            <AppButtonLink href={`/firm/matters/new${firmQuery}`} variant="primary-sm">
               Open a matter and invite the client
-            </Link>
-            <Link
-              href={`/firm/clients${firmQuery}`}
-              className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
-            >
+            </AppButtonLink>
+            <AppButtonLink href={`/firm/clients${firmQuery}`} variant="ghost-sm">
               See who is on the books
-            </Link>
+            </AppButtonLink>
           </div>
-        </CardBody>
-      </Card>
+        </AppCardBody>
+      </AppCard>
     );
   }
 
   return (
-    <form onSubmit={(e) => submit(e, false)} className="space-y-5">
+    <form onSubmit={(e) => submit(e, false)} className="flex flex-col gap-3.5">
       {error && <Alert kind="error" title="This invoice was not raised">{error}</Alert>}
 
-      <Card>
-        <CardHeader title="Who is billed" />
-        <CardBody className="space-y-4">
+      <AppCard>
+        <AppCardHeader title="Who is billed" />
+        <AppCardBody className="flex flex-col gap-4">
           <div>
-            <label htmlFor="client_filter" className="text-sm font-medium text-gray-900">
+            <label htmlFor="client_filter" className={labelClass}>
               Find the client
             </label>
-            <p className="text-xs text-gray-500">
+            <p className={hintClass}>
               Everyone {firmName} acts for: the people who have booked a consultation and the people named on a matter.
             </p>
             <input
@@ -276,8 +283,8 @@ export function InvoiceComposer({
           </div>
 
           <div>
-            <label htmlFor="client" className="text-sm font-medium text-gray-900">
-              Client <span className="text-red-700">*</span>
+            <label htmlFor="client" className={labelClass}>
+              Client {requiredMark}
             </label>
             <select id="client" value={clientId} onChange={(e) => setClientId(e.target.value)} className={field}>
               <option value="">Choose a client…</option>
@@ -289,12 +296,14 @@ export function InvoiceComposer({
               ))}
             </select>
             {filteredClients.length === 0 && (
-              <p className="mt-1 text-xs text-amber-800">
+              <p className="mt-1.5 text-[11.5px] leading-snug text-dk-soft">
                 Nobody matches that. Clear the search to see everyone on the firm&rsquo;s books.
               </p>
             )}
+            {/* A missing email is the console's amber: a receipt cannot be sent,
+                and the sentence says so without relying on the colour. */}
             {chosenClient && !chosenClient.email && (
-              <p className="mt-1 text-xs text-amber-800">
+              <p className="mt-1.5 text-[11.5px] font-semibold leading-snug text-[#92400E]">
                 {chosenClient.name} has no email address on file, so no receipt can be emailed. They will still see
                 the invoice in their app.
               </p>
@@ -302,14 +311,14 @@ export function InvoiceComposer({
           </div>
 
           <div>
-            <label htmlFor="matter" className="text-sm font-medium text-gray-900">
+            <label htmlFor="matter" className={labelClass}>
               Against a matter
             </label>
-            <p className="text-xs text-gray-500">
+            <p className={hintClass}>
               Optional. Attach it and the issued invoice appears on that matter&rsquo;s timeline for the client.
             </p>
             {matters.length === 0 ? (
-              <p className={cn(field, "text-gray-600")}>
+              <p className={cn(field, "text-dk-soft")}>
                 This firm has no matters yet, so the invoice stands on its own.
               </p>
             ) : (
@@ -327,10 +336,10 @@ export function InvoiceComposer({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="currency" className="text-sm font-medium text-gray-900">
+              <label htmlFor="currency" className={labelClass}>
                 Currency
               </label>
-              <p className="text-xs text-gray-500">The firm bills in {defaultCurrency} unless you say otherwise.</p>
+              <p className={hintClass}>The firm bills in {defaultCurrency} unless you say otherwise.</p>
               <select
                 id="currency"
                 value={currency}
@@ -346,26 +355,26 @@ export function InvoiceComposer({
               </select>
             </div>
             <div>
-              <label htmlFor="due_on" className="text-sm font-medium text-gray-900">
+              <label htmlFor="due_on" className={labelClass}>
                 Falls due on
               </label>
-              <p className="text-xs text-gray-500">Optional. After this day the invoice reads as overdue.</p>
+              <p className={hintClass}>Optional. After this day the invoice reads as overdue.</p>
               <input id="due_on" type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} className={field} />
             </div>
           </div>
-        </CardBody>
-      </Card>
+        </AppCardBody>
+      </AppCard>
 
-      <Card>
-        <CardHeader
+      <AppCard>
+        <AppCardHeader
           title="What for"
           action={
-            <Button type="button" size="sm" variant="ghost" onClick={addLine} disabled={lines.length >= MAX_ITEMS}>
+            <AppButton type="button" variant="ghost-sm" onClick={addLine} disabled={lines.length >= MAX_ITEMS}>
               Add a line
-            </Button>
+            </AppButton>
           }
         />
-        <CardBody className="space-y-4">
+        <AppCardBody className="flex flex-col gap-4">
           {lines.map((line, index) => {
             const quantity = parseAmount(line.quantity);
             const unit = parseAmount(line.unit);
@@ -374,9 +383,9 @@ export function InvoiceComposer({
                 ? Math.round(toMinorUnits(unit) * quantity)
                 : null;
             return (
-              <div key={line.key} className="rounded-lg border border-gray-200 p-3">
+              <div key={line.key} className="rounded-[10px] border border-dk-line p-3">
                 <div>
-                  <label htmlFor={`description_${line.key}`} className="text-sm font-medium text-gray-900">
+                  <label htmlFor={`description_${line.key}`} className={labelClass}>
                     Line {index + 1}
                   </label>
                   <input
@@ -392,7 +401,7 @@ export function InvoiceComposer({
 
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label htmlFor={`quantity_${line.key}`} className="text-sm font-medium text-gray-900">
+                    <label htmlFor={`quantity_${line.key}`} className={labelClass}>
                       Quantity
                     </label>
                     <input
@@ -407,7 +416,7 @@ export function InvoiceComposer({
                     />
                   </div>
                   <div>
-                    <label htmlFor={`unit_${line.key}`} className="text-sm font-medium text-gray-900">
+                    <label htmlFor={`unit_${line.key}`} className={labelClass}>
                       Amount each ({currency})
                     </label>
                     <input
@@ -424,68 +433,66 @@ export function InvoiceComposer({
                   </div>
                 </div>
 
+                {/* What this line comes to, at the size the figure deserves. */}
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm text-gray-700">
-                    {lineMinor === null ? "—" : <span className="font-medium text-gray-900">{money(lineMinor)}</span>}
+                  <p className="font-app-head text-[15px] font-bold leading-none text-dk-strong">
+                    {lineMinor === null ? <span className="text-dk-muted">&mdash;</span> : money(lineMinor)}
                   </p>
-                  <Button
+                  <AppButton
                     type="button"
-                    size="sm"
-                    variant="ghost"
+                    variant="ghost-sm"
                     onClick={() => removeLine(line.key)}
                     aria-label={`Remove line ${index + 1}`}
                   >
                     Remove
-                  </Button>
+                  </AppButton>
                 </div>
               </div>
             );
           })}
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="ghost" onClick={addLine} disabled={lines.length >= MAX_ITEMS}>
+            <AppButton type="button" variant="ghost-sm" onClick={addLine} disabled={lines.length >= MAX_ITEMS}>
               Add another line
-            </Button>
+            </AppButton>
             {lines.length >= MAX_ITEMS && (
-              <p className="text-xs text-gray-500">An invoice takes at most {MAX_ITEMS} lines.</p>
+              <Footnote>An invoice takes at most {MAX_ITEMS} lines.</Footnote>
             )}
           </div>
-        </CardBody>
-      </Card>
+        </AppCardBody>
+      </AppCard>
 
-      <Card>
-        <CardHeader title="What it comes to" />
-        <CardBody>
-          <dl className="space-y-2 text-sm">
-            <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-gray-600">Subtotal</dt>
-              <dd className="font-medium text-gray-900">{money(totals.subtotal)}</dd>
+      <AppCard>
+        <AppCardHeader title="What it comes to" />
+        <AppCardBody>
+          {/* The total is the figure the lawyer is checking before anything is
+              written, so it is set at heading size rather than as another row. */}
+          <div className="flex flex-col gap-2">
+            <AppDetail label="Subtotal">{money(totals.subtotal)}</AppDetail>
+            <AppDetail label={`VAT at ${vatRate}%`}>{money(totals.vat)}</AppDetail>
+            <div className="flex items-baseline justify-between gap-4 border-t border-dk-rule pt-2.5">
+              <span className="text-[13px] font-semibold text-dk-soft">Total</span>
+              <span className="font-app-head text-[22px] font-bold leading-none text-dk-strong">
+                {money(totals.total)}
+              </span>
             </div>
-            <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-gray-600">VAT at {vatRate}%</dt>
-              <dd className="font-medium text-gray-900">{money(totals.vat)}</dd>
-            </div>
-            <div className="flex items-baseline justify-between gap-4 border-t border-gray-100 pt-2">
-              <dt className="font-heading text-base font-semibold text-brand">Total</dt>
-              <dd className="font-heading text-base font-semibold text-brand">{money(totals.total)}</dd>
-            </div>
-          </dl>
-          <p className="mt-3 text-xs text-gray-500">
+          </div>
+          <Footnote className="mt-3">
             {vatRate > 0
               ? `VAT is the firm's own rate of ${vatRate}%, applied by the database when the invoice is raised.`
               : "This firm has no VAT rate set, so no VAT is added. An owner can set it on the firm's record."}
-          </p>
-        </CardBody>
-      </Card>
+          </Footnote>
+        </AppCardBody>
+      </AppCard>
 
-      <Card>
-        <CardHeader title="Send it, or keep it" />
-        <CardBody className="space-y-4">
+      <AppCard>
+        <AppCardHeader title="Send it, or keep it" />
+        <AppCardBody className="flex flex-col gap-4">
           <div>
-            <label htmlFor="note" className="text-sm font-medium text-gray-900">
+            <label htmlFor="note" className={labelClass}>
               Note to the client
             </label>
-            <p className="text-xs text-gray-500">
+            <p className={hintClass}>
               Optional, and the client reads it: it goes out with the invoice and, when the invoice is against a
               matter, onto that matter&rsquo;s timeline. Keep anything internal off this screen.
             </p>
@@ -505,19 +512,21 @@ export function InvoiceComposer({
             draft and nobody outside the firm can see it until you issue it.
           </Alert>
 
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <Button type="button" size="lg" onClick={(e) => submit(e, true)} disabled={pending}>
+          {/* Stacked, not side by side: the primary is a full-width 50px bar on
+              a phone and the draft sits under it, so neither is a half-target. */}
+          <div className="flex flex-col gap-2.5">
+            <AppButton type="button" variant="primary" onClick={(e) => submit(e, true)} disabled={pending}>
               {pending ? "Working…" : `Issue now${totals.total > 0 ? ` · ${money(totals.total)}` : ""}`}
-            </Button>
-            <Button type="submit" size="lg" variant="ghost" disabled={pending}>
+            </AppButton>
+            <AppButton type="submit" variant="ghost" disabled={pending} className="w-full">
               {pending ? "Working…" : "Save as a draft"}
-            </Button>
+            </AppButton>
           </div>
-          <p className="text-xs text-gray-500">
+          <Footnote>
             The invoice number is issued by the database as the invoice is raised, in the firm&rsquo;s own series.
-          </p>
-        </CardBody>
-      </Card>
+          </Footnote>
+        </AppCardBody>
+      </AppCard>
     </form>
   );
 }
@@ -542,23 +551,23 @@ export function CopyLink({ value, label = "Copy link" }: { value: string; label?
   }
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
         <input
           readOnly
           value={value}
           aria-label={label}
           onFocus={(e) => e.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800"
+          className="min-h-[44px] min-w-0 flex-1 rounded-[9px] border border-dk-field bg-dk-tint px-3 py-[11px] font-mono text-[12.5px] text-dk-strong"
         />
-        <Button type="button" variant="ghost" onClick={copy}>
+        <AppButton type="button" variant="ghost-sm" onClick={copy}>
           {state === "copied" ? "Copied" : label}
-        </Button>
+        </AppButton>
       </div>
       {state === "manual" && (
-        <p className="text-xs text-gray-600">
-          This browser would not let the page copy for you — press and hold the link above to copy it.
-        </p>
+        <Footnote>
+          This browser would not let the page copy for you &mdash; press and hold the link above to copy it.
+        </Footnote>
       )}
     </div>
   );

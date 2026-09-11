@@ -6,10 +6,15 @@
 // authorization and no service key is used; the reference is minted inside
 // open_matter() (next_reference() is service-only), never in this code; and
 // nothing is firm-specific — the firm arrives from staffContext().
+//
+// A pushed screen rather than a tab, so it opens with its own way back. The
+// console layout owns the page gutter, so there are no margins here.
 
 import Link from "next/link";
 import { courtsFor, firmStaff, matterStatuses, requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
+import { ScreenTitle } from "@/components/app";
+import { ChevronLeftIcon } from "@/components/ui/icons";
 import { NewMatterForm } from "./new-matter-form";
 
 export const metadata = { title: "Open a matter" };
@@ -39,13 +44,19 @@ export default async function NewMatterPage({
   ]);
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm">
-        <Link href="/firm/matters" className="text-brand underline">← Matters</Link>
-      </p>
+    <div className="dk-rise flex flex-col gap-3.5">
+      {/* The whole row is the target: 44px tall and as wide as its words. */}
+      <Link
+        href="/firm/matters"
+        className="-ml-1 inline-flex min-h-[44px] w-fit items-center gap-1 pr-2 text-[13px] font-medium text-dk-pri"
+      >
+        <ChevronLeftIcon size={17} className="flex-none" />
+        Matters
+      </Link>
+
       <header>
-        <h1 className="font-heading text-2xl font-semibold text-brand">Open a matter</h1>
-        <p className="text-sm text-gray-600">
+        <ScreenTitle>Open a matter</ScreenTitle>
+        <p className="mt-[3px] text-[12.5px] leading-snug text-dk-soft">
           {ctx.firmName} · the reference is issued by the database as the matter opens
         </p>
       </header>

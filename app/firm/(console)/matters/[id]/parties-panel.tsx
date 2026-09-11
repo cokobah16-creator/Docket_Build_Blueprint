@@ -17,7 +17,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { inviteMatterParty, removeMatterParty, revokeMatterInvite } from "@/lib/actions/matters";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { AppButton, appButtonClass } from "@/components/app/button";
 import { CopyButton } from "./matter-tabs";
 import { isE164, normalizeNigerianPhone } from "@/lib/nigeria";
 
@@ -27,7 +27,10 @@ import { isE164, normalizeNigerianPhone } from "@/lib/nigeria";
  */
 const INVITE_PATH = "/app/join";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field =
+  "mt-1.5 min-h-[44px] w-full rounded-[9px] border border-dk-field bg-white px-3 py-[11px] text-[14px] text-dk-strong placeholder:text-dk-muted focus:border-dk-pri focus:outline-none";
+const labelClass = "text-[13px] font-semibold text-dk-strong";
+const sectionHeading = "font-app-head text-[15.5px] font-semibold text-dk-strong";
 
 export interface MatterPartyRow {
   user_id: string;
@@ -138,40 +141,48 @@ export function PartiesPanel({
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
 
   return (
-    <div className="divide-y divide-gray-100">
-      {error && <div className="px-4 py-4 sm:px-5"><Alert kind="error" title="That was refused">{error}</Alert></div>}
+    <div className="divide-y divide-dk-rule">
+      {error && <div className="px-[15px] py-[15px]"><Alert kind="error" title="That was refused">{error}</Alert></div>}
 
-      <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">On this matter</h3>
+      <section className="px-[15px] py-[15px]">
+        <h3 className={sectionHeading}>On this matter</h3>
         {parties.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-[12.5px] leading-relaxed text-dk-soft">
             Nobody on the client side yet. Invite your client below — they then see the timeline, the documents you share and their invoices in their app.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-gray-100">
+          <ul className="mt-2.5 divide-y divide-dk-rule">
             {parties.map((p) => (
               <li key={p.user_id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{p.full_name ?? "Client"}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">{p.full_name ?? "Client"}</p>
+                  <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">
                     {ROLE_LABELS[p.role] ?? p.role.replace(/_/g, " ")}
                     {p.phone ? ` · ${p.phone}` : ""}
                     {p.email ? ` · ${p.email}` : ""}
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-500">
+                  <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-muted">
                     {p.can_view_docs ? "Can read shared documents" : "No document access"} · {p.can_pay ? "Can pay invoices" : "Cannot pay invoices"}
                   </p>
                 </div>
                 {confirming === p.user_id ? (
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-gray-600">They lose this matter in their app at once.</span>
-                    <Button size="sm" variant="danger" disabled={working === p.user_id} onClick={() => remove(p.user_id)}>
+                    <span className="text-[11.5px] leading-snug text-dk-soft">They lose this matter in their app at once.</span>
+                    {/* Taking somebody off a matter is not undoable from here, so the
+                        one destructive control on the panel keeps its own red — with
+                        the word "Remove" on it. */}
+                    <AppButton
+                      variant="ghost-sm"
+                      className="border-[#E5C4C4] bg-[#FEF3F2] text-[#912018]"
+                      disabled={working === p.user_id}
+                      onClick={() => remove(p.user_id)}
+                    >
                       {working === p.user_id ? "Removing…" : "Remove"}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>Keep</Button>
+                    </AppButton>
+                    <AppButton variant="ghost-sm" onClick={() => setConfirming(null)}>Keep</AppButton>
                   </span>
                 ) : (
-                  <Button size="sm" variant="ghost" onClick={() => setConfirming(p.user_id)}>Take off the matter</Button>
+                  <AppButton variant="ghost-sm" onClick={() => setConfirming(p.user_id)}>Take off the matter</AppButton>
                 )}
               </li>
             ))}
@@ -179,16 +190,16 @@ export function PartiesPanel({
         )}
       </section>
 
-      <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">Invite your client</h3>
-        <p className="mt-0.5 text-sm text-gray-600">
+      <section className="px-[15px] py-[15px]">
+        <h3 className={sectionHeading}>Invite your client</h3>
+        <p className="mt-0.5 text-[12.5px] leading-relaxed text-dk-soft">
           A phone number, an email address, or both. Send them the link over WhatsApp or SMS — it expires in fourteen days.
           They sign in with the number or email you invited here, and the matter then appears in their app.
         </p>
-        <form onSubmit={submit} className="mt-3 space-y-3">
+        <form onSubmit={submit} className="mt-3 flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="invite-phone" className="text-sm font-medium text-gray-900">Phone</label>
+              <label htmlFor="invite-phone" className={labelClass}>Phone</label>
               <input
                 id="invite-phone"
                 type="tel"
@@ -201,7 +212,7 @@ export function PartiesPanel({
               />
             </div>
             <div>
-              <label htmlFor="invite-email" className="text-sm font-medium text-gray-900">Email</label>
+              <label htmlFor="invite-email" className={labelClass}>Email</label>
               <input
                 id="invite-email"
                 type="email"
@@ -214,19 +225,21 @@ export function PartiesPanel({
             </div>
           </div>
           <div>
-            <label htmlFor="invite-role" className="text-sm font-medium text-gray-900">They join as</label>
+            <label htmlFor="invite-role" className={labelClass}>They join as</label>
             <select id="invite-role" value={role} onChange={(e) => setRole(e.target.value === "contact" ? "contact" : "client")} className={field}>
               <option value="client">Client — the matter is theirs</option>
               <option value="contact">Contact — follows the matter with the client&rsquo;s knowledge</option>
             </select>
           </div>
-          <Button type="submit" disabled={busy}>{busy ? "Creating the invitation…" : "Create the invitation"}</Button>
+          <AppButton type="submit" variant="primary-sm" disabled={busy}>
+            {busy ? "Creating the invitation…" : "Create the invitation"}
+          </AppButton>
         </form>
 
         {invited && (
-          <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-sm font-medium text-emerald-900">Invitation ready — send it now.</p>
-            <p className="mt-1 break-all text-xs text-emerald-900">{linkFor(invited.token)}</p>
+          <div className="mt-3.5 rounded-[10px] border border-dk-line bg-dk-tint p-3.5">
+            <p className="text-[13px] font-semibold text-dk-strong">Invitation ready — send it now.</p>
+            <p className="mt-1 break-all font-mono text-[11.5px] leading-[1.5] text-dk-body">{linkFor(invited.token)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <CopyButton path={`${INVITE_PATH}?token=${encodeURIComponent(invited.token)}`} label="Copy the link" />
               {digitsOf(invited.phone) && (
@@ -235,42 +248,48 @@ export function PartiesPanel({
                     href={`https://wa.me/${digitsOf(invited.phone)}?text=${encodeURIComponent(messageFor(invited.token))}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-3 text-sm font-medium text-brand-on hover:opacity-90"
+                    className={appButtonClass("primary-sm")}
                   >
                     Send on WhatsApp
                   </a>
                   <a
                     href={`sms:${invited.phone ?? ""}?&body=${encodeURIComponent(messageFor(invited.token))}`}
-                    className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-brand hover:bg-black/5"
+                    className={appButtonClass("ghost-sm")}
                   >
                     Send by SMS
                   </a>
                 </>
               )}
             </div>
-            <p className="mt-2 text-xs text-emerald-900">Expires {invited.expiresAt ? fmt.format(new Date(invited.expiresAt)) : "in fourteen days"}.</p>
+            <p className="mt-2 text-[11.5px] leading-snug text-dk-muted">
+              Expires {invited.expiresAt ? fmt.format(new Date(invited.expiresAt)) : "in fourteen days"}.
+            </p>
           </div>
         )}
       </section>
 
-      <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">Invitations waiting</h3>
+      <section className="px-[15px] py-[15px]">
+        <h3 className={sectionHeading}>Invitations waiting</h3>
         {invites.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-[12.5px] leading-relaxed text-dk-soft">
             No invitation is outstanding. Everyone invited to this matter has either accepted or been revoked.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-gray-100">
+          <ul className="mt-2.5 divide-y divide-dk-rule">
             {invites.map((i) => (
-              <li key={i.id} className="space-y-2 py-3">
+              <li key={i.id} className="flex flex-col gap-2 py-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-[13.5px] font-semibold text-dk-strong">
                     {i.phone ?? i.email ?? "Invitation"}
-                    <span className="ml-2 text-xs font-normal text-gray-500">{ROLE_LABELS[i.role] ?? i.role}</span>
+                    <span className="ml-2 text-[11px] font-medium uppercase tracking-[0.04em] text-dk-muted">
+                      {ROLE_LABELS[i.role] ?? i.role}
+                    </span>
                   </p>
-                  <p className="text-xs text-gray-500">Expires {fmt.format(new Date(i.expires_at))}</p>
+                  <p className="text-[11.5px] text-dk-muted">Expires {fmt.format(new Date(i.expires_at))}</p>
                 </div>
-                <p className="break-all text-xs text-gray-600">{origin ? linkFor(i.token) : `${INVITE_PATH}?token=…`}</p>
+                <p className="break-all font-mono text-[11.5px] leading-[1.5] text-dk-soft">
+                  {origin ? linkFor(i.token) : `${INVITE_PATH}?token=…`}
+                </p>
                 <div className="flex flex-wrap items-center gap-2">
                   <CopyButton path={`${INVITE_PATH}?token=${encodeURIComponent(i.token)}`} label="Copy the link" />
                   {digitsOf(i.phone) && (
@@ -278,20 +297,26 @@ export function PartiesPanel({
                       href={`https://wa.me/${digitsOf(i.phone)}?text=${encodeURIComponent(messageFor(i.token))}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-brand hover:bg-black/5"
+                      className={appButtonClass("ghost-sm")}
                     >
                       WhatsApp
                     </a>
                   )}
                   {confirming === i.id ? (
                     <>
-                      <Button size="sm" variant="danger" disabled={working === i.id} onClick={() => revoke(i.id)}>
+                      {/* Revoking kills a live link; it keeps its own red and its word. */}
+                      <AppButton
+                        variant="ghost-sm"
+                        className="border-[#E5C4C4] bg-[#FEF3F2] text-[#912018]"
+                        disabled={working === i.id}
+                        onClick={() => revoke(i.id)}
+                      >
                         {working === i.id ? "Revoking…" : "Revoke it"}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>Leave it</Button>
+                      </AppButton>
+                      <AppButton variant="ghost-sm" onClick={() => setConfirming(null)}>Leave it</AppButton>
                     </>
                   ) : (
-                    <Button size="sm" variant="ghost" onClick={() => setConfirming(i.id)}>Revoke</Button>
+                    <AppButton variant="ghost-sm" onClick={() => setConfirming(i.id)}>Revoke</AppButton>
                   )}
                 </div>
               </li>

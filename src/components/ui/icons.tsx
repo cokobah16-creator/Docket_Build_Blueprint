@@ -278,6 +278,34 @@ export const ShieldIcon = (p: IconProps) => (
   </Icon>
 );
 
+/**
+ * Internal: a closed padlock, for the one distinction on the console that
+ * matters more than any other — a timeline entry the client never sees. It
+ * replaced a 🔒 emoji, and like every icon here it is never the only signal:
+ * the words "Internal — not shown to your client" run beside it.
+ */
+export const LockIcon = (p: IconProps) => (
+  <Icon strokeWidth={1.7} {...p}>
+    <rect x="4.6" y="10.4" width="14.8" height="10" rx="2.2" />
+    <path d="M8.2 10.4V7.6a3.8 3.8 0 0 1 7.6 0v2.8" />
+    <path d="M12 14.4v2.2" />
+  </Icon>
+);
+
+/**
+ * The opposite of LockIcon, and its pair: what the client *does* see. It
+ * badges the box on the consultation-notes screen whose contents are
+ * published to the client's app, against the internal box beside it. Like
+ * every icon here it is never the only signal — "Client sees" is written
+ * beside it.
+ */
+export const EyeIcon = (p: IconProps) => (
+  <Icon strokeWidth={1.7} {...p}>
+    <path d="M2.6 12S6.4 5.8 12 5.8 21.4 12 21.4 12 17.6 18.2 12 18.2 2.6 12 2.6 12Z" />
+    <circle cx="12" cy="12" r="2.9" />
+  </Icon>
+);
+
 export const OfflineIcon = (p: IconProps) => (
   <Icon strokeWidth={1.6} {...p}>
     <path d="m3 3 18 18M5 9.6a12 12 0 0 1 3.6-2.2M15.4 7.4A12 12 0 0 1 19 9.6M8 13a7.4 7.4 0 0 1 2-1.1M16 13a7.4 7.4 0 0 0-1.2-.8M10.4 16.4a3.6 3.6 0 0 1 3.2 0M12 19.6h.01" />

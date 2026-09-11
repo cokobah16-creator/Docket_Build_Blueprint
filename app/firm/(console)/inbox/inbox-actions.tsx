@@ -16,14 +16,21 @@
 //    viewer's zone by the page.
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { linkServiceToMatter, revokeService } from "@/lib/actions/service";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { AppButton, AppButtonLink, Footnote } from "@/components/app";
+import { DocumentIcon } from "@/components/ui/icons";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+// The console's own field: neutral edge, 44px of thumb, and a focus ring in the
+// shell's ink rather than any firm's colour.
+const field =
+  "mt-1.5 min-h-[44px] w-full rounded-[9px] border border-dk-field bg-white px-3 py-[11px] text-[14px] text-dk-strong placeholder:text-dk-muted focus:border-dk-pri focus:outline-none";
+const labelClass = "text-[13px] font-semibold text-dk-strong";
+const hintClass = "mt-1 text-[11.5px] leading-snug text-dk-muted";
+/** Required is said in words, never in a colour: colour here means late or unpaid. */
+const requiredMark = <span className="font-normal text-dk-muted">(required)</span>;
 
 export interface FileableMatter {
   id: string;
@@ -52,12 +59,15 @@ export function FileServiceForm({
 
   if (!open) {
     return (
-      <div className="space-y-1">
-        <Button size="sm" variant={filedMatterId ? "ghost" : "primary"} onClick={() => { setOpen(true); setError(null); }}>
+      <div className="flex flex-col gap-1.5">
+        <AppButton
+          variant={filedMatterId ? "ghost-sm" : "primary-sm"}
+          onClick={() => { setOpen(true); setError(null); }}
+        >
           {filedMatterId ? "Change the filing or the response date" : "File it into a matter"}
-        </Button>
+        </AppButton>
         {!filedMatterId && (
-          <p className="text-xs text-gray-500">Filing puts it on your own matter&apos;s timeline, for your firm only.</p>
+          <Footnote>Filing puts it on your own matter&apos;s timeline, for your firm only.</Footnote>
         )}
       </div>
     );
@@ -65,18 +75,15 @@ export function FileServiceForm({
 
   if (matters.length === 0) {
     return (
-      <div className="space-y-2">
+      <div className="flex flex-col gap-2.5">
         <Alert kind="info" title="No matter to file it into yet">
           Open the matter this process belongs to, then come back and file it with the date your response falls due.
         </Alert>
         <div className="flex flex-wrap gap-2">
-          <Link
-            href="/firm/matters/new"
-            className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
-          >
+          <AppButtonLink href="/firm/matters/new" variant="primary-sm">
             Open a matter
-          </Link>
-          <Button size="md" variant="ghost" onClick={() => setOpen(false)}>Not now</Button>
+          </AppButtonLink>
+          <AppButton variant="ghost-sm" onClick={() => setOpen(false)}>Not now</AppButton>
         </div>
       </div>
     );
@@ -94,11 +101,11 @@ export function FileServiceForm({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+    <div className="flex flex-col gap-3 rounded-[10px] border border-dk-line bg-dk-tint p-3">
       {error && <Alert kind="error" title="The database refused this">{error}</Alert>}
       <div>
-        <label htmlFor={`file_matter_${serviceId}`} className="text-sm font-medium text-gray-900">
-          Our matter <span className="text-red-700">*</span>
+        <label htmlFor={`file_matter_${serviceId}`} className={labelClass}>
+          Our matter {requiredMark}
         </label>
         <select
           id={`file_matter_${serviceId}`} value={matterId}
@@ -113,27 +120,28 @@ export function FileServiceForm({
         </select>
       </div>
       <div>
-        <label htmlFor={`file_due_${serviceId}`} className="text-sm font-medium text-gray-900">Response falls due</label>
+        <label htmlFor={`file_due_${serviceId}`} className={labelClass}>Response falls due</label>
         <input
           id={`file_due_${serviceId}`} type="date" value={dueOn}
           onChange={(e) => setDueOn(e.target.value)} className={field}
         />
-        <p className="mt-1 text-xs text-gray-500">
-          The day your reply, counter-affidavit or defence is due. It goes into the diary below, and turns red when it passes.
+        <p className={hintClass}>
+          The day your reply, counter-affidavit or defence is due. It goes into the response diary at the top of this
+          screen, and is marked overdue once the day has passed.
         </p>
       </div>
       <div>
-        <label htmlFor={`file_note_${serviceId}`} className="text-sm font-medium text-gray-900">Note for the file</label>
+        <label htmlFor={`file_note_${serviceId}`} className={labelClass}>Note for the file</label>
         <textarea
           id={`file_note_${serviceId}`} rows={2} maxLength={2000} value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Counter-affidavit and written address to be settled by the SAN." className={field}
         />
-        <p className="mt-1 text-xs text-gray-500">Filed as an internal entry on your matter. The firm that served it never sees this.</p>
+        <p className={hintClass}>Filed as an internal entry on your matter. The firm that served it never sees this.</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button size="md" disabled={pending} onClick={submit}>{pending ? "Filing…" : "File it"}</Button>
-        <Button size="md" variant="ghost" onClick={() => { setOpen(false); setError(null); }}>Cancel</Button>
+        <AppButton variant="primary-sm" disabled={pending} onClick={submit}>{pending ? "Filing…" : "File it"}</AppButton>
+        <AppButton variant="ghost-sm" onClick={() => { setOpen(false); setError(null); }}>Cancel</AppButton>
       </div>
     </div>
   );
@@ -151,7 +159,7 @@ export function OpenProcessButton({
   const [busy, setBusy] = useState(false);
 
   if (!versionId) {
-    return <p className="text-xs text-gray-500">No file was attached to this service record.</p>;
+    return <Footnote>No file was attached to this service record.</Footnote>;
   }
 
   async function open() {
@@ -180,19 +188,31 @@ export function OpenProcessButton({
   }
 
   return (
-    <div className="space-y-1">
-      <Button size="sm" variant="ghost" disabled={busy} onClick={open}>
+    <div className="flex flex-col gap-1.5">
+      <AppButton variant="ghost-sm" disabled={busy} onClick={open}>
+        <DocumentIcon size={15} />
         {busy ? "Opening…" : "Open the process"}
-      </Button>
+      </AppButton>
       {url && (
-        <p className="text-sm">
-          <a href={url} target="_blank" rel="noopener noreferrer" className="text-brand underline">
-            Open {documentName} ↗
+        <p className="text-[12.5px] leading-[1.45]">
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all font-medium text-dk-pri underline underline-offset-2"
+          >
+            Open {documentName}
           </a>{" "}
-          <span className="text-xs text-gray-500">— the link lasts two minutes.</span>
+          <span className="text-[11.5px] text-dk-muted">&mdash; the link lasts two minutes.</span>
         </p>
       )}
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {/* The document not opening is the one thing on this screen that stops an
+          affidavit of service being sworn, so it keeps its ink and its words. */}
+      {error && (
+        <p role="alert" className="text-[12px] font-semibold leading-snug text-[#B42318]">
+          Not opened: {error}
+        </p>
+      )}
     </div>
   );
 }
@@ -207,9 +227,9 @@ export function RevokeServiceForm({ serviceId }: { serviceId: string }) {
 
   if (!open) {
     return (
-      <Button size="sm" variant="ghost" onClick={() => { setOpen(true); setError(null); }}>
+      <AppButton variant="ghost-sm" onClick={() => { setOpen(true); setError(null); }}>
         Withdraw this service
-      </Button>
+      </AppButton>
     );
   }
 
@@ -225,25 +245,27 @@ export function RevokeServiceForm({ serviceId }: { serviceId: string }) {
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
+    // Neutral, not red: in this console red says something is late or unpaid.
+    // What makes this act grave is stated in the sentence below the field.
+    <div className="flex flex-col gap-2 rounded-[10px] border border-dk-line bg-dk-tint p-3">
       {error && <Alert kind="error" title="The database refused this">{error}</Alert>}
-      <label htmlFor={`revoke_${serviceId}`} className="text-sm font-medium text-red-900">
-        Why is it being withdrawn? <span className="text-red-700">*</span>
+      <label htmlFor={`revoke_${serviceId}`} className={labelClass}>
+        Why is it being withdrawn? {requiredMark}
       </label>
       <textarea
         id={`revoke_${serviceId}`} rows={2} maxLength={500} value={reason}
         onChange={(e) => setReason(e.target.value)}
         placeholder="Served on the wrong counsel — the correct process follows." className={field}
       />
-      <p className="text-xs text-red-900">
+      <p className="text-[11.5px] leading-snug text-dk-soft">
         The other firm loses sight of the process at once and it leaves its inbox. The withdrawal is recorded on your
         matter as an internal entry, with your reason.
       </p>
       <div className="flex flex-wrap gap-2">
-        <Button size="md" variant="danger" disabled={pending || reason.trim().length < 3} onClick={submit}>
+        <AppButton variant="primary-sm" disabled={pending || reason.trim().length < 3} onClick={submit}>
           {pending ? "Withdrawing…" : "Withdraw service"}
-        </Button>
-        <Button size="md" variant="ghost" onClick={() => { setOpen(false); setError(null); }}>Keep it</Button>
+        </AppButton>
+        <AppButton variant="ghost-sm" onClick={() => { setOpen(false); setError(null); }}>Keep it</AppButton>
       </div>
     </div>
   );

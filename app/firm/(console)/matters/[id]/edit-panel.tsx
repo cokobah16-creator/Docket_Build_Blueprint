@@ -15,10 +15,15 @@ import { useRouter } from "next/navigation";
 import { setMatterLawyers, updateMatter } from "@/lib/actions/matters";
 import { CourtPicker } from "@/components/firm/court-picker";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { AppButton } from "@/components/app/button";
 import type { CourtRow, MatterStatus } from "@/lib/db/types";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field =
+  "mt-1.5 min-h-[44px] w-full rounded-[9px] border border-dk-field bg-white px-3 py-[11px] text-[14px] text-dk-strong placeholder:text-dk-muted focus:border-dk-pri focus:outline-none";
+const labelClass = "text-[13px] font-semibold text-dk-strong";
+const hintClass = "mt-0.5 text-[11.5px] leading-snug text-dk-muted";
+/** Required is said in words: colour in the console means late, unpaid or waiting on you. */
+const requiredMark = <span className="font-normal text-dk-muted">(required)</span>;
 
 export interface MatterEditInitial {
   reference: string;
@@ -130,25 +135,27 @@ export function EditPanel({
   }
 
   return (
-    <div className="divide-y divide-gray-100">
-      <form onSubmit={save} className="space-y-4 px-4 py-4 sm:px-5">
+    <div className="divide-y divide-dk-rule">
+      <form onSubmit={save} className="flex flex-col gap-4 px-[15px] py-[15px]">
         {error && <Alert kind="error" title="That was refused">{error}</Alert>}
         {saved && <Alert kind="success">Saved. Your client sees the new details on their next look.</Alert>}
 
         <div>
-          <label htmlFor="matter-title" className="text-sm font-medium text-gray-900">Working title <span className="text-red-700">*</span></label>
-          <p className="text-xs text-gray-500">What the firm calls this file. The reference {initial.reference} never changes.</p>
+          <label htmlFor="matter-title" className={labelClass}>Working title {requiredMark}</label>
+          <p className={hintClass}>
+            What the firm calls this file. The reference <span className="font-mono">{initial.reference}</span> never changes.
+          </p>
           <input id="matter-title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} className={field} />
         </div>
 
         <div>
-          <label htmlFor="matter-cause-title" className="text-sm font-medium text-gray-900">Cause title</label>
-          <p className="text-xs text-gray-500">The caption as it appears on the face of the process, e.g. Okonkwo v Eze &amp; 3 Ors.</p>
+          <label htmlFor="matter-cause-title" className={labelClass}>Cause title</label>
+          <p className={hintClass}>The caption as it appears on the face of the process, e.g. Okonkwo v Eze &amp; 3 Ors.</p>
           <input id="matter-cause-title" value={causeTitle} onChange={(e) => setCauseTitle(e.target.value)} maxLength={300} className={field} />
         </div>
 
         <div>
-          <label htmlFor="matter-status" className="text-sm font-medium text-gray-900">Status</label>
+          <label htmlFor="matter-status" className={labelClass}>Status</label>
           <select id="matter-status" value={statusId} onChange={(e) => setStatusId(e.target.value)} className={field}>
             <option value="">No status</option>
             {statuses.map((s) => (
@@ -158,17 +165,17 @@ export function EditPanel({
         </div>
 
         <div>
-          <label htmlFor="matter-next-action" className="text-sm font-medium text-gray-900">Next action</label>
-          <p className="text-xs text-gray-500">One line, in plain language — your client reads this in their app.</p>
+          <label htmlFor="matter-next-action" className={labelClass}>Next action</label>
+          <p className={hintClass}>One line, in plain language — your client reads this in their app.</p>
           <input id="matter-next-action" value={nextAction} onChange={(e) => setNextAction(e.target.value)} maxLength={500} className={field} />
         </div>
 
         <div>
-          <label htmlFor="matter-description" className="text-sm font-medium text-gray-900">What the matter is about</label>
+          <label htmlFor="matter-description" className={labelClass}>What the matter is about</label>
           <textarea id="matter-description" rows={4} maxLength={8000} value={description} onChange={(e) => setDescription(e.target.value)} className={field} />
         </div>
 
-        <div className="rounded-lg border border-gray-200 p-3">
+        <div className="rounded-[10px] border border-dk-line p-3">
           <CourtPicker
             courts={courts}
             firmId={firmId}
@@ -181,7 +188,7 @@ export function EditPanel({
           />
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="matter-suit-number" className="text-sm font-medium text-gray-900">Suit number</label>
+              <label htmlFor="matter-suit-number" className={labelClass}>Suit number</label>
               <input
                 id="matter-suit-number"
                 value={suitNumber}
@@ -191,33 +198,33 @@ export function EditPanel({
                 className={field}
               />
               {selectedCourt?.suit_number_hint && (
-                <p className="mt-1 text-xs text-gray-500">This registry writes them like {selectedCourt.suit_number_hint}.</p>
+                <p className={hintClass}>This registry writes them like {selectedCourt.suit_number_hint}.</p>
               )}
             </div>
             <div>
-              <label htmlFor="matter-division" className="text-sm font-medium text-gray-900">Judicial division</label>
+              <label htmlFor="matter-division" className={labelClass}>Judicial division</label>
               <input id="matter-division" value={division} onChange={(e) => setDivision(e.target.value)} maxLength={120} placeholder="Ikeja" className={field} />
             </div>
           </div>
           <div className="mt-3">
-            <label htmlFor="matter-court-name" className="text-sm font-medium text-gray-900">Court, as it should read</label>
-            <p className="text-xs text-gray-500">What your client and every cause list see. Choosing a court above fills this in.</p>
+            <label htmlFor="matter-court-name" className={labelClass}>Court, as it should read</label>
+            <p className={hintClass}>What your client and every cause list see. Choosing a court above fills this in.</p>
             <input id="matter-court-name" value={courtName} onChange={(e) => setCourtName(e.target.value)} maxLength={200} className={field} />
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor="matter-handling" className="text-sm font-medium text-gray-900">Handling lawyer</label>
-            <p className="text-xs text-gray-500">Who is doing the work.</p>
+            <label htmlFor="matter-handling" className={labelClass}>Handling lawyer</label>
+            <p className={hintClass}>Who is doing the work.</p>
             <select id="matter-handling" value={handling} onChange={(e) => setHandling(e.target.value)} className={field}>
               <option value="">Not recorded</option>
               {staff.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
           </div>
           <div>
-            <label htmlFor="matter-originating" className="text-sm font-medium text-gray-900">Originating lawyer</label>
-            <p className="text-xs text-gray-500">Who brought the client in — this drives partner attribution.</p>
+            <label htmlFor="matter-originating" className={labelClass}>Originating lawyer</label>
+            <p className={hintClass}>Who brought the client in — this drives partner attribution.</p>
             <select id="matter-originating" value={originating} onChange={(e) => setOriginating(e.target.value)} className={field}>
               <option value="">Not recorded</option>
               {staff.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -225,22 +232,22 @@ export function EditPanel({
           </div>
         </div>
 
-        <fieldset className="rounded-lg border border-gray-200 p-3">
-          <legend className="px-1 text-sm font-medium text-gray-900">Who is on the file</legend>
+        <fieldset className="rounded-[10px] border border-dk-line p-3">
+          <legend className={`px-1 ${labelClass}`}>Who is on the file</legend>
           <div>
-            <label htmlFor="matter-lead" className="text-sm font-medium text-gray-900">Conduct of the matter</label>
+            <label htmlFor="matter-lead" className={labelClass}>Conduct of the matter</label>
             <select id="matter-lead" value={lead} onChange={(e) => setLead(e.target.value)} className={field}>
               <option value="">Not recorded</option>
               {staff.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
-            {!lead && <p className="mt-1 text-xs text-gray-500">Choose a lawyer here to record who else is on the file.</p>}
+            {!lead && <p className={hintClass}>Choose a lawyer here to record who else is on the file.</p>}
           </div>
           {staff.length > 1 && (
-            <div className="mt-3 space-y-2">
-              <p className="text-sm font-medium text-gray-900">Also on the file</p>
+            <div className="mt-3 flex flex-col gap-1">
+              <p className={labelClass}>Also on the file</p>
               {staff.filter((m) => m.id !== lead).map((m) => (
-                <label key={m.id} className="flex min-h-[44px] items-center gap-2 text-sm text-gray-800">
-                  <input type="checkbox" className="h-5 w-5" checked={alsoOn.includes(m.id)} onChange={() => toggleAlsoOn(m.id)} />
+                <label key={m.id} className="flex min-h-[44px] items-center gap-2.5 text-[13px] text-dk-body">
+                  <input type="checkbox" className="h-5 w-5 flex-none" checked={alsoOn.includes(m.id)} onChange={() => toggleAlsoOn(m.id)} />
                   {m.label}
                 </label>
               ))}
@@ -248,35 +255,44 @@ export function EditPanel({
           )}
         </fieldset>
 
-        <Button type="submit" size="lg" disabled={busy}>{busy ? "Saving…" : "Save the matter"}</Button>
+        <AppButton type="submit" disabled={busy}>{busy ? "Saving…" : "Save the matter"}</AppButton>
       </form>
 
-      <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">{initial.closedAt ? "This matter is closed" : "Close the matter"}</h3>
+      <section className="px-[15px] py-[15px]">
+        <h3 className="font-app-head text-[15.5px] font-semibold text-dk-strong">
+          {initial.closedAt ? "This matter is closed" : "Close the matter"}
+        </h3>
         {initial.closedAt ? (
           <>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-[12.5px] leading-relaxed text-dk-soft">
               Closed on {new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${initial.closedAt}T00:00:00Z`))}.
               Everything on it stays readable to your client; nothing is deleted.
             </p>
-            <Button className="mt-3" variant="ghost" disabled={closing} onClick={() => setClosed(false)}>
+            <AppButton className="mt-3" variant="ghost-sm" disabled={closing} onClick={() => setClosed(false)}>
               {closing ? "Reopening…" : "Reopen the matter"}
-            </Button>
+            </AppButton>
           </>
         ) : (
           <>
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-[12.5px] leading-relaxed text-dk-soft">
               Closing takes the file off the open list and out of the firm&rsquo;s open-matter count. The client keeps the timeline, the documents you shared and their invoices.
             </p>
             {confirmClose ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button variant="danger" disabled={closing} onClick={() => setClosed(true)}>
+                {/* Closing a file is the one destructive act on this panel, so it
+                    keeps its red — and says what day it will be closed as at. */}
+                <AppButton
+                  variant="ghost-sm"
+                  className="border-[#E5C4C4] bg-[#FEF3F2] text-[#912018]"
+                  disabled={closing}
+                  onClick={() => setClosed(true)}
+                >
                   {closing ? "Closing…" : `Close it as at today, ${todayIn(timezone)}`}
-                </Button>
-                <Button variant="ghost" onClick={() => setConfirmClose(false)}>Keep it open</Button>
+                </AppButton>
+                <AppButton variant="ghost-sm" onClick={() => setConfirmClose(false)}>Keep it open</AppButton>
               </div>
             ) : (
-              <Button className="mt-3" variant="ghost" onClick={() => setConfirmClose(true)}>Close the matter</Button>
+              <AppButton className="mt-3" variant="ghost-sm" onClick={() => setConfirmClose(true)}>Close the matter</AppButton>
             )}
           </>
         )}

@@ -13,6 +13,7 @@
 // through formatMoneyMinor; nothing is firm-specific — the firm comes from
 // context; and a client with no email is flagged wherever a receipt depends on it.
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { matterStatuses, requestedFirmId, staffContext } from "@/lib/firm-data";
@@ -20,35 +21,28 @@ import { siteOrigin } from "@/lib/site";
 import { formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
-import { Badge, StatusPill, type Status } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
+import { type Status } from "@/components/ui/badge";
+import {
+  AppAccentPill,
+  AppButtonLink,
+  AppCard,
+  AppCardBody,
+  AppCardHeader,
+  AppCardList,
+  AppEmpty,
+  AppLink,
+  AppPill,
+  AppStatusPill,
+  Footnote,
+} from "@/components/app";
+import { ChevronLeftIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
-import type { MatterStatus } from "@/lib/db/types";
 
 export const metadata = { title: "Client" };
 
 const OWING_STATUSES = new Set(["issued", "partially_paid", "overdue"]);
 const SEEN_STATUSES = new Set(["confirmed", "rescheduled", "completed"]);
 const LIVE_STATUSES = new Set(["pending", "awaiting_payment", "confirmed", "rescheduled"]);
-
-/** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
-const TONES: Record<string, string> = {
-  slate: "border-slate-300 bg-slate-50 text-slate-800",
-  gray: "border-gray-300 bg-gray-50 text-gray-700",
-  grey: "border-gray-300 bg-gray-50 text-gray-700",
-  blue: "border-blue-300 bg-blue-50 text-blue-900",
-  sky: "border-sky-300 bg-sky-50 text-sky-900",
-  indigo: "border-indigo-300 bg-indigo-50 text-indigo-900",
-  violet: "border-violet-300 bg-violet-50 text-violet-900",
-  purple: "border-purple-300 bg-purple-50 text-purple-900",
-  green: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  emerald: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  teal: "border-teal-300 bg-teal-50 text-teal-900",
-  amber: "border-amber-300 bg-amber-50 text-amber-900",
-  orange: "border-orange-300 bg-orange-50 text-orange-900",
-  red: "border-red-300 bg-red-50 text-red-900",
-  rose: "border-rose-300 bg-rose-50 text-rose-900",
-};
 
 const CHANNEL_LABELS: Record<string, string> = {
   in_app: "In the app",
@@ -152,19 +146,13 @@ function moneyLabel(byCurrency: Map<string, number>): string {
     .join(" · ");
 }
 
-function StatusChip({ status }: { status: MatterStatus }) {
-  const colour = (status.colour ?? "").trim();
-  const hex = colour.startsWith("#");
+/** The label/value pair the profile card is made of. */
+function ProfileRowItem({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        hex ? "bg-white" : TONES[colour.toLowerCase()] ?? "border-gray-300 bg-gray-50 text-gray-700",
-      )}
-      style={hex ? { borderColor: colour, color: colour } : undefined}
-    >
-      {status.label}
-    </span>
+    <div>
+      <p className="text-[11px] uppercase tracking-[0.06em] text-dk-muted">{label}</p>
+      <p className="mt-0.5 text-[13.5px] font-semibold leading-[1.4] text-dk-strong">{children}</p>
+    </div>
   );
 }
 
@@ -313,34 +301,56 @@ export default async function FirmClientPage({
     .join(", ");
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm"><Link href={backHref} className="text-brand underline">← Clients</Link></p>
+    <div className="dk-rise flex flex-col gap-3.5">
+      {/* The whole row is the target: 44px tall and as wide as its words. */}
+      <Link
+        href={backHref}
+        className="-ml-1 inline-flex min-h-[44px] w-fit items-center gap-1 pr-2 text-[13px] font-medium text-dk-pri"
+      >
+        <ChevronLeftIcon size={17} className="flex-none" />
+        Clients
+      </Link>
 
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold text-brand">
-            {name}
-            {profile?.client_type === "business" && <Badge className="ml-2 align-middle">business</Badge>}
-          </h1>
-          <p className="text-sm text-gray-600">
-            {ctx.firmName} · {matters.length} {matters.length === 1 ? "matter" : "matters"}
-            {openMatters > 0 ? ` (${openMatters} open)` : ""} ·{" "}
-            {appointments.length} {appointments.length === 1 ? "consultation" : "consultations"} · times in {tz}
-          </p>
-          <p className="mt-1 text-sm text-gray-600">
-            {lastSeen
-              ? `Last seen ${formatWhen(lastSeen, tz, { dateStyle: "full", timeStyle: "short" })}`
-              : "Not seen yet — no consultation has taken place and nothing has been posted on their matters."}
-            {nextAppointment ? ` · next ${formatWhen(nextAppointment, tz, { dateStyle: "medium", timeStyle: "short" })}` : ""}
-          </p>
-        </div>
-        {owedLabel && (
-          <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-right">
-            <p className="text-xs uppercase tracking-wide text-amber-900">Outstanding</p>
-            <p className="font-heading text-xl font-semibold text-amber-900">{owedLabel}</p>
-          </div>
-        )}
+      <header>
+        <h1 className="font-app-head text-[20px] font-bold leading-[1.25] tracking-[-0.02em] text-dk-strong">
+          {name}
+          {profile?.client_type === "business" && (
+            <span className="ml-2 inline-flex align-middle rounded-[4px] bg-dk-rule px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.03em] text-dk-soft">
+              business
+            </span>
+          )}
+        </h1>
+        <p className="mt-1 text-[12.5px] leading-snug text-dk-soft">
+          {ctx.firmName} · {matters.length} {matters.length === 1 ? "matter" : "matters"}
+          {openMatters > 0 ? ` (${openMatters} open)` : ""} ·{" "}
+          {appointments.length} {appointments.length === 1 ? "consultation" : "consultations"} · times in {tz}
+        </p>
+        <p className="mt-1 text-[12.5px] leading-snug text-dk-soft">
+          {lastSeen
+            ? `Last seen ${formatWhen(lastSeen, tz, { dateStyle: "full", timeStyle: "short" })}`
+            : "Not seen yet — no consultation has taken place and nothing has been posted on their matters."}
+          {nextAppointment ? ` · next ${formatWhen(nextAppointment, tz, { dateStyle: "medium", timeStyle: "short" })}` : ""}
+        </p>
       </header>
+
+      {/* Money owed is the figure a lawyer opens this screen to check, so it is
+          set at heading size and carries the console's amber and the word
+          "outstanding" together. Each currency stands on its own line of the
+          label — kobo is never added to cents. */}
+      {owedLabel && (
+        <section className="flex items-center justify-between gap-3 rounded-[11px] border border-dk-line bg-white px-[15px] py-3.5 shadow-card">
+          <div className="min-w-0">
+            <p className="text-[10.5px] uppercase tracking-[0.06em] text-dk-soft">Outstanding</p>
+            <p className="mt-1 font-app-head text-[24px] font-bold leading-none text-[#92400E]">{owedLabel}</p>
+            <p className="mt-1.5 text-[11px] leading-[1.35] text-dk-soft">
+              On invoices that are issued, part-paid or overdue
+            </p>
+          </div>
+          <AppButtonLink href="/firm/invoices" variant="ghost-sm">
+            Invoices
+          </AppButtonLink>
+        </section>
+      )}
 
       {!profile && (
         <Alert kind="warning" title="Profile not readable">
@@ -357,55 +367,53 @@ export default async function FirmClientPage({
         </Alert>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-3">
-        <div className="space-y-5 lg:col-span-2">
-          <Card>
-            <CardHeader
-              title="Consultations"
-              action={<Link href="/firm/appointments" className="text-sm text-brand underline">All consultations →</Link>}
+      <div className="grid gap-3.5 lg:grid-cols-3">
+        <div className="flex flex-col gap-3.5 lg:col-span-2">
+          <AppCard>
+            <AppCardHeader
+              title={`Consultations (${appointments.length})`}
+              action={<AppLink href="/firm/appointments">All</AppLink>}
             />
             {appointments.length === 0 ? (
-              <EmptyState
+              <AppEmpty
                 title="No consultation booked"
                 hint="This person came to the firm through a matter, not a booking. They can book a consultation on your public site, or you can add a court date and updates to their matter."
-                action={<Link href="/firm/appointments" className="text-sm text-brand underline">Go to consultations</Link>}
+                action={<AppLink href="/firm/appointments">Go to consultations</AppLink>}
               />
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <AppCardList>
                 {appointments.map((a) => (
-                  <li key={a.id}>
-                    <Link href={`/firm/appointments/${a.id}`} className="block px-5 py-4 hover:bg-gray-50">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900">
-                            {formatWhen(a.starts_at, tz, { dateStyle: "medium", timeStyle: "short" })}
-                            {" · "}
-                            {a.service_id ? services.get(a.service_id) ?? "Consultation" : "Consultation"}
-                          </p>
-                          <p className="mt-0.5 text-xs text-gray-600">
-                            {a.reference} · {a.mode.replace("_", " ")} ·{" "}
-                            {Math.max(1, Math.round((new Date(a.ends_at).getTime() - new Date(a.starts_at).getTime()) / 60000))} min
-                          </p>
-                        </div>
-                        <StatusPill status={a.status as Status} />
+                  <Link key={a.id} href={`/firm/appointments/${a.id}`} className="block px-[15px] py-[13px]">
+                    <div className="flex items-start justify-between gap-2.5">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">
+                          {formatWhen(a.starts_at, tz, { dateStyle: "medium", timeStyle: "short" })}
+                          {" · "}
+                          {a.service_id ? services.get(a.service_id) ?? "Consultation" : "Consultation"}
+                        </p>
+                        <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">
+                          <span className="font-mono">{a.reference}</span> · {a.mode.replace("_", " ")} ·{" "}
+                          {Math.max(1, Math.round((new Date(a.ends_at).getTime() - new Date(a.starts_at).getTime()) / 60000))} min
+                        </p>
                       </div>
-                      {a.cancellation_reason && (
-                        <p className="mt-1 text-xs text-gray-600">Cancelled: {a.cancellation_reason}</p>
-                      )}
-                    </Link>
-                  </li>
+                      <AppStatusPill status={a.status as Status} />
+                    </div>
+                    {a.cancellation_reason && (
+                      <p className="mt-1 text-[11.5px] leading-[1.45] text-dk-soft">Cancelled: {a.cancellation_reason}</p>
+                    )}
+                  </Link>
                 ))}
-              </ul>
+              </AppCardList>
             )}
-          </Card>
+          </AppCard>
 
-          <Card>
-            <CardHeader
-              title="Matters"
-              action={<Link href="/firm/matters/new" className="text-sm text-brand underline">Open a matter →</Link>}
+          <AppCard>
+            <AppCardHeader
+              title={`Matters (${matters.length})`}
+              action={<AppLink href="/firm/matters/new">Open a matter</AppLink>}
             />
             {matters.length === 0 ? (
-              <EmptyState
+              <AppEmpty
                 title="Not on a matter yet"
                 hint={
                   parties.length > 0
@@ -413,249 +421,259 @@ export default async function FirmClientPage({
                     : "Open a matter for them, then invite them from the matter so they can follow it in their app."
                 }
                 action={
-                  <Link
-                    href="/firm/matters/new"
-                    className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
-                  >
+                  <AppButtonLink href="/firm/matters/new" variant="primary-sm">
                     Open a matter
-                  </Link>
+                  </AppButtonLink>
                 }
               />
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <AppCardList>
                 {matters.map((m) => {
                   const status = m.status_id ? statusById.get(m.status_id) ?? null : null;
                   const party = roleByMatter.get(m.id);
                   const causeDiffers = Boolean(m.cause_title && m.cause_title.trim() !== m.title.trim());
                   const nextDatePassed = Boolean(m.next_event_at && new Date(m.next_event_at).getTime() < nowMs);
                   return (
-                    <li key={m.id}>
-                      <Link href={`/firm/matters/${m.id}`} className="block px-5 py-4 hover:bg-gray-50">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900">{m.title}</p>
-                            {causeDiffers && <p className="mt-0.5 text-xs italic text-gray-600">{m.cause_title}</p>}
-                          </div>
-                          <div className="flex shrink-0 flex-wrap items-center gap-2">
-                            {status && <StatusChip status={status} />}
-                            {m.closed_at && (
-                              <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-700">
-                                Closed
-                              </span>
-                            )}
-                          </div>
+                    <Link key={m.id} href={`/firm/matters/${m.id}`} className="block px-[15px] py-[13px]">
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">{m.title}</p>
+                          {causeDiffers && (
+                            <p className="mt-[3px] text-[11.5px] italic leading-[1.45] text-dk-soft">{m.cause_title}</p>
+                          )}
                         </div>
-                        <p className="mt-1 text-xs text-gray-600">
-                          {m.reference}
-                          {party ? ` · ${PARTY_ROLE_LABELS[party.role] ?? party.role} on this file` : ""}
-                          {party && !party.can_view_docs ? " · cannot see documents" : ""}
-                          {party && !party.can_pay ? " · cannot pay" : ""}
-                          {` · opened ${dayLabel(m.opened_at)}`}
+                        {/* The firm names and colours its own statuses; the console
+                            shows the name only, in its own grey, because no console
+                            token reads a firm token. */}
+                        <div className="flex flex-none flex-wrap items-center gap-1.5">
+                          {status && <AppAccentPill>{status.label}</AppAccentPill>}
+                          {m.closed_at && <AppPill kind="completed">Closed</AppPill>}
+                        </div>
+                      </div>
+                      <p className="mt-1 text-[11.5px] leading-[1.45] text-dk-soft">
+                        <span className="font-mono">{m.reference}</span>
+                        {party ? ` · ${PARTY_ROLE_LABELS[party.role] ?? party.role} on this file` : ""}
+                        {party && !party.can_view_docs ? " · cannot see documents" : ""}
+                        {party && !party.can_pay ? " · cannot pay" : ""}
+                        {` · opened ${dayLabel(m.opened_at)}`}
+                      </p>
+                      {(m.court_name || m.suit_number) && (
+                        <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">
+                          {m.court_name ?? "Court not recorded"}
+                          {m.suit_number ? " · " : ""}
+                          {m.suit_number ? <span className="font-mono">{m.suit_number}</span> : null}
                         </p>
-                        {(m.court_name || m.suit_number) && (
-                          <p className="mt-1 text-xs text-gray-600">
-                            {m.court_name ?? "Court not recorded"}
-                            {m.suit_number ? ` · ${m.suit_number}` : ""}
-                          </p>
-                        )}
-                        {m.next_event_at && (
-                          <p className={cn("mt-1 text-xs", nextDatePassed ? "text-amber-800" : "text-gray-800")}>
-                            {nextDatePassed ? "Court date has passed: " : "Next court date: "}
-                            <strong>{formatWhen(m.next_event_at, tz, { dateStyle: "medium", timeStyle: "short" })}</strong>
-                            {m.next_event_note ? ` · ${m.next_event_note}` : ""}
-                          </p>
-                        )}
-                      </Link>
-                    </li>
+                      )}
+                      {m.next_event_at && (
+                        <p
+                          className={cn(
+                            "mt-1 text-[11.5px] leading-[1.45]",
+                            nextDatePassed ? "font-semibold text-[#92400E]" : "text-dk-body",
+                          )}
+                        >
+                          {nextDatePassed ? "Court date has passed: " : "Next court date: "}
+                          <strong>{formatWhen(m.next_event_at, tz, { dateStyle: "medium", timeStyle: "short" })}</strong>
+                          {m.next_event_note ? ` · ${m.next_event_note}` : ""}
+                        </p>
+                      )}
+                    </Link>
                   );
                 })}
-              </ul>
+              </AppCardList>
             )}
-          </Card>
+          </AppCard>
 
-          <Card>
-            <CardHeader
-              title="Invoices"
-              action={<Link href="/firm/invoices" className="text-sm text-brand underline">All invoices →</Link>}
+          <AppCard>
+            <AppCardHeader
+              title={`Invoices (${invoices.length})`}
+              action={<AppLink href="/firm/invoices">All</AppLink>}
             />
             {invoices.length === 0 ? (
-              <EmptyState
+              <AppEmpty
                 title="Nothing billed yet"
                 hint="Raise an invoice against this client from Invoices — consultation fees raised at booking appear here automatically."
-                action={<Link href="/firm/invoices" className="text-sm text-brand underline">Go to invoices</Link>}
+                action={<AppLink href="/firm/invoices">Go to invoices</AppLink>}
               />
             ) : (
               <>
-                <ul className="divide-y divide-gray-100">
+                <AppCardList>
                   {invoices.map((inv) => {
                     const due = Number(inv.total_minor) - Number(inv.paid_minor);
                     const payable = inv.status !== "draft" && inv.status !== "cancelled";
+                    const owing = due > 0 && OWING_STATUSES.has(inv.status);
                     const link = `${origin}/app/payments/${inv.id}`;
                     return (
-                      <li key={inv.id} className="px-5 py-4">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div key={inv.id} className="px-[15px] py-[13px]">
+                        <div className="flex items-start justify-between gap-2.5">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900">
-                              {inv.number} · {formatMoneyMinor(Number(inv.total_minor), inv.currency)}
+                            <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">
+                              <span className="font-mono">{inv.number}</span>
                             </p>
-                            <p className="mt-0.5 text-xs text-gray-600">
+                            <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">
                               {inv.issued_at ? `Issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium" })}` : "Not issued"}
                               {inv.due_at ? ` · due ${dayLabel(inv.due_at)}` : ""}
                               {Number(inv.paid_minor) > 0 ? ` · paid ${formatMoneyMinor(Number(inv.paid_minor), inv.currency)}` : ""}
-                              {due > 0 && OWING_STATUSES.has(inv.status)
-                                ? ` · ${formatMoneyMinor(due, inv.currency)} outstanding`
-                                : ""}
                             </p>
                             {inv.matter_id && (
-                              <p className="mt-0.5 text-xs">
-                                <Link href={`/firm/matters/${inv.matter_id}`} className="text-brand underline">
+                              <p className="mt-[3px] text-[11.5px] leading-[1.45]">
+                                <Link href={`/firm/matters/${inv.matter_id}`} className="text-dk-pri underline underline-offset-2">
                                   On this client&rsquo;s matter
                                 </Link>
                               </p>
                             )}
                           </div>
-                          <StatusPill status={inv.status as Status} />
+                          {/* The amount, then what is left on it. Colour only
+                              where money is still owed, and the word says so. */}
+                          <div className="flex flex-none flex-col items-end gap-1.5">
+                            <p className="font-app-head text-[16px] font-bold leading-none text-dk-strong">
+                              {formatMoneyMinor(Number(inv.total_minor), inv.currency)}
+                            </p>
+                            {owing && (
+                              <p className="text-[11.5px] font-semibold leading-none text-[#92400E]">
+                                {formatMoneyMinor(due, inv.currency)} outstanding
+                              </p>
+                            )}
+                            <AppStatusPill status={inv.status as Status} />
+                          </div>
                         </div>
 
                         {payable ? (
-                          <p className="mt-2 break-all text-xs text-gray-600">
+                          <p className="mt-2 break-all text-[11.5px] leading-[1.45] text-dk-soft">
                             {due > 0 ? "Payment link to send them: " : "Receipt link: "}
-                            <Link href={`/app/payments/${inv.id}`} className="text-brand underline">{link}</Link>
+                            <Link href={`/app/payments/${inv.id}`} className="text-dk-pri underline underline-offset-2">{link}</Link>
                           </p>
                         ) : inv.status === "draft" ? (
-                          <p className="mt-2 text-xs text-gray-500">
+                          <p className="mt-2 text-[11.5px] leading-[1.45] text-dk-muted">
                             A draft is invisible to the client — the database refuses them a draft invoice. Issue it from
                             Invoices and the payment link appears here.
                           </p>
                         ) : (
-                          <p className="mt-2 text-xs text-gray-500">Cancelled — nothing to collect.</p>
+                          <p className="mt-2 text-[11.5px] leading-[1.45] text-dk-muted">Cancelled — nothing to collect.</p>
                         )}
-                      </li>
+                      </div>
                     );
                   })}
-                </ul>
-                <CardBody className="border-t border-gray-100 text-xs text-gray-500">
-                  {billed.size > 0 && (
-                    <>
-                      Billed {moneyLabel(billed)} in all, {moneyLabel(paid) || formatMoneyMinor(0, invoices[0].currency)} received.{" "}
-                    </>
-                  )}
-                  {hasEmail
-                    ? "A receipt goes to the client's email address as soon as a payment succeeds."
-                    : "No email address on file, so no receipt can be emailed. Send the link above by their preferred channel."}
-                </CardBody>
+                </AppCardList>
+                <div className="border-t border-dk-rule px-[17px] py-[13px]">
+                  <Footnote>
+                    {billed.size > 0 && (
+                      <>
+                        Billed {moneyLabel(billed)} in all, {moneyLabel(paid) || formatMoneyMinor(0, invoices[0].currency)} received.{" "}
+                      </>
+                    )}
+                    {hasEmail
+                      ? "A receipt goes to the client's email address as soon as a payment succeeds."
+                      : "No email address on file, so no receipt can be emailed. Send the link above by their preferred channel."}
+                  </Footnote>
+                </div>
               </>
             )}
-          </Card>
+          </AppCard>
         </div>
 
-        <div className="space-y-5">
-          <Card>
-            <CardHeader title="Profile" />
-            <CardBody>
-              <dl className="space-y-2 text-sm">
-                <div>
-                  <dt className="text-gray-500">Name</dt>
-                  <dd className="font-medium text-gray-900">{profile?.full_name ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500">Phone</dt>
-                  <dd className="font-medium text-gray-900">
-                    {profile?.phone ? <a href={`tel:${profile.phone}`} className="text-brand underline">{profile.phone}</a> : "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500">Email</dt>
-                  <dd className="font-medium text-gray-900">
-                    {profile?.email ? (
-                      <a href={`mailto:${profile.email}`} className="break-all text-brand underline">{profile.email}</a>
-                    ) : (
-                      <span className="text-amber-800">None on file — receipts need one</span>
-                    )}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500">Client type</dt>
-                  <dd className="font-medium text-gray-900">
-                    {profile?.client_type === "business" ? "Business" : profile?.client_type === "individual" ? "Individual" : "—"}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500">Company</dt>
-                  <dd className="font-medium text-gray-900">{profile?.company_name ?? "—"}</dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500">Their time zone</dt>
-                  <dd className="font-medium text-gray-900">
-                    {profile?.timezone ?? "—"}
-                    {profile && profile.timezone !== tz ? " (yours is " + tz + ")" : ""}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-gray-500">Preferred channel</dt>
-                  <dd className="font-medium text-gray-900">
-                    {CHANNEL_LABELS[channel] ?? channel}
-                    {channelUnreachable && <span className="text-amber-800"> — but there is no email address on file</span>}
-                  </dd>
-                </div>
+        <div className="flex flex-col gap-3.5">
+          <AppCard>
+            <AppCardHeader title="Profile" />
+            <AppCardBody>
+              <div className="flex flex-col gap-3">
+                <ProfileRowItem label="Name">{profile?.full_name ?? "—"}</ProfileRowItem>
+                <ProfileRowItem label="Phone">
+                  {profile?.phone ? (
+                    <a href={`tel:${profile.phone}`} className="text-dk-pri underline underline-offset-2">{profile.phone}</a>
+                  ) : (
+                    "—"
+                  )}
+                </ProfileRowItem>
+                <ProfileRowItem label="Email">
+                  {profile?.email ? (
+                    <a href={`mailto:${profile.email}`} className="break-all text-dk-pri underline underline-offset-2">
+                      {profile.email}
+                    </a>
+                  ) : (
+                    /* No email is the console's amber: a receipt cannot be sent. */
+                    <span className="text-[#92400E]">None on file — receipts need one</span>
+                  )}
+                </ProfileRowItem>
+                <ProfileRowItem label="Client type">
+                  {profile?.client_type === "business" ? "Business" : profile?.client_type === "individual" ? "Individual" : "—"}
+                </ProfileRowItem>
+                <ProfileRowItem label="Company">{profile?.company_name ?? "—"}</ProfileRowItem>
+                <ProfileRowItem label="Their time zone">
+                  {profile?.timezone ?? "—"}
+                  {profile && profile.timezone !== tz ? " (yours is " + tz + ")" : ""}
+                </ProfileRowItem>
+                <ProfileRowItem label="Preferred channel">
+                  {CHANNEL_LABELS[channel] ?? channel}
+                  {channelUnreachable && <span className="text-[#92400E]"> — but there is no email address on file</span>}
+                </ProfileRowItem>
                 {addressLine && (
-                  <div>
-                    <dt className="text-gray-500">Address</dt>
-                    <dd className="whitespace-pre-wrap font-medium text-gray-900">{addressLine}</dd>
-                  </div>
+                  <ProfileRowItem label="Address">
+                    <span className="whitespace-pre-wrap">{addressLine}</span>
+                  </ProfileRowItem>
                 )}
                 {profile && (
-                  <div>
-                    <dt className="text-gray-500">On Docket since</dt>
-                    <dd className="font-medium text-gray-900">{formatWhen(profile.created_at, tz, { dateStyle: "medium" })}</dd>
-                  </div>
+                  <ProfileRowItem label="On Docket since">
+                    {formatWhen(profile.created_at, tz, { dateStyle: "medium" })}
+                  </ProfileRowItem>
                 )}
-              </dl>
-            </CardBody>
-            <CardBody className="border-t border-gray-100 text-xs text-gray-500">
-              A profile belongs to the person, not to the firm: the database lets someone edit their own details and
-              nobody else&rsquo;s, so there is no form here that would work. If something is wrong, ask {name} to correct
-              it in their own app, and record what they told you as an internal note on the matter.
-            </CardBody>
-          </Card>
+              </div>
+            </AppCardBody>
+            <div className="border-t border-dk-rule px-[17px] py-[13px]">
+              <Footnote>
+                A profile belongs to the person, not to the firm: the database lets someone edit their own details and
+                nobody else&rsquo;s, so there is no form here that would work. If something is wrong, ask {name} to correct
+                it in their own app, and record what they told you as an internal note on the matter.
+              </Footnote>
+            </div>
+          </AppCard>
 
-          <Card>
-            <CardHeader title="Consents given to this firm" />
+          <AppCard>
+            <AppCardHeader title="Consents given to this firm" />
             {consents.length === 0 ? (
-              <EmptyState
+              <AppEmpty
                 title="No consent recorded"
                 hint="A consent is written when the client accepts your terms, your privacy notice or a recording — usually as they book or as they first open the client app."
               />
             ) : (
               <>
-                <ul className="divide-y divide-gray-100">
+                <AppCardList>
                   {consents.map((c) => (
-                    <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
+                    <div key={c.id} className="flex items-start justify-between gap-3 px-[15px] py-[13px]">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{CONSENT_LABELS[c.kind] ?? c.kind}</p>
-                        <p className="text-xs text-gray-500">Version {c.version}</p>
+                        <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">
+                          {CONSENT_LABELS[c.kind] ?? c.kind}
+                        </p>
+                        {/* The version and the moment it was accepted: what a
+                            consent is worth as a record. */}
+                        <p className="mt-[3px] font-mono text-[11.5px] leading-[1.45] text-dk-soft">
+                          Version {c.version}
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-600">{formatWhen(c.accepted_at, tz)}</p>
-                    </li>
+                      <p className="flex-none text-right text-[11.5px] leading-[1.45] text-dk-soft">
+                        {formatWhen(c.accepted_at, tz)}
+                      </p>
+                    </div>
                   ))}
-                </ul>
-                <CardBody className="border-t border-gray-100 text-xs text-gray-500">
-                  Only consents given to {ctx.firmName} are shown. Consents this person gave to another firm, or to
-                  Docket itself, are theirs and are not readable here.
-                </CardBody>
+                </AppCardList>
+                <div className="border-t border-dk-rule px-[17px] py-[13px]">
+                  <Footnote>
+                    Only consents given to {ctx.firmName} are shown. Consents this person gave to another firm, or to
+                    Docket itself, are theirs and are not readable here.
+                  </Footnote>
+                </div>
               </>
             )}
-          </Card>
+          </AppCard>
         </div>
       </div>
 
-      <p className="text-xs text-gray-500">
+      <Footnote>
         Everything on this screen is read as you, from {ctx.firmName}&rsquo;s own records: consultations and matters
         belonging to another firm this person also instructs are not shown. &ldquo;Last seen&rdquo; is the later of their
         most recent consultation that had already begun and the most recent entry posted on one of their matters.
         A payment link opens the client&rsquo;s own app: they sign in as themselves to see the invoice and pay it, and
         the database shows it to nobody else.
-      </p>
+      </Footnote>
     </div>
   );
 }

@@ -9,21 +9,43 @@
 // timestamps are UTC in the database and rendered in ctx.timezone; nothing
 // firm-specific is hard-coded — the firm, its courts and its zone come from
 // context.
+//
+// On the phone kit as the console's own screen. The chase list keeps the
+// amber edge it has on Today, because an unreported sitting is the one thing
+// on this screen that is genuinely late — and the heading says so in words as
+// well as in colour. Everything else is the shell's neutral ink.
 
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { courtsFor, firmStaff, requestedFirmId, sittingsDue, staffContext, staffLabel } from "@/lib/firm-data";
 import { vacateCourtEvent } from "@/lib/actions/court";
 import { formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
-import { Card, CardHeader, EmptyState } from "@/components/ui/card";
+import {
+  AppButton,
+  AppCard,
+  AppCardHeader,
+  AppCardList,
+  AppEmpty,
+  AppLink,
+  Footnote,
+  ScreenTitle,
+} from "@/components/app";
+import { ChevronDownIcon, WarningIcon } from "@/components/ui/icons";
 import { CourtUpdateForm } from "@/components/firm/court-update-form";
-import { cn } from "@/lib/cn";
 import type { CauseListRow, SittingDue } from "@/lib/db/types";
 
 export const metadata = { title: "Sittings" };
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field =
+  "mt-1.5 min-h-[44px] w-full rounded-[9px] border border-dk-field bg-white px-3 py-[11px] text-[14px] text-dk-strong placeholder:text-dk-muted focus:border-dk-pri focus:outline-none";
+const labelClass = "text-[13px] font-semibold text-dk-strong";
+const hintClass = "mt-0.5 text-[11.5px] leading-snug text-dk-muted";
+/** Required is said in words: colour in the console means late, unpaid or waiting on you. */
+const requiredMark = <span className="font-normal text-dk-muted">(required)</span>;
+
+/** A `<summary>` with no platform triangle — the chevron beside it is ours. */
+const summaryClass =
+  "flex cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden";
 
 interface MatterCourt {
   id: string;
@@ -158,13 +180,17 @@ export default async function SittingsPage({
   }
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div className="dk-rise flex flex-col gap-3.5">
+      <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold text-brand">Sittings</h1>
-          <p className="text-sm text-gray-600">{ctx.firmName} · times in {tz}</p>
+          <ScreenTitle>Sittings</ScreenTitle>
+          <p className="mt-[3px] text-[12.5px] leading-snug text-dk-soft">
+            {ctx.firmName} · times in {tz}
+          </p>
         </div>
-        <Link href="/firm/matters" className="shrink-0 text-sm text-brand underline">All matters →</Link>
+        <AppLink href="/firm/matters" className="mt-0.5 inline-flex min-h-[44px] flex-none items-center">
+          All matters
+        </AppLink>
       </header>
 
       {sp.error && <Alert kind="error" title="The court diary refused that">{sp.error}</Alert>}
@@ -179,37 +205,52 @@ export default async function SittingsPage({
         </Alert>
       )}
 
-      <Card className={cn(due.length > 0 && "border-amber-300")}>
-        <CardHeader title={`Sittings without an update (${due.length})`} />
+      {/* The chase list, in the amber the artboard gives a backlog. The icon
+          and the heading carry the same message without the colour. */}
+      <section className="overflow-hidden rounded-card border border-[#E7B84B] bg-white shadow-card">
+        <header className="flex items-center gap-2 border-b border-[#F3E2B3] bg-[#FFFBEB] px-[15px] py-3">
+          <WarningIcon size={16} className="flex-none text-[#92400E]" />
+          <h2 className="min-w-0 font-app-head text-[13.5px] font-bold text-[#7A3E0A]">
+            Sittings without an update ({due.length})
+          </h2>
+        </header>
         {due.length === 0 ? (
-          <EmptyState
+          <AppEmpty
             title="Nothing to chase"
             hint="Every past sitting has an update against it. A sitting appears here four hours after its time if nobody has posted what happened."
-            action={<Link href="/firm/matters" className="text-sm text-brand underline">Open a matter to post an update</Link>}
+            action={<AppLink href="/firm/matters" className="inline-flex min-h-[44px] items-center">Open a matter to post an update</AppLink>}
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <AppCardList>
             {due.map((s: SittingDue) => {
               const matter = matterById.get(s.matter_id) ?? null;
               return (
-                <li key={s.court_event_id} id={`sitting-${s.court_event_id}`} className="px-4 py-4 sm:px-5">
-                  <details>
-                    <summary className="cursor-pointer marker:text-brand">
-                      <span className="ml-1 inline-block align-top">
-                        <span className="block text-sm font-medium text-gray-900">{s.cause_title}</span>
-                        <span className="mt-0.5 block text-xs text-gray-600">
-                          {s.suit_number ?? s.reference}
+                <div key={s.court_event_id} id={`sitting-${s.court_event_id}`} className="px-[15px] py-[13px]">
+                  <details className="group">
+                    <summary className={summaryClass}>
+                      <span className="min-w-0 flex-1 py-1">
+                        <span className="block text-[13.5px] font-semibold leading-[1.35] text-dk-strong">{s.cause_title}</span>
+                        <span className="mt-[3px] block text-[11.5px] leading-[1.45] text-dk-soft">
+                          <span className="font-mono">{s.suit_number ?? s.reference}</span>
                           {s.court ? ` · ${s.court}` : ""}
                           {s.purpose || s.purpose_kind ? ` · ${s.purpose ?? (s.purpose_kind ?? "").replace(/_/g, " ")}` : ""}
                         </span>
-                        <span className="mt-1 block text-xs font-medium text-amber-800">
+                        <span className="mt-1 block text-[11.5px] font-semibold leading-[1.45] text-[#92400E]">
                           Sat {formatWhen(s.scheduled_at, tz, { dateStyle: "medium", timeStyle: "short" })} · {sinceLabel(s.scheduled_at, nowMs)}
                           {s.lawyer_id && staffById.has(s.lawyer_id) ? ` · ${staffById.get(s.lawyer_id)}` : ""}
                         </span>
-                        <span className="mt-1 block text-xs font-medium text-brand underline">Post what happened</span>
+                        <span className="mt-1.5 block text-[12.5px] font-semibold text-dk-pri underline underline-offset-2">
+                          Post what happened
+                        </span>
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="grid h-11 w-11 flex-none place-items-center text-dk-muted transition group-open:rotate-180"
+                      >
+                        <ChevronDownIcon size={18} />
                       </span>
                     </summary>
-                    <div className="mt-4 border-t border-gray-100 pt-4">
+                    <div className="mt-3.5 border-t border-dk-rule pt-3.5">
                       <CourtUpdateForm
                         matterId={s.matter_id}
                         firmId={firmId}
@@ -220,62 +261,72 @@ export default async function SittingsPage({
                         judicialDivision={matter?.judicial_division ?? null}
                         sittingAt={s.scheduled_at}
                       />
-                      <p className="mt-3 text-xs text-gray-500">
-                        <Link href={`/firm/matters/${s.matter_id}`} className="text-brand underline">Open the matter →</Link>
+                      <p className="mt-3">
+                        <AppLink href={`/firm/matters/${s.matter_id}`} className="inline-flex min-h-[44px] items-center">Open the matter</AppLink>
                       </p>
                     </div>
                   </details>
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </AppCardList>
         )}
-      </Card>
+      </section>
 
-      <Card>
-        <CardHeader title={`In the diary (${upcoming.length})`} />
+      <AppCard>
+        <AppCardHeader title={`In the diary (${upcoming.length})`} />
         {upcoming.length === 0 ? (
-          <EmptyState
+          <AppEmpty
             title="No court dates ahead"
             hint="Post a court update with a next date, or fix one from the matter, and the sitting appears here."
-            action={<Link href="/firm/matters" className="text-sm text-brand underline">Open a matter</Link>}
+            action={<AppLink href="/firm/matters" className="inline-flex min-h-[44px] items-center">Open a matter</AppLink>}
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <AppCardList>
             {days.map((day) => (
-              <li key={day.label} className="px-4 py-4 sm:px-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{day.label}</p>
-                <ul className="mt-2 space-y-3">
+              <div key={day.label} className="px-[15px] py-[13px]">
+                <p className="text-[10.5px] font-semibold uppercase tracking-[0.06em] text-dk-soft">{day.label}</p>
+                <ul className="mt-2.5 flex flex-col gap-3.5">
                   {day.rows.map((row) => (
                     <li key={row.court_event_id} id={`event-${row.court_event_id}`}>
-                      <p className="text-sm font-medium text-gray-900">
-                        {formatWhen(row.scheduled_at, tz, { timeStyle: "short" })} · {row.cause_title}
+                      <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">
+                        <span className="font-mono">{formatWhen(row.scheduled_at, tz, { timeStyle: "short" })}</span>
+                        {" · "}
+                        {row.cause_title}
                       </p>
-                      <p className="text-xs text-gray-600">
-                        {row.suit_number ?? row.reference}
+                      <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">
+                        <span className="font-mono">{row.suit_number ?? row.reference}</span>
                         {row.court ? ` · ${row.court}` : ""}
                         {row.courtroom ? ` · ${row.courtroom}` : ""}
                         {row.judge ? ` · ${row.judge}` : ""}
                         {row.purpose || row.purpose_kind ? ` · ${row.purpose ?? (row.purpose_kind ?? "").replace(/_/g, " ")}` : ""}
                         {row.source === "hearing_notice" ? " · from a hearing notice" : ""}
                       </p>
-                      <div className="mt-1 flex flex-wrap items-center gap-3">
-                        <Link href={`/firm/matters/${row.matter_id}`} className="text-xs text-brand underline">Open the matter →</Link>
-                      </div>
+                      <p className="mt-1">
+                        <AppLink href={`/firm/matters/${row.matter_id}`} className="inline-flex min-h-[44px] items-center">Open the matter</AppLink>
+                      </p>
 
-                      <details className="mt-2">
-                        <summary className="cursor-pointer text-xs font-medium text-gray-700 marker:text-brand">
-                          <span className="ml-1 underline">Date vacated</span>
+                      <details className="group mt-1.5">
+                        <summary className={summaryClass}>
+                          <span className="py-2 text-[12.5px] font-semibold text-dk-pri underline underline-offset-2">
+                            Date vacated
+                          </span>
+                          <span
+                            aria-hidden="true"
+                            className="grid h-11 w-11 flex-none place-items-center text-dk-muted transition group-open:rotate-180"
+                          >
+                            <ChevronDownIcon size={16} />
+                          </span>
                         </summary>
-                        <form action={vacate} className="mt-2 space-y-2 rounded-lg border border-gray-200 p-3">
+                        <form action={vacate} className="mt-2 flex flex-col gap-3 rounded-[10px] border border-dk-line bg-white p-3">
                           <input type="hidden" name="eventId" value={row.court_event_id} />
                           <input type="hidden" name="tz" value={tz} />
                           <input type="hidden" name="firm" value={sp.firm ?? ""} />
                           <div>
-                            <label htmlFor={`vr_${row.court_event_id}`} className="text-sm font-medium text-gray-900">
-                              Why the date was vacated <span className="text-red-700">*</span>
+                            <label htmlFor={`vr_${row.court_event_id}`} className={labelClass}>
+                              Why the date was vacated {requiredMark}
                             </label>
-                            <p className="text-xs text-gray-500">Your client reads this on the timeline.</p>
+                            <p className={hintClass}>Your client reads this on the timeline.</p>
                             <input
                               id={`vr_${row.court_event_id}`} name="reason" type="text" required minLength={3} maxLength={500}
                               placeholder="The judge is on election duty" className={field}
@@ -283,40 +334,35 @@ export default async function SittingsPage({
                           </div>
                           <div className="flex flex-wrap items-end gap-3">
                             <div className="min-w-[9rem] flex-1">
-                              <label htmlFor={`vd_${row.court_event_id}`} className="text-sm font-medium text-gray-900">Refixed to (if the registry gave a date)</label>
+                              <label htmlFor={`vd_${row.court_event_id}`} className={labelClass}>Refixed to (if the registry gave a date)</label>
                               <input id={`vd_${row.court_event_id}`} name="newDate" type="date" className={field} />
                             </div>
                             <div className="w-28">
-                              <label htmlFor={`vt_${row.court_event_id}`} className="text-sm font-medium text-gray-900">Time</label>
+                              <label htmlFor={`vt_${row.court_event_id}`} className={labelClass}>Time</label>
                               <input id={`vt_${row.court_event_id}`} name="newTime" type="time" defaultValue="09:00" className={field} />
                             </div>
                           </div>
                           <div>
-                            <label htmlFor={`vp_${row.court_event_id}`} className="text-sm font-medium text-gray-900">Fixed for</label>
+                            <label htmlFor={`vp_${row.court_event_id}`} className={labelClass}>Fixed for</label>
                             <input
                               id={`vp_${row.court_event_id}`} name="newPurpose" type="text" maxLength={200}
                               placeholder={row.purpose ?? "hearing"} className={field}
                             />
                           </div>
-                          <button
-                            type="submit"
-                            className="min-h-[44px] w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5"
-                          >
-                            Record the vacated date
-                          </button>
-                          <p className="text-xs text-gray-500">
+                          <AppButton type="submit">Record the vacated date</AppButton>
+                          <Footnote>
                             Leave the date blank if the registry has not refixed it — the matter is then marked as awaiting a date.
-                          </p>
+                          </Footnote>
                         </form>
                       </details>
                     </li>
                   ))}
                 </ul>
-              </li>
+              </div>
             ))}
-          </ul>
+          </AppCardList>
         )}
-      </Card>
+      </AppCard>
     </div>
   );
 }

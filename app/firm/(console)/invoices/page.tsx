@@ -19,8 +19,18 @@ import { firmOverview, requestedFirmId, staffContext } from "@/lib/firm-data";
 import { formatMoneyByCurrency, formatMoneyMinor } from "@/lib/money";
 import { formatWhen, zonedDayRange } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
-import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import {
+  AppButtonLink,
+  AppCard,
+  AppCardHeader,
+  AppCardList,
+  AppEmpty,
+  AppLink,
+  AppStatusPill,
+  Footnote,
+  ScreenTitle,
+} from "@/components/app";
+import type { Status } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import type { InvoiceRow } from "@/lib/db/types";
 
@@ -191,43 +201,79 @@ export default async function FirmInvoicesPage({
 
   const chipClass = (active: boolean) =>
     cn(
-      "flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm",
-      active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+      "flex min-h-[44px] shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
+      active ? "border-dk-pri bg-dk-pri text-dk-on-pri" : "border-dk-field bg-white text-dk-soft",
     );
 
+  // The money is what people opened this screen for, so it is set at heading
+  // size rather than as a grey subtitle. `ink` is the console's one use of
+  // colour — money still owed, and a count that is past its date — and each one
+  // says the same thing in words underneath. Every figure stays in the currency
+  // it was billed in; nothing is added across currencies.
+  const outstandingByCurrency: Record<string, number> = overview?.outstanding_by_currency ?? {};
+  const owedSomething = Object.values(outstandingByCurrency).some((minor) => minor !== 0);
   const tiles = overview
     ? [
-        { label: "Outstanding", value: formatMoneyByCurrency(overview.outstanding_by_currency, firmCurrency), hint: "Issued, part-paid and overdue" },
-        { label: "Collected this month", value: formatMoneyByCurrency(overview.collected_this_month_by_currency, firmCurrency), hint: "Payments received since the 1st" },
-        { label: "Drafts", value: String(counts.draft), hint: "Raised but not sent to the client" },
-        { label: "Overdue", value: String(counts.overdue), hint: "Past the day they fell due" },
+        {
+          label: "Outstanding",
+          value: formatMoneyByCurrency(overview.outstanding_by_currency, firmCurrency),
+          hint: "Issued, part-paid and overdue",
+          ink: owedSomething ? "text-[#92400E]" : "text-dk-strong",
+          big: false,
+        },
+        {
+          label: "Collected this month",
+          value: formatMoneyByCurrency(overview.collected_this_month_by_currency, firmCurrency),
+          hint: "Payments received since the 1st",
+          ink: "text-dk-strong",
+          big: false,
+        },
+        {
+          label: "Drafts",
+          value: String(counts.draft),
+          hint: "Raised but not sent to the client",
+          ink: "text-dk-strong",
+          big: true,
+        },
+        {
+          label: "Overdue",
+          value: String(counts.overdue),
+          hint: "Past the day they fell due",
+          ink: counts.overdue > 0 ? "text-[#B42318]" : "text-dk-strong",
+          big: true,
+        },
       ]
     : [];
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <div className="dk-rise flex flex-col gap-3.5">
+      <header className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-2xl font-semibold text-brand">Invoices</h1>
-          <p className="text-sm text-gray-600">
+          <ScreenTitle>Invoices</ScreenTitle>
+          <p className="mt-[3px] text-[12.5px] leading-snug text-dk-soft">
             {ctx.firmName} · fees settle straight to the firm&rsquo;s own account · times in {tz}
           </p>
         </div>
-        <Link
-          href={raiseHref}
-          className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
-        >
+        <AppButtonLink href={raiseHref} variant="primary-sm" className="self-start">
           Raise an invoice
-        </Link>
+        </AppButtonLink>
       </header>
 
       {overview ? (
-        <section aria-label="Money totals" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <section aria-label="Money totals" className="grid grid-cols-2 gap-[9px] lg:grid-cols-4">
           {tiles.map((t) => (
-            <div key={t.label} className="rounded-card border border-gray-200 bg-white p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-wide text-gray-500">{t.label}</p>
-              <p className="mt-1 font-heading text-xl font-semibold text-brand">{t.value}</p>
-              <p className="mt-1 text-xs text-gray-500">{t.hint}</p>
+            <div key={t.label} className="rounded-[11px] border border-dk-line bg-white p-[13px] shadow-card">
+              <p className="text-[10.5px] uppercase leading-[1.35] tracking-[0.06em] text-dk-soft">{t.label}</p>
+              <p
+                className={cn(
+                  "mt-[5px] font-app-head font-bold",
+                  t.big ? "text-[24px] leading-none" : "text-[18px] leading-[1.2]",
+                  t.ink,
+                )}
+              >
+                {t.value}
+              </p>
+              <p className="mt-1 text-[11px] leading-[1.35] text-dk-soft">{t.hint}</p>
             </div>
           ))}
         </section>
@@ -258,28 +304,25 @@ export default async function FirmInvoicesPage({
         ))}
       </nav>
 
-      <Card>
-        <CardHeader
+      <AppCard>
+        <AppCardHeader
           title={view === "all" ? `All invoices (${matching.length})` : `${VIEWS.find((v) => v[0] === view)?.[1]} (${matching.length})`}
-          action={<Link href={raiseHref} className="text-sm text-brand underline">Raise an invoice →</Link>}
+          action={<AppLink href={raiseHref}>Raise an invoice</AppLink>}
         />
 
         {shown.length === 0 ? (
           view === "all" ? (
-            <EmptyState
+            <AppEmpty
               title="Nothing has been billed yet"
               hint="Raise an invoice with your own lines and the firm's VAT rate. Issue it and the client can pay from their app, straight into the firm's account. Consultation fees taken at booking land here on their own."
               action={
-                <Link
-                  href={raiseHref}
-                  className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
-                >
+                <AppButtonLink href={raiseHref} variant="primary-sm">
                   Raise an invoice
-                </Link>
+                </AppButtonLink>
               }
             />
           ) : (
-            <EmptyState
+            <AppEmpty
               title={
                 view === "outstanding"
                   ? "Nothing is outstanding"
@@ -294,84 +337,90 @@ export default async function FirmInvoicesPage({
                   ? "A paid invoice becomes the client's receipt, and its PDF is theirs to download."
                   : "Every invoice the firm has raised is under All."
               }
-              action={<Link href={query({ view: null })} className="text-sm text-brand underline">Show all invoices</Link>}
+              action={<AppLink href={query({ view: null })}>Show all invoices</AppLink>}
             />
           )
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <AppCardList>
             {shown.map((inv) => {
               const outstanding = outstandingOf(inv);
               const overdue = isOverdue(inv);
               const owing = isOwing(inv);
               return (
-                <li key={inv.id}>
-                  <Link href={detailHref(inv.id)} className="block px-5 py-4 hover:bg-gray-50">
-                    <div className="flex flex-wrap items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900">
-                          {inv.number} · {inv.client_name ?? "Client"}
-                        </p>
-                        <p className="mt-0.5 text-xs text-gray-600">
-                          {inv.matter_reference
-                            ? `${inv.matter_reference}${inv.matter_title ? ` · ${inv.matter_title}` : ""}`
-                            : inv.appointment_id
-                              ? "Consultation fee"
-                              : "No matter"}
-                        </p>
-                      </div>
-                      <div className="shrink-0 text-right">
-                        <p className="text-sm font-semibold text-gray-900">
-                          {formatMoneyMinor(Number(inv.total_minor), inv.currency)}
-                        </p>
-                        {owing && (
-                          <p className={cn("text-xs font-medium", overdue ? "text-red-700" : "text-amber-800")}>
-                            {formatMoneyMinor(outstanding, inv.currency)} outstanding
-                          </p>
-                        )}
-                        {inv.status === "paid" && (
-                          <p className="text-xs text-emerald-800">Paid in full</p>
-                        )}
-                      </div>
+                <Link key={inv.id} href={detailHref(inv.id)} className="block px-[15px] py-[13px]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13.5px] font-semibold leading-[1.35] text-dk-strong">
+                        <span className="font-mono">{inv.number}</span> · {inv.client_name ?? "Client"}
+                      </p>
+                      <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-soft">
+                        {inv.matter_reference
+                          ? `${inv.matter_reference}${inv.matter_title ? ` · ${inv.matter_title}` : ""}`
+                          : inv.appointment_id
+                            ? "Consultation fee"
+                            : "No matter"}
+                      </p>
                     </div>
-
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <StatusPill status={inv.status as Status} />
-                      <span className="text-xs text-gray-600">
-                        {inv.issued_at
-                          ? `Issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium" })}`
-                          : `Raised ${formatWhen(inv.created_at, tz, { dateStyle: "medium" })} · not issued`}
-                      </span>
-                      {inv.due_at && (
-                        <span className={cn("text-xs", overdue ? "font-semibold text-red-700" : "text-gray-600")}>
-                          {overdue ? "was due " : "due "}
-                          {dayLabel(inv.due_at)}
-                        </span>
+                    {/* The figure the row exists for, at heading size. The
+                        second line is the part still owed and carries its own
+                        word, so the colour is never doing the work alone. */}
+                    <div className="flex-none text-right">
+                      <p className="font-app-head text-[16px] font-bold leading-none text-dk-strong">
+                        {formatMoneyMinor(Number(inv.total_minor), inv.currency)}
+                      </p>
+                      {owing && (
+                        <p
+                          className={cn(
+                            "mt-1 text-[11.5px] font-semibold leading-[1.35]",
+                            overdue ? "text-[#B42318]" : "text-[#92400E]",
+                          )}
+                        >
+                          {formatMoneyMinor(outstanding, inv.currency)} {overdue ? "overdue" : "outstanding"}
+                        </p>
                       )}
-                      {!inv.due_at && owing && <span className="text-xs text-gray-500">no due date</span>}
+                      {inv.status === "paid" && (
+                        <p className="mt-1 text-[11.5px] leading-[1.35] text-dk-soft">Paid in full</p>
+                      )}
                     </div>
-                  </Link>
-                </li>
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <AppStatusPill status={inv.status as Status} />
+                    <span className="text-[11.5px] text-dk-soft">
+                      {inv.issued_at
+                        ? `Issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium" })}`
+                        : `Raised ${formatWhen(inv.created_at, tz, { dateStyle: "medium" })} · not issued`}
+                    </span>
+                    {inv.due_at && (
+                      <span className={cn("text-[11.5px]", overdue ? "font-semibold text-[#B42318]" : "text-dk-soft")}>
+                        {overdue ? "was due " : "due "}
+                        {dayLabel(inv.due_at)}
+                      </span>
+                    )}
+                    {!inv.due_at && owing && <span className="text-[11.5px] text-dk-muted">no due date</span>}
+                  </div>
+                </Link>
               );
             })}
-          </ul>
+          </AppCardList>
         )}
 
         {shown.length > 0 && (
-          <CardBody className="border-t border-gray-100 text-xs text-gray-500">
-            <p>
+          <div className="border-t border-dk-rule px-[17px] py-[13px]">
+            <Footnote>
               Listed: {moneyLabel(shownTotals) || formatMoneyMinor(0, firmCurrency)} billed
               {shownOutstanding.size > 0 ? `, of which ${moneyLabel(shownOutstanding)} is outstanding` : ", none of it outstanding"}.
               Each figure is in the currency the invoice was raised in.
-            </p>
-            <p className="mt-1">
+            </Footnote>
+            <Footnote className="mt-1">
               An invoice counts as overdue once the day it fell due has passed in {tz}; the nightly job then marks it
               overdue in the database as well.
               {matching.length > SHOW ? ` Showing the ${SHOW} most recent of ${matching.length}.` : ""}
               {rows.length === SCAN ? ` This screen reads the ${SCAN} most recently raised invoices; an older one may not appear.` : ""}
-            </p>
-          </CardBody>
+            </Footnote>
+          </div>
         )}
-      </Card>
+      </AppCard>
     </div>
   );
 }

@@ -143,7 +143,7 @@ export default async function ClientDashboard() {
         <Link
           href="/app/notifications"
           aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
-          className="relative grid h-[42px] w-[42px] flex-none place-items-center rounded-full border border-dk-line bg-white text-dk-pri"
+          className="relative grid h-11 w-11 flex-none place-items-center rounded-full border border-dk-line bg-white text-dk-pri"
         >
           <BellIcon size={20} />
           {unread > 0 && (

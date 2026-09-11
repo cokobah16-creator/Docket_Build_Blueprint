@@ -6,17 +6,24 @@
 // member, so the tasks policy (staff_w) is the authorization and no service key
 // is used. A due date is typed in the viewer's own zone and sent as a UTC
 // instant, because the database keeps UTC. Anything already past its due date
-// is red — the firm's overdue counter on Today counts exactly these rows.
+// carries #B42318 and the word "Overdue" — the console's one use of colour,
+// and never the only signal. The firm's overdue counter on Today counts
+// exactly these rows.
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { closeTask, createTask } from "@/lib/actions/matters";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { AppButton } from "@/components/app/button";
+import { ChevronDownIcon } from "@/components/ui/icons";
 import { cn } from "@/lib/cn";
 import type { TaskRow } from "@/lib/db/types";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field =
+  "mt-1.5 min-h-[44px] w-full rounded-[9px] border border-dk-field bg-white px-3 py-[11px] text-[14px] text-dk-strong placeholder:text-dk-muted focus:border-dk-pri focus:outline-none";
+const labelClass = "text-[13px] font-semibold text-dk-strong";
+/** Required is said in words: colour here means late, unpaid or waiting on you. */
+const requiredMark = <span className="font-normal text-dk-muted">(required)</span>;
 
 /**
  * The UTC instant for a wall-clock date and time in `tz`. Two passes, because
@@ -110,14 +117,14 @@ export function TasksPanel({
   const overdueCount = open.filter(isOverdue).length;
 
   return (
-    <div className="divide-y divide-gray-100">
-      {error && <div className="px-4 py-4 sm:px-5"><Alert kind="error" title="That was refused">{error}</Alert></div>}
+    <div className="divide-y divide-dk-rule">
+      {error && <div className="px-[15px] py-[15px]"><Alert kind="error" title="That was refused">{error}</Alert></div>}
 
-      <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">Add a task</h3>
-        <form onSubmit={add} className="mt-3 space-y-3">
+      <section className="px-[15px] py-[15px]">
+        <h3 className="font-app-head text-[15.5px] font-semibold text-dk-strong">Add a task</h3>
+        <form onSubmit={add} className="mt-3 flex flex-col gap-3">
           <div>
-            <label htmlFor="task-title" className="text-sm font-medium text-gray-900">What has to be done <span className="text-red-700">*</span></label>
+            <label htmlFor="task-title" className={labelClass}>What has to be done {requiredMark}</label>
             <input
               id="task-title"
               value={title}
@@ -130,15 +137,15 @@ export function TasksPanel({
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <div>
-              <label htmlFor="task-due-day" className="text-sm font-medium text-gray-900">Due</label>
+              <label htmlFor="task-due-day" className={labelClass}>Due</label>
               <input id="task-due-day" type="date" value={dueDay} onChange={(e) => setDueDay(e.target.value)} className={field} />
             </div>
             <div>
-              <label htmlFor="task-due-time" className="text-sm font-medium text-gray-900">By</label>
+              <label htmlFor="task-due-time" className={labelClass}>By</label>
               <input id="task-due-time" type="time" value={dueTime} onChange={(e) => setDueTime(e.target.value)} disabled={!dueDay} className={field} />
             </div>
             <div>
-              <label htmlFor="task-assignee" className="text-sm font-medium text-gray-900">Who</label>
+              <label htmlFor="task-assignee" className={labelClass}>Who</label>
               <select id="task-assignee" value={assignee} onChange={(e) => setAssignee(e.target.value)} className={field}>
                 <option value="">Anyone in the firm</option>
                 {staff.map((m) => (
@@ -147,37 +154,47 @@ export function TasksPanel({
               </select>
             </div>
           </div>
-          <p className="text-xs text-gray-500">Times are in {timezone}.</p>
-          <Button type="submit" disabled={busy || title.trim().length < 2}>{busy ? "Adding…" : "Add the task"}</Button>
+          <p className="text-[11.5px] leading-snug text-dk-muted">Times are in {timezone}.</p>
+          <AppButton type="submit" variant="primary-sm" disabled={busy || title.trim().length < 2}>
+            {busy ? "Adding…" : "Add the task"}
+          </AppButton>
         </form>
       </section>
 
-      <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">
-          Open {open.length > 0 && <span className="text-sm font-normal text-gray-500">({open.length}{overdueCount > 0 ? `, ${overdueCount} overdue` : ""})</span>}
+      <section className="px-[15px] py-[15px]">
+        <h3 className="font-app-head text-[15.5px] font-semibold text-dk-strong">
+          Open{" "}
+          {open.length > 0 && (
+            <span className="text-[13px] font-normal text-dk-muted">
+              ({open.length}
+              {overdueCount > 0 ? `, ${overdueCount} overdue` : ""})
+            </span>
+          )}
         </h3>
         {open.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-[12.5px] leading-relaxed text-dk-soft">
             Nothing outstanding on this matter. Add the next step above so it shows on Today and nobody has to remember it.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-gray-100">
+          <ul className="mt-2.5 divide-y divide-dk-rule">
             {open.map((t) => {
               const overdue = isOverdue(t);
               return (
                 <li key={t.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className={cn("text-sm font-medium", overdue ? "text-red-800" : "text-gray-900")}>{t.title}</p>
-                    <p className={cn("text-xs", overdue ? "font-medium text-red-700" : "text-gray-500")}>
+                    <p className={cn("text-[13.5px] font-semibold leading-[1.35]", overdue ? "text-[#B42318]" : "text-dk-strong")}>
+                      {t.title}
+                    </p>
+                    <p className={cn("mt-[3px] text-[11.5px] leading-[1.45]", overdue ? "font-semibold text-[#B42318]" : "text-dk-soft")}>
                       {t.due_at
                         ? `${overdue ? "Overdue — was due " : "Due "}${fmt.format(new Date(t.due_at))}${now ? ` (${dueLabel(t.due_at, now)})` : ""}`
                         : "No date fixed"}
                       {t.assignee_id ? ` · ${nameById.get(t.assignee_id) ?? "A colleague"}` : " · anyone in the firm"}
                     </p>
                   </div>
-                  <Button size="sm" variant="ghost" disabled={closing === t.id} onClick={() => close(t.id)}>
+                  <AppButton variant="ghost-sm" disabled={closing === t.id} onClick={() => close(t.id)}>
                     {closing === t.id ? "Closing…" : "Mark done"}
-                  </Button>
+                  </AppButton>
                 </li>
               );
             })}
@@ -186,14 +203,21 @@ export function TasksPanel({
       </section>
 
       {done.length > 0 && (
-        <section className="px-4 py-4 sm:px-5">
-          <details>
-            <summary className="cursor-pointer text-sm font-medium text-brand marker:text-brand">Done ({done.length})</summary>
-            <ul className="mt-3 divide-y divide-gray-100">
+        <section className="px-[15px] py-[15px]">
+          <details className="group">
+            <summary className="flex min-h-[44px] cursor-pointer list-none items-center gap-2 [&::-webkit-details-marker]:hidden">
+              <span className="flex-1 text-[13px] font-semibold text-dk-pri underline underline-offset-2">
+                Done ({done.length})
+              </span>
+              <span aria-hidden="true" className="flex-none text-dk-muted transition group-open:rotate-180">
+                <ChevronDownIcon size={16} />
+              </span>
+            </summary>
+            <ul className="mt-2.5 divide-y divide-dk-rule">
               {done.map((t) => (
                 <li key={t.id} className="py-3">
-                  <p className="text-sm text-gray-600 line-through">{t.title}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-[13px] leading-[1.35] text-dk-soft line-through">{t.title}</p>
+                  <p className="mt-[3px] text-[11.5px] leading-[1.45] text-dk-muted">
                     {t.due_at ? `Was due ${fmt.format(new Date(t.due_at))}` : "No date fixed"}
                     {t.assignee_id ? ` · ${nameById.get(t.assignee_id) ?? "A colleague"}` : ""}
                   </p>

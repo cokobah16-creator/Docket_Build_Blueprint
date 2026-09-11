@@ -26,12 +26,22 @@ import { formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
 import { issueInvoice } from "@/lib/actions/invoices";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, EmptyState } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import {
+  AppAccentPill,
+  AppButton,
+  AppButtonLink,
+  AppCard,
+  AppCardHeader,
+  AppEmpty,
+  AppLink,
+  AppStatusPill,
+  Footnote,
+  ScreenTitle,
+} from "@/components/app";
+import { ChevronLeftIcon } from "@/components/ui/icons";
+import type { Status } from "@/components/ui/badge";
 import { CounselRoster } from "@/components/firm/counsel-roster";
 import { MessagesThread } from "@/components/portal/messages-thread";
-import { cn } from "@/lib/cn";
 import type {
   DocumentRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
   ServiceDirectoryRow, TaskRow,
@@ -55,25 +65,6 @@ const TABS: TabSpec[] = [
   { key: "tasks", label: "Tasks" },
   { key: "edit", label: "Details" },
 ];
-
-/** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
-const TONES: Record<string, string> = {
-  slate: "border-slate-300 bg-slate-50 text-slate-800",
-  gray: "border-gray-300 bg-gray-50 text-gray-700",
-  grey: "border-gray-300 bg-gray-50 text-gray-700",
-  blue: "border-blue-300 bg-blue-50 text-blue-900",
-  sky: "border-sky-300 bg-sky-50 text-sky-900",
-  indigo: "border-indigo-300 bg-indigo-50 text-indigo-900",
-  violet: "border-violet-300 bg-violet-50 text-violet-900",
-  purple: "border-purple-300 bg-purple-50 text-purple-900",
-  green: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  emerald: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  teal: "border-teal-300 bg-teal-50 text-teal-900",
-  amber: "border-amber-300 bg-amber-50 text-amber-900",
-  orange: "border-orange-300 bg-orange-50 text-orange-900",
-  red: "border-red-300 bg-red-50 text-red-900",
-  rose: "border-rose-300 bg-rose-50 text-rose-900",
-};
 
 const TYPE_LABELS: Record<string, string> = { ip: "Intellectual property", debt_recovery: "Debt recovery" };
 function typeLabel(type: string): string {
@@ -188,53 +179,72 @@ export default async function MatterWorkbench({
   const originating = matter.originating_lawyer_id ? names[matter.originating_lawyer_id] ?? null : null;
 
   return (
-    <div className="space-y-5">
-      <p className="text-sm">
-        <Link href={`/firm/matters${sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : ""}`} className="text-brand underline">← Matters</Link>
-      </p>
+    <div className="dk-rise flex flex-col gap-3.5">
+      {/* The whole row is the target: 44px tall and as wide as its words. */}
+      <Link
+        href={`/firm/matters${sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : ""}`}
+        className="-ml-1 inline-flex min-h-[44px] w-fit items-center gap-1 pr-2 text-[13px] font-medium text-dk-pri"
+      >
+        <ChevronLeftIcon size={17} className="flex-none" />
+        Matters
+      </Link>
 
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+      <header className="flex flex-col gap-2">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="font-heading text-2xl font-semibold text-brand">{matter.title}</h1>
-            <p className="text-sm text-gray-600">
-              {matter.reference} · {typeLabel(matter.type)} · opened {formatWhen(`${matter.opened_at}T00:00:00Z`, "UTC", { dateStyle: "medium" })}
+            <ScreenTitle>{matter.title}</ScreenTitle>
+            <p className="mt-[3px] text-[12.5px] leading-snug text-dk-soft">
+              <span className="font-mono">{matter.reference}</span> · {typeLabel(matter.type)} · opened{" "}
+              {formatWhen(`${matter.opened_at}T00:00:00Z`, "UTC", { dateStyle: "medium" })}
             </p>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {status && <StatusChip status={status} />}
-            {matter.closed_at && <StatusPill status="closed" />}
+          {/* The firm names and colours its own statuses; the console shows the
+              name only, in its own grey, because no console token reads a firm
+              token. The colour belongs to the client app. */}
+          <div className="flex flex-none flex-wrap items-center gap-1.5">
+            {status && <AppAccentPill>{status.label}</AppAccentPill>}
+            {matter.closed_at && <AppStatusPill status="closed" />}
           </div>
         </div>
 
-        {matter.cause_title && <p className="text-sm font-medium text-gray-900">{matter.cause_title}</p>}
+        {matter.cause_title && (
+          <p className="text-[13.5px] font-semibold leading-[1.4] text-dk-strong">{matter.cause_title}</p>
+        )}
 
-        <p className="text-sm text-gray-700">
+        <p className="text-[12.5px] leading-[1.5] text-dk-body">
           {matter.court_name ?? "No court recorded"}
           {matter.judicial_division ? `, ${matter.judicial_division}` : ""}
-          {matter.suit_number ? ` · ${matter.suit_number}` : " · no suit number yet"}
+          {matter.suit_number ? " · " : " · no suit number yet"}
+          {matter.suit_number ? <span className="font-mono">{matter.suit_number}</span> : null}
           {matter.judge ? ` · ${matter.judge}` : ""}
         </p>
 
-        <p className="text-sm text-gray-800">
+        <p className="text-[12.5px] leading-[1.5] text-dk-body">
           {matter.next_event_at ? (
             <>
-              Next in court: <strong>{formatWhen(matter.next_event_at, tz, { dateStyle: "full", timeStyle: "short" })}</strong>
-              {matter.next_event_note ? ` · ${matter.next_event_note}` : ""} <span className="text-gray-500">({tz})</span>
+              Next in court:{" "}
+              <strong className="text-dk-strong">
+                {formatWhen(matter.next_event_at, tz, { dateStyle: "full", timeStyle: "short" })}
+              </strong>
+              {matter.next_event_note ? ` · ${matter.next_event_note}` : ""}{" "}
+              <span className="text-dk-muted">({tz})</span>
             </>
           ) : matter.awaiting_date ? (
-            <span className="font-medium text-amber-800">Awaiting a date from the court.</span>
+            // Waiting on the registry, not on the firm — the one amber on this header.
+            <span className="font-semibold text-[#92400E]">Awaiting a date from the court.</span>
           ) : (
-            <span className="text-gray-500">No court date fixed.</span>
+            <span className="text-dk-muted">No court date fixed.</span>
           )}
         </p>
 
-        {matter.next_action && <p className="text-sm font-medium text-brand">Next action: {matter.next_action}</p>}
+        {matter.next_action && (
+          <p className="text-[12.5px] font-semibold leading-[1.5] text-dk-strong">Next action: {matter.next_action}</p>
+        )}
 
-        <p className="text-xs text-gray-600">
+        <Footnote>
           Handling: {handling ?? "not recorded"} · Originating: {originating ?? "not recorded"}
           {leadLawyerId && names[leadLawyerId] ? ` · Conduct: ${names[leadLawyerId]}` : ""}
-        </p>
+        </Footnote>
       </header>
 
       {sp.error && <Alert kind="error" title="That was refused">{sp.error}</Alert>}
@@ -242,7 +252,7 @@ export default async function MatterWorkbench({
 
       <MatterTabs tabs={TABS} active={tab} basePath={basePath} extraQuery={extraQuery} />
 
-      <Card>
+      <AppCard>
         {tab === "timeline" && <TimelineSection ctx={ctx} matter={matter} names={names} />}
         {tab === "documents" && <DocumentsSection ctx={ctx} matter={matter} names={names} />}
         {tab === "messages" && <MessagesSection ctx={ctx} matter={matter} names={names} />}
@@ -253,24 +263,8 @@ export default async function MatterWorkbench({
         {tab === "edit" && (
           <EditSection ctx={ctx} matter={matter} statuses={statuses} staffOptions={staffOptions} leadLawyerId={leadLawyerId} alsoOn={lawyers.filter((l) => !l.is_lead).map((l) => l.user_id)} />
         )}
-      </Card>
+      </AppCard>
     </div>
-  );
-}
-
-function StatusChip({ status }: { status: MatterStatus }) {
-  const colour = (status.colour ?? "").trim();
-  const hex = colour.startsWith("#");
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        hex ? "bg-white" : TONES[colour.toLowerCase()] ?? "border-gray-300 bg-gray-50 text-gray-700",
-      )}
-      style={hex ? { borderColor: colour, color: colour } : undefined}
-    >
-      {status.label}
-    </span>
   );
 }
 
@@ -430,11 +424,11 @@ async function InvoicesSection({
   if (invoices.length === 0) {
     return (
       <>
-        <CardHeader title="Invoices" />
-        <EmptyState
+        <AppCardHeader title="Invoices" />
+        <AppEmpty
           title="Nothing billed on this matter yet"
           hint="Raise an invoice with your own items and VAT; issue it and the client can pay from their app."
-          action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">Raise an invoice</Link>}
+          action={<AppButtonLink href={raiseHref} variant="primary-sm">Raise an invoice</AppButtonLink>}
         />
       </>
     );
@@ -442,43 +436,50 @@ async function InvoicesSection({
 
   return (
     <>
-      <CardHeader
+      <AppCardHeader
         title={outstandingLabel ? `Invoices · ${outstandingLabel} outstanding` : "Invoices"}
-        action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">Raise an invoice</Link>}
+        action={<AppLink href={raiseHref} className="-my-3 inline-flex min-h-[44px] items-center">Raise an invoice</AppLink>}
       />
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-dk-rule">
         {invoices.map((inv) => {
           const outstanding = Math.max(0, inv.total_minor - inv.paid_minor);
           const payable = inv.status !== "draft" && inv.status !== "cancelled";
           return (
-            <li key={inv.id} className="space-y-2 px-4 py-4 sm:px-5">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-sm font-medium text-gray-900">{inv.number}</p>
-                <StatusPill status={inv.status as Status} />
+            <li key={inv.id} className="flex flex-col gap-2 px-[15px] py-[13px]">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <p className="font-mono text-[13px] font-bold text-dk-strong">{inv.number}</p>
+                <AppStatusPill status={inv.status as Status} />
               </div>
-              <p className="text-sm text-gray-700">
-                {formatMoneyMinor(inv.total_minor, inv.currency)}
+              <p className="text-[13px] leading-[1.5] text-dk-body">
+                <span className="font-semibold text-dk-strong">{formatMoneyMinor(inv.total_minor, inv.currency)}</span>
                 {inv.vat_minor > 0 ? ` (incl. ${formatMoneyMinor(inv.vat_minor, inv.currency)} VAT)` : ""}
                 {inv.paid_minor > 0 ? ` · ${formatMoneyMinor(inv.paid_minor, inv.currency)} paid` : ""}
-                {payable && outstanding > 0 ? ` · ${formatMoneyMinor(outstanding, inv.currency)} outstanding` : ""}
+                {/* Money the firm is still owed: the console's one colour, with the
+                    word "outstanding" beside it so the colour is never the signal. */}
+                {payable && outstanding > 0 ? (
+                  <span className="font-semibold text-[#92400E]">
+                    {" · "}
+                    {formatMoneyMinor(outstanding, inv.currency)} outstanding
+                  </span>
+                ) : null}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-[11.5px] leading-[1.45] text-dk-muted">
                 {inv.issued_at ? `Issued ${fmtDay(inv.issued_at)}` : `Drafted ${fmtDay(inv.created_at)}`}
                 {inv.due_at ? ` · due ${fmtCalendarDay(inv.due_at)}` : ""}
               </p>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2.5">
                 {inv.status === "draft" ? (
                   <form action={issue}>
                     <input type="hidden" name="invoiceId" value={inv.id} />
-                    <Button type="submit" size="sm">Issue it</Button>
+                    <AppButton type="submit" variant="primary-sm">Issue it</AppButton>
                   </form>
                 ) : payable ? (
                   <CopyButton path={`/app/payments/${inv.id}`} label={outstanding > 0 ? "Copy the pay-by-link" : "Copy the receipt link"} />
                 ) : (
-                  <p className="text-xs text-gray-500">Cancelled — the record stays on the file.</p>
+                  <Footnote>Cancelled — the record stays on the file.</Footnote>
                 )}
                 {inv.status === "draft" && (
-                  <p className="text-xs text-gray-500">A draft is invisible to your client until it is issued.</p>
+                  <Footnote>A draft is invisible to your client until it is issued.</Footnote>
                 )}
               </div>
             </li>
