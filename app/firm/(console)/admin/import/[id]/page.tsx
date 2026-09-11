@@ -1,5 +1,6 @@
 // One import, reconciled: every row and what became of it, the matters it filed, and the
-// invitations it created — shown here once, never exported, because a token is a key.
+// invitations it created — offered here until each client accepts, never in the download,
+// because a token is a key.
 //
 // Rules enforced here: reads run as the signed-in admin under RLS (a lawyer who is not an admin
 // sees nothing here); the invitation links are read from invites, which the wall governs; the
@@ -20,13 +21,20 @@ export const metadata = { title: "Import results" };
 export default async function ImportResultPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ firm?: string }> }) {
   const { id } = await params;
   const { firm: firmParam } = await searchParams;
-  const ctx = await staffContext(await requestedFirmId({ firm: firmParam }));
+  let ctx = await staffContext(await requestedFirmId({ firm: firmParam }));
   if (!ctx) return <Alert kind="warning" title="Not configured">Supabase environment variables are not set, or this account is not a member of a firm.</Alert>;
-  const { supabase, timezone } = ctx;
 
-  const { data: batchRow } = await supabase.from("import_batches").select("id, firm_id, kind, source_name, row_count, created_by, created_at, processed_at").eq("id", id).maybeSingle();
+  const { data: batchRow } = await ctx.supabase.from("import_batches").select("id, firm_id, kind, source_name, row_count, created_by, created_at, processed_at").eq("id", id).maybeSingle();
   const batch = (batchRow ?? null) as ImportBatchRow | null;
   if (!batch) notFound();
+  // A member of two firms may arrive here from the other firm's context: the page wears the
+  // batch's firm, never the remembered one.
+  if (batch.firm_id !== ctx.firmId) {
+    const owning = await staffContext(batch.firm_id);
+    if (!owning || owning.firmId !== batch.firm_id) notFound();
+    ctx = owning;
+  }
+  const { supabase, timezone } = ctx;
 
   const [{ data: rowRows }, staff] = await Promise.all([
     supabase.from("import_rows").select("id, batch_id, firm_id, row_no, raw, skip, outcome, matter_id, invite_id, note, processed_at").eq("batch_id", batch.id).order("row_no", { ascending: true }).limit(5000),
@@ -47,9 +55,8 @@ export default async function ImportResultPage({ params, searchParams }: { param
   const skipped = rows.filter((r) => r.outcome === "skipped").length;
   const failed = rows.filter((r) => r.outcome === "failed").length;
   const pending = rows.filter((r) => !r.processed_at).length;
-  const linked = rows.filter((r) => r.note === "client linked").length;
   const invited = rows.filter((r) => r.invite_id).length;
-  const notLinked = rows.filter((r) => r.note?.startsWith("client not linked")).length;
+  const notInvited = rows.filter((r) => r.note?.startsWith("client not invited")).length;
 
   const results = rows.map((r) => [r.row_no, r.raw.title ?? "", r.raw.legacy_reference ?? "", r.outcome ?? "pending", r.matter_id ? matters.get(r.matter_id)?.reference ?? "" : "", r.note ?? ""]);
 
@@ -80,9 +87,8 @@ export default async function ImportResultPage({ params, searchParams }: { param
               ["Matters filed", created],
               ["Left out", skipped],
               ["Refused", failed],
-              ["Clients linked", linked],
               ["Invitations to send", invited],
-              ["Clients not linked", notLinked],
+              ["Clients not invited", notInvited],
             ] as Array<[string, number]>).map(([k, v]) => (
               <div key={k} className="rounded-lg border border-gray-200 px-3 py-2">
                 <dt className="text-xs uppercase tracking-wide text-gray-500">{k}</dt>
@@ -99,7 +105,7 @@ export default async function ImportResultPage({ params, searchParams }: { param
           <CardHeader title="Send each client their link" />
           <CardBody className="space-y-3">
             <p className="text-sm text-gray-600">
-              These people are not on Docket yet. Each link signs them in and puts them on their matter; it lasts thirty days. Anyone holding a link can join the matter, so send it only to the person it is for. Docket does not send it.
+              Each link signs the client in — with the account they have, or one they make — and puts them on their matter; it lasts thirty days and is offered here until they accept. Anyone holding a link can join the matter, so send it only to the person it is for. Docket does not send it.
             </p>
             <ul className="divide-y divide-gray-100">
               {rows.filter((r) => r.invite_id && invites.get(r.invite_id)).map((r) => {

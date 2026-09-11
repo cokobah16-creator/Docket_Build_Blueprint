@@ -431,10 +431,12 @@ members; the court by exact name in the directory, otherwise kept as text; `open
 `closed_on` are calendar days (`import_day()`: ISO or day/month/year); the reference is minted
 by `next_reference()`; the other side goes onto `matter_adverse_parties`, one name per semicolon;
 an internal `Brought onto Docket` note is posted and nothing client-visible is invented; the
-client is linked only where `can_see_profile()` already allows it (by `import_phone_key()` E.164
-phone or email), otherwise an `invites` row is created for the matter (30 days) and its token is
-shown once on the result screen; with `conflict_checks_required` on, the matter comes in and the
-row's note carries the guard's own sentence. Audits `matter.imported`.
+client is **never linked** by the file's phone or email (both unverified: a person the firm can see
+could claim another's file by changing their own number) — an `invites` row is created for the
+matter (30 days, `import_phone_key()` E.164 phone or email), readable by the firm like any
+invitation, unless the number belongs to a member of the firm or the firm requires conflict
+clearance and the matter is not cleared, in which cases the row says so and no invitation is
+made. Two calls on one batch are serialised on the batch row. Audits `matter.imported`.
 
 Refuses: `not permitted` *(42501)* · `process between 1 and 200 rows at a time`
 

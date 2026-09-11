@@ -35,7 +35,8 @@ insert into fx select 'stranger', id from auth.users where email='ob-stranger@te
 insert into fx select 'oadmin',   id from auth.users where email='ob-other-admin@test';
 update profiles set full_name = 'Chukwuemeka Okonkwo', phone = '+2348031112222' where id = (select v from fx where k='client');
 update profiles set full_name = 'Far Away', phone = '+2348039998888' where id = (select v from fx where k='far');
-update profiles set full_name = 'Ngozi Lawyer' where id = (select v from fx where k='lawyer');
+update profiles set full_name = 'Ngozi Lawyer', phone = '+2348035550000' where id = (select v from fx where k='lawyer');
+update profiles set full_name = 'Ngozi Lawyer' where id = (select v from fx where k='staff');
 insert into firm_members (firm_id, user_id, role) values
   ((select v from fx where k='firm'),  (select v from fx where k='admin'),  'admin'),
   ((select v from fx where k='firm'),  (select v from fx where k='lawyer'), 'lawyer'),
@@ -58,7 +59,8 @@ begin
   perform t_check('a member reads where the firm stands', r ? 'gates' and r ? 'skipped' and r ? 'reference_issued');
   perform t_reset();
   select (select status = 'active' from firms where id = f) and firm_policies_published(f)
-         and exists (select 1 from services where firm_id = f and is_active)
+         and exists (select 1 from services s where s.firm_id = f and s.is_active
+                      and ((select paystack_subaccount is not null from firms where id = f) or not (s.requires_prepayment and s.price_minor > 0)))
          and exists (select 1 from availability_rules where firm_id = f)
          and exists (select 1 from lawyer_profiles where firm_id = f and is_public) into exp_bookable;
   perform t_check('bookable is exactly what book_appointment() would allow', (r -> 'gates' ->> 'bookable')::bool = exp_bookable);
@@ -98,6 +100,7 @@ begin
   perform t_check('an international number is kept', import_phone_key('+44 20 7946 0958') = '+442079460958');
   perform t_check('234 without the plus gains it', import_phone_key('2348031112222') = '+2348031112222');
   perform t_check('nonsense is null', import_phone_key('call me') is null);
+  perform t_check('a stray plus before a local number is read as local, never stored as +0…', import_phone_key('+0803 111 2222') = '+2348031112222');
   perform t_check('an ISO day is that day', import_day('2021-03-12') = date '2021-03-12');
   perform t_check('a day/month/year is that day', import_day('12/03/2021') = date '2021-03-12' and import_day('12.03.2021') = date '2021-03-12');
   perform t_check('an unreadable day fails, not guesses', t_fails('select import_day(''yesterday'')', 'not readable'));
@@ -112,7 +115,7 @@ begin
   perform t_as(sf);
   perform t_check('staff cannot stage an import', t_refused(format('insert into import_batches (id, firm_id, source_name, created_by) values (%L, %L, ''old.csv'', %L)', b, f, sf), '42501'));
   perform t_reset(); perform t_as(ad);
-  insert into import_batches (id, firm_id, source_name, row_count, created_by) values (b, f, 'caseload.csv', 8, ad);
+  insert into import_batches (id, firm_id, source_name, row_count, created_by) values (b, f, 'caseload.csv', 10, ad);
   insert into import_rows (batch_id, firm_id, row_no, raw) values
     (b, f, 1, jsonb_build_object('title', 'Okonkwo v Eze', 'cause_title', 'Okonkwo v Eze & 2 Ors', 'type', 'Litigation', 'status', 'in_progress', 'court', 'Customary Court, Asaba',
                                  'suit_number', 'A/123/2021', 'opened_on', '12/03/2021', 'legacy_reference', 'F-001', 'handling_lawyer', 'ob-lawyer@test',
@@ -123,9 +126,11 @@ begin
     (b, f, 5, jsonb_build_object('title', 'Okonkwo again', 'type', 'litigation', 'legacy_reference', 'F-001')),
     (b, f, 6, jsonb_build_object('title', 'Time travel', 'type', 'advisory', 'opened_on', '2020-01-15', 'closed_on', '2019-12-01')),
     (b, f, 7, jsonb_build_object('title', 'Named only', 'type', 'estate', 'client_name', 'Somebody Unreachable', 'opened_on', '2019-06-30', 'closed_on', '2020-02-01', 'status', 'closed')),
-    (b, f, 8, jsonb_build_object('title', 'Wrong type', 'type', 'quantum'));
+    (b, f, 8, jsonb_build_object('title', 'Wrong type', 'type', 'quantum')),
+    (b, f, 9, jsonb_build_object('title', 'Colleague as client', 'type', 'advisory', 'client_phone', '+2348035550000')),
+    (b, f, 10, jsonb_build_object('title', 'Two of them', 'type', 'advisory', 'handling_lawyer', 'Ngozi Lawyer'));
   update import_rows set skip = true where batch_id = b and row_no = 4;
-  perform t_check('an admin stages a batch and unticks a row', (select count(*) = 8 and bool_or(skip) from import_rows where batch_id = b));
+  perform t_check('an admin stages a batch and unticks a row', (select count(*) = 10 and bool_or(skip) from import_rows where batch_id = b));
   perform t_reset(); perform t_as(l);
   perform t_check('a lawyer who is not an admin cannot read the staged rows', not exists (select 1 from import_rows where batch_id = b));
   perform t_check('nor process them', t_refused(format('select process_import_batch(%L)', b), '42501'));
@@ -141,12 +146,14 @@ declare ad uuid := (select v from fx where k='admin'); l uuid := (select v from 
 begin
   perform t_as(ad);
   r := process_import_batch(b, 3);
-  perform t_check('three rows processed, five left', (r ->> 'processed')::int = 3 and (r ->> 'remaining')::int = 5);
+  perform t_check('three rows processed, seven left', (r ->> 'processed')::int = 3 and (r ->> 'remaining')::int = 7);
   r := process_import_batch(b, 25);
   perform t_check('the rest processed, none left', (r ->> 'remaining')::int = 0);
   perform t_check('the batch is marked processed', (select processed_at is not null from import_batches where id = b));
-  perform t_check('outcomes: three created, two skipped, three failed',
-    (select count(*) filter (where outcome = 'created') = 3 and count(*) filter (where outcome = 'skipped') = 2 and count(*) filter (where outcome = 'failed') = 3 from import_rows where batch_id = b));
+  perform t_check('outcomes: four created, two skipped, four failed',
+    (select count(*) filter (where outcome = 'created') = 4 and count(*) filter (where outcome = 'skipped') = 2 and count(*) filter (where outcome = 'failed') = 4 from import_rows where batch_id = b));
+  perform t_check('row 9: a colleague''s number is refused as a client, and no invitation is made', (select outcome = 'created' and invite_id is null and note like 'client not invited: that phone or email belongs to a member%' from import_rows where batch_id = b and row_no = 9));
+  perform t_check('row 10: two members with the same name fail the row rather than pick one', (select outcome = 'failed' and note like 'handling lawyer "Ngozi Lawyer" matches 2 members%' from import_rows where batch_id = b and row_no = 10));
   select matter_id into m1 from import_rows where batch_id = b and row_no = 1;
   select matter_id into m2 from import_rows where batch_id = b and row_no = 2;
   select matter_id into m7 from import_rows where batch_id = b and row_no = 7;
@@ -157,10 +164,13 @@ begin
     and exists (select 1 from matter_court_numbers where matter_id = m1 and number = 'A/123/2021'));
   perform t_check('row 1: the handling lawyer leads it', exists (select 1 from matter_lawyers where matter_id = m1 and user_id = l and is_lead) and (select handling_lawyer_id = l from matters where id = m1));
   perform t_check('row 1: the other side is on the register, one per semicolon', (select count(*) = 2 from matter_adverse_parties where matter_id = m1));
-  perform t_check('row 1: the client the firm could already see is linked', exists (select 1 from matter_parties where matter_id = m1 and user_id = cl and role = 'client') and (select note = 'client linked' from import_rows where batch_id = b and row_no = 1));
+  perform t_check('row 1: the client is invited, never linked — even one the firm already deals with',
+    not exists (select 1 from matter_parties where matter_id = m1)
+    and (select invite_id is not null and note like 'invitation created%' from import_rows where batch_id = b and row_no = 1)
+    and exists (select 1 from invites i join import_rows ir on ir.invite_id = i.id where ir.batch_id = b and ir.row_no = 1 and i.phone = '+2348031112222' and i.matter_id = m1));
   perform t_check('row 1: an internal note records the import and nothing client-visible was invented',
     exists (select 1 from updates where matter_id = m1 and visibility = 'internal' and title = 'Brought onto Docket') and not exists (select 1 from updates where matter_id = m1 and visibility = 'client'));
-  perform t_check('row 2: a client the firm cannot see is invited, not linked, and the platform court is matched',
+  perform t_check('row 2: a client nobody knows is invited, and the platform court is matched',
     (select invite_id is not null and note like 'invitation created%' from import_rows where batch_id = b and row_no = 2)
     and exists (select 1 from invites i join import_rows ir on ir.invite_id = i.id where ir.batch_id = b and ir.row_no = 2 and i.phone = '+2348039998888' and i.role = 'client' and i.matter_id = m2)
     and not exists (select 1 from matter_parties where matter_id = m2)
@@ -172,8 +182,10 @@ begin
   perform t_check('row 7: a closed matter keeps both days and its terminal status, with the client named for later',
     (select opened_at = date '2019-06-30' and closed_at = date '2020-02-01' from matters where id = m7) and (select note like 'client "Somebody Unreachable" named%' from import_rows where batch_id = b and row_no = 7));
   perform t_check('row 8: an unknown type fails', (select outcome = 'failed' and note like 'unknown matter type%' from import_rows where batch_id = b and row_no = 8));
-  perform t_check('every created matter is audited as imported', (select count(*) = 3 from audit_log where firm_id = f and action = 'matter.imported'));
+  perform t_check('every created matter is audited as imported', (select count(*) = 4 from audit_log where firm_id = f and action = 'matter.imported'));
   perform t_check('a processed row can no longer be changed', (select not skip from import_rows where batch_id = b and row_no = 1) and t_refused(format('insert into import_rows (batch_id, firm_id, row_no, raw) values (%L, %L, 9, ''{}'')', b, f), '42501'));
+  perform t_check('an outcome cannot be staged by hand', t_refused(format('insert into import_rows (batch_id, firm_id, row_no, raw, outcome, processed_at) values (%L, %L, 10, ''{}'', ''created'', now())', b, f), '42501'));
+  perform t_check('p_limit null is the default, not no limit', (process_import_batch(b, null) ->> 'processed')::int = 0);
   perform t_check('nothing is ever deleted', t_refused(format('delete from import_rows where batch_id = %L', b), '42501') and t_refused(format('delete from import_batches where id = %L', b), '42501'));
   r := process_import_batch(b, 25);
   perform t_check('running it again does nothing', (r ->> 'processed')::int = 0);
@@ -189,8 +201,8 @@ begin
   insert into import_batches (id, firm_id, source_name, row_count, created_by) values (b, f, 'later.csv', 1, ad);
   insert into import_rows (batch_id, firm_id, row_no, raw) values (b, f, 1, jsonb_build_object('title', 'Needs clearance', 'type', 'advisory', 'client_phone', '+2348031112222'));
   r := process_import_batch(b, 25);
-  perform t_check('with clearance required the matter is created and the client is not linked, in the database''s words',
-    (select outcome = 'created' and matter_id is not null and note like 'client not linked: this firm requires a cleared conflict check%' from import_rows where batch_id = b and row_no = 1));
+  perform t_check('with clearance required the matter is created and no invitation is made, and the row says why',
+    (select outcome = 'created' and matter_id is not null and invite_id is null and note like 'client not invited: this firm requires a cleared conflict check%' from import_rows where batch_id = b and row_no = 1));
   update firms set conflict_checks_required = false where id = f;
   perform t_reset();
 end $$;

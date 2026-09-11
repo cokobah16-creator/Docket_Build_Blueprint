@@ -12,7 +12,8 @@
 //    own words; a warned row can be ticked out here, or left in to be refused and recorded.
 //  · A row that already looks like a matter on the books (same old file number, suit number or
 //    cause title) is ticked out by default. The person decides; the import never merges.
-//  · No invitation is sent by Docket: each created invitation is shown once on the result page.
+//  · A client is never linked by a number or address in the file: every client row becomes an
+//    invitation the firm sends itself, offered on the result page until the client accepts.
 
 import { useMemo, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -40,7 +41,7 @@ const FIELD_LABELS: Record<ImportField, { label: string; hint: string; required?
   closed_on: { label: "Closed on", hint: "Same form; only for closed files." },
   legacy_reference: { label: "Your file number", hint: "Kept beside the Docket reference; stops the same file coming in twice." },
   client_name: { label: "Client's name", hint: "Shown to you; a person joins only by phone or email." },
-  client_phone: { label: "Client's phone", hint: "0803… or +234…; becomes their invitation." },
+  client_phone: { label: "Client's phone", hint: "0803… or +234…; becomes their invitation. Never a colleague's number." },
   client_email: { label: "Client's email", hint: "" },
   opposing_party: { label: "The other side", hint: "Names separated by semicolons; onto the conflict register." },
   description: { label: "What it is about", hint: "" },
@@ -219,7 +220,7 @@ export function ImportWizard({
           )}
           <p className="text-sm text-gray-600">
             A CSV export from your spreadsheet, one matter per row, with a header row. You say what each column means next.
-            Dates are calendar days (YYYY-MM-DD or DD/MM/YYYY). Clients are invited by phone or email — Docket never makes an account for anyone.{" "}
+            Dates are calendar days (YYYY-MM-DD or DD/MM/YYYY). Every client is invited by phone or email — even one already on Docket — and never linked by a number in a file.{" "}
             <Link href="/firm/admin/import/template" className="text-brand underline">See the columns and download a template</Link>.
           </p>
           <label className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">

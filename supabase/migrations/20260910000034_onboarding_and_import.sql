@@ -15,6 +15,14 @@
 -- number (matters.legacy_reference; the Docket reference is still minted by next_reference()),
 -- and no client-visible "Matter opened today" line is posted — the client sees nothing until
 -- they accept, and then the timeline as the firm keeps it.
+--
+-- A client is never linked by a phone number or an email address in a spreadsheet. Those are
+-- typed by the firm and, on a profile, by the person themselves — neither is verified — so a
+-- match would let anyone who can be seen by the firm claim another person's file by changing
+-- their own number. Every client row becomes an invitation, as for any client: the token is the
+-- proof, and an existing Docket account accepts it like a new one. A number that belongs to a
+-- member of the firm is refused, and where the firm requires conflict clearance before a client
+-- joins a matter, the invitation waits for the clearance, as invite_matter_party() makes it.
 
 -- ---------------------------------------------------------------- 1. the old file number
 alter table public.matters add column legacy_reference text check (legacy_reference is null or length(legacy_reference) between 1 and 80);
@@ -76,7 +84,8 @@ begin
   select count(*) into v_matters from matters where firm_id = p_firm and deleted_at is null;
   select count(distinct user_id) into v_clients from matter_parties where firm_id = p_firm and role = 'client';
   select count(*) into v_invites from invites where firm_id = p_firm and accepted_by is null and expires_at > now();
-  select exists (select 1 from firm_counters where firm_id = p_firm and kind = 'matter') into v_issued;
+  -- Any reference: the prefix locks at the first one of any kind, which is what the settings screen enforces.
+  select exists (select 1 from firm_counters where firm_id = p_firm) into v_issued;
   select coalesce(jsonb_object_agg(step, jsonb_build_object('at', skipped_at, 'by', skipped_by, 'note', note)), '{}'::jsonb) into v_skipped from firm_onboarding_steps where firm_id = p_firm;
   select status into v_domain from domain_requests where firm_id = p_firm and status in ('requested', 'verifying') order by created_at desc limit 1;
 
@@ -100,7 +109,9 @@ begin
   -- The three states a firm is in, from the booking engine's own gates, in its order.
   v := v || jsonb_build_object('gates', jsonb_build_object(
     'site_open', f.status = 'active',
-    'bookable', f.status = 'active' and v_published and v_active > 0 and v_rules > 0 and v_public > 0,
+    'bookable', f.status = 'active' and v_published and v_rules > 0 and v_public > 0
+                and exists (select 1 from services s where s.firm_id = p_firm and s.is_active
+                             and (f.paystack_subaccount is not null or not (s.requires_prepayment and s.price_minor > 0))),
     'payment_ready', f.paystack_subaccount is not null or not v_needs_settlement
   ));
   return v;
@@ -145,8 +156,10 @@ create policy import_rows_select on public.import_rows for select using (exists 
 create policy import_rows_insert on public.import_rows for insert with check (admin_w(firm_id) and exists (select 1 from import_batches b where b.id = batch_id and b.firm_id = import_rows.firm_id and b.processed_at is null));
 create policy import_rows_update on public.import_rows for update using (admin_w(firm_id) and processed_at is null) with check (admin_w(firm_id) and processed_at is null);
 revoke all on public.import_batches, public.import_rows from anon, authenticated;
-grant select, insert on public.import_batches to authenticated;
-grant select, insert on public.import_rows to authenticated;
+grant select on public.import_batches to authenticated;
+grant insert (id, firm_id, kind, source_name, row_count, created_by) on public.import_batches to authenticated;
+grant select on public.import_rows to authenticated;
+grant insert (id, batch_id, firm_id, row_no, raw, skip) on public.import_rows to authenticated;
 grant update (skip) on public.import_rows to authenticated;
 create trigger import_rows_check_firm before insert or update on public.import_rows for each row execute function public.check_row_firm();
 comment on table public.import_batches is 'One staged file. Rows are processed by process_import_batch(), a bounded number per call, each on its own.';
@@ -156,7 +169,8 @@ comment on table public.import_rows is 'One staged CSV row (raw), and what becam
 create or replace function public.import_phone_key(p text) returns text
 language sql immutable strict set search_path = public as $$
   select case
-    when d ~ '^\+[0-9]{8,15}$' then d
+    when d ~ '^\+[1-9][0-9]{7,14}$' then d
+    when d ~ '^\+0[0-9]{10}$' then '+234' || substr(d, 3)
     when d ~ '^0[0-9]{10}$' then '+234' || substr(d, 2)
     when d ~ '^234[0-9]{10}$' then '+' || d
     when d ~ '^[0-9]{10}$' then '+234' || d
@@ -179,22 +193,25 @@ end $$;
 -- its reason and the next row goes on. Returns the running totals and what is left.
 create or replace function public.process_import_batch(p_batch uuid, p_limit int default 25)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare b import_batches%rowtype; r import_rows%rowtype; v_uid uuid := auth.uid();
+declare b import_batches%rowtype; r import_rows%rowtype; v_uid uuid := auth.uid(); v_n int;
         n_done int := 0; n_created int := 0; n_skipped int := 0; n_failed int := 0; n_left int;
         raw jsonb; v_title text; v_type matter_type; v_status uuid; v_status_key text; v_lead uuid; v_orig uuid;
         v_court uuid; v_court_name text; v_opened date; v_closed date; v_ref text; v_id uuid; v_note text;
         v_phone text; v_email text; v_client uuid; v_invite uuid; v_legacy text; v_existing text; v_link_note text; e text;
 begin
-  select * into b from import_batches where id = p_batch;
+  -- One run per batch at a time: the batch row is locked for the call, so a retried or
+  -- double-submitted call waits and then finds the rows already processed.
+  select * into b from import_batches where id = p_batch for update;
   if not found or not admin_w(b.firm_id) then raise exception 'not permitted' using errcode = '42501'; end if;
+  p_limit := coalesce(p_limit, 25);
   if p_limit < 1 or p_limit > 200 then raise exception 'process between 1 and 200 rows at a time'; end if;
 
-  for r in select * from import_rows where batch_id = p_batch and processed_at is null order by row_no limit p_limit loop
+  for r in select * from import_rows where batch_id = p_batch and processed_at is null order by row_no limit p_limit for update loop
     n_done := n_done + 1;
     raw := r.raw;
     begin
       if r.skip then
-        update import_rows set outcome = 'skipped', note = 'left out before processing', processed_at = now() where id = r.id;
+        update import_rows set outcome = 'skipped', note = 'left out before processing', processed_at = now() where id = r.id and processed_at is null;
         n_skipped := n_skipped + 1; continue;
       end if;
 
@@ -202,7 +219,7 @@ begin
       if v_legacy is not null then
         select reference into v_existing from matters where firm_id = b.firm_id and legacy_reference = v_legacy and deleted_at is null limit 1;
         if v_existing is not null then
-          update import_rows set outcome = 'skipped', note = format('already on Docket as %s', v_existing), processed_at = now() where id = r.id;
+          update import_rows set outcome = 'skipped', note = format('already on Docket as %s', v_existing), processed_at = now() where id = r.id and processed_at is null;
           n_skipped := n_skipped + 1; continue;
         end if;
       end if;
@@ -221,17 +238,19 @@ begin
 
       v_lead := null;
       if nullif(btrim(coalesce(raw ->> 'handling_lawyer', '')), '') is not null then
-        select fm.user_id into v_lead from firm_members fm join profiles p on p.id = fm.user_id
-         where fm.firm_id = b.firm_id and (lower(p.email) = lower(btrim(raw ->> 'handling_lawyer')) or lower(p.full_name) = lower(btrim(raw ->> 'handling_lawyer'))) limit 1;
-        if v_lead is null then raise exception 'handling lawyer "%" is not a member of the firm — use their email or exact name', raw ->> 'handling_lawyer'; end if;
+        select count(*), min(fm.user_id::text)::uuid into v_n, v_lead from firm_members fm join profiles p on p.id = fm.user_id
+         where fm.firm_id = b.firm_id and (lower(p.email) = lower(btrim(raw ->> 'handling_lawyer')) or lower(p.full_name) = lower(btrim(raw ->> 'handling_lawyer')));
+        if v_n = 0 then raise exception 'handling lawyer "%" is not a member of the firm — use their email or exact name', raw ->> 'handling_lawyer'; end if;
+        if v_n > 1 then raise exception 'handling lawyer "%" matches % members — use their email', raw ->> 'handling_lawyer', v_n; end if;
       else
         v_lead := v_uid;
       end if;
       v_orig := null;
       if nullif(btrim(coalesce(raw ->> 'originating_lawyer', '')), '') is not null then
-        select fm.user_id into v_orig from firm_members fm join profiles p on p.id = fm.user_id
-         where fm.firm_id = b.firm_id and (lower(p.email) = lower(btrim(raw ->> 'originating_lawyer')) or lower(p.full_name) = lower(btrim(raw ->> 'originating_lawyer'))) limit 1;
-        if v_orig is null then raise exception 'originating lawyer "%" is not a member of the firm', raw ->> 'originating_lawyer'; end if;
+        select count(*), min(fm.user_id::text)::uuid into v_n, v_orig from firm_members fm join profiles p on p.id = fm.user_id
+         where fm.firm_id = b.firm_id and (lower(p.email) = lower(btrim(raw ->> 'originating_lawyer')) or lower(p.full_name) = lower(btrim(raw ->> 'originating_lawyer')));
+        if v_n = 0 then raise exception 'originating lawyer "%" is not a member of the firm', raw ->> 'originating_lawyer'; end if;
+        if v_n > 1 then raise exception 'originating lawyer "%" matches % members — use their email', raw ->> 'originating_lawyer', v_n; end if;
       end if;
 
       v_court := null; v_court_name := nullif(btrim(coalesce(raw ->> 'court', '')), '');
@@ -266,23 +285,18 @@ begin
                      case when v_legacy is not null then format(', file %s', v_legacy) else '' end, v_opened),
               now(), v_uid);
 
-      -- The client: linked only where the firm could already see that person; otherwise invited.
+      -- The client: invited, never linked (see the header). A number or address that belongs to a
+      -- member of the firm is refused — a member cannot be the firm's client, and accept_invite()
+      -- would refuse them anyway. Where the firm requires clearance, the invitation waits for it.
       v_link_note := null; v_client := null; v_invite := null;
       v_phone := import_phone_key(nullif(btrim(coalesce(raw ->> 'client_phone', '')), ''));
       v_email := nullif(lower(btrim(coalesce(raw ->> 'client_email', ''))), '');
       if v_phone is not null or v_email is not null then
-        select p.id into v_client from profiles p
-         where ((v_phone is not null and p.phone = v_phone) or (v_email is not null and lower(p.email) = v_email))
-           and can_see_profile(p.id)
-           and not exists (select 1 from firm_members fm where fm.firm_id = b.firm_id and fm.user_id = p.id)
-         limit 1;
-        if v_client is not null then
-          begin
-            insert into matter_parties (matter_id, firm_id, user_id, role, invited_by) values (v_id, b.firm_id, v_client, 'client', v_uid);
-            v_link_note := 'client linked';
-          exception when others then
-            v_link_note := 'client not linked: ' || sqlerrm;
-          end;
+        if exists (select 1 from profiles p join firm_members fm on fm.user_id = p.id
+                    where fm.firm_id = b.firm_id and ((v_phone is not null and p.phone = v_phone) or (v_email is not null and lower(p.email) = v_email))) then
+          v_link_note := 'client not invited: that phone or email belongs to a member of the firm — a member cannot be its client';
+        elsif (select conflict_checks_required from firms where id = b.firm_id) and not conflict_cleared(v_id) then
+          v_link_note := 'client not invited: this firm requires a cleared conflict check before a client joins a matter — clear it, then invite them from the matter';
         else
           insert into invites (firm_id, matter_id, phone, email, role, created_by, expires_at)
           values (b.firm_id, v_id, v_phone, v_email, 'client', v_uid, now() + interval '30 days')
@@ -295,12 +309,12 @@ begin
 
       perform audit('matter.imported', 'matter', v_id, b.firm_id,
                     jsonb_build_object('reference', v_ref, 'legacy_reference', v_legacy, 'batch_id', p_batch, 'row_no', r.row_no, 'client', v_client, 'invite', v_invite));
-      update import_rows set outcome = 'created', matter_id = v_id, invite_id = v_invite, note = v_link_note, processed_at = now() where id = r.id;
+      update import_rows set outcome = 'created', matter_id = v_id, invite_id = v_invite, note = v_link_note, processed_at = now() where id = r.id and processed_at is null;
       n_created := n_created + 1;
     exception when others then
       -- The row's own failure; the matter it half-made is rolled back with the block.
       e := sqlerrm;
-      update import_rows set outcome = 'failed', note = e, processed_at = now() where id = r.id;
+      update import_rows set outcome = 'failed', note = e, processed_at = now() where id = r.id and processed_at is null;
       n_failed := n_failed + 1;
     end;
   end loop;

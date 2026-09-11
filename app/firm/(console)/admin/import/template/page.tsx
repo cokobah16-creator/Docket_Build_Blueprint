@@ -20,7 +20,7 @@ const COLUMNS: Array<[string, string]> = [
   ["closed_on", "Same form. Only for closed files; must not be before opened_on."],
   ["legacy_reference", "Your old file number. Kept beside the Docket reference, and the same number is never imported twice."],
   ["client_name", "For you to recognise the row. A client joins only by phone or email."],
-  ["client_phone", "0803 000 0000 or +234…; becomes their invitation, unless your firm already deals with them on Docket."],
+  ["client_phone", "0803 000 0000 or +234…; becomes their invitation, which you send. A client already on Docket accepts it with their account."],
   ["client_email", "Alternative to the phone."],
   ["opposing_party", "The other side, several names separated by semicolons. Goes onto the register conflict checks search."],
   ["description", "What the matter is about. The client can read it once they join."],

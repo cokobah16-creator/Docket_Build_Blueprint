@@ -38,12 +38,13 @@ linked, invitations to send; every row with its reason; and a results file to do
   file number is kept beside the Docket reference, and the same number is never imported twice.
 - **The reference prefix locks at the first matter.** Check it under Settings → Operations
   before you import.
-- **Clients are never made up.** A client your firm already deals with on Docket is put on the
-  matter; anyone else gets an invitation you send yourself, shown once on the result page.
+- **Clients are never made up, and never linked by a number in a file.** Every client row becomes
+  an invitation you send yourself, offered on the result page until they accept — a client already
+  on Docket accepts it with their account. A colleague's number is refused as a client.
 - **Nothing is invented for the client to read.** The import posts one internal note per matter;
   the client sees the timeline as the firm keeps it once they join.
-- **With conflict checks required**, every matter comes in and its client waits until a check on
-  that matter is cleared; the row says so.
+- **With conflict checks required**, every matter comes in and no invitation is made until a check
+  on that matter is cleared; the row says so, and you invite from the matter once it is.
 
 Only an owner or an administrator can import. The columns are listed, with a template, at
 `/firm/admin/import/template`.
