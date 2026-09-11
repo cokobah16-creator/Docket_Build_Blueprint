@@ -402,10 +402,10 @@ resolves to it), pg_trgm goes into the `extensions` schema, and the clearance gu
 firm switches it on. 33 is safe either side for the same reasons: it tightens what 29, 31 and 32
 admit without changing any call the deployed front end makes.
 
-| | As of 11 Sep 2026, 16:50 UTC | Reconciled against |
+| | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|
-| **App** | `2adae58` (the merge of PR #19), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
-| **Schema** | Migrations **1–29 and 31–33** applied: 34 ledger entries (`20260909000001_schema` … `wave_two_review`, plus the two unnumbered `consultations` and `client_portal`). **30 is not applied** — it waits for the front end that calls `open_document_version()` (the ordering rule above). 29 (walls, default off), 31 (additive), 32 (default off; `open_matter()` keeps resolving for the deployed form) and 33 (the review round, which only tightens what those admit) went live ahead of their front end | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
+| **App** | `bcc1dc8` (the merge of PR #20), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
+| **Schema** | Migrations **1–33**, all applied: 35 ledger entries (`20260909000001_schema` … `wave_two_review`, plus the two unnumbered `consultations` and `client_portal`). 30 (`document_reads`) was applied last, after this deploy was READY, per the ordering rule above; 29, 31, 32 and 33 had gone live ahead of their front end, each default-off or additive | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
 | **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v8** (renders `document_requested` / `document_received`) · `video-session` **v2** · `storage-manifest` **v1** (`storage_manifest_url` in Vault; `docket-storage-manifest` runs `*/10 * * * *`) | MCP `list_edge_functions`; `cron.job`; `cron.job_run_details` |
 
 Migration ledger names are the file names for 1–21 and short names after: `wave_two_review` is
@@ -413,7 +413,7 @@ Migration ledger names are the file names for 1–21 and short names after: `wav
 `next_action_work_item` 26, `message_reads` 25, `wave_zero_doors` 24, `booking_limit_in_the_rpc` 23,
 `member_and_message_invariants` 22.
 
-Previous: app `2adae58` against 1–28 (13:35 UTC).
+Previous: app `2adae58` against 1–29 and 31–33 (16:50 UTC); app `2adae58` against 1–28 (13:35 UTC).
 
 Previous: app `fe45072` against 1–25 (12:40 UTC); app `6778f3c` against 1–24 (11:30 UTC), when the
 schema was ahead of the app by five migrations with the compat suite as the reason that was safe.
