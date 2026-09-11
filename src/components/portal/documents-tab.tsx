@@ -64,6 +64,10 @@ export function DocumentsTab({
     setPreview({ doc, url: null, loading: true });
     const supabase = supabaseBrowser();
     if (!supabase) return;
+    // The read is recorded first, and the record is what the storage policy checks (migration
+    // 30): without it the signed URL is refused. Not a courtesy log — the door.
+    const { error: openErr } = await supabase.rpc("open_document_version", { p_version: doc.version.id });
+    if (openErr) { setError(openErr.message); setPreview(null); return; }
     const { data, error: sErr } = await supabase.storage.from("documents").createSignedUrl(doc.version.storage_path, 120);
     if (sErr || !data?.signedUrl) { setError(sErr?.message ?? "Could not open the document."); setPreview(null); return; }
     setPreview({ doc, url: data.signedUrl, loading: false });

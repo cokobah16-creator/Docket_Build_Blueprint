@@ -172,6 +172,9 @@ export function OpenProcessButton({
       setError(versionError?.message ?? "That document is no longer available to you.");
       return;
     }
+    // The served firm records its read like anyone else (migration 30); the record is the gate.
+    const { error: openError } = await supabase.rpc("open_document_version", { p_version: version.id });
+    if (openError) { setError(openError.message); return; }
     const { data: signed, error: signError } = await supabase.storage.from("documents").createSignedUrl(version.storage_path, 120);
     setBusy(false);
     if (signError || !signed?.signedUrl) { setError(signError?.message ?? "The document could not be opened."); return; }
