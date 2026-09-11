@@ -390,8 +390,24 @@ export interface MessageRow {
   sender_id: string | null;
   body: string | null;
   attachments: MessageAttachment[];
+  /** First read from across the firm/client line — "seen by the other side". Never who. */
   read_at: string | null;
+  /** False for messages that predate per-reader receipts (migration 25); they count by read_at. */
+  reads_tracked: boolean;
   created_at: string;
+}
+
+/** Row of firm_threads (migration 25): one per thread the caller can read. */
+export interface FirmThread {
+  firm_id: string;
+  matter_id: string | null;
+  appointment_id: string | null;
+  last_message_id: string;
+  last_message_at: string;
+  /** The firm spoke last. Its inverse is "the firm owes the reply". */
+  last_from_firm: boolean;
+  /** Messages from across the line that the CALLER has not read. Per viewer. */
+  unread_for_me: number;
 }
 
 export interface NotificationRow {
@@ -432,10 +448,13 @@ export interface FirmOverview {
   /** Minor units per currency, e.g. { NGN: 22575000, USD: 50000 }. Never one sum. */
   outstanding_by_currency: Record<string, number>;
   collected_this_month_by_currency: Record<string, number>;
+  /** Per viewer since migration 25: what THIS member has not read. Colleagues see different numbers. */
   unread_messages: number;
   overdue_tasks: number;
   client_uploads: number;
   service_to_acknowledge: number;
+  /** Shared: threads whose latest message came from outside the firm — what the firm owes, whoever has read it. */
+  threads_awaiting_reply: number;
 }
 
 /** Row of firm_sittings_due: a past court date with no update posted. */
