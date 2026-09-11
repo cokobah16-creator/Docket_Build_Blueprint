@@ -372,6 +372,44 @@ Refuses: `service record not found` · `not permitted` *(42501)*
 
 ## 5. Firm administration
 
+### `firm_readiness(p_firm uuid)`
+Returns `jsonb`. **Who:** any member of the firm. Where the firm stands, from one place
+(migration 34): `book_appointment()`'s gates in its order — `status`, `policies_published`,
+`active_services`, `availability_rules`, `public_lawyers`, `settlement_account` against
+`needs_settlement` (a priced, prepaid service switched on) — the setup facts (`members`, `owners`,
+`lawyers`, `intake_forms`, `brand_colours`, `brand_logo`, `address_for_service`,
+`reference_prefix`, `reference_issued`, `matters`, `clients`, `pending_invites`, `custom_domain`,
+`domain_request`), the `skipped` steps, and three `gates`: `site_open`, `bookable`,
+`payment_ready`. The admin overview and the services page both read it, so they cannot disagree.
+
+Refuses: `not permitted` *(42501)*
+
+### `skip_onboarding_step(p_firm uuid, p_step text, p_note text = null)` / `resume_onboarding_step(p_firm uuid, p_step text)`
+Return `void`. **Who:** `admin_w`. Records that the firm chose to set a checklist step aside, with
+who, when and why (`firm_onboarding_steps`), or puts it back. A fact is never stored: `done` is
+always computed. Audits `onboarding.step_skipped` / `onboarding.step_resumed`.
+
+Refuses: `not permitted` *(42501)* · an unknown step *(23514, the check constraint)*
+
+### `process_import_batch(p_batch uuid, p_limit int = 25)`
+Returns `jsonb` — `processed`, `created`, `skipped`, `failed`, `remaining`. **Who:** `admin_w` of
+the batch's firm. Files up to `p_limit` (1–200) unprocessed rows of a staged import
+(`import_batches`, `import_rows`, migration 34), each in its own block, so a failing row records
+its reason and the rest go on; call it until `remaining` is 0. Per row: an unticked row is
+skipped; a `legacy_reference` already on the firm's books is skipped as `already on Docket as
+<reference>`; the title, type and status must be readable (an unknown status key or type fails
+the row — nothing is filed without one); the lawyers are matched by email or exact name among
+members; the court by exact name in the directory, otherwise kept as text; `opened_on` and
+`closed_on` are calendar days (`import_day()`: ISO or day/month/year); the reference is minted
+by `next_reference()`; the other side goes onto `matter_adverse_parties`, one name per semicolon;
+an internal `Brought onto Docket` note is posted and nothing client-visible is invented; the
+client is linked only where `can_see_profile()` already allows it (by `import_phone_key()` E.164
+phone or email), otherwise an `invites` row is created for the matter (30 days) and its token is
+shown once on the result screen; with `conflict_checks_required` on, the matter comes in and the
+row's note carries the guard's own sentence. Audits `matter.imported`.
+
+Refuses: `not permitted` *(42501)* · `process between 1 and 200 rows at a time`
+
 Owner or administrator, with MFA, at a firm that is not suspended.
 
 ### `set_member_role(p_firm uuid, p_user uuid, p_role firm_role)`
@@ -603,6 +641,7 @@ that fired them:
 | `validate_notification_templates()` | `firms.notification_templates` | **nothing.** Keeps `{subject, text}` per event key, strips angle brackets, and drops any entry whose `text` is empty |
 | `check_staff_invite_role()` | `staff_invites` | `only an owner may invite another owner` *(42501)* |
 | `guard_conflict_clearance()` | `matter_parties` | `this firm requires a cleared conflict check before a client joins a matter` — only with `firms.conflict_checks_required` on, only for `role = 'client'`, on insert and on any update that moves the row (migration 33) |
+| `check_row_firm()` on `import_rows` | `import_rows` | `row does not belong to the firm that owns the matter` |
 | `guard_document_request()` | `document_requests` | `a withdrawn request stays withdrawn — ask again with a new request` · `an answered request cannot be withdrawn` |
 | `guard_matter_team()` | `matter_lawyers` | `this is the last member of a restricted matter's team — set the matter to firm-wide first, or add someone else` *(42501)* — on delete, and on an update that moves the row off the matter |
 | `check_row_firm()` | every matter-linked table | `row does not belong to the firm that owns the matter` · `row does not belong to the firm that owns the appointment` |

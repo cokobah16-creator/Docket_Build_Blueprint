@@ -12,6 +12,42 @@ database's own words, not a rewritten version of them.
 ---
 
 
+## Your checklist
+
+**`/firm/admin`** opens with three states — *Site published*, *Bookable*, *Payment-ready* — and
+the list of steps behind them, in the order the booking engine checks them. Every line is a fact
+read from the database when the page opens, never a box someone ticked: publishing the policies
+turns the line green because they are published. A step your firm will not do — a settlement
+account when you take payment in chambers, a domain of your own — can be **set aside** with a
+note; that is kept in the audit trail with your name, and the step can be put back.
+
+Two steps only a practitioner can do themselves: their **profile** on the firm's site (from
+**Me**, with the switch that lets clients book them) and their **working week** (from
+Availability). The booking page lists nobody until at least one profile is public and has hours.
+
+## Bringing existing matters in
+
+**`/firm/admin/import`** takes a CSV export of your spreadsheet, one matter per row. You say what
+each column means, the screen shows what will happen row by row — an unknown status, a lawyer
+who is not a member, an unreadable date, a file that already looks like a matter on the books —
+and then the database files them a batch at a time, each row on its own, so one bad row never
+stops the rest. The result page is the reconciliation: how many filed, left out, refused, clients
+linked, invitations to send; every row with its reason; and a results file to download.
+
+- **Dates are kept.** `opened_on` and `closed_on` are the days on the file, not today. Your old
+  file number is kept beside the Docket reference, and the same number is never imported twice.
+- **The reference prefix locks at the first matter.** Check it under Settings → Operations
+  before you import.
+- **Clients are never made up.** A client your firm already deals with on Docket is put on the
+  matter; anyone else gets an invitation you send yourself, shown once on the result page.
+- **Nothing is invented for the client to read.** The import posts one internal note per matter;
+  the client sees the timeline as the firm keeps it once they join.
+- **With conflict checks required**, every matter comes in and its client waits until a check on
+  that matter is cleared; the row says so.
+
+Only an owner or an administrator can import. The columns are listed, with a template, at
+`/firm/admin/import/template`.
+
 ## Matter walls
 
 By default every member of your firm can open every matter — the stance most partnerships want,
@@ -447,6 +483,9 @@ The remedy is with Docket, not in the console. Your data is untouched throughout
 | Price and activate services | `/firm/admin/services` |
 | Write the booking questions | `/firm/admin/intake` |
 | Invite, promote or remove colleagues | `/firm/admin/people` |
+| See the checklist and set a step aside | `/firm/admin` |
+| Bring existing matters in from a spreadsheet | `/firm/admin/import` |
+| Publish your own profile so clients can book you | `/firm/me` |
 | Ask the client for a document | the matter → Documents → Asked of the client |
 | Record the other side, run a conflict check | the matter → Parties |
 | Require a cleared check before a client joins | `/firm/admin/settings` → Conflict checks |

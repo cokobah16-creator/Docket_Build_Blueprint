@@ -73,6 +73,8 @@ somebody you share a matter or an appointment with. Nothing broader.
 | `updates` | the timeline. `visibility = 'client'` or `'internal'`; `updates_client_select` allows only `visibility = 'client'` rows to a party |
 | `court_events` | sittings, purposes, outcomes |
 | `tasks` | internal |
+| `import_rows.raw` | **what a firm typed about each matter and client in a spreadsheet it imported** (migration 34): names, phone numbers, email addresses, the other side, descriptions — kept verbatim as the reconciliation record, readable by the firm's owners and admins only, never deleted. A subject-access search must include it |
+| `matters.legacy_reference` | the firm's old file number |
 | `matter_adverse_parties` | **the other side, by name and alias** — people who have never used Docket, recorded by the firm for conflict checking. Firm work product: no client policy |
 | `conflict_checks` | what the firm searched for and what matched (names, and which matter each was found on), the lawyer's decision and its note. Staff who can see the matter read it; never edited or deleted through the API |
 | `process_service` | `served_on_name`, `served_on_capacity`, `served_at_address`, `server_name`, the note and the proof |

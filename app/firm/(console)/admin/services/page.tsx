@@ -28,6 +28,7 @@
 import Link from "next/link";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { formatMoneyMinor } from "@/lib/money";
+import type { FirmReadiness } from "@/lib/db/types";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { ServicesEditor, type ServiceView } from "./services-editor";
@@ -97,8 +98,10 @@ export default async function ServicesPage({
   // book_appointment() refuses on unpublished policies BEFORE it looks at the service, and
   // create_firm() leaves policies empty, so this is false for every firm the day it is made.
   // Without this line a firm can see every tick green and still have nobody able to book.
-  const { data: publishedRow } = await supabase.rpc("firm_policies_published", { f: firmId });
-  const policiesPublished = publishedRow === true;
+  // One truth with the admin overview: firm_readiness() asks the gates in the engine's order.
+  const { data: readinessRow } = await supabase.rpc("firm_readiness", { p_firm: firmId });
+  const readiness = (readinessRow ?? null) as FirmReadiness | null;
+  const policiesPublished = readiness?.policies_published === true;
 
   const firm = (firmRow ?? null) as FirmRecord | null;
   const services = (serviceRows ?? []) as unknown as ServiceRecord[];
@@ -173,8 +176,8 @@ export default async function ServicesPage({
   ).sort();
 
   const activeServices = views.filter((s) => s.isActive);
-  const publicLawyers = lawyers.filter((l) => l.is_public).length;
-  const availabilityRules = availability.count ?? 0;
+  const publicLawyers = readiness?.public_lawyers ?? lawyers.filter((l) => l.is_public).length;
+  const availabilityRules = readiness?.availability_rules ?? availability.count ?? 0;
   const prepaidWithoutAccount = activeServices.some((s) => s.priceMinor > 0 && s.requiresPrepayment);
 
   // "Can a client book today?" — every line is a fact the booking engine itself checks, in the

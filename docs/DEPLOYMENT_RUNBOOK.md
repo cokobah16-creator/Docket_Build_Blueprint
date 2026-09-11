@@ -151,6 +151,7 @@ Migrations apply in filename order, which is chronological:
 20260910000031_document_requests.sql      document_requests: asked, answered once through fulfil_document_request(), withdrawn — never deleted
 20260910000032_conflict_checks.sql        matter_adverse_parties; conflict_checks shaped; run_conflict_check(), decide_conflict_check(); firms.conflict_checks_required
 20260910000033_wave_two_review.sql        the review round: invitations walled, last member by update, fulfilment columns, clearance on every move, a check bound to its names
+20260910000034_onboarding_and_import.sql  matters.legacy_reference; firm_onboarding_steps; firm_readiness(); import_batches/import_rows and process_import_batch()
 ```
 
 Then the launch tenant's data, if you are running one:
@@ -400,7 +401,9 @@ renderers (v8) before the first request is made. 32 is safe either side: it re-c
 `open_matter()` with two more defaulted parameters (the deployed form passes named arguments and
 resolves to it), pg_trgm goes into the `extensions` schema, and the clearance guard is off until a
 firm switches it on. 33 is safe either side for the same reasons: it tightens what 29, 31 and 32
-admit without changing any call the deployed front end makes.
+admit without changing any call the deployed front end makes. 34 is additive and safe either side:
+nothing the deployed front end reads changes, and the new screens read only the new function
+and tables.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

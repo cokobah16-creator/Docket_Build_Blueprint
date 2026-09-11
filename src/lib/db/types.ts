@@ -438,6 +438,67 @@ export interface ConflictCheckRow {
   created_at: string;
 }
 
+/** What firm_readiness() returns (migration 34): the booking engine's gates, in its order, and the setup facts. */
+export interface FirmReadiness {
+  status: "pending" | "active" | "suspended";
+  verified_at: string | null;
+  slug: string;
+  policies_published: boolean;
+  reference_prefix: string;
+  reference_issued: boolean;
+  settlement_account: boolean;
+  needs_settlement: boolean;
+  active_services: number;
+  all_services: number;
+  availability_rules: number;
+  public_lawyers: number;
+  members: number;
+  owners: number;
+  lawyers: number;
+  intake_forms: number;
+  brand_colours: boolean;
+  brand_logo: boolean;
+  address_for_service: boolean;
+  accepts_platform_service: boolean;
+  matters: number;
+  clients: number;
+  pending_invites: number;
+  custom_domain: string | null;
+  domain_request: string | null;
+  skipped: Record<string, { at: string; by: string | null; note: string | null }>;
+  gates: { site_open: boolean; bookable: boolean; payment_ready: boolean };
+}
+
+export type OnboardingStep =
+  | "policies" | "operations" | "settlement" | "people" | "profile" | "availability"
+  | "services" | "intake" | "brand" | "service_of_process" | "import" | "domain";
+
+export interface ImportBatchRow {
+  id: string;
+  firm_id: string;
+  kind: "matters";
+  source_name: string | null;
+  row_count: number;
+  created_by: string | null;
+  created_at: string;
+  processed_at: string | null;
+}
+
+/** One staged CSV row and what became of it. `raw` is what the firm typed about a client: personal data. */
+export interface ImportRowRecord {
+  id: string;
+  batch_id: string;
+  firm_id: string;
+  row_no: number;
+  raw: Record<string, string>;
+  skip: boolean;
+  outcome: "created" | "skipped" | "failed" | null;
+  matter_id: string | null;
+  invite_id: string | null;
+  note: string | null;
+  processed_at: string | null;
+}
+
 export interface DocumentVersionRow {
   id: string;
   document_id: string;

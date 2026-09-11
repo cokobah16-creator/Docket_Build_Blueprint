@@ -18,7 +18,8 @@ import { formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import type { DomainRequestRow } from "@/lib/db/types";
+import type { DomainRequestRow, FirmReadiness } from "@/lib/db/types";
+import { Checklist } from "./checklist";
 
 export const metadata = { title: "Firm administration" };
 
@@ -127,13 +128,12 @@ export default async function FirmAdminPage({ searchParams }: { searchParams: Pr
     );
   }
 
+  // Where the firm stands is ONE answer: firm_readiness() (migration 34) asks book_appointment()'s
+  // gates in its order and adds the setup facts. The services page reads the same function, so
+  // the two screens can no longer disagree.
   const [
     { data: firmData },
-    published,
-    members,
-    servicesActive,
-    servicesAll,
-    intakeForms,
+    { data: readinessData, error: readinessError },
     { data: requestRows },
   ] = await Promise.all([
     supabase
@@ -141,11 +141,7 @@ export default async function FirmAdminPage({ searchParams }: { searchParams: Pr
       .select("id, slug, name, legal_name, status, plan, custom_domain, verified_at, paystack_subaccount, created_at")
       .eq("id", firmId)
       .maybeSingle(),
-    supabase.rpc("firm_policies_published", { f: firmId }),
-    supabase.from("firm_members").select("user_id", { count: "exact", head: true }).eq("firm_id", firmId),
-    supabase.from("services").select("id", { count: "exact", head: true }).eq("firm_id", firmId).eq("is_active", true),
-    supabase.from("services").select("id", { count: "exact", head: true }).eq("firm_id", firmId),
-    supabase.from("intake_forms").select("id", { count: "exact", head: true }).eq("firm_id", firmId),
+    supabase.rpc("firm_readiness", { p_firm: firmId }),
     supabase
       .from("domain_requests")
       .select("id, firm_id, hostname, status, verification, note, requested_by, decided_by, decided_at, created_at, updated_at")
@@ -166,14 +162,22 @@ export default async function FirmAdminPage({ searchParams }: { searchParams: Pr
     );
   }
 
-  const policiesPublished = published.data === true;
-  const memberCount = members.count ?? 0;
-  const activeServices = servicesActive.count ?? 0;
-  const allServices = servicesAll.count ?? 0;
-  const intakeCount = intakeForms.count ?? 0;
+  const readiness = (readinessData ?? null) as FirmReadiness | null;
+  if (!readiness) {
+    return (
+      <Alert kind="error" title="Where the firm stands could not be read">
+        {readinessError?.message ?? "firm_readiness() returned nothing."} Nothing here is guessed in its place.
+      </Alert>
+    );
+  }
+  const policiesPublished = readiness.policies_published;
+  const memberCount = readiness.members;
+  const activeServices = readiness.active_services;
+  const allServices = readiness.all_services;
+  const intakeCount = readiness.intake_forms;
   const openRequest = ((requestRows ?? []) as DomainRequestRow[])[0] ?? null;
 
-  const canSell = firm.status === "active" && policiesPublished && activeServices > 0;
+  const canSell = readiness.gates.bookable;
 
   return (
     <div className="space-y-6">
@@ -197,9 +201,18 @@ export default async function FirmAdminPage({ searchParams }: { searchParams: Pr
         <Alert kind="warning" title="Your site is open, but nothing can be booked on it yet">
           {!policiesPublished && "Your terms and privacy notice are not published. "}
           {activeServices === 0 && "You have no service switched on. "}
-          Until both are done a visitor can read about the firm and no more.
+          {readiness.availability_rules === 0 && "No lawyer has a working week. "}
+          {readiness.public_lawyers === 0 && "No practitioner profile is public. "}
+          Until each is done a visitor can read about the firm and no more.
         </Alert>
       )}
+
+      <Card>
+        <CardHeader title="Your checklist" />
+        <CardBody>
+          <Checklist firmId={firmId} readiness={readiness} canWrite={firm.status !== "suspended"} />
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader title={firm.name} action={<Badge>{firm.slug}</Badge>} />
