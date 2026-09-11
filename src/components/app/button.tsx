@@ -15,8 +15,12 @@ const variants: Record<AppButtonVariant, string> = {
     "self-start min-h-[44px] rounded-[9px] bg-dk-pri px-5 text-[14px] font-semibold text-dk-on-pri",
   ghost:
     "flex-1 min-h-[48px] rounded-[10px] border border-dk-field bg-white px-4 text-[14px] font-medium text-dk-pri",
+  // 44px, not the artboard's 40. It is the smallest control the app offers, it
+  // is the one most often placed next to something else, and a thumb on a bus
+  // is the constraint this design is for. Everything else about it is the
+  // artboard's.
   "ghost-sm":
-    "flex-none min-h-[40px] rounded-[9px] border border-dk-field bg-white px-[13px] text-[12.5px] font-semibold text-dk-pri whitespace-nowrap",
+    "flex-none min-h-[44px] rounded-[9px] border border-dk-field bg-white px-[13px] text-[12.5px] font-semibold text-dk-pri whitespace-nowrap",
 };
 
 export function appButtonClass(

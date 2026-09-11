@@ -20,6 +20,7 @@ import { formatMoneyByCurrency } from "@/lib/money";
 import { zonedDayRange, formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
 import {
+  AppButton,
   AppButtonLink,
   AppCard,
   AppCardHeader,
@@ -156,12 +157,9 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
             className="w-full min-w-0 bg-transparent text-[13.5px] text-dk-strong placeholder:text-dk-muted focus:outline-none"
           />
         </div>
-        <button
-          type="submit"
-          className="flex min-h-[46px] flex-none items-center rounded-[9px] border border-dk-field bg-white px-[13px] text-[12.5px] font-semibold text-dk-pri"
-        >
+        <AppButton type="submit" variant="ghost-sm">
           Search
-        </button>
+        </AppButton>
       </form>
 
       {/* The chase list first: a sitting nobody reported is the firm's biggest
@@ -208,11 +206,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
                     {sinceLabel(s.scheduled_at, nowMs)}
                   </p>
                 </div>
-                <AppButtonLink
-                  href={`/firm/matters/${s.matter_id}?tab=timeline#post-update`}
-                  variant="primary-sm"
-                  className="px-[14px] text-[12.5px]"
-                >
+                <AppButtonLink href={`/firm/matters/${s.matter_id}?tab=timeline#post-update`} variant="primary-sm">
                   Post update
                 </AppButtonLink>
               </div>
@@ -252,7 +246,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
                       {formatWhen(a.starts_at, tz, { timeStyle: "short" })}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-[13.5px] font-semibold text-dk-strong">
+                      <span className="block truncate text-[13.5px] font-semibold text-dk-strong">
                         {a.client?.full_name ?? "Client"}
                       </span>
                       <span className="mt-0.5 block truncate text-[11.5px] text-dk-soft">
@@ -261,14 +255,10 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
                       </span>
                     </span>
                   </Link>
-                  <div className="flex flex-none flex-col items-end gap-2">
+                  <div className="flex flex-none items-center gap-2">
                     <AppStatusPill status={a.status as Status} />
                     {live && (
-                      <AppButtonLink
-                        href={`/firm/appointments/${a.id}`}
-                        variant="primary-sm"
-                        className="px-[13px] text-[12.5px]"
-                      >
+                      <AppButtonLink href={`/firm/appointments/${a.id}`} variant="primary-sm">
                         Open room
                       </AppButtonLink>
                     )}
@@ -308,7 +298,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
               </p>
               <p className="mt-1.5 text-[11px] leading-[1.35] text-dk-soft">Issued and unpaid</p>
             </div>
-            <AppButtonLink href="/firm/invoices" variant="ghost-sm" className="min-h-[44px]">
+            <AppButtonLink href="/firm/invoices" variant="ghost-sm">
               Invoices
             </AppButtonLink>
           </section>
