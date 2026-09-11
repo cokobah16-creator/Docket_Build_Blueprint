@@ -1,7 +1,7 @@
 # Docket — continuous integration.
 #
-# Five things can be checked without a Supabase project, a Paystack account or a domain, and
-# all five are checked on every push:
+# Six things can be checked without a Supabase project, a Paystack account or a domain, and
+# all six are checked on every push:
 #
 #   sql        the migrations apply in order against an empty Postgres 16, the seed loads, and
 #              every suite in supabase/tests passes. This is the one that matters: the database
@@ -16,8 +16,10 @@
 #   compat     this branch's migrations, then main's own seed and RLS suite run against them, and
 #              every relation and function main's code names checked for existence — the deployed
 #              front end's expectations of the database, from main's side.
+#   lockfile   installs are reproducible: npm ci from the committed lockfile — or, until there is
+#              one, the job generates it and hands it back to be committed.
 #
-# A sixth, e2e, needs a configured Supabase project and is therefore GATED — see the bottom of
+# A seventh, e2e, needs a configured Supabase project and is therefore GATED — see the bottom of
 # this file for exactly what it needs and why it is skipped without it.
 
 name: CI
@@ -193,6 +195,44 @@ jobs:
         env:
           PGPASSWORD: postgres
         run: bash scripts/check-deployed-reads.sh origin/main postgres://postgres:postgres@localhost:5432/docket_compat
+
+  # ---------------------------------------------------------------- reproducible installs
+  #
+  # There is no package-lock.json yet, so every job below installs whatever the registry serves
+  # today: CI can go red from someone else's release, and there is no pinned surface for npm audit
+  # or Dependabot to review. The lockfile cannot be generated where this code is written (no
+  # registry there), so this job generates it where there is one and hands it back — as an
+  # artifact, and base64 in the log for a reader with no artifact access — to be committed. Once
+  # it is committed the job changes meaning: it proves `npm ci` installs from it, and the other
+  # jobs switch to `npm ci` too.
+  lockfile:
+    name: Reproducible installs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: A lockfile, or the makings of one
+        run: |
+          set -euo pipefail
+          if [ -f package-lock.json ]; then
+            npm ci --ignore-scripts --no-audit --no-fund
+            echo "package-lock.json is present and npm ci installs from it"
+            exit 0
+          fi
+          echo "::warning::no package-lock.json — one is generated below; commit it"
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          echo "----- package-lock.json base64 begin -----"
+          base64 -w0 package-lock.json | fold -w 200
+          echo
+          echo "----- package-lock.json base64 end -----"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: package-lock
+          path: package-lock.json
+          if-no-files-found: ignore
 
   # ---------------------------------------------------------------- the app
   typecheck:
