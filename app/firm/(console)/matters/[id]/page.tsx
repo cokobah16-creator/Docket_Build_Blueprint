@@ -300,7 +300,7 @@ async function TimelineSection({ ctx, matter, names }: { ctx: StaffContext; matt
   const [{ data: updateRows }, courts] = await Promise.all([
     ctx.supabase
       .from("updates")
-      .select("id, matter_id, firm_id, kind, visibility, title, body, payload, occurred_at, posted_by, created_at")
+      .select("id, matter_id, firm_id, kind, visibility, title, body, payload, occurred_at, posted_by, created_at, meaning, next_step, client_action, action_required, next_update_by")
       .eq("matter_id", matter.id)
       .order("occurred_at", { ascending: false })
       .limit(200),

@@ -20,6 +20,7 @@
 import { useEffect, useId, useMemo, useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { checkNonSittingDay, postCourtUpdate, type NonSittingCheck } from "@/lib/actions/court";
+import { ClientUpdateFields, EMPTY_SHAPE, type ClientUpdateShape } from "@/components/firm/client-update-fields";
 import { CourtPicker } from "@/components/firm/court-picker";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -130,6 +131,7 @@ export function CourtUpdateForm({
 
   const [noteToClient, setNoteToClient] = useState("");
   const [internalNote, setInternalNote] = useState("");
+  const [shape, setShape] = useState<ClientUpdateShape>(EMPTY_SHAPE);
 
   const [showMore, setShowMore] = useState(false);
   const [courtId, setCourtId] = useState<string | null>(currentCourtId);
@@ -206,8 +208,14 @@ export function CourtUpdateForm({
         judge: judge.trim() || null,
         courtroom: courtroom.trim() || null,
         purposeKind: purposeKind || null,
+        meaning: shape.meaning.trim() || null,
+        nextStep: shape.nextStep.trim() || null,
+        clientAction: shape.clientAction.trim() || null,
+        actionRequired: shape.actionRequired,
+        nextUpdateBy: shape.nextUpdateBy || null,
       });
       if ("error" in result) { setError(result.error); return; }
+      setShape(EMPTY_SHAPE);
       setPosted(true);
       setOutcome("");
       setInstance("");
@@ -376,6 +384,8 @@ export function CourtUpdateForm({
           onChange={(e) => setNoteToClient(e.target.value)} className={field}
         />
       </div>
+
+      <ClientUpdateFields idPrefix={`cu_${uid}`} value={shape} onChange={setShape} />
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
         <label htmlFor={`cu_internal_${uid}`} className="text-sm font-medium text-amber-900">

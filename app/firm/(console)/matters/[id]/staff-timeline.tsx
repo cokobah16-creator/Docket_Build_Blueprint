@@ -24,6 +24,8 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import type { CourtRow, UpdateRow } from "@/lib/db/types";
+import { ClientUpdateFields, EMPTY_SHAPE, type ClientUpdateShape } from "@/components/firm/client-update-fields";
+import { UpdateStructure } from "@/components/portal/update-structure";
 
 /** An updates row as staff read it: visibility and the poster come too. */
 export interface StaffUpdate extends UpdateRow {
@@ -76,6 +78,7 @@ export function StaffTimeline({
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [visibility, setVisibility] = useState<"client" | "internal">("client");
+  const [shape, setShape] = useState<ClientUpdateShape>(EMPTY_SHAPE);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [noted, setNoted] = useState<"client" | "internal" | null>(null);
@@ -119,6 +122,13 @@ export function StaffTimeline({
       body: body.trim() || null,
       posted_by: userId,
       occurred_at: new Date().toISOString(),
+      // The client update's shape travels only on a client-visible entry; an internal note has
+      // no client to be shaped for. The database refuses a "required" with nothing said.
+      meaning: visibility === "client" ? shape.meaning.trim() || null : null,
+      next_step: visibility === "client" ? shape.nextStep.trim() || null : null,
+      client_action: visibility === "client" && shape.actionRequired === "required" ? shape.clientAction.trim() || null : null,
+      action_required: visibility === "client" ? (shape.actionRequired === "required" ? true : shape.actionRequired === "none" ? false : null) : null,
+      next_update_by: visibility === "client" ? shape.nextUpdateBy || null : null,
     };
     // No .select(): the select policy cannot read a row inserted by the same statement.
     const { error: insertError } = await supabase.from("updates").insert(row);
@@ -128,9 +138,10 @@ export function StaffTimeline({
     setItems((cur) => [{ ...row, payload: {}, created_at: row.occurred_at } as StaffUpdate, ...cur]);
     setTitle("");
     setBody("");
+    setShape(EMPTY_SHAPE);
     setNoted(visibility);
     router.refresh();
-  }, [body, firmId, matterId, router, title, userId, visibility]);
+  }, [body, firmId, matterId, router, shape, title, userId, visibility]);
 
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
 
@@ -179,6 +190,7 @@ export function StaffTimeline({
               <label htmlFor="note-body" className="text-sm font-medium text-gray-900">Detail</label>
               <textarea id="note-body" rows={3} maxLength={4000} value={body} onChange={(e) => setBody(e.target.value)} className={field} />
             </div>
+            {visibility === "client" && <ClientUpdateFields idPrefix="note" value={shape} onChange={setShape} />}
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium text-gray-900">Who may read this?</legend>
               <label className="flex items-start gap-2 rounded-lg border border-gray-200 p-3 text-sm">
@@ -229,6 +241,7 @@ export function StaffTimeline({
                   )}
                   <p className="text-sm font-medium text-gray-900">{u.title}</p>
                   {u.body && <p className="mt-1 whitespace-pre-wrap text-sm text-gray-700">{u.body}</p>}
+                  {!internal && <UpdateStructure update={u} compact />}
                   {u.kind === "court_sitting" && (
                     <dl className="mt-2 grid gap-1 text-xs text-gray-600 sm:grid-cols-2">
                       {outcome && (

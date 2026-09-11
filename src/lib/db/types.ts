@@ -342,6 +342,14 @@ export interface UpdateRow {
   payload: Record<string, unknown>;
   occurred_at: string;
   created_at: string;
+  /** The client update's shape (migration 27). Each null means "not stated". */
+  meaning: string | null;
+  next_step: string | null;
+  client_action: string | null;
+  /** null: not stated · false: "nothing is needed from you", stated · true: client_action says what. */
+  action_required: boolean | null;
+  /** When to expect the next update — a calendar day, YYYY-MM-DD. */
+  next_update_by: string | null;
 }
 
 export interface CourtEventRow {

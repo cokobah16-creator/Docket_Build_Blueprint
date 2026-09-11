@@ -98,7 +98,7 @@ type SB = NonNullable<Awaited<ReturnType<typeof supabaseServer>>>;
 async function TimelineTab({ supabase, matterId, tz }: { supabase: SB; matterId: string; tz: string }) {
   const { data } = await supabase
     .from("updates")
-    .select("id, matter_id, firm_id, kind, title, body, payload, occurred_at, created_at")
+    .select("id, matter_id, firm_id, kind, title, body, payload, occurred_at, created_at, meaning, next_step, client_action, action_required, next_update_by")
     .eq("matter_id", matterId)
     .order("occurred_at", { ascending: false })
     .limit(100);
