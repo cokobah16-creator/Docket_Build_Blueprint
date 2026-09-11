@@ -205,12 +205,29 @@ export default async function SittingsPage({
         </Alert>
       )}
 
-      {/* The chase list, in the amber the artboard gives a backlog. The icon
-          and the heading carry the same message without the colour. */}
-      <section className="overflow-hidden rounded-card border border-[#E7B84B] bg-white shadow-card">
-        <header className="flex items-center gap-2 border-b border-[#F3E2B3] bg-[#FFFBEB] px-[15px] py-3">
-          <WarningIcon size={16} className="flex-none text-[#92400E]" />
-          <h2 className="min-w-0 font-app-head text-[13.5px] font-bold text-[#7A3E0A]">
+      {/* The chase list, in the amber the artboard gives a backlog — but only
+          when there is one. Colour in the console means something is waiting
+          on you, so a firm that has reported every sitting must not be shown a
+          warning about the nothing it has left to do. */}
+      <section
+        className={
+          "overflow-hidden rounded-card bg-white shadow-card border " +
+          (due.length > 0 ? "border-[#E7B84B]" : "border-dk-line")
+        }
+      >
+        <header
+          className={
+            "flex items-center gap-2 border-b px-[15px] py-3 " +
+            (due.length > 0 ? "border-[#F3E2B3] bg-[#FFFBEB]" : "border-dk-rule bg-white")
+          }
+        >
+          {due.length > 0 && <WarningIcon size={16} className="flex-none text-[#92400E]" />}
+          <h2
+            className={
+              "min-w-0 font-app-head text-[13.5px] font-bold " +
+              (due.length > 0 ? "text-[#7A3E0A]" : "text-dk-strong")
+            }
+          >
             Sittings without an update ({due.length})
           </h2>
         </header>

@@ -120,6 +120,11 @@ export default async function FirmAppointmentPage({
   const endMs = new Date(appt.ends_at).getTime();
   const nowMs = Date.now();
   const roomOpen = live && appt.mode === "virtual" && nowMs <= endMs + 60 * 60 * 1000;
+  // The room component only lets anyone in from ten minutes before the start
+  // (windowOpen in consultation-room.tsx). The card above it has to say the
+  // same thing, or it announces "Room open" for a consultation that is days
+  // away and then hosts a component counting down to it.
+  const roomOpenNow = roomOpen && nowMs >= startMs - 10 * 60 * 1000;
   const canNoShow = live && nowMs > startMs;
   const appointmentId = appt.id;
   const noShow = async () => {
@@ -131,7 +136,14 @@ export default async function FirmAppointmentPage({
   const minutes = svc?.duration_min ?? Math.round((endMs - startMs) / 60000);
   // The client's waiting room opens ten minutes before the start — the same
   // rule the client app and the room component itself keep.
-  const opensAtLabel = formatWhen(new Date(startMs - 10 * 60 * 1000).toISOString(), tz, { timeStyle: "short" });
+  const opensAt = new Date(startMs - 10 * 60 * 1000).toISOString();
+  // A bare time reads as today. Once the room is open it is today, so the time
+  // alone is right; before then the day has to be on it.
+  const opensAtLabel = roomOpenNow
+    ? formatWhen(opensAt, tz, { timeStyle: "short" })
+    : formatWhen(opensAt, tz, {
+        weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
+      });
   const whenPill = formatWhen(appt.starts_at, tz, {
     weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
   });
@@ -186,17 +198,19 @@ export default async function FirmAppointmentPage({
         {roomOpen && (
           <AppCard>
             <AppCardHeader
-              title="Room open"
+              title={roomOpenNow ? "Room open" : "Consultation room"}
               action={
                 <MetaPill>
                   <ClockIcon size={12} />
-                  From {opensAtLabel}
+                  {roomOpenNow ? "Open" : `Opens ${opensAtLabel}`}
                 </MetaPill>
               }
             />
             <AppCardBody className="flex flex-col gap-3">
               <p className="text-[12.5px] leading-[1.5] text-dk-soft">
-                The client can knock from {opensAtLabel}. You admit them from here.
+                {roomOpenNow
+                  ? "The client can knock now. You admit them from here."
+                  : `The client can knock from ${opensAtLabel}. You admit them from here.`}
               </p>
               {/* accent is the console's own ink, not the firm's. The client's
                   waiting room passes the firm's primary, because a client is

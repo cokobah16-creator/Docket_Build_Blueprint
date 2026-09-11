@@ -31,6 +31,9 @@ const NAV: Array<{ href: string; label: string }> = [
   { href: "/firm/inbox", label: "Service inbox" },
   { href: "/firm/availability", label: "Availability" },
   { href: "/firm/overview", label: "Overview" },
+  // Not only a phone tab: sign-out and the push opt-in live nowhere else, so
+  // without this a laptop has no way to reach either.
+  { href: "/firm/me", label: "Me" },
 ];
 
 /** The quiet grey chip the header uses for the role and the firm's standing. */
@@ -116,7 +119,20 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
             {firm?.status === "pending" && (
               <HeaderChip className="bg-[#FFFAEB] text-[#92400E]">awaiting verification</HeaderChip>
             )}
-            {firm?.status === "suspended" && (
+            {/* The standing has to be visible at every width. The header that used to
+          carry it is md:block now, so a phone saw nothing — and "awaiting
+          verification" is the answer to why the firm's booking page is not
+          live yet. */}
+      {firm?.status === "pending" && (
+        <div className="mx-auto w-full max-w-lg px-4 pt-4 md:hidden">
+          <Alert kind="warning" title="Awaiting verification">
+            Docket has not verified this firm yet. You can work here, but the firm&rsquo;s
+            public site and booking page stay offline until it is.
+          </Alert>
+        </div>
+      )}
+
+      {firm?.status === "suspended" && (
               <HeaderChip className="bg-[#FEF3F2] text-[#912018]">suspended</HeaderChip>
             )}
           </div>

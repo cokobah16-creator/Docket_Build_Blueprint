@@ -208,21 +208,27 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
   const unattributedOriginated = matters.filter((x) => !x.originating_lawyer_id || !staffIds.has(x.originating_lawyer_id)).length;
   const unattributedHandling = matters.filter((x) => !x.handling_lawyer_id || !staffIds.has(x.handling_lawyer_id)).length;
 
-  // `ink` is the console's one use of colour: a number that means somebody is
-  // late, that process is sitting unacknowledged, or that money is owed. Each
-  // one says the same thing in its label.
+  // `alert` marks the tiles whose number means somebody is late, that process
+  // is sitting unacknowledged, or that money is owed — the console's one use
+  // of colour. It has to be read off the value, not set on the tile: a firm
+  // with nothing overdue and nothing owed was being shown four red and amber
+  // zeroes. Each of these says the same thing in its label, so the colour is
+  // never the only signal.
+  /** A counter or a money figure that means nothing is waiting. */
+  const isZero = (value: string) => /^[^1-9]*$/.test(value);
+
   const tiles = overview
     ? [
-        { label: "Open matters", value: String(overview.open_matters), href: "/firm/matters", ink: "text-dk-strong" },
-        { label: "Sittings to chase", value: String(overview.sittings_due), href: "/firm", ink: "text-[#92400E]" },
-        { label: "Court dates, 30 days", value: String(overview.court_dates_30d), href: "/firm/matters", ink: "text-dk-strong" },
-        { label: "Upcoming consultations", value: String(overview.upcoming_appointments), href: "/firm/appointments?view=upcoming", ink: "text-dk-strong" },
-        { label: "Unread client messages", value: String(overview.unread_messages), href: "/firm/matters", ink: "text-dk-strong" },
-        { label: "Overdue tasks", value: String(overview.overdue_tasks), href: "/firm/matters", ink: "text-[#B42318]" },
-        { label: "Client uploads to review", value: String(overview.client_uploads), href: "/firm/matters", ink: "text-dk-strong" },
-        { label: "Service to acknowledge", value: String(overview.service_to_acknowledge), href: "/firm/inbox", ink: "text-[#92400E]" },
-        { label: "Outstanding", value: formatMoneyByCurrency(overview.outstanding_by_currency, currency), href: "/firm/invoices", ink: "text-[#92400E]" },
-        { label: "Collected this month", value: formatMoneyByCurrency(overview.collected_this_month_by_currency, currency), href: "/firm/invoices", ink: "text-dk-strong" },
+        { label: "Open matters", value: String(overview.open_matters), href: "/firm/matters", alert: null },
+        { label: "Sittings to chase", value: String(overview.sittings_due), href: "/firm", alert: "text-[#92400E]" },
+        { label: "Court dates, 30 days", value: String(overview.court_dates_30d), href: "/firm/matters", alert: null },
+        { label: "Upcoming consultations", value: String(overview.upcoming_appointments), href: "/firm/appointments?view=upcoming", alert: null },
+        { label: "Unread client messages", value: String(overview.unread_messages), href: "/firm/matters", alert: null },
+        { label: "Overdue tasks", value: String(overview.overdue_tasks), href: "/firm/matters", alert: "text-[#B42318]" },
+        { label: "Client uploads to review", value: String(overview.client_uploads), href: "/firm/matters", alert: null },
+        { label: "Service to acknowledge", value: String(overview.service_to_acknowledge), href: "/firm/inbox", alert: "text-[#92400E]" },
+        { label: "Outstanding", value: formatMoneyByCurrency(overview.outstanding_by_currency, currency), href: "/firm/invoices", alert: "text-[#92400E]" },
+        { label: "Collected this month", value: formatMoneyByCurrency(overview.collected_this_month_by_currency, currency), href: "/firm/invoices", alert: null },
       ]
     : [];
 
@@ -262,7 +268,12 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
               <span className="block text-[10.5px] uppercase leading-[1.35] tracking-[0.06em] text-dk-soft">
                 {t.label}
               </span>
-              <span className={cn("mt-[5px] block font-app-head text-[20px] font-bold leading-tight", t.ink)}>
+              <span
+                className={cn(
+                  "mt-[5px] block font-app-head text-[20px] font-bold leading-tight",
+                  t.alert && !isZero(t.value) ? t.alert : "text-dk-strong",
+                )}
+              >
                 {t.value}
               </span>
             </Link>
