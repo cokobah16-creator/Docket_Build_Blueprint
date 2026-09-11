@@ -11,7 +11,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { Archivo, Fraunces } from "next/font/google";
-import { isSupabaseConfigured } from "@/lib/env";
+import { isProductionDeployment, isSupabaseConfigured } from "@/lib/env";
 import { Alert } from "@/components/ui/alert";
 
 const archivo = Archivo({ subsets: ["latin"], display: "swap" });
@@ -156,6 +156,11 @@ function ChapterRule() {
 
 export default function PlatformLanding() {
   const configured = isSupabaseConfigured();
+  // Routing note for whoever is running the deployment, shown only where the
+  // ?firm= fallback it describes actually works. In production the host is
+  // the only thing that selects a tenant, and this page belongs to the firms
+  // and clients reading it rather than to whoever deployed it.
+  const showRoutingNote = configured && !isProductionDeployment();
 
   return (
     <div className={`${archivo.className} min-h-screen bg-docket-paper text-docket-ink`}>
@@ -489,10 +494,11 @@ export default function PlatformLanding() {
               © 2026 Docket · a private software company. Not affiliated with, endorsed by, or
               acting for any court, the Nigerian Bar Association, or any government agency.
             </p>
-            {configured && (
+            {showRoutingNote && (
               <p>
-                Firm sites are served from their own domain or <code>{"{slug}"}.docket.app</code>.
-                On a preview deployment open a firm with <code>?firm=&lt;slug&gt;</code>.
+                A firm site is served from that firm’s own domain, or from{" "}
+                <code>{"{slug}"}.docket.app</code>. This deployment is neither, so open a firm
+                here with <code>?firm=&lt;slug&gt;</code>. That fallback is off in production.
               </p>
             )}
           </div>

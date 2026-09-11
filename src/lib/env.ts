@@ -16,6 +16,18 @@ export function isSupabaseConfigured(): boolean {
   return Boolean(supabaseUrl() && supabaseAnonKey());
 }
 
+/**
+ * True only on the production deployment. Vercel sets VERCEL_ENV to
+ * "production" | "preview" | "development"; off Vercel it is absent and
+ * NODE_ENV is the only signal there is. Read as a static member so the Edge
+ * runtime can inline it — process.env[key] does not work in middleware.
+ */
+export function isProductionDeployment(): boolean {
+  const vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv) return vercelEnv === "production";
+  return process.env.NODE_ENV === "production";
+}
+
 /** PostgREST headers for the public key: JWT anon keys also go in Authorization;
  *  sb_publishable_ keys are not JWTs and travel only as apikey. */
 export function restHeaders(key: string): Record<string, string> {
