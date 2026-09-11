@@ -25,11 +25,9 @@ import { SignInForms } from "@/components/auth/sign-in-forms";
 import { Button } from "@/components/ui/button";
 import { Input, Select, chipClasses, choiceCardClasses } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { bookAppointment, startPayment, saveContactEmail } from "@/lib/actions/booking";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
-import { startPayment, saveContactEmail } from "@/lib/actions/booking";
+import { bookAppointment, startPayment, saveContactEmail } from "@/lib/actions/booking";
 
 type Step = "service" | "mode" | "when" | "intake" | "review";
 type Mode = "virtual" | "in_person" | "phone";
