@@ -96,15 +96,11 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          {
-            // Two years, and every subdomain of whatever host served the response. Note for
-            // whoever maps a tenant's APEX domain (example.ng rather than chambers.example.ng):
-            // includeSubDomains then commits that firm's OTHER subdomains to HTTPS as well, so
-            // ask them before pointing an apex at Docket. No preload — that is a one-way door
-            // and belongs to a deliberate decision, not to a config file.
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains',
-          },
+          // NOTE: Strict-Transport-Security is NOT set here. It is set in middleware.ts, which
+          // is the only place that knows whether this request arrived on one of Docket's own
+          // hosts or on a tenant's custom domain. includeSubDomains on a firm's apex would pin
+          // every one of that firm's other subdomains to HTTPS for two years, from a header they
+          // never asked for and cannot take back.
           { key: 'Permissions-Policy', value: permissionsPolicy },
         ],
       },

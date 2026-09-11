@@ -7,7 +7,7 @@
 // just signed in are one person, so the funnel does not break in half at the sign-in step.
 // Nothing but two opaque ids is sent; no email, no phone, no name.
 
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { VISITOR_COOKIE, identify } from "@/lib/observability";
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       const anonymousId =
         (await cookies()).getAll().find((c) => c.name === VISITOR_COOKIE)?.value ?? null;
       // Fired and ignored: a failed stitch loses a report, never a sign-in.
-      void identify(userId, anonymousId).catch(() => undefined);
+      after(() => identify(userId, anonymousId).catch(() => undefined));
     }
   }
   return NextResponse.redirect(new URL(next, url.origin));

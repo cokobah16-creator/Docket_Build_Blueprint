@@ -37,6 +37,7 @@ import { paymentProviderFor, type Currency } from "@/lib/providers/payments";
 import { allow, tooFast } from "@/lib/rate-limit";
 import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
 import type { BookingResult } from "@/lib/db/types";
+import { after } from "next/server";
 
 /** The appointment_mode enum in migration 1. The database is what refuses anything else. */
 export type BookingMode = "virtual" | "in_person" | "phone";
@@ -97,13 +98,17 @@ export async function bookAppointment(input: BookAppointmentInput): Promise<Book
 
   const visitor = await visitorId();
   if (visitor) {
-    void capture(FUNNEL.bookingStarted, visitor, {
-      firm_id: input.firmId,
-      firm_slug: input.firmSlug,
-      service_id: input.serviceId,
-      amount_minor: booking.amount_minor,
-      currency: booking.currency,
-    }).catch(() => undefined);
+    // after() so the event survives the response. An un-awaited fetch in a serverless function
+    // can be cut off the instant the response flushes.
+    after(() =>
+      capture(FUNNEL.bookingStarted, visitor, {
+        firm_id: input.firmId,
+        firm_slug: input.firmSlug,
+        service_id: input.serviceId,
+        amount_minor: booking.amount_minor,
+        currency: booking.currency,
+      }).catch(() => undefined),
+    );
   }
 
   return { booking };

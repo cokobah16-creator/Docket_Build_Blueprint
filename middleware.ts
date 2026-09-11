@@ -111,6 +111,18 @@ export async function middleware(request: NextRequest) {
   response.headers.set(cspHeaderName(), policy);
   response.headers.set(CSP_NONCE_HEADER, nonce);
 
+  // Strict-Transport-Security, decided per host rather than in next.config.mjs, because only here
+  // do we know whose host this is. On Docket's own hosts includeSubDomains is ours to give. On a
+  // firm's custom domain it is not: Docket serves exactly the one hostname there, so the
+  // subdomain commitment buys nothing and would pin that firm's mail, intranet or legacy
+  // subdomains to HTTPS for two years — a promise made on their behalf that they cannot withdraw.
+  // No preload either: that is a one-way door and belongs to a deliberate decision.
+  const onTenantDomain = Boolean(firm?.custom_domain) && firm?.custom_domain === request.headers.get("host")?.split(":")[0].toLowerCase();
+  response.headers.set(
+    "Strict-Transport-Security",
+    onTenantDomain ? "max-age=63072000" : "max-age=63072000; includeSubDomains",
+  );
+
   if (!existingVisitor) {
     response.cookies.set(VISITOR_COOKIE, visitorId, {
       path: "/",

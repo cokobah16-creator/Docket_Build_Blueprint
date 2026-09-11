@@ -26,6 +26,18 @@ function fmt(iso: string | undefined, tz: string) {
   return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short', timeZone: tz }).format(new Date(iso));
 }
 
+/** A bare YYYY-MM-DD, which is a calendar day and not an instant. */
+const DAY_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * A DATE column is the day it says, everywhere. invoices.due_at is a date, and running it through
+ * fmt() would parse it as UTC midnight and then shift it — so a client in Lagos reads the right
+ * day and a client in New York reads the day before, for the same invoice.
+ */
+function fmtDay(day: string) {
+  return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
+}
+
 async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
@@ -73,7 +85,9 @@ function placeholders(n: Row, firm: string, tz: string): Record<string, string> 
   for (const [key, value] of Object.entries(p)) {
     if (value === null || value === undefined) continue;
     if (typeof value === 'object') continue;                       // never paste raw JSON into a message
-    vars[key] = key.endsWith('_at') && typeof value === 'string' ? fmt(value, tz) : String(value);
+    const raw = String(value);
+    // Shape, not suffix: due_at is a calendar day and starts_at is an instant, and both end _at.
+    vars[key] = DAY_ONLY.test(raw) ? fmtDay(raw) : key.endsWith('_at') && typeof value === 'string' ? fmt(value, tz) : raw;
   }
   if (p.amount_minor !== undefined && p.amount_minor !== null) {
     vars.amount = `${p.currency ?? ''} ${(Number(p.amount_minor) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`.trim();
@@ -92,7 +106,7 @@ function render(n: Row, firm: string, tz: string): { subject: string; text: stri
     case 'appointment_reminder_now': return { subject: `${firm}: your consultation is ready`, text: `Your consultation is ready. Join now.`, url: `/app/appointments/${p.appointment_id}/waiting-room` };
     case 'appointment_cancelled':    return { subject: `${firm}: consultation ${p.reference} cancelled`, text: `Your consultation scheduled for ${when} has been cancelled.`, url: `/app/appointments/${p.appointment_id}` };
     case 'appointment_rescheduled':  return { subject: `${firm}: consultation rescheduled`, text: `Your consultation has been moved to ${when}.`, url: `/app/appointments/${p.appointment_id}` };
-    case 'invoice_issued':           return { subject: `${firm}: invoice ${p.invoice_number}`, text: `${firm} has issued invoice ${p.invoice_number} for ${p.currency} ${(Number(p.amount_minor) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}${p.due_at ? `, due ${fmt(p.due_at, tz)}` : ''}. Open the app to pay.`, url: `/app/payments/${p.invoice_id}` };
+    case 'invoice_issued':           return { subject: `${firm}: invoice ${p.invoice_number}`, text: `${firm} has issued invoice ${p.invoice_number} for ${p.currency} ${(Number(p.amount_minor) / 100).toLocaleString('en-NG', { minimumFractionDigits: 2 })}${p.due_at ? `, due ${fmtDay(String(p.due_at))}` : ''}. Open the app to pay.`, url: `/app/payments/${p.invoice_id}` };
     case 'payment_confirmed':        return { subject: `${firm}: payment received`, text: `We received your payment for invoice ${p.invoice_number}. Your receipt is in the app.`, url: `/app/payments` };
     case 'matter_update':            return { subject: `${firm}: update on your matter`, text: `${p.title}. Open the app for details.`, url: `/app/matters/${p.matter_id}` };
     case 'court_date_t3':            return { subject: `${firm}: court date in 3 days`, text: `Your matter comes up on ${when}${p.purpose ? ` for ${p.purpose}` : ''}.`, url: `/app/matters/${p.matter_id}` };
@@ -192,7 +206,10 @@ Deno.serve(async (req: Request) => {
       // attempts is what bounds retry_notification() (migration 20): a platform admin may put a
       // failed notification back in the queue, but never a sixth time.
       await supabase.from('notifications')
-        .update({ status: 'failed', error: String(e?.message ?? e).slice(0, 500), attempts: (r.attempts ?? 0) + 1 })
+        // attempts is NOT touched here. retry_notification() owns that counter: it increments on
+        // every re-queue and refuses the sixth. Counting the send failure as well would make one
+        // retry cycle cost two, so an operator would get two tries and be told they had used five.
+        .update({ status: 'failed', error: String(e?.message ?? e).slice(0, 500) })
         .eq('id', r.id);
       failed++;
     }

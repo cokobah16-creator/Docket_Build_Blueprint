@@ -24,7 +24,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
-import { captureException } from "@/lib/observability";
+import { reportBrowserError } from "@/lib/report-error";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -36,27 +36,33 @@ export default function AppError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // Fired and ignored: telemetry never gets to make a bad screen worse.
-    captureException(error, { where: "app route boundary" }).catch(() => undefined);
+    // Through Docket's own endpoint, which reports server-side. A browser cannot report to
+    // Sentry here: the DSN is a server variable and the policy does not allow that origin.
+    reportBrowserError(error, "app route boundary");
   }, [error]);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-5 px-4 py-10">
       <Alert kind="error" title="This page did not load">
-        Something went wrong on our side. Nothing you were doing has been lost — try the page
-        again, and if it keeps failing, contact the firm directly.
+        Something went wrong on our side. If you were part-way through something, check whether it
+        went through before starting it again. If the page keeps failing, sign out and back in, or
+        speak to whoever looks after this account.
       </Alert>
 
       <div className="flex flex-col gap-3">
         <Button size="lg" className="w-full" onClick={() => reset()}>
           Try this page again
         </Button>
-        <Link
-          href="/"
+        {/* This is the only boundary in the app, so it catches the public site, the client
+            portal, the firm console and the platform console alike. "Back" returns to wherever
+            the person actually was, which is the one way forward that is right on all four. */}
+        <button
+          type="button"
+          onClick={() => window.history.back()}
           className="inline-flex w-full items-center justify-center rounded-lg border border-gray-300 px-6 py-3.5 text-base font-medium text-brand hover:bg-black/5"
         >
-          Go to the home page
-        </Link>
+          Go back
+        </button>
       </div>
     </main>
   );

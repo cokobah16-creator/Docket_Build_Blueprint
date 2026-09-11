@@ -9,11 +9,12 @@
 // worst as unstyled text. The tokens it brings are the platform defaults, not any firm's:
 // nothing tenant-specific can be known here (law 6).
 //
-// As in app/error.tsx: no stack, no error.digest, and the captureException call cannot reach
-// Sentry from the browser because SENTRY_DSN is server-side only by design. See that file.
+// As in app/error.tsx: no stack and no error.digest reach the visitor, and the report goes
+// through Docket's own endpoint rather than straight to Sentry, because SENTRY_DSN is a server
+// variable by design and the content policy does not allow that origin from a browser.
 
 import { useEffect } from "react";
-import { captureException } from "@/lib/observability";
+import { reportBrowserError } from "@/lib/report-error";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import "./globals.css";
@@ -26,7 +27,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    captureException(error, { where: "app root boundary" }).catch(() => undefined);
+    reportBrowserError(error, "app root boundary");
   }, [error]);
 
   return (

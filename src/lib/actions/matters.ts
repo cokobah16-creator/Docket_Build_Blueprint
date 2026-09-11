@@ -18,6 +18,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { isE164, normalizeNigerianPhone } from "@/lib/nigeria";
 import { MATTER_TYPES } from "@/lib/db/types";
 import { FUNNEL, capture } from "@/lib/observability";
+import { after } from "next/server";
 
 type Err = { error: string } | undefined;
 
@@ -111,10 +112,12 @@ export async function openMatter(input: OpenMatterInput): Promise<OpenMatterResu
   // about the matter; nothing about the person travels with it. Fired and ignored: telemetry
   // never gets to fail a matter that the database has already opened.
   if (d.clientId) {
-    void capture(FUNNEL.matterOpened, d.clientId, {
-      firm_id: d.firmId,
-      matter_type: d.type,
-    }).catch(() => undefined);
+    after(() =>
+      capture(FUNNEL.matterOpened, d.clientId, {
+        firm_id: d.firmId,
+        matter_type: d.type,
+      }).catch(() => undefined),
+    );
   }
 
   refreshMatter(result.matter_id);

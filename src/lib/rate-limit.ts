@@ -28,6 +28,8 @@ export const LIMITS = {
   firm_start: { limit: 5, window: "1 hour" },
   /** A webhook whose signature did not verify. */
   webhook_bad: { limit: 60, window: "1 minute" },
+  /** A browser reporting its own error. Generous: a broken page can throw in a loop. */
+  report: { limit: 30, window: "1 minute" },
 } as const;
 
 export type LimitedSurface = keyof typeof LIMITS;

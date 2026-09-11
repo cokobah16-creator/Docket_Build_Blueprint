@@ -22,6 +22,7 @@ import type { ReactNode } from "react";
 import { firmBySlug } from "@/lib/tenant";
 import { brandFontsUrl, brandStyle } from "@/lib/brand";
 import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
+import { after } from "next/server";
 
 const NAV = [
   { href: "/about", label: "About" },
@@ -45,8 +46,13 @@ export default async function FirmLayout({
   // is simply not counted rather than counted as somebody made up.
   const visitorId = (await cookies()).getAll().find((c) => c.name === VISITOR_COOKIE)?.value;
   if (visitorId) {
-    void capture(FUNNEL.siteViewed, visitorId, { firm_id: firm.id, firm_slug: firm.slug }).catch(
-      () => undefined,
+    // after() runs this once the response has been sent. An un-awaited fetch in a serverless
+    // function is not guaranteed to finish — the instance can be frozen the moment the response
+    // flushes — so a bare `void capture(...)` loses events, most of all on small fast responses.
+    after(() =>
+      capture(FUNNEL.siteViewed, visitorId, { firm_id: firm.id, firm_slug: firm.slug }).catch(
+        () => undefined,
+      ),
     );
   }
 

@@ -190,6 +190,13 @@ Deno.serve(async (req: Request) => {
   if (error) {
     console.error('record_payment failed', error);
     await record({ eventType, providerRef: reference, signatureOk: true, outcome: 'error', error: error.message, firmId, invoiceId });
+    // record_payment() refuses two things permanently: an invoice number that matches nothing,
+    // and a charge in a currency the invoice was not raised in. Neither becomes true on a retry,
+    // so a 500 would put Paystack into its backoff loop and write another 'error' row on every
+    // delivery — burying the failures that a retry WOULD fix. Acknowledge those and keep the 500
+    // for a genuine database or connection failure, which is what a retry is for.
+    const permanent = /^(unknown invoice|currency mismatch)/i.test(error.message ?? '');
+    if (permanent || !invoiceId) return new Response('permanently unprocessable', { status: 200 });
     return new Response('db error', { status: 500 });   // non-2xx makes Paystack retry
   }
 
