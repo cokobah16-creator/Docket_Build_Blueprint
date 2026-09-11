@@ -28,6 +28,7 @@ arrives as a plain error whose message is the whole explanation.
 | `is_firm_member(f)` | the caller has a `firm_members` row in firm `f`, any role |
 | `staff_w(f)` | `is_firm_member(f)` **and** `mfa_ok()` **and** the firm is not suspended |
 | `can_see_matter(m)` | the wall (migration 29): `is_firm_member` of the matter's firm **and** (the matter is `access = 'firm'` **or** the caller is on `matter_lawyers`). Every matter-content policy and every matter-scoped definer function asks it |
+| `open_document_version(v)` | the one door to a document's bytes (migration 30): checks `can_access_document_version(v)`, records a `document_reads` row and a `document.opened` audit line, returns `storage_path`/`mime`/`size_bytes`/`name`. The Storage read policy then requires that record — `recorded_read(v)`, five minutes — before a signed URL is minted |
 | `matter_row_r(f, m)` / `matter_row_w(f, m)` | a row that may or may not hang off a matter: `can_see_matter(m)` when it does (write: **and** `staff_w(f)`), the firm-wide test when `m` is null |
 | `admin_w(f)` | the caller is `owner` or `admin` in `f` **and** `mfa_ok()` **and** not suspended |
 

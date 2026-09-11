@@ -384,7 +384,7 @@ not during one.*
 | Did money go somewhere wrong | `platform_settlement_health`, and `/admin/health`. A mis-settled charge is recorded as a **failed** payment carrying `settlement_mismatch`, `reported_subaccount` and `expected_subaccount`, and audited as `payment.settlement_mismatch` |
 | Did anything arrive unverified | `webhook_events` — `signature_ok` and `outcome`, with `outcome <> 'processed'` indexed |
 | Were messages sent | `notifications` (status, event, channel, `sent_at`) — and remember the **payload is personal data**, so a queue export is itself a disclosure |
-| Were documents read | Supabase Storage access logs, in the dashboard. **Docket does not log document reads itself**: a signed URL is minted by the browser and the read happens at Storage. This is a real limit on what can be reconstructed |
+| Were documents read | `document_reads` (migration 30): one row per open — who, which version, when — and a `document.opened` line in `audit_log`. **The record is the door, not a courtesy log**: the Storage read policy requires a read recorded by the caller within the last five minutes before it will mint a signed URL, so no bytes leave without one. Staff who can see the matter see the record; a client never does. Storage's own access logs remain the second source |
 | Was the schema itself changed | `supabase/migrations/` in git, against the live schema |
 
 ### Then — assess and notify
@@ -407,7 +407,7 @@ not during one.*
 
 ### Standing gaps to state in any incident report
 
-- **Document reads are not logged by Docket.** Only Storage's own logs show them.
+- **Document reads are logged by Docket** since migration 30, as above; the app-layer fetch cannot skip the record because the Storage policy refuses a read without one.
 - **`consent_records.ip`/`user_agent` are never populated** (and `audit_log` no longer has an address column), so no request can be
   traced to an address from within the database.
 - **`audit_row_change()` does not cover every table.** `/firm/admin/audit` names its own coverage at
