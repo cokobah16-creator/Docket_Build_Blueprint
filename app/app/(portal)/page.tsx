@@ -5,12 +5,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { currentFirm } from "@/lib/firm";
-import { accentInk, readableForeground } from "@/lib/brand";
+import { readableForeground } from "@/lib/brand";
 import { firmAppHref } from "@/lib/tenant";
 import { clientFirms, clientMatters, firmMeta, firmNamesFor, outstandingByCurrency } from "@/lib/portal-data";
 import { formatMoneyMinor } from "@/lib/money";
 import { Alert } from "@/components/ui/alert";
 import {
+  AppAccentPill,
   AppCard,
   AppCardBody,
   AppCardHeader,
@@ -220,16 +221,7 @@ export default async function ClientDashboard() {
                 <div className="flex items-start justify-between gap-2.5">
                   <p className="text-[14px] font-semibold leading-snug text-dk-strong">{m.title}</p>
                   {m.status && (
-                    <span
-                      className="flex-none whitespace-nowrap rounded-full border px-2.5 py-[3px] text-[11.5px] font-semibold"
-                      style={
-                        m.status.colour
-                          ? { borderColor: m.status.colour, color: accentInk(m.status.colour) }
-                          : undefined
-                      }
-                    >
-                      {m.status.label}
-                    </span>
+                    <AppAccentPill colour={m.status.colour}>{m.status.label}</AppAccentPill>
                   )}
                 </div>
                 <p className="mt-1 text-[12px] text-dk-muted">

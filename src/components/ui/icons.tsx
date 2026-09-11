@@ -232,6 +232,13 @@ export const OfflineIcon = (p: IconProps) => (
   </Icon>
 );
 
+/** Dismiss: the pending-attachment chip in a message thread. Not on the artboard. */
+export const CloseIcon = (p: IconProps) => (
+  <Icon strokeWidth={2} {...p}>
+    <path d="m6 6 12 12M18 6 6 18" />
+  </Icon>
+);
+
 /* ── Chevrons ────────────────────────────────────────────────────────── */
 
 export const ChevronLeftIcon = (p: IconProps) => (

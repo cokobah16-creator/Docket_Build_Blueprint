@@ -114,12 +114,16 @@ export function SubHeader({
 }) {
   return (
     <div className="sticky top-0 z-20 flex min-h-[50px] items-center gap-2.5 border-b border-dk-bar bg-white/90 px-3.5 py-2 backdrop-blur-xl">
+      {/* The circle is the artboard's 36px; the target around it is 44px, which
+          is the floor a thumb needs and what the bar's own 50px height allows. */}
       <Link
         href={backHref}
         aria-label={backLabel}
-        className="grid h-9 w-9 flex-none place-items-center rounded-full border border-dk-line bg-white text-dk-pri"
+        className="-ml-1 grid h-11 w-11 flex-none place-items-center"
       >
-        <ChevronLeftIcon size={19} />
+        <span className="grid h-9 w-9 place-items-center rounded-full border border-dk-line bg-white text-dk-pri">
+          <ChevronLeftIcon size={19} />
+        </span>
       </Link>
       {children}
     </div>

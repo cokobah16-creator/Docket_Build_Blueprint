@@ -1,8 +1,21 @@
+// Client appointments list (design/pwa artboard, CLIENT · APPOINTMENTS):
+// one card of rows — when, mono reference · mode, status — and the way to
+// book another underneath it.
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { Card, EmptyState, CardBody } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import { currentFirmSlug } from "@/lib/firm";
+import {
+  AppScreen,
+  ScreenTitle,
+  AppCard,
+  AppCardList,
+  AppEmpty,
+  AppStatusPill,
+  AppButtonLink,
+} from "@/components/app";
+import type { Status } from "@/components/ui/badge";
 
 export const metadata = { title: "Appointments" };
 
@@ -30,37 +43,63 @@ export default async function AppointmentsPage() {
     .limit(20);
   const appointments = (data ?? []) as AppointmentRow[];
 
+  // The booking wizard lives on the firm's own site, so the button only
+  // exists when the request resolved to a firm (middleware, blueprint §4).
+  const slug = await currentFirmSlug();
+  const bookHref = slug ? `/${slug}/book` : null;
+
   return (
-    <div className="space-y-5">
-      <h1 className="font-heading text-2xl font-semibold text-brand">Appointments</h1>
-      <Card>
+    <AppScreen>
+      <ScreenTitle>Appointments</ScreenTitle>
+
+      <AppCard>
         {appointments.length === 0 ? (
-          <EmptyState
+          <AppEmpty
             title="No consultations yet"
             hint="Your booked consultations appear here with their status and join button."
+            action={
+              bookHref ? (
+                <AppButtonLink href={bookHref} variant="primary-sm">
+                  Book a Consultation
+                </AppButtonLink>
+              ) : undefined
+            }
           />
         ) : (
-          <CardBody className="divide-y divide-gray-100 p-0">
+          <AppCardList>
             {appointments.map((a) => (
-              <Link key={a.id} href={`/app/appointments/${a.id}`} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-gray-50">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
+              <Link
+                key={a.id}
+                href={`/app/appointments/${a.id}`}
+                className="flex items-center justify-between gap-3 px-4 py-3.5 text-left"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-semibold text-dk-strong">
                     {new Intl.DateTimeFormat("en-GB", {
-                      dateStyle: "medium",
-                      timeStyle: "short",
+                      weekday: "short",
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
                       timeZone: a.client_timezone ?? "Africa/Lagos",
                     }).format(new Date(a.starts_at))}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {a.reference} · {a.mode}
-                  </p>
-                </div>
-                <StatusPill status={a.status as Status} />
+                  </span>
+                  <span className="mt-[3px] block text-[12px] text-dk-muted">
+                    <span className="font-mono">{a.reference}</span> ·{" "}
+                    {a.mode.replace(/_/g, " ")}
+                  </span>
+                </span>
+                <AppStatusPill status={a.status as Status} />
               </Link>
             ))}
-          </CardBody>
+          </AppCardList>
         )}
-      </Card>
-    </div>
+      </AppCard>
+
+      {bookHref && appointments.length > 0 && (
+        <AppButtonLink href={bookHref}>Book a Consultation</AppButtonLink>
+      )}
+    </AppScreen>
   );
 }

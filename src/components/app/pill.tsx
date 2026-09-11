@@ -1,4 +1,6 @@
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/cn";
+import { accentInk } from "@/lib/brand";
 import { CheckIcon, ClockIcon, WarningIcon } from "@/components/ui/icons";
 import type { Status } from "@/components/ui/badge";
 
@@ -88,14 +90,40 @@ export function AppStatusPill({
   );
 }
 
+/** The hex shapes src/lib/brand.ts can read; any other colour is used as given. */
+const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+
 /**
- * The outline pill a matter's own status uses. A firm names and colours its
- * matter statuses itself (matter_statuses.colour), so this one is drawn in the
- * firm's accent rather than in a fixed semantic palette.
+ * The outline pill a matter's own status uses.
+ *
+ * A firm names *and* colours its matter statuses (matter_statuses.colour), so
+ * when one carries a colour it is swapped in over the two accent tokens this
+ * pill reads: the colour itself draws the border, and a darkened version of it
+ * carries the label — exactly what --dk-app-acc-ink does for the shell's own
+ * accent, and for the same reason, that a colour picked to be drawn is usually
+ * too light to be read. Before this the firm's raw hex was used as the label
+ * colour directly, which is how a pale status ended up as unreadable type on
+ * white. A status with no colour falls back to the shell's accent, which is
+ * the firm's too.
  */
-export function AppAccentPill({ children }: { children: React.ReactNode }) {
+export function AppAccentPill({
+  colour,
+  children,
+}: {
+  colour?: string | null;
+  children: React.ReactNode;
+}) {
+  const style = colour
+    ? ({
+        "--dk-app-acc": colour,
+        "--dk-app-acc-ink": HEX.test(colour) ? accentInk(colour) : colour,
+      } as CSSProperties)
+    : undefined;
   return (
-    <span className="flex-none whitespace-nowrap rounded-full border border-dk-acc px-2.5 py-[3px] text-[11.5px] font-semibold text-dk-acc-ink">
+    <span
+      style={style}
+      className="flex-none whitespace-nowrap rounded-full border border-dk-acc px-2.5 py-[3px] text-[11.5px] font-semibold text-dk-acc-ink"
+    >
       {children}
     </span>
   );

@@ -1,8 +1,7 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { clientTimezone, firmNamesFor } from "@/lib/portal-data";
-import { Card } from "@/components/ui/card";
+import { AppCard, AppLink, PushedScreen, SubHeader, SubHeaderTitle } from "@/components/app";
 import { NotificationsList } from "@/components/portal/notifications-list";
 import type { NotificationRow } from "@/lib/db/types";
 
@@ -20,12 +19,22 @@ export default async function NotificationsPage() {
   const rows = (data ?? []) as NotificationRow[];
   const firmNames = await firmNamesFor(rows.map((r) => r.firm_id ?? "").filter(Boolean));
   return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-heading text-2xl font-semibold text-brand">Notifications</h1>
-        <Link href="/app/notifications/preferences" className="text-sm text-brand underline">Preferences</Link>
-      </div>
-      <Card><NotificationsList rows={rows} firmNames={firmNames} timezone={tz} /></Card>
-    </div>
+    <PushedScreen
+      header={
+        <SubHeader backHref="/app" backLabel="Back to home">
+          <SubHeaderTitle>Notifications</SubHeaderTitle>
+          <AppLink
+            href="/app/notifications/preferences"
+            className="ml-auto inline-flex min-h-[44px] items-center"
+          >
+            Preferences
+          </AppLink>
+        </SubHeader>
+      }
+    >
+      <AppCard>
+        <NotificationsList rows={rows} firmNames={firmNames} timezone={tz} />
+      </AppCard>
+    </PushedScreen>
   );
 }

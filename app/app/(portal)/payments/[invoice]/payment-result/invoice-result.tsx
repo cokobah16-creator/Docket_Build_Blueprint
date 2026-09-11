@@ -1,5 +1,8 @@
 "use client";
 
+// The paid screen (design/pwa artboard, CLIENT · PAID): a medallion, a line of
+// reassurance, the three rows that make a receipt, and the two ways onward.
+//
 // Waits for the provider webhook → record_payment() to mark the invoice paid.
 // Realtime on the invoice row (RLS-scoped) with polling fallback; never writes.
 
@@ -9,8 +12,14 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { formatMoneyMinor } from "@/lib/money";
 import { startInvoicePayment } from "@/lib/actions/portal";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { CheckIcon, ClockIcon } from "@/components/ui/icons";
+import {
+  AppScreen,
+  AppCard,
+  AppCardList,
+  AppButton,
+  appButtonClass,
+} from "@/components/app";
 
 export function InvoiceResult({ invoiceId, number, initialStatus, totalMinor, paidMinor, currency, matterId }: {
   invoiceId: string; number: string; initialStatus: string; totalMinor: number; paidMinor: number; currency: string; matterId: string | null;
@@ -51,26 +60,77 @@ export function InvoiceResult({ invoiceId, number, initialStatus, totalMinor, pa
   }
 
   return (
-    <div className="space-y-5">
-      <h1 className="font-heading text-2xl font-semibold text-brand">{done ? "Payment received" : "Confirming your payment"}</h1>
-      {error && <Alert kind="error">{error}</Alert>}
-      <Card>
-        <CardHeader title={`Invoice ${number}`} />
-        <CardBody className="space-y-3">
+    <AppScreen>
+      <div className="flex flex-col items-center gap-3.5 px-2 pb-1 pt-3 text-center">
+        {/* The status colours are the app's own semantic pair (the same green
+            and amber the pills use), not the firm's, because this says whether
+            money moved — and the glyph and the heading say it without them. */}
+        {done ? (
+          <span className="grid h-[62px] w-[62px] flex-none place-items-center rounded-full border border-[#A7D8BE] bg-[#ECFDF3] text-[#05603A]">
+            <CheckIcon size={30} />
+          </span>
+        ) : (
+          <span className="grid h-[62px] w-[62px] flex-none place-items-center rounded-full border border-[#F3DDA4] bg-[#FFFAEB] text-[#92400E]">
+            <ClockIcon size={30} />
+          </span>
+        )}
+
+        <h1 className="font-app-head text-[22px] font-semibold leading-[1.25] tracking-[-0.015em] text-dk-pri">
+          {done ? "Paid in full" : "Confirming your payment"}
+        </h1>
+
+        <p className="max-w-[280px] text-[13.5px] leading-[1.5] text-dk-soft">
           {done ? (
-            <Alert kind="success">Paid in full: {formatMoneyMinor(totalMinor, currency)}. Your receipt is ready.</Alert>
+            <>
+              {formatMoneyMinor(totalMinor, currency)} received against invoice{" "}
+              <span className="font-mono">{number}</span>. Your receipt is ready.
+            </>
           ) : (
-            <Alert kind="info">
-              Waiting for your bank to confirm… this page updates by itself. Paid so far: {formatMoneyMinor(paid, currency)} of {formatMoneyMinor(totalMinor, currency)}.
-            </Alert>
+            <>
+              Waiting for your bank to confirm — this page updates by itself.
+              Paid so far: {formatMoneyMinor(paid, currency)} of{" "}
+              {formatMoneyMinor(totalMinor, currency)}.
+            </>
           )}
-          <div className="flex flex-wrap gap-3">
-            {done && <a href={`/app/payments/${invoiceId}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on">Download receipt</a>}
-            {!done && <Button variant="ghost" onClick={retry}>Try paying again</Button>}
-            <Link href={backHref} className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand">Back</Link>
+        </p>
+      </div>
+
+      {error && <Alert kind="error">{error}</Alert>}
+
+      <AppCard>
+        <AppCardList>
+          <div className="flex justify-between gap-3 px-4 py-3.5 text-[13px]">
+            <span className="flex-none text-dk-muted">Invoice</span>
+            <span className="text-right font-mono font-semibold text-dk-strong">{number}</span>
           </div>
-        </CardBody>
-      </Card>
-    </div>
+          <div className="flex justify-between gap-3 px-4 py-3.5 text-[13px]">
+            <span className="flex-none text-dk-muted">Total</span>
+            <span className="text-right font-semibold text-dk-strong">
+              {formatMoneyMinor(totalMinor, currency)}
+            </span>
+          </div>
+          <div className="flex justify-between gap-3 px-4 py-3.5 text-[13px]">
+            <span className="flex-none text-dk-muted">Paid</span>
+            <span className="text-right font-bold text-dk-strong">
+              {formatMoneyMinor(done ? totalMinor : paid, currency)}
+            </span>
+          </div>
+        </AppCardList>
+      </AppCard>
+
+      {done ? (
+        <a href={`/app/payments/${invoiceId}/pdf`} className={appButtonClass("primary")}>
+          Download receipt
+        </a>
+      ) : (
+        <AppButton onClick={retry}>Try paying again</AppButton>
+      )}
+
+      <div className="flex">
+        <Link href={backHref} className={appButtonClass("ghost")}>
+          {matterId ? "Back to the matter" : "All payments"}
+        </Link>
+      </div>
+    </AppScreen>
   );
 }

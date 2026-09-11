@@ -98,7 +98,9 @@ export function AppEmpty({
     <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
       <p className="text-[13.5px] font-semibold text-dk-strong">{title}</p>
       {hint && <p className="text-[12.5px] leading-relaxed text-dk-muted">{hint}</p>}
-      {action}
+      {/* Wrapped: the button variants carry their own align-self, which would
+          otherwise win over this column's centring and pull the action left. */}
+      {action && <div>{action}</div>}
     </div>
   );
 }

@@ -1,9 +1,20 @@
+// Client invoices list (design/pwa artboard, the CLIENT · PAY family):
+// one card of rows — the amount, the mono invoice reference and when it was
+// issued, and the status pill that says where each one stands.
+
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { formatMoneyMinor } from "@/lib/money";
-import { Card, CardBody, EmptyState } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import {
+  AppScreen,
+  ScreenTitle,
+  AppCard,
+  AppCardList,
+  AppEmpty,
+  AppStatusPill,
+} from "@/components/app";
+import type { Status } from "@/components/ui/badge";
 
 export const metadata = { title: "Payments" };
 
@@ -22,26 +33,47 @@ export default async function PaymentsPage() {
     .limit(50);
   const invoices = (data ?? []) as InvoiceRow[];
 
+  const issued = (at: string) =>
+    new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "Africa/Lagos",
+    }).format(new Date(at));
+
   return (
-    <div className="space-y-5">
-      <h1 className="font-heading text-2xl font-semibold text-brand">Payments</h1>
-      <Card>
+    <AppScreen>
+      <ScreenTitle>Payments</ScreenTitle>
+
+      <AppCard>
         {invoices.length === 0 ? (
-          <EmptyState title="No invoices yet" hint="Consultation fees and matter invoices appear here with receipts." />
+          <AppEmpty
+            title="No invoices yet"
+            hint="Consultation fees and matter invoices appear here with receipts."
+          />
         ) : (
-          <CardBody className="divide-y divide-gray-100 p-0">
+          <AppCardList>
             {invoices.map((inv) => (
-              <Link key={inv.id} href={`/app/payments/${inv.id}`} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-gray-50">
-                <div>
-                  <p className="text-sm font-medium text-gray-900">{inv.number}</p>
-                  <p className="text-xs text-gray-500">{formatMoneyMinor(inv.total_minor, inv.currency)}</p>
-                </div>
-                <StatusPill status={inv.status as Status} />
+              <Link
+                key={inv.id}
+                href={`/app/payments/${inv.id}`}
+                className="flex items-center justify-between gap-3 px-4 py-3.5 text-left"
+              >
+                <span className="min-w-0">
+                  <span className="block text-[14px] font-semibold text-dk-strong">
+                    {formatMoneyMinor(inv.total_minor, inv.currency)}
+                  </span>
+                  <span className="mt-[3px] block text-[12px] text-dk-muted">
+                    <span className="font-mono">{inv.number}</span>
+                    {inv.issued_at ? ` · ${issued(inv.issued_at)}` : ""}
+                  </span>
+                </span>
+                <AppStatusPill status={inv.status as Status} />
               </Link>
             ))}
-          </CardBody>
+          </AppCardList>
         )}
-      </Card>
-    </div>
+      </AppCard>
+    </AppScreen>
   );
 }

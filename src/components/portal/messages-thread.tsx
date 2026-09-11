@@ -2,12 +2,19 @@
 
 // Message thread on a matter or appointment: Realtime inserts, read receipts,
 // document attachments (uploaded through the same documents flow).
+//
+// The artboard does not draw the thread, so the bubbles are built from the
+// client shell's own type and tokens: the person holding the phone speaks in
+// the shell's primary, everybody else on the shell's own quiet grey. It
+// renders in the console too, where those same tokens are the console's
+// neutrals — which is why there is not a fixed colour anywhere below.
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { createDocument, finalizeDocumentVersion, markThreadRead, sendMessage } from "@/lib/actions/portal";
-import { Button } from "@/components/ui/button";
+import { AppButton } from "@/components/app/button";
 import { Alert } from "@/components/ui/alert";
+import { CloseIcon, PaperclipIcon } from "@/components/ui/icons";
 import type { MessageAttachment, MessageRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
 
@@ -88,24 +95,42 @@ export function MessagesThread({
 
   return (
     <div className="flex flex-col">
-      <div className="max-h-[55vh] space-y-3 overflow-y-auto px-5 py-4">
-        {messages.length === 0 && <p className="py-6 text-center text-sm text-gray-500">No messages yet. Say hello — your lawyer is notified.</p>}
+      <div className="max-h-[55vh] space-y-3 overflow-y-auto px-4 py-3.5">
+        {messages.length === 0 && (
+          <p className="py-6 text-center text-[13px] leading-relaxed text-dk-muted">
+            No messages yet. Say hello — your lawyer is notified.
+          </p>
+        )}
         {messages.map((m) => {
           const mine = m.sender_id === userId;
           const name = mine ? "You" : (m.sender_id && senderNames[m.sender_id]) || firmName;
           return (
             <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-brand text-brand-on" : "bg-gray-100 text-gray-900"}`}>
-                {!mine && <p className="mb-0.5 text-xs font-semibold opacity-80">{name}</p>}
+              <div
+                className={
+                  mine
+                    ? "max-w-[85%] rounded-[14px] bg-dk-pri px-3.5 py-2.5 text-[13.5px] leading-relaxed text-dk-on-pri"
+                    : "max-w-[85%] rounded-[14px] bg-dk-rule px-3.5 py-2.5 text-[13.5px] leading-relaxed text-dk-strong"
+                }
+              >
+                {!mine && <p className="mb-0.5 text-[11.5px] font-semibold text-dk-muted">{name}</p>}
                 {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
                 {m.attachments?.length > 0 && (
-                  <ul className="mt-1 space-y-0.5 text-xs">
+                  <ul className="mt-0.5">
                     {m.attachments.map((a) => (
-                      <li key={a.document_id}><a href={docsHref} className="underline">📎 {a.name}</a></li>
+                      <li key={a.document_id}>
+                        <a
+                          href={docsHref}
+                          className="inline-flex min-h-[44px] items-center gap-1.5 text-[12.5px] underline underline-offset-2"
+                        >
+                          <PaperclipIcon size={13} className="flex-none" />
+                          {a.name}
+                        </a>
+                      </li>
                     ))}
                   </ul>
                 )}
-                <p className={`mt-1 text-[11px] ${mine ? "text-white/80" : "text-gray-500"}`}>
+                <p className={`mt-1 text-[11px] ${mine ? "text-dk-on-pri opacity-75" : "text-dk-muted"}`}>
                   {fmt.format(new Date(m.created_at))}{mine && m.read_at ? " · Read" : ""}
                 </p>
               </div>
@@ -114,14 +139,23 @@ export function MessagesThread({
         })}
         <div ref={endRef} />
       </div>
-      <form onSubmit={submit} className="space-y-2 border-t border-gray-100 px-5 py-3">
+
+      <form onSubmit={submit} className="space-y-2.5 border-t border-dk-rule px-4 py-3.5">
         {error && <Alert kind="error">{error}</Alert>}
         {attachments.length > 0 && (
-          <ul className="flex flex-wrap gap-2 text-xs">
+          <ul className="flex flex-wrap gap-2">
             {attachments.map((a) => (
-              <li key={a.document_id} className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700">
-                📎 {a.name}{" "}
-                <button type="button" aria-label={`Remove ${a.name}`} onClick={() => setAttachments((c) => c.filter((x) => x.document_id !== a.document_id))}>✕</button>
+              <li key={a.document_id}>
+                <button
+                  type="button"
+                  aria-label={`Remove ${a.name}`}
+                  onClick={() => setAttachments((c) => c.filter((x) => x.document_id !== a.document_id))}
+                  className="inline-flex min-h-[44px] max-w-full items-center gap-1.5 rounded-full border border-dk-line bg-dk-tint px-3 text-[12px] text-dk-body"
+                >
+                  <PaperclipIcon size={13} className="flex-none text-dk-muted" />
+                  <span className="truncate">{a.name}</span>
+                  <CloseIcon size={13} className="flex-none text-dk-muted" />
+                </button>
               </li>
             ))}
           </ul>
@@ -132,14 +166,17 @@ export function MessagesThread({
           rows={2}
           maxLength={4000}
           placeholder="Write a message…"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+          className="w-full rounded-[10px] border border-dk-field bg-white px-3 py-2.5 text-[13.5px] text-dk-strong placeholder:text-dk-muted focus:border-dk-pri focus:outline-none"
         />
         <div className="flex items-center justify-between gap-2">
-          <label className="cursor-pointer text-sm text-brand underline">
+          <label className="inline-flex min-h-[44px] cursor-pointer items-center gap-1.5 text-[12.5px] font-medium text-dk-pri underline underline-offset-2">
+            <PaperclipIcon size={14} className="flex-none" />
             {busy?.startsWith("Attaching") ? busy : "Attach a document"}
             <input type="file" className="sr-only" onChange={attach} disabled={Boolean(busy)} />
           </label>
-          <Button type="submit" disabled={Boolean(busy) || (!body.trim() && attachments.length === 0)}>{busy === "Sending…" ? "Sending…" : "Send"}</Button>
+          <AppButton type="submit" variant="primary-sm" disabled={Boolean(busy) || (!body.trim() && attachments.length === 0)}>
+            {busy === "Sending…" ? "Sending…" : "Send"}
+          </AppButton>
         </div>
       </form>
     </div>
