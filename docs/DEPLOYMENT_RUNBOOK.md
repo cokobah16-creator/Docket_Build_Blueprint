@@ -494,6 +494,26 @@ with their policies. Checked before writing it — every reference to either tab
 SECURITY DEFINER and unaffected. So nothing the deployed front end does stops working, and what
 stops working is only what nothing ever did.
 
+**43 goes before the app.** The two new search screens — `/firm/search` and `/app/search` — call
+`search_docket()`, which exists only after this migration, so an app deployed first answers every
+search with PGRST202 and a screen that says the search did not come back. Nothing else in the
+deployed front end touches it, so the reverse order is harmless: applied ahead of its screens, 43
+simply adds a `search_doc` column to ten tables and a function nothing yet calls. Two notes for
+whoever applies it. It rewrites those ten tables to add the stored column, so it is not instant on
+a large database — at pilot volumes it is seconds, but do it in the same window as the rest rather
+than mid-morning. And there is one property to check afterwards rather than assume, because the
+whole design rests on it:
+
+```sql
+select prosecdef from pg_proc where proname = 'search_docket';   -- must be f
+```
+
+`false` is the answer that matters. `search_docket()` is SECURITY INVOKER on purpose: it reads
+every table as the caller, so a walled matter is absent from a search because it is absent from
+`matters` for that reader. Were it ever changed to SECURITY DEFINER, it would become a firm-wide,
+wall-free read of everything in one word, and suite `99_search.sql` asserts `prosecdef` is false
+for exactly that reason.
+
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|
 | **App** | `bcc1dc8` (the merge of PR #20), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |

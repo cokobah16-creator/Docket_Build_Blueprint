@@ -1233,3 +1233,25 @@ export interface StorageIntegrity {
   row_only_versions: number;
   last_run_at: string | null;
 }
+
+/**
+ * search_docket() (migration 43): one row per hit, across every kind of thing Docket holds text
+ * about. The function is SECURITY INVOKER, so a hit is by construction something the caller could
+ * already open — the screens do no filtering of their own and must not start.
+ */
+export type SearchKind =
+  | "matter" | "update" | "message" | "document" | "task" | "deadline" | "court_event"
+  | "adverse_party" | "note" | "internal_note" | "invoice" | "appointment" | "person";
+
+export interface SearchHit {
+  kind: SearchKind;
+  id: string;
+  firm_id: string | null;
+  /** Null for a person: which matters a client has is the wall's to decide, not a search result's. */
+  matter_id: string | null;
+  title: string;
+  /** The matching words wrapped in << >> by ts_headline. Rendered as marks, never as HTML. */
+  snippet: string | null;
+  occurred_at: string | null;
+  rank: number;
+}
