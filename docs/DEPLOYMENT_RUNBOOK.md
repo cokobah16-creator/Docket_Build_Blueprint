@@ -477,7 +477,12 @@ is asked for, or the ask goes out with the generic sentence. 41 is additive and 
 `firm_baselines`, `firm_metrics()`, `record_firm_baseline()` and the `audit_log (firm_id, action,
 at desc)` index are all new, and only the new screen reads any of them. It re-creates the
 `audit_log` platform allow-list with `firm` already on it, so nothing a platform admin can read
-today stops being readable.
+today stops being readable. 42 is safe either side and is the one migration in this wave that
+**removes** something: the `insert`, `update` and `delete` grants on `invoices` and `invoice_items`,
+with their policies. Checked before writing it — every reference to either table in `app/` and
+`src/`, on this branch and on `origin/main`, is a `.select()`; the four invoice functions are
+SECURITY DEFINER and unaffected. So nothing the deployed front end does stops working, and what
+stops working is only what nothing ever did.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

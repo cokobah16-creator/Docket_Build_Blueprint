@@ -70,7 +70,9 @@ Decision [0003](decisions/0003-platform-first.md) is the short form.
   on advertising (factual profiles, no superlatives), no fee-sharing (firms
   pay SaaS, never a share of fees), client money never held by the platform
   (each firm's fees settle to its own Paystack subaccount and the database
-  refuses a settlement anywhere else), service of process modelled on what
+  refuses a settlement anywhere else; a firm's own client account is designed
+  to be *recorded* by Docket and never routed through it —
+  `docs/CLIENT_MONEY_DESIGN.md`, awaiting the accounting adviser), service of process modelled on what
   the civil procedure rules actually accept.
 
 ## 3. How any firm gets on Docket

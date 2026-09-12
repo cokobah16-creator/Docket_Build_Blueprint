@@ -363,6 +363,15 @@ Returns `jsonb`. Draft → issued. A client can only ever see an issued invoice.
 Refuses: `invoice not found` · `not permitted` *(42501)* · `invoice <number> is already <status>` ·
 `the client billed is no longer a party to that matter — put them back on it, or cancel this draft and raise it without a matter`
 
+**Who may write an invoice at all (migration 42).** These four functions, and nothing else. The
+`insert`, `update` and `delete` grants on `invoices` and `invoice_items` are revoked from every API
+role, along with their policies: a member of the firm with a second factor and access to the matter
+could otherwise `PATCH` `paid_minor` to the total, `status` to `paid`, `currency` to another one or
+`client_id` to somebody else, and `DELETE` an unpaid invoice — past every refusal these functions
+make. Nothing in Docket ever used that grant. `supabase/tests/80_doors.sql` §6 holds it closed, for
+`invoices`, `invoice_items`, `payments`, `audit_log`, `firm_baselines` and `document_signatures`
+together.
+
 ### `cancel_invoice(p_invoice uuid, p_reason text = null)`
 Returns `void`. **Who: `admin_w` — owner or admin, not every staff member.**
 
