@@ -28,6 +28,8 @@ export function describeNotification(event: string, payload: Record<string, unkn
     case "deadline_due_t7": return { title: `${p.title ?? "A deadline"} in a week`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
     case "deadline_due_t1": return { title: `${p.title ?? "A deadline"} tomorrow`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
     case "deadline_due_t0": return { title: `${p.title ?? "A deadline"} today`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
+    case "document_ready_to_sign": return { title: "A document is ready for your signature", body: String(p.name ?? ""), url: `${matter}?tab=documents` };
+    case "document_signed": return { title: `Signed: ${p.name ?? "a document"}`, body: `${p.signer ?? "The signer"} signed it.`, url: `/firm/matters/${p.matter_id ?? ""}?tab=documents` };
     case "new_message": return { title: `New message from ${firmName}`, body: "Open the thread.", url: p.matter_id ? `${matter}?tab=messages` : p.appointment_id ? `/app/messages/appointment/${p.appointment_id}` : "/app/messages" };
     default: return { title: event.replace(/_/g, " "), body: "", url: "/app" };
   }
@@ -48,6 +50,7 @@ export const PREFERENCE_EVENTS: Array<{ event: string; label: string }> = [
   { event: "court_date_t3", label: "Court date in 3 days" },
   { event: "court_date_t1", label: "Court date tomorrow" },
   { event: "new_message", label: "New message" },
+  { event: "document_ready_to_sign", label: "A document to sign" },
 ];
 export const PREFERENCE_CHANNELS: Array<{ channel: "push" | "email" | "sms"; label: string }> = [
   { channel: "push", label: "Push" },

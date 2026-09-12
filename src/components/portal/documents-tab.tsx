@@ -16,8 +16,9 @@ import { isLowData } from "@/lib/low-data";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Modal } from "@/components/ui/modal";
-import type { DocumentRequestRow, DocumentRow, DocumentVersionRow } from "@/lib/db/types";
+import type { DocumentRequestRow, DocumentRow, DocumentSignatureRow, DocumentVersionRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
+import { SignDialog } from "@/components/portal/sign-dialog";
 
 export type DocumentWithVersion = DocumentRow & { version: DocumentVersionRow | null; version_count: number };
 
@@ -31,9 +32,15 @@ function fmtSize(n: number | null | undefined) {
 }
 
 export function DocumentsTab({
-  firmId, matterId, appointmentId, documents, timezone, canUpload = true, requests = [], userId = null,
-}: { firmId: string; matterId: string | null; appointmentId: string | null; documents: DocumentWithVersion[]; timezone: string; canUpload?: boolean; requests?: DocumentRequestRow[]; userId?: string | null }) {
+  firmId, matterId, appointmentId, documents, timezone, canUpload = true, requests = [], userId = null, signatures = [], profileName = null,
+}: { firmId: string; matterId: string | null; appointmentId: string | null; documents: DocumentWithVersion[]; timezone: string; canUpload?: boolean; requests?: DocumentRequestRow[]; userId?: string | null;
+  /** Signatures on these documents, and the viewer's name as their profile has it (migration 40). */
+  signatures?: DocumentSignatureRow[]; profileName?: string | null }) {
   const router = useRouter();
+  // A document the firm asked this person to sign, and which they have not signed on its current version.
+  const [signing, setSigning] = useState<DocumentWithVersion | null>(null);
+  const toSign = (d: DocumentWithVersion) => Boolean(d.signature_requested_at && d.version && !d.locked_version_id && userId && !signatures.some((sg) => sg.version_id === d.version?.id && sg.signer_id === userId));
+  const signaturesOf = (d: DocumentWithVersion) => signatures.filter((sg) => sg.document_id === d.id);
   // Which request the next upload answers, if any. Set by "Upload this", cleared once used.
   const [forRequest, setForRequest] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
@@ -198,11 +205,23 @@ export function DocumentsTab({
                       {d.reviewed_at ? `Seen by your firm ${fmt.format(new Date(d.reviewed_at))}` : "Not yet seen by your firm"}
                     </p>
                   )}
+                  {toSign(d) && <p className="mt-1 text-xs font-medium text-[#92400E]">Your firm has asked you to sign this.</p>}
+                  {d.locked_version_id && (
+                    <p className="mt-1 text-xs text-[#15803D]">
+                      {d.version?.kind === "executed_paper" && d.version.executed_on ? `Executed on paper on ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${d.version.executed_on}T00:00:00Z`))}` : "Signed"} · this version is final
+                    </p>
+                  )}
+                  {signaturesOf(d).map((sg) => (
+                    <p key={sg.id} className="text-xs text-gray-600">Signed by {sg.signer_id === userId ? "you" : sg.signer_name}{sg.signer_role === "staff" ? " for the firm" : ""} · {fmt.format(new Date(sg.signed_at))}</p>
+                  ))}
                 </div>
                 {d.version ? (
-                  <Button size="sm" variant="ghost" onClick={() => openPreview(d)}>
-                    {isImage(d.version.mime) || isPdf(d.version.mime) ? "Preview" : "Download"}
-                  </Button>
+                  <span className="flex flex-wrap items-center gap-2">
+                    {toSign(d) && <Button size="sm" onClick={() => setSigning(d)}>Read and sign</Button>}
+                    <Button size="sm" variant="ghost" onClick={() => openPreview(d)}>
+                      {isImage(d.version.mime) || isPdf(d.version.mime) ? "Preview" : "Download"}
+                    </Button>
+                  </span>
                 ) : (
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-[#92400E]">No file yet — the upload stopped. Choose the same file again to finish it.</span>
@@ -223,6 +242,11 @@ export function DocumentsTab({
             </li>
           ))}
         </ul>
+      )}
+
+      {signing?.version && (
+        <SignDialog open name={signing.name} versionId={signing.version.id} storagePath={signing.version.storage_path} matterId={matterId} profileName={profileName}
+          onClose={() => setSigning(null)} onSigned={() => { setSigning(null); router.refresh(); }} />
       )}
 
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title={preview?.doc.name ?? "Document"}>

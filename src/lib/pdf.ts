@@ -1,5 +1,15 @@
-// Minimal, dependency-free PDF writer for text documents (invoices and
-// receipts). One or more A4 pages, Helvetica / Helvetica-Bold, WinAnsi text.
+// Minimal, dependency-free PDF writer for text documents (invoices, receipts, and the documents
+// a firm generates from a template). One or more A4 pages, Helvetica / Helvetica-Bold, WinAnsi
+// text, wrapped to the page.
+//
+// WHAT IT CANNOT DO, SAID PLAINLY. The two standard fonts carry the WinAnsi (Windows-1252)
+// repertoire: Latin letters with the accents of Western Europe, the common punctuation, the euro
+// sign. A character outside it — the Yoruba dot-below vowels, the naira sign, an emoji — cannot
+// be drawn by them, and a legal instrument must never silently print "?" where a name was. So
+// encoding REFUSES such text and names the characters, and the generator tells the person to
+// spell the value in plain letters or wait for an embedded font. No logo, no tables, no form
+// fields, no cryptographic signature: what is signed is the bytes, and the database keeps their
+// checksum and the record of who signed.
 
 export interface PdfLine {
   text: string;
@@ -8,16 +18,91 @@ export interface PdfLine {
   gap?: number; // extra space after the line, in points
 }
 
+export class PdfEncodingError extends Error {
+  constructor(public characters: string[]) {
+    super(`These characters cannot be printed in this document's font: ${characters.join(" ")}. Spell the value in plain letters.`);
+  }
+}
+
 const PAGE_W = 595.28;
 const PAGE_H = 841.89;
 const MARGIN = 56;
+const TEXT_W = PAGE_W - MARGIN * 2;
 
-function escapePdf(s: string): string {
-  return s
-    .replace(/[^\x20-\x7E]/g, "?")
-    .replace(/\\/g, "\\\\")
-    .replace(/\(/g, "\\(")
-    .replace(/\)/g, "\\)");
+/** Windows-1252 code points for the characters WinAnsi has above 0x7E that are not Latin-1. */
+const CP1252: Record<string, number> = {
+  "€": 0x80, "‚": 0x82, "ƒ": 0x83, "„": 0x84, "…": 0x85, "†": 0x86, "‡": 0x87, "ˆ": 0x88, "‰": 0x89, "Š": 0x8a, "‹": 0x8b, "Œ": 0x8c, "Ž": 0x8e,
+  "‘": 0x91, "’": 0x92, "“": 0x93, "”": 0x94, "•": 0x95, "–": 0x96, "—": 0x97, "˜": 0x98, "™": 0x99, "š": 0x9a, "›": 0x9b, "œ": 0x9c, "ž": 0x9e, "Ÿ": 0x9f,
+};
+
+/** One byte per character in WinAnsi, or the list of characters that have none. */
+export function winAnsiBytes(s: string): { bytes: number[]; unprintable: string[] } {
+  const bytes: number[] = [];
+  const unprintable = new Set<string>();
+  for (const ch of s) {
+    const cp = ch.codePointAt(0) ?? 0;
+    if (cp === 0x09) { bytes.push(0x20); continue; }
+    if (cp >= 0x20 && cp <= 0x7e) { bytes.push(cp); continue; }
+    if (cp >= 0xa0 && cp <= 0xff) { bytes.push(cp); continue; }
+    if (ch in CP1252) { bytes.push(CP1252[ch]); continue; }
+    unprintable.add(ch);
+  }
+  return { bytes, unprintable: Array.from(unprintable) };
+}
+
+/** Every character of every line must be printable; the refusal names the ones that are not. */
+export function assertPrintable(text: string): void {
+  const { unprintable } = winAnsiBytes(text);
+  if (unprintable.length > 0) throw new PdfEncodingError(unprintable);
+}
+
+function escapePdfBytes(bytes: number[]): string {
+  let out = "";
+  for (const b of bytes) {
+    if (b === 0x5c) out += "\\\\";
+    else if (b === 0x28) out += "\\(";
+    else if (b === 0x29) out += "\\)";
+    else if (b < 0x20 || b > 0x7e) out += `\\${b.toString(8).padStart(3, "0")}`;
+    else out += String.fromCharCode(b);
+  }
+  return out;
+}
+
+/** An estimate of Helvetica's advance, good enough to wrap: narrow, wide and average glyphs. */
+function textWidth(s: string, size: number, bold: boolean): number {
+  let w = 0;
+  for (const ch of s) {
+    if (/[ilj|'!.,:;I]/.test(ch)) w += 0.28;
+    else if (/[mwMW@]/.test(ch)) w += 0.87;
+    else if (/[A-Z0-9]/.test(ch)) w += 0.68;
+    else if (ch === " ") w += 0.28;
+    else w += 0.54;
+  }
+  return w * size * (bold ? 1.06 : 1);
+}
+
+/** Break a paragraph into lines that fit the text width. A word longer than a line is cut. */
+export function wrapText(text: string, size: number, bold = false, maxWidth = TEXT_W): string[] {
+  const out: string[] = [];
+  for (const para of text.split(/\r?\n/)) {
+    if (para.trim() === "") { out.push(""); continue; }
+    let line = "";
+    for (const word of para.split(/\s+/)) {
+      const candidate = line ? `${line} ${word}` : word;
+      if (textWidth(candidate, size, bold) <= maxWidth) { line = candidate; continue; }
+      if (line) out.push(line);
+      let rest = word;
+      while (textWidth(rest, size, bold) > maxWidth && rest.length > 1) {
+        let cut = rest.length - 1;
+        while (cut > 1 && textWidth(rest.slice(0, cut), size, bold) > maxWidth) cut -= 1;
+        out.push(rest.slice(0, cut));
+        rest = rest.slice(cut);
+      }
+      line = rest;
+    }
+    out.push(line);
+  }
+  return out;
 }
 
 export function textPdf(lines: PdfLine[]) {
@@ -34,10 +119,15 @@ export function textPdf(lines: PdfLine[]) {
   for (const line of lines) {
     const size = line.size ?? 11;
     const lead = size * 1.4;
-    if (y - lead < MARGIN) flush();
-    y -= lead;
-    const font = line.bold ? "/F2" : "/F1";
-    ops.push(`BT ${font} ${size} Tf ${MARGIN} ${y.toFixed(2)} Td (${escapePdf(line.text)}) Tj ET`);
+    const bold = Boolean(line.bold);
+    for (const piece of wrapText(line.text, size, bold)) {
+      if (y - lead < MARGIN) flush();
+      y -= lead;
+      const font = bold ? "/F2" : "/F1";
+      const { bytes, unprintable } = winAnsiBytes(piece);
+      if (unprintable.length > 0) throw new PdfEncodingError(unprintable);
+      ops.push(`BT ${font} ${size} Tf ${MARGIN} ${y.toFixed(2)} Td (${escapePdfBytes(bytes)}) Tj ET`);
+    }
     y -= line.gap ?? 0;
   }
   flush();

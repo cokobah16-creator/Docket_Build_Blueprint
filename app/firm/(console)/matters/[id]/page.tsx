@@ -38,7 +38,7 @@ import type {
   FirmThread, DocumentRequestRow, AdversePartyRow, ConflictCheckRow, CauseListRow, CourtRuleRow, FirmDeadlineRow, RuleProvisionRow,
 } from "@/lib/db/types";
 import type {
-  DocumentRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
+  DocumentRow, DocumentSignatureRow, DocumentTemplateRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
   ServiceDirectoryRow, TaskRow,
 } from "@/lib/db/types";
 import { CopyButton, MatterTabs, type TabSpec } from "./matter-tabs";
@@ -342,7 +342,7 @@ export default async function MatterWorkbench({
 
       <Card>
         {tab === "timeline" && <TimelineSection ctx={ctx} matter={matter} names={names} />}
-        {tab === "documents" && <DocumentsSection ctx={ctx} matter={matter} names={names} />}
+        {tab === "documents" && <DocumentsSection ctx={ctx} matter={matter} names={names} clients={parties.filter((p) => p.role === "client").map((p) => ({ id: p.user_id, name: names[p.user_id] ?? "Client" }))} profileName={staff.find((m) => m.user_id === ctx.userId)?.full_name ?? null} />}
         {tab === "messages" && <MessagesSection ctx={ctx} matter={matter} names={names} />}
         {tab === "invoices" && <InvoicesSection ctx={ctx} matter={matter} basePath={basePath} extraQuery={extraQuery} />}
         {tab === "counsel" && <CounselSection ctx={ctx} matter={matter} />}
@@ -402,10 +402,10 @@ async function TimelineSection({ ctx, matter, names }: { ctx: StaffContext; matt
 }
 
 // ---------------------------------------------------------------- documents
-async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; matter: MatterDetail; names: Record<string, string> }) {
+async function DocumentsSection({ ctx, matter, names, clients, profileName }: { ctx: StaffContext; matter: MatterDetail; names: Record<string, string>; clients: Array<{ id: string; name: string }>; profileName: string | null }) {
   const { data: docRows } = await ctx.supabase
     .from("documents")
-    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at")
+    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at, locked_version_id, locked_at, signature_requested_at, signature_requested_by")
     .eq("matter_id", matter.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -415,10 +415,17 @@ async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; mat
   const { data: versionRows } = docs.length
     ? await ctx.supabase
         .from("document_versions")
-        .select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at")
+        .select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at, checksum, kind, source_template_id, template_version, executed_on, witness_name, attested_by, stamp_ref, registration_ref")
         .in("document_id", docs.map((d) => d.id))
     : { data: [] as DocumentVersionRow[] };
   const versions = (versionRows ?? []) as DocumentVersionRow[];
+
+  // Execution (migration 40): the firm's templates (retired ones too, so a version's origin is
+  // still named) and every signature on these documents.
+  const [{ data: templateRows }, { data: signatureRows }] = await Promise.all([
+    ctx.supabase.from("document_templates").select("id, firm_id, name, matter_types, body, execution, version, note, created_by, created_at, updated_at, retired_at").eq("firm_id", matter.firm_id).order("name"),
+    docs.length ? ctx.supabase.from("document_signatures").select("*").in("document_id", docs.map((d) => d.id)).order("signed_at") : Promise.resolve({ data: [] as DocumentSignatureRow[] }),
+  ]);
 
   const { data: requestRows } = await ctx.supabase
     .from("document_requests")
@@ -446,6 +453,11 @@ async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; mat
       documents={documents}
       timezone={ctx.timezone}
       names={names}
+      templates={(templateRows ?? []) as DocumentTemplateRow[]}
+      matterType={matter.type}
+      clients={clients}
+      signatures={(signatureRows ?? []) as DocumentSignatureRow[]}
+      profileName={profileName}
     />
   );
 }

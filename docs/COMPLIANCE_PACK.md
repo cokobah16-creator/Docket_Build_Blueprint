@@ -115,6 +115,22 @@ circumstances, finances. Treat every matter record as capable of holding sensiti
 | `rate_limits` | For a signed-in caller the key **is** `auth.uid()`; for an anonymous one it is a SHA-256 digest of the client address, computed in `src/lib/rate-limit.ts` — **the address itself never reaches the database** | No RLS policy at all: only `rate_limit_hit()` touches it. Rows older than a day are swept opportunistically inside that function |
 | `webhook_events` | provider, event type, provider reference, outcome, firm, invoice | Never the body of a verified event |
 | `domain_requests` | `requested_by`, `decided_by` | |
+| `document_signatures` | `signer_id`, the name the signer typed, their enrolment number where they signed for a firm, the version and its SHA-256, when they opened it, when they signed, the terms version in force | Written only by `record_signature()`; insert, update and delete are revoked from every API role, so a signature is never edited or withdrawn after the fact. It is evidence of execution and is retained with the document |
+| `document_versions` (execution columns) | `executed_recorded_by`, `witness_name`, `attested_by` | For an instrument executed on paper: the witness and the person who attested it are **third parties who are not Docket users**, recorded as free text by the firm because the instrument names them. The firm is the controller of that record; nothing is inferred or looked up |
+
+**A signature is over bytes, not over "a document".** `record_signature()` refuses unless the signer
+opened that exact version within the last thirty minutes (the `document_reads` record the storage
+policy already requires) and the SHA-256 of the version is stored on the signature. That is what
+makes the record answer *what* was signed — a question an audit line saying "signed a document"
+cannot answer. A signed document is then locked on that version: `document_lock_guard` refuses any
+further version, any move of the pointer and any deletion, so the artefact the signature names
+cannot be replaced beneath it.
+
+**Generated documents record their provenance.** A document drawn from a template stores the
+template and the template's version at the time, and the facts it was filled from **with the source
+of each** — so a later question about where a name or an address in an executed document came from
+is answered from the row rather than from memory. The generator refuses outright when the matter has
+no value for something the template names; nothing is guessed into a legal document.
 
 ### 1.7 Storage
 

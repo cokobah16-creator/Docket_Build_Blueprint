@@ -515,7 +515,52 @@ export interface DocumentRow {
   reviewed_at: string | null;
   reviewed_by: string | null;
   created_at: string;
+  /** Migration 40: executed documents are locked on a version; a signature may have been asked for. */
+  locked_version_id?: string | null;
+  locked_at?: string | null;
+  signature_requested_at?: string | null;
+  signature_requested_by?: string | null;
 }
+
+// ---------------------------------------------------------------- templates and execution (migration 40)
+export type TemplateExecution = "electronic" | "paper" | "either";
+export interface DocumentTemplateRow {
+  id: string;
+  firm_id: string;
+  name: string;
+  matter_types: MatterType[] | null;
+  body: string;
+  execution: TemplateExecution;
+  version: number;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  retired_at: string | null;
+}
+export interface DocumentSignatureRow {
+  id: string;
+  document_id: string;
+  version_id: string;
+  firm_id: string;
+  matter_id: string | null;
+  signer_id: string;
+  signer_role: "client" | "staff";
+  signer_name: string;
+  signer_scn: string | null;
+  checksum: string;
+  read_at: string;
+  signed_at: string;
+  consent_version: string | null;
+}
+/** The placeholders a template may name, mirrored from document_template_placeholders(). */
+export const TEMPLATE_PLACEHOLDERS = [
+  "firm.name", "firm.legal_name", "firm.rc_number", "firm.address", "firm.email", "firm.phone",
+  "matter.reference", "matter.title", "matter.cause_title", "matter.type", "matter.suit_number", "matter.court",
+  "matter.judicial_division", "matter.judge", "matter.opened_on", "matter.opposing_party",
+  "client.name", "client.company", "client.address", "client.email", "client.phone",
+  "lawyer.name", "lawyer.scn", "lawyer.title", "today",
+] as const;
 
 /** A document staff asked the client for (migration 31). */
 export interface DocumentRequestRow {
@@ -675,6 +720,16 @@ export interface DocumentVersionRow {
   size_bytes: number | null;
   uploaded_by: string | null;
   created_at: string;
+  /** Migration 40 */
+  checksum?: string | null;
+  kind?: "upload" | "generated" | "executed_paper";
+  source_template_id?: string | null;
+  template_version?: number | null;
+  executed_on?: string | null;
+  witness_name?: string | null;
+  attested_by?: string | null;
+  stamp_ref?: string | null;
+  registration_ref?: string | null;
 }
 
 export interface MessageAttachment {

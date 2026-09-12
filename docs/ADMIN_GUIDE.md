@@ -215,6 +215,47 @@ Docket counts; it does not decide. The rules on Docket are those the platform ha
 the Rules of Court, with their citation and version, and a court's own practice can differ — the
 confirming lawyer is confirming the day, not the arithmetic.
 
+## Documents you draw up, and how they are executed
+
+**`/firm/admin/templates`** holds your firm's templates. A template is the words, plus the
+`{placeholders}` Docket fills from the matter itself when a document is generated — the matter's
+reference and title, the suit number and court, the client's name and address, the handling
+lawyer's name and enrolment number, your firm's name and address, today's date. The editor lists
+every placeholder you may use; anything else is refused when you save, not later when a document
+is being drawn. For a value that belongs to that one document rather than the matter — a fee, a
+period, a property description — write `{extra.fee}` and Docket asks you for it each time you
+generate.
+
+Say how the instrument is executed: **signed in Docket**, **executed on paper**, or **either**.
+A deed, or anything that needs a witness, attestation, stamping or registration, is executed on
+paper — Docket will refuse to send it for signature, and offers to record the execution instead.
+
+**Generating one.** On the matter's Documents tab, *Generate a document* from a template that fits
+the matter's type. Docket fills it and, **if the matter has no value for something the template
+names, refuses and says which** — it does not guess and does not leave a blank for you to miss.
+Fill the gap on the matter and generate again. What is produced is a PDF with the document and
+version recorded against it, kept staff-only until you share it.
+
+**Asking for a signature.** *Ask the client to sign* shares the document and tells the matter's
+clients. They open it, read it, and sign by typing their name.
+
+**What a signature on Docket is.** It records: who signed, the name they typed, the exact version
+and the checksum of its bytes, that they opened those bytes before signing, and when. A signature
+is refused if they have not opened the document, or if the name typed is not the name on their
+profile. Once signed, the document is **locked on that version** — no further version can be added
+and the file cannot be removed. A change is a new document. Your firm can countersign the same
+version, and your enrolment number is recorded with it.
+
+**Executed on paper.** Upload the signed copy as a version in the usual way, then *Record execution
+on paper*: the day on the instrument, the witness, who attested it, the stamp duty and registration
+references. That locks the document on that version and tells the client. Docket does not claim the
+signature happened here; it records that it happened, and what it happened to.
+
+**One caution about typefaces.** The PDF Docket generates uses the standard Latin typeface, so a
+character it cannot print stops the generation and names itself rather than being printed as a
+question mark. If a client's name or an address needs a character outside it, draft that document
+outside Docket and upload it.
+
 ## Before anything else: your second factor
 
 **Every change a firm makes to itself requires two-factor authentication.** Not as policy — the

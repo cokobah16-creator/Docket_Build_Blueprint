@@ -14,7 +14,7 @@ import { DocumentsTab, type DocumentWithVersion } from "@/components/portal/docu
 import { MessagesThread } from "@/components/portal/messages-thread";
 import { Screen, ScreenHeader } from "@/components/portal/screen";
 import { cn } from "@/lib/cn";
-import type { DocumentRow, DocumentVersionRow, MatterRow, MatterStatus, MessageRow, UpdateRow, DocumentRequestRow } from "@/lib/db/types";
+import type { DocumentRow, DocumentSignatureRow, DocumentVersionRow, MatterRow, MatterStatus, MessageRow, UpdateRow, DocumentRequestRow } from "@/lib/db/types";
 
 export const metadata = { title: "Matter" };
 
@@ -108,15 +108,17 @@ async function TimelineTab({ supabase, matterId, tz }: { supabase: SB; matterId:
 async function DocumentsSection({ supabase, matter, tz, userId }: { supabase: SB; matter: MatterRow; tz: string; userId: string }) {
   const { data: docRows } = await supabase
     .from("documents")
-    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at")
+    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at, locked_version_id, locked_at, signature_requested_at, signature_requested_by")
     .eq("matter_id", matter.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
   const docs = (docRows ?? []) as DocumentRow[];
-  const { data: versionRows } = docs.length
-    ? await supabase.from("document_versions").select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at").in("document_id", docs.map((d) => d.id))
-    : { data: [] };
+  const [{ data: versionRows }, { data: signatureRows }, { data: me }] = await Promise.all([
+    docs.length ? supabase.from("document_versions").select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at, checksum, kind, executed_on").in("document_id", docs.map((d) => d.id)) : Promise.resolve({ data: [] as DocumentVersionRow[] }),
+    docs.length ? supabase.from("document_signatures").select("*").in("document_id", docs.map((d) => d.id)).order("signed_at") : Promise.resolve({ data: [] as DocumentSignatureRow[] }),
+    supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+  ]);
   const versions = (versionRows ?? []) as DocumentVersionRow[];
   const withVersion: DocumentWithVersion[] = docs.map((d) => ({
     ...d,
@@ -129,7 +131,7 @@ async function DocumentsSection({ supabase, matter, tz, userId }: { supabase: SB
     .eq("matter_id", matter.id)
     .order("requested_at", { ascending: false })
     .limit(50);
-  return <DocumentsTab firmId={matter.firm_id} matterId={matter.id} appointmentId={null} documents={withVersion} timezone={tz} requests={(requestRows ?? []) as DocumentRequestRow[]} userId={userId} />;
+  return <DocumentsTab firmId={matter.firm_id} matterId={matter.id} appointmentId={null} documents={withVersion} timezone={tz} requests={(requestRows ?? []) as DocumentRequestRow[]} userId={userId} signatures={(signatureRows ?? []) as DocumentSignatureRow[]} profileName={(me as { full_name: string | null } | null)?.full_name ?? null} />;
 }
 
 async function MessagesSection({ supabase, matter, userId, tz, senderNames, firmName }: { supabase: SB; matter: MatterRow; userId: string; tz: string; senderNames: Record<string, string>; firmName: string }) {

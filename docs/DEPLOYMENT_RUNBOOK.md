@@ -455,7 +455,19 @@ key now means the firm's entry stage, and a firm's own unknown key is refused in
 the matter with no stage), a direct write of `matters.status_id` — what the deployed edit panel
 does — is still allowed by the policy and simply does not post the status_change entry or start
 the stage's tasks until the front end that calls `set_matter_status()` deploys, and the two
-default packs are catalogue rows nothing reads until a firm installs one.
+default packs are catalogue rows nothing reads until a firm installs one. 40 is safe either side,
+but it is the one migration in this wave that **narrows an existing grant**, so check the list rather
+than assume: it revokes the blanket `insert` on `document_versions` and re-grants exactly
+`(id, document_id, storage_path, mime, size_bytes, checksum, uploaded_by)`, and revokes the blanket
+`update` on `documents` and re-grants exactly `(name, category, client_visible, reviewed_at,
+reviewed_by)`. Those are the columns the deployed front end writes and no others — the staff upload,
+the portal upload, the share toggle and "mark as reviewed" all resolve to the granted list, so they
+keep working; anything outside it now answers `42501` instead of being written. The lock guards fire
+only on a document that has been executed, and none exists until the front end that executes one
+deploys. Everything else in 40 is new tables, new columns at the end of `documents` and
+`document_versions`, and new functions. The dispatcher must carry the `document_ready_to_sign` /
+`document_signed` renderers — they are in the same v9 that 37 requires — before the first signature
+is asked for, or the ask goes out with the generic sentence.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

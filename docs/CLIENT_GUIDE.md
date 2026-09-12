@@ -239,6 +239,26 @@ database for them to read it.
   the file arrives. A request your firm withdraws simply disappears from the list.
 - Up to 25 MB per file: PDF, Word, and JPEG, PNG or HEIC photographs.
 
+### Signing a document
+
+Your firm may draw up a document and ask you to sign it. It appears on the matter's Documents tab
+saying so, with **Read and sign**.
+
+- **You read it first, and Docket checks that you did.** The document opens in front of you; only
+  then does the box to sign appear. A signature without that is refused.
+- **You sign by typing your name** — exactly as it is on your profile. If your name there is wrong,
+  correct it on your profile first; Docket will not accept a different name for you.
+- **What is recorded** is: that it was you, the name you typed, the exact version of the file and a
+  fingerprint of its contents, that you opened it, and when. That is what makes it evidence of what
+  you signed rather than of "a document".
+- **Once signed, the document is final.** No new version can be added to it, by anyone. If
+  something must change, your firm draws up a new document.
+- **Some documents cannot be signed here.** A deed, or anything needing a witness or stamping, has
+  to be signed on paper before the right person. Your firm will tell you, and will record on Docket
+  what was executed and when.
+- **You are never asked to sign anything your firm has not shared with you**, and a signature is
+  never taken from you automatically.
+
 ---
 
 ## Your data, and your say over it

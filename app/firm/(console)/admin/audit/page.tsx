@@ -51,6 +51,7 @@ const ROW_AUDITED = [
   "firm_members", "services", "appointments", "matters", "matter_parties", "updates",
   "documents", "invoices", "consent_records", "matter_counsel", "process_service", "courts",
   "lawyer_profiles", "staff_invites", "matter_court_numbers", "court_events", "deadline", "matter_statuses", "tasks", "firm_workflow_packs",
+  "document_templates",
 ];
 
 /**

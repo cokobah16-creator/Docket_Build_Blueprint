@@ -424,6 +424,86 @@ Refuses: `service record not found` · `not permitted` *(42501)*
 
 ---
 
+### Templates and execution (migration 40)
+
+#### `prepare_generated_document(p_matter uuid, p_template uuid, p_name text = null, p_client uuid = null, p_extra jsonb = '{}')`
+Returns `jsonb` — `document_id`, `version_id`, `storage_path`, `name`, `text`, `facts`,
+`template_version`, `execution`, `client_id`. **Who:** staff who can write the matter. Fills the
+template from the matter's own facts and opens the `documents` row (category `generated`, staff-only)
+with no version yet. Every `{placeholder}` is resolved from the matter, its client, the handling
+lawyer, the firm or today — the list is `document_template_placeholders()` — or from `p_extra` for
+`{extra.<name>}`, and **a fact the matter has no value for stops the whole generation and is named**.
+Nothing is guessed and nothing is left blank. The returned `facts` carries the value AND its source
+for every placeholder used, which `finalize_generated_version()` stores on the version.
+
+Refuses: `not permitted` *(42501)* · `template not found` · `the template "…" is retired` ·
+`the template "…" is for property matters` · `nothing is guessed: the matter has no value for matter.court, matter.suit_number` ·
+`extra.fee is text of at most 2,000 characters` · `that person is not a client on this matter`
+
+#### `finalize_generated_version(p_document uuid, p_version uuid, p_storage_path text, p_size_bytes bigint, p_checksum text, p_template uuid, p_facts jsonb)`
+Returns `void`. **Who:** staff who can write the matter. Records the version the server action just
+rendered and stored: kind `generated`, the template and the template's version at the time, the facts
+it was filled from, and the sha256 of the bytes. The path must be exactly
+`{firm}/{document}/{version}.pdf` — the version's own path, so a row can never point at another
+document's bytes. One version only: a second call on the same document is refused. Audits
+`document.generated`. A render or an upload that fails leaves the document with no file, which both
+document screens show as such and `retire_empty_document()` removes.
+
+Refuses: `not permitted` *(42501)* · `only a generated document is finalised here` ·
+`this document already has its version` · `a generated version carries the sha256 of its bytes` ·
+`the storage path is not this version's`
+
+#### `request_signature(p_document uuid)`
+Returns `void`. **Who:** staff who can write the matter. Shares the document with the matter's
+clients and asks them to sign it: `client_visible` becomes true, the ask is stamped with who and
+when, and every client on the matter is told (`document_ready_to_sign`). Audits
+`document.signature_requested` with the version and its checksum, so the record says what was asked
+to be signed, not merely that something was.
+
+Refuses: `not permitted` *(42501)* · `this document has no file yet` ·
+`this version has no checksum, so a signature over it would be evidence of nothing — upload it again` ·
+`this instrument is executed on paper: print it, sign before a witness, and upload the signed copy` ·
+`this document is already executed`
+
+#### `record_signature(p_version uuid, p_typed_name text)`
+Returns `uuid` (the signature). **Who:** anyone who may see the version — the client the firm asked,
+or a member of the firm countersigning. What it records is evidence, so each part is checked rather
+than accepted: the signer must have **opened this version in the last thirty minutes**
+(`document_reads`, the same record the storage policy needs before it mints a URL), the typed name
+must match `profiles.full_name` exactly once case and spacing are normalised, and the version must
+carry a checksum — which is stored on the signature, so what was signed is nameable bytes. A staff
+signature also stores the practitioner's enrolment number. The signature locks the document on that
+version: no further version, no move of the pointer, no deletion. The firm is told
+(`document_signed`), and a client signature posts a client-visible `document` entry on the timeline.
+One signature per signer per version (`23505` on a second). Audits `document.signed`.
+
+Refuses: `not permitted` *(42501)* · `the firm has not asked for a signature on this document` ·
+`open the document first: a signature is over bytes the signer has seen` ·
+`type your name exactly as it is on your profile: Adaeze Okafor` ·
+`your profile has no name to sign with — add it first` ·
+`this instrument is executed on paper, not signed here` · `this document is executed on another version`
+
+#### `record_paper_execution(p_document uuid, p_version uuid, p_executed_on date, p_witness_name text = null, p_attested_by text = null, p_stamp_ref text = null, p_registration_ref text = null)`
+Returns `void`. **Who:** staff who can write the matter. For an instrument the law executes on paper —
+a deed, anything needing a witness, attestation, stamping or registration. The executed copy is
+uploaded as a version in the ordinary way and this records what happened to it off-screen: the day on
+the instrument (a calendar day, never shifted, and never in the future), the witness, who attested it,
+the stamp duty and registration references. It locks the document on that version and posts a
+client-visible timeline entry. Audits `document.executed_on_paper`. Docket does not claim the
+signature happened here; it records that it happened.
+
+Refuses: `not permitted` *(42501)* · `this document is already executed` ·
+`that version is not this document's` · `this version has no checksum — upload the signed copy again` ·
+`give the day it was executed` · `the day of execution is not in the future`
+
+#### Templates themselves
+`document_templates` is written through the ordinary policies (`admin_w` — an owner or administrator
+with a second factor), not an RPC. A trigger checks every placeholder against
+`document_template_placeholders()` before the row is stored, so a template that names a fact Docket
+cannot fill is refused at the door rather than at generation. Changing the words or the execution
+mode bumps `version`; a document already generated keeps the version it was made from. Retiring a
+template stops new generations and changes nothing already made from it.
+
 ### Workflow packs (migration 39)
 
 #### `set_matter_status(p_matter uuid, p_status_key text, p_note_to_client text = null)`
