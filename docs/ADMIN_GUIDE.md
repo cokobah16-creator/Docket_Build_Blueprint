@@ -225,6 +225,38 @@ Docket counts; it does not decide. The rules on Docket are those the platform ha
 the Rules of Court, with their citation and version, and a court's own practice can differ — the
 confirming lawyer is confirming the day, not the arithmetic.
 
+## The baseline: measuring before you claim a saving
+
+**`/firm/admin/baseline`** shows what your own records say over a window you choose — the last
+week, month, quarter or half-year — and lets an owner or administrator **record** one.
+
+What it shows, all of it computed from your rows: consultations booked, paid and attended; how many
+consultations were followed by a matter, and how long that took; what share of your sittings the
+client heard about, and how many within a day; how long a client waited for a first reply, and how
+long the oldest unanswered message has been waiting; documents asked for and sent in; invoiced and
+collected, per currency, and how long a fee took to collect; open matters and overdue next actions;
+and how many clients used the app.
+
+**Three things it will not do**, and they are the point of the screen:
+
+- **It never guesses at attendance.** Docket marks a consultation completed when you save its
+  notes, so one held in chambers and never written up is shown as *never written up* — its own
+  number, in no attendance rate. If that number is large, the rate above it means little, and the
+  screen says so rather than flattering you.
+- **It says which figures are inferences.** Nothing in Docket joins a consultation to the matter it
+  became; "followed by a matter" means the same client had a matter opened within sixty days. It is
+  printed with that sentence beneath it.
+- **It keeps your own account of the past separate.** When you record a baseline you may write down
+  what the firm says about how the work went *before* Docket — hours a week chasing court dates,
+  how long a client used to wait. Those are stored as **your statement, with your name and the
+  date**, beside the computed figures and never inside them. Docket cannot measure the years before
+  it existed and will not pretend to.
+
+**Record one before you change how the firm works.** A baseline is a dated row that nobody can
+edit afterwards — not you, not Docket, not an administrator. That is what makes it worth comparing
+against. Without one, any later claim that Docket saved the firm time is a guess with a number
+attached to it.
+
 ## Documents you draw up, and how they are executed
 
 **`/firm/admin/templates`** holds your firm's templates. A template is the words, plus the

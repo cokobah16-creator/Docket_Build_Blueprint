@@ -553,6 +553,50 @@ export interface DocumentSignatureRow {
   signed_at: string;
   consent_version: string | null;
 }
+// ---------------------------------------------------------------- the pilot baseline (migration 41)
+
+/** What firm_metrics() returns. Every figure is computed by the database from the firm's rows. */
+export interface FirmMetrics {
+  firm_id: string;
+  window_from: string;
+  window_to: string;
+  computed_at: string;
+  bookings: { made: number; paid: number; median_hours_to_pay: number };
+  /** `unrecorded` is its own bucket on purpose: a consultation never written up is neither. */
+  attendance: { past: number; attended: number; missed: number; unrecorded: number; upcoming_now: number };
+  consultation_to_matter: { consultations: number; followed_by_a_matter: number; median_days: number; within_days: number };
+  sittings: { sat: number; with_an_update: number; updated_within_24h: number; median_hours_to_update: number };
+  replies: { messages_from_clients: number; answered: number; median_hours_to_first_reply: number; still_unanswered: number; oldest_unanswered_hours: number };
+  document_requests: { asked: number; answered: number; median_hours_to_answer: number };
+  money: { invoiced: Record<string, number>; collected: Record<string, number>; median_days_to_collect: number };
+  work: { open_matters: number; matters_opened_in_window: number; next_actions_overdue_now: number; client_updates_posted: number };
+  clients: { active_in_window: number };
+  /** What the numbers do not say, in the database's own words. Shown, never summarised away. */
+  caveats: string[];
+}
+
+/** A dated, append-only record of one window (migration 41). */
+export interface FirmBaselineRow {
+  id: string;
+  firm_id: string;
+  taken_at: string;
+  window_from: string;
+  window_to: string;
+  metrics: FirmMetrics;
+  /** What the firm stated about the work before Docket, kept apart from the metrics. */
+  stated: Record<string, string>;
+  note: string | null;
+  taken_by: string | null;
+}
+
+/** The figures a firm is asked for about life before Docket. Prompts, not fields Docket fills. */
+export const BASELINE_CLAIMS: Array<{ key: string; label: string; hint: string }> = [
+  { key: "chasing_court_dates", label: "Time spent chasing and passing on court dates", hint: "Hours a week, and who does it." },
+  { key: "answering_clients", label: "How long a client usually waited for an answer", hint: "Before Docket, on the phone or in person." },
+  { key: "collecting_fees", label: "How long a fee usually took to collect", hint: "From the day the bill went out." },
+  { key: "finding_a_file", label: "Finding a document when it was needed", hint: "Where papers lived, and how long a search took." },
+];
+
 /** The placeholders a template may name, mirrored from document_template_placeholders(). */
 export const TEMPLATE_PLACEHOLDERS = [
   "firm.name", "firm.legal_name", "firm.rc_number", "firm.address", "firm.email", "firm.phone",

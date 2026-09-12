@@ -473,7 +473,11 @@ only on a document that has been executed, and none exists until the front end t
 deploys. Everything else in 40 is new tables, new columns at the end of `documents` and
 `document_versions`, and new functions. The dispatcher must carry the `document_ready_to_sign` /
 `document_signed` renderers — they are in the same v9 that 37 requires — before the first signature
-is asked for, or the ask goes out with the generic sentence.
+is asked for, or the ask goes out with the generic sentence. 41 is additive and safe either side:
+`firm_baselines`, `firm_metrics()`, `record_firm_baseline()` and the `audit_log (firm_id, action,
+at desc)` index are all new, and only the new screen reads any of them. It re-creates the
+`audit_log` platform allow-list with `firm` already on it, so nothing a platform admin can read
+today stops being readable.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

@@ -1,0 +1,56 @@
+// /firm/admin/baseline — what the firm's rows say over a window, and the dated records of it.
+//
+// The assessment's twenty-fifth recommendation: record the baseline before claiming any saving.
+// Every figure here is computed by the database from this firm's own rows (firm_metrics, which
+// asks is_firm_member); the caveats it returns are printed as it wrote them. Recording one is an
+// owner or administrator's act with a second factor, and the record cannot afterwards be edited.
+
+import { requestedFirmId, staffContext } from "@/lib/firm-data";
+import { Alert } from "@/components/ui/alert";
+import type { FirmBaselineRow, FirmMetrics } from "@/lib/db/types";
+import { BaselinePanel } from "./baseline-panel";
+
+export const metadata = { title: "Baseline" };
+
+export default async function BaselinePage({ searchParams }: { searchParams: Promise<{ firm?: string; from?: string; to?: string }> }) {
+  const sp = await searchParams;
+  const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
+  if (!ctx) {
+    return (
+      <Alert kind="warning" title="Not configured">
+        Supabase environment variables are not set, or this account is not a member of a firm.
+      </Alert>
+    );
+  }
+  const { supabase, firmId } = ctx;
+  // Thirty days back by default, and whatever the reader asked for otherwise.
+  const to = sp.to && !Number.isNaN(Date.parse(sp.to)) ? new Date(sp.to) : new Date();
+  const from = sp.from && !Number.isNaN(Date.parse(sp.from)) ? new Date(sp.from) : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const [{ data: metrics, error: metricsError }, { data: rows, error: rowsError }] = await Promise.all([
+    supabase.rpc("firm_metrics", { p_firm: firmId, p_from: from.toISOString(), p_to: to.toISOString() }),
+    supabase.from("firm_baselines").select("id, firm_id, taken_at, window_from, window_to, metrics, stated, note, taken_by")
+      .eq("firm_id", firmId).order("taken_at", { ascending: false }).limit(50),
+  ]);
+
+  return (
+    <div className="space-y-6">
+      <header>
+        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Baseline</h1>
+        <p className="text-sm text-gray-600">{ctx.firmName} · what your own records say, over a window you choose</p>
+      </header>
+      {metricsError && <Alert kind="error" title="The figures could not be computed">{metricsError.message}. That is a failed read, not a firm with no work.</Alert>}
+      {rowsError && <Alert kind="error" title="The records could not be read">{rowsError.message}.</Alert>}
+      {!ctx.isAdmin && <Alert kind="info">You are {ctx.role} here: the figures are shown, and an owner or administrator records a baseline.</Alert>}
+      <BaselinePanel
+        firmId={firmId}
+        timezone={ctx.timezone}
+        canWrite={ctx.isAdmin}
+        from={from.toISOString()}
+        to={to.toISOString()}
+        metrics={(metrics ?? null) as FirmMetrics | null}
+        baselines={(rows ?? []) as FirmBaselineRow[]}
+      />
+    </div>
+  );
+}

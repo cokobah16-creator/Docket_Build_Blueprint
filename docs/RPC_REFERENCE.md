@@ -458,6 +458,46 @@ Refuses: `service record not found` · `not permitted` *(42501)*
 
 ---
 
+### The pilot baseline (migration 41)
+
+#### `firm_metrics(p_firm uuid, p_from timestamptz, p_to timestamptz = now())`
+Returns `jsonb`. **Who:** any member of the firm. Computes, from the firm's own rows and nothing
+else: bookings made and paid in the window with the median hours to pay; attendance over
+consultations whose time has passed, split **attended / missed / unrecorded**; consultations
+followed by a matter for the same client within sixty days, with the median days; sittings that
+came and went, how many carry an update and how many within a day; messages from clients, how many
+were answered and how long the first reply took, and how long the oldest unanswered one has waited;
+documents asked for and sent in; invoiced and collected **per currency** with the median days to
+collect; open matters, matters opened, overdue next actions judged in the firm's own timezone, and
+client updates posted; and clients who did something the rows can see.
+
+Every answer carries a `caveats` array written by the function itself, and the screens print it
+rather than summarising it away. Three of them matter:
+- **Unrecorded attendance is its own bucket.** Docket marks a consultation completed when its notes
+  are saved, so one held in chambers and never written up stays `confirmed` for ever. Folding those
+  into either "attended" or "missed" would invent the firm's attendance rate.
+- **Consultation to matter is an inference.** No column joins the two; it means the same client had
+  a matter opened within sixty days.
+- **The PostHog funnel is not part of this.** Its key is optional, two of its five steps are never
+  emitted, and a client who signs in by phone is never joined to their earlier visits — so it cannot
+  carry a claim, and the baseline is database-derived instead.
+
+Refuses: `not permitted` *(42501)* · `firm not found` · `give a window: from, then to`
+
+#### `record_firm_baseline(p_firm uuid, p_from timestamptz, p_to timestamptz = now(), p_note text = null, p_stated jsonb = '{}')`
+Returns `uuid`. **Who:** `admin_w` — an owner or administrator with a second factor. Calls
+`firm_metrics()` and stores the answer as a row in `firm_baselines` with the window, the note, and
+who took it. `p_stated` is what the **firm says** about the work before Docket — short text, at most
+500 characters an entry — kept in its own column and never merged into the metrics, because Docket
+cannot measure it and must not present it as though it had. Audits `baseline.recorded`.
+
+`firm_baselines` is append-only in the same way `audit_log` is: `select` for members of the firm,
+and no insert, update or delete granted to any API role. A number that could be edited afterwards
+is not a baseline.
+
+Refuses: `not permitted` *(42501)* · `what the firm states is an object of short answers` ·
+`a stated figure is text of at most 500 characters (…)` · and every refusal of `firm_metrics()`
+
 ### Templates and execution (migration 40)
 
 #### `prepare_generated_document(p_matter uuid, p_template uuid, p_name text = null, p_client uuid = null, p_extra jsonb = '{}')`
