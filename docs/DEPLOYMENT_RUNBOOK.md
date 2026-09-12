@@ -412,8 +412,10 @@ verify.
 - **Functions:** `supabase functions deploy <name>` — and remember `--no-verify-jwt` on the two that
   need it, every time.
 - **App:** push to the branch Vercel builds.
-- **Before any of it:** CI runs the migrations, the seed and all eight test suites against a clean
-  Postgres 16. A red `sql` job means a policy changed meaning, and that is the one to stop for.
+- **Before any of it:** CI runs the migrations, the seed and **every** suite in `supabase/tests/`
+  against a clean Postgres 16 — the job counts the files and refuses to pass unless each one
+  printed `ALL CHECKS PASSED`, so a suite that never ran fails the build rather than disappearing.
+  A red `sql` job means a policy changed meaning, and that is the one to stop for.
 
 ## Release record
 
