@@ -309,6 +309,39 @@ export interface MatterStatus {
   label: string;
   colour: string | null;
   is_terminal: boolean;
+  /** Migration 39: where the stage came from and which matter types it is offered for (null: every type). */
+  sort?: number;
+  pack_key?: string | null;
+  pack_version?: number | null;
+  matter_types?: MatterType[] | null;
+  default_next_action?: string | null;
+}
+
+/** A stage is offered for a matter type when it names no types, or names this one. */
+export function statusFitsType(s: Pick<MatterStatus, "matter_types">, type: string | null | undefined): boolean {
+  return !s.matter_types || s.matter_types.length === 0 || (!!type && (s.matter_types as string[]).includes(type));
+}
+
+// ---------------------------------------------------------------- workflow packs (migration 39)
+export interface WorkflowPackStatusDef { key: string; label: string; colour?: string; sort?: number; is_terminal?: boolean; next_action?: string }
+export interface WorkflowPackTaskDef { key: string; title: string; on_status_key: string; due_offset_days?: number; assignee?: "lead" | "none" }
+export interface WorkflowPackDefinition { statuses: WorkflowPackStatusDef[]; task_templates?: WorkflowPackTaskDef[] }
+export interface WorkflowPackRow {
+  key: string;
+  version: number;
+  name: string;
+  matter_types: MatterType[] | null;
+  definition: WorkflowPackDefinition;
+  note: string | null;
+  published_by: string | null;
+  published_at: string;
+}
+export interface FirmWorkflowPackRow {
+  firm_id: string;
+  pack_key: string;
+  installed_version: number;
+  installed_at: string;
+  installed_by: string | null;
 }
 
 export interface MatterRow {
@@ -362,6 +395,110 @@ export interface CourtEventRow {
   court_name: string | null;
   purpose: string | null;
   outcome_update_id: string | null;
+  /** Migration 13/38: where the date came from, and whether that is evidenced. */
+  vacated_at?: string | null;
+  source?: "firm" | "hearing_notice" | "cause_list";
+  source_document_id?: string | null;
+  source_ref?: string | null;
+}
+
+/** A court-originated date is evidenced by a document or a reference; a chip alone is a claim. */
+export function courtDateProvenance(e: { source?: string | null; source_document_id?: string | null; source_ref?: string | null }): "court" | "firm" | "claimed" {
+  if (!e.source || e.source === "firm") return "firm";
+  return e.source_document_id || e.source_ref ? "court" : "claimed";
+}
+
+// ---------------------------------------------------------------- the legal diary (migration 38)
+export const DEADLINE_TRIGGERS = ["judgment_delivered", "ruling_delivered", "order_made", "service_effected", "hearing_held", "filing", "other"] as const;
+export type DeadlineTrigger = (typeof DEADLINE_TRIGGERS)[number];
+export const DEADLINE_TRIGGER_LABELS: Record<DeadlineTrigger, string> = {
+  judgment_delivered: "Judgment delivered", ruling_delivered: "Ruling delivered", order_made: "Order made",
+  service_effected: "Service effected", hearing_held: "Hearing held", filing: "A filing", other: "Another event",
+};
+
+export interface CourtRuleRow {
+  id: string;
+  level: CourtLevel | null;
+  state_code: string | null;
+  name: string;
+  citation: string | null;
+  version: string;
+  effective_from: string;
+  retired_on: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface RuleProvisionRow {
+  id: string;
+  rule_id: string;
+  key: string;
+  label: string;
+  citation: string | null;
+  trigger_kind: DeadlineTrigger;
+  period: number;
+  unit: "days" | "months";
+  count_mode: "calendar" | "clear" | "working";
+  excludes_vacation: boolean;
+  rolls_forward: boolean;
+  note: string | null;
+}
+
+/** What count_deadline() returns: the day due and everything the count did and relied on. */
+export interface DeadlineCalculation {
+  from?: string;
+  period?: number;
+  unit?: string;
+  count_mode: "calendar" | "clear" | "working" | "manual";
+  excludes_vacation?: boolean;
+  rolls_forward?: boolean;
+  level?: string | null;
+  state_code?: string | null;
+  due_on: string;
+  counted_days?: number;
+  skipped?: Array<{ day: string; reason: string }>;
+  rolled?: Array<{ day: string; reason: string }>;
+  coverage?: { vacation_rows_in_range: number; holiday_rows_in_range: number; any_vacation_calendar: boolean; holidays_entered_for_year: boolean };
+}
+
+export interface DeadlineRow {
+  id: string;
+  firm_id: string;
+  matter_id: string;
+  title: string;
+  trigger_kind: DeadlineTrigger;
+  trigger_on: string;
+  trigger_ref: Record<string, unknown>;
+  court_id: string | null;
+  jurisdiction: { court_id?: string | null; court_name?: string | null; level?: string | null; state_code?: string | null; division?: string | null };
+  rule_id: string | null;
+  provision_id: string | null;
+  rule_name: string | null;
+  rule_citation: string | null;
+  rule_version: string | null;
+  provision_label: string | null;
+  provision_citation: string | null;
+  calculation: DeadlineCalculation;
+  due_on: string;
+  status: "proposed" | "confirmed" | "discharged" | "superseded";
+  computed_by: string | null;
+  computed_at: string;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  discharged_by: string | null;
+  discharged_at: string | null;
+  discharge_note: string | null;
+  superseded_by: string | null;
+  note: string | null;
+  reminders_sent: string[];
+}
+
+/** firm_deadlines: a deadline with its matter beside it. */
+export interface FirmDeadlineRow extends DeadlineRow {
+  reference: string;
+  cause_title: string;
+  court: string | null;
 }
 
 export interface DocumentRow {
@@ -378,13 +515,105 @@ export interface DocumentRow {
   reviewed_at: string | null;
   reviewed_by: string | null;
   created_at: string;
+  /** Migration 40: executed documents are locked on a version; a signature may have been asked for. */
+  locked_version_id?: string | null;
+  locked_at?: string | null;
+  signature_requested_at?: string | null;
+  signature_requested_by?: string | null;
 }
+
+// ---------------------------------------------------------------- templates and execution (migration 40)
+export type TemplateExecution = "electronic" | "paper" | "either";
+export interface DocumentTemplateRow {
+  id: string;
+  firm_id: string;
+  name: string;
+  matter_types: MatterType[] | null;
+  body: string;
+  execution: TemplateExecution;
+  version: number;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+  retired_at: string | null;
+}
+export interface DocumentSignatureRow {
+  id: string;
+  document_id: string;
+  version_id: string;
+  firm_id: string;
+  matter_id: string | null;
+  signer_id: string;
+  signer_role: "client" | "staff";
+  signer_name: string;
+  signer_scn: string | null;
+  checksum: string;
+  read_at: string;
+  signed_at: string;
+  consent_version: string | null;
+}
+// ---------------------------------------------------------------- the pilot baseline (migration 41)
+
+/** What firm_metrics() returns. Every figure is computed by the database from the firm's rows. */
+export interface FirmMetrics {
+  firm_id: string;
+  window_from: string;
+  window_to: string;
+  computed_at: string;
+  bookings: { made: number; paid: number; median_hours_to_pay: number };
+  /** `unrecorded` is its own bucket on purpose: a consultation never written up is neither. */
+  attendance: { past: number; attended: number; missed: number; unrecorded: number; upcoming_now: number };
+  consultation_to_matter: { consultations: number; followed_by_a_matter: number; median_days: number; within_days: number };
+  sittings: { sat: number; with_an_update: number; updated_within_24h: number; median_hours_to_update: number };
+  replies: { messages_from_clients: number; answered: number; median_hours_to_first_reply: number; still_unanswered: number; oldest_unanswered_hours: number };
+  document_requests: { asked: number; answered: number; median_hours_to_answer: number };
+  money: { invoiced: Record<string, number>; collected: Record<string, number>; median_days_to_collect: number };
+  work: { open_matters: number; matters_opened_in_window: number; next_actions_overdue_now: number; client_updates_posted: number };
+  clients: { active_in_window: number };
+  /** What the numbers do not say, in the database's own words. Shown, never summarised away. */
+  caveats: string[];
+}
+
+/** A dated, append-only record of one window (migration 41). */
+export interface FirmBaselineRow {
+  id: string;
+  firm_id: string;
+  taken_at: string;
+  window_from: string;
+  window_to: string;
+  metrics: FirmMetrics;
+  /** What the firm stated about the work before Docket, kept apart from the metrics. */
+  stated: Record<string, string>;
+  note: string | null;
+  taken_by: string | null;
+}
+
+/** The figures a firm is asked for about life before Docket. Prompts, not fields Docket fills. */
+export const BASELINE_CLAIMS: Array<{ key: string; label: string; hint: string }> = [
+  { key: "chasing_court_dates", label: "Time spent chasing and passing on court dates", hint: "Hours a week, and who does it." },
+  { key: "answering_clients", label: "How long a client usually waited for an answer", hint: "Before Docket, on the phone or in person." },
+  { key: "collecting_fees", label: "How long a fee usually took to collect", hint: "From the day the bill went out." },
+  { key: "finding_a_file", label: "Finding a document when it was needed", hint: "Where papers lived, and how long a search took." },
+];
+
+/** The placeholders a template may name, mirrored from document_template_placeholders(). */
+export const TEMPLATE_PLACEHOLDERS = [
+  "firm.name", "firm.legal_name", "firm.rc_number", "firm.address", "firm.email", "firm.phone",
+  "matter.reference", "matter.title", "matter.cause_title", "matter.type", "matter.suit_number", "matter.court",
+  "matter.judicial_division", "matter.judge", "matter.opened_on", "matter.opposing_party",
+  "client.name", "client.company", "client.address", "client.email", "client.phone",
+  "lawyer.name", "lawyer.scn", "lawyer.title", "today",
+] as const;
 
 /** A document staff asked the client for (migration 31). */
 export interface DocumentRequestRow {
   id: string;
   firm_id: string;
-  matter_id: string;
+  /** Null for a request on a consultation (migration 35). */
+  matter_id: string | null;
+  /** Set for a request on a consultation; null for one on a matter. */
+  appointment_id: string | null;
   title: string;
   why: string | null;
   /** YYYY-MM-DD or null — a calendar day. */
@@ -438,6 +667,95 @@ export interface ConflictCheckRow {
   created_at: string;
 }
 
+/** What firm_readiness() returns (migration 34): the booking engine's gates, in its order, and the setup facts. */
+export interface FirmReadiness {
+  status: "pending" | "active" | "suspended";
+  verified_at: string | null;
+  slug: string;
+  policies_published: boolean;
+  reference_prefix: string;
+  reference_issued: boolean;
+  settlement_account: boolean;
+  needs_settlement: boolean;
+  active_services: number;
+  all_services: number;
+  /** Active services the settlement state lets a client book: the account is set, or the service is not priced-and-prepaid. */
+  payable_services: number;
+  availability_rules: number;
+  public_lawyers: number;
+  /** Public profiles whose owner has hours of their own — the only lawyers the booking page can offer a time for. */
+  public_lawyers_with_hours: number;
+  members: number;
+  owners: number;
+  lawyers: number;
+  intake_forms: number;
+  all_intake_forms: number;
+  brand_colours: boolean;
+  brand_logo: boolean;
+  address_for_service: boolean;
+  accepts_platform_service: boolean;
+  matters: number;
+  clients: number;
+  pending_invites: number;
+  /** Import batches processed to the end. */
+  imports_processed: number;
+  custom_domain: string | null;
+  domain_request: string | null;
+  skipped: Record<string, { at: string; by: string | null; note: string | null }>;
+  gates: { site_open: boolean; bookable: boolean; payment_ready: boolean };
+}
+
+export type OnboardingStep =
+  | "policies" | "operations" | "settlement" | "people" | "profile" | "availability"
+  | "services" | "intake" | "brand" | "service_of_process" | "import" | "domain";
+
+export interface ImportBatchRow {
+  id: string;
+  firm_id: string;
+  kind: "matters";
+  source_name: string | null;
+  row_count: number;
+  created_by: string | null;
+  created_at: string;
+  processed_at: string | null;
+}
+
+/** One staged CSV row and what became of it. `raw` is what the firm typed about a client: personal data. */
+export interface ImportRowRecord {
+  id: string;
+  batch_id: string;
+  firm_id: string;
+  row_no: number;
+  raw: Record<string, string>;
+  skip: boolean;
+  outcome: "created" | "skipped" | "failed" | null;
+  matter_id: string | null;
+  invite_id: string | null;
+  note: string | null;
+  processed_at: string | null;
+}
+
+/** One item appointment_readiness() computed (migration 35). A client never sees a conflict item's substance. */
+export interface ReadinessItem {
+  kind: "payment" | "intake" | "documents" | "consent" | "conflict";
+  label: string;
+  satisfied: boolean;
+  detail: string;
+  /** intake: the required questions still unanswered */
+  missing?: Array<{ key: string; label: string }>;
+  /** documents: the open requests */
+  open?: Array<{ id: string; title: string; due_on: string | null }>;
+  ref?: string | null;
+}
+export interface AppointmentReadiness {
+  appointment_id: string;
+  status: string;
+  held: boolean;
+  checkin_required: boolean;
+  ready: boolean;
+  items: ReadinessItem[];
+}
+
 export interface DocumentVersionRow {
   id: string;
   document_id: string;
@@ -446,6 +764,16 @@ export interface DocumentVersionRow {
   size_bytes: number | null;
   uploaded_by: string | null;
   created_at: string;
+  /** Migration 40 */
+  checksum?: string | null;
+  kind?: "upload" | "generated" | "executed_paper";
+  source_template_id?: string | null;
+  template_version?: number | null;
+  executed_on?: string | null;
+  witness_name?: string | null;
+  attested_by?: string | null;
+  stamp_ref?: string | null;
+  registration_ref?: string | null;
 }
 
 export interface MessageAttachment {
@@ -563,6 +891,14 @@ export interface CauseListRow {
   purpose_kind: string | null;
   purpose: string | null;
   source: string;
+  /** Migration 38 */
+  source_document_id?: string | null;
+  source_ref?: string | null;
+  created_by?: string | null;
+  created_at?: string | null;
+  confirmed_by?: string | null;
+  confirmed_at?: string | null;
+  evidenced?: boolean;
 }
 
 export interface MatterCounselRow {
@@ -605,6 +941,10 @@ export interface TaskRow {
   due_at: string | null;
   status: string;
   created_at: string;
+  /** Migration 39: a task a pack's stage started, once per matter. */
+  template_key?: string | null;
+  pack_key?: string | null;
+  status_key?: string | null;
 }
 
 export interface InviteRow {
@@ -724,6 +1064,7 @@ export const SERVICE_METHODS: Array<{ value: string; label: string; hint?: strin
 
 export const MATTER_TYPES = ["litigation", "property", "corporate", "estate", "family", "employment",
   "debt_recovery", "ip", "regulatory", "immigration", "advisory", "criminal", "arbitration", "other"] as const;
+export type MatterType = (typeof MATTER_TYPES)[number];
 
 // ---------------------------------------------------------------- slice 5: admin surfaces (migration 20)
 
@@ -755,6 +1096,7 @@ export interface WebhookEventRow {
   firm_id: string | null;
   invoice_id: string | null;
   received_at: string;
+  notification_id?: string | null;
 }
 
 /** One row per firm × status × channel × event. Counts, never payloads. */
@@ -771,6 +1113,48 @@ export interface NotificationHealthRow {
   overdue: number;
   most_attempts: number;
   last_error: string | null;
+  /** Migration 37: what the provider and its receipts said, as counts. */
+  accepted: number;
+  delivered: number;
+  bounced: number;
+  undelivered: number;
+  most_send_attempts: number;
+}
+
+/** platform_notification_cost (migration 37): what went out and what it cost, per firm and month, by currency. */
+export interface NotificationCostRow {
+  firm_id: string | null;
+  firm_name: string | null;
+  firm_slug: string | null;
+  month: string;
+  provider: string | null;
+  channel: string;
+  cost_currency: "NGN" | "USD" | null;
+  messages: number;
+  segments: number;
+  /** Null when nothing in the group was priced. */
+  cost_minor: number | null;
+  /** Messages accepted at no entered rate: unpriced, not free. */
+  unpriced: number;
+}
+
+export interface FirmActiveMattersRow {
+  firm_id: string;
+  firm_name: string;
+  firm_slug: string;
+  active_matters: number;
+}
+
+export interface ProviderRateRow {
+  provider: string;
+  channel: string;
+  currency: "NGN" | "USD";
+  unit_minor: number;
+  per_segment: boolean;
+  effective_from: string;
+  note: string | null;
+  set_by: string | null;
+  created_at: string;
 }
 
 /** A payment that did not settle cleanly, down to what reconciling it needs. */
@@ -803,6 +1187,9 @@ export interface FailedNotificationRow {
   error: string | null;
   created_at: string;
   send_after: string;
+  failure_kind: "transient" | "permanent" | null;
+  send_attempts: number;
+  provider: string | null;
 }
 
 /** A firm's override of the sentence a client reads for one event. */
@@ -845,4 +1232,26 @@ export interface StorageIntegrity {
   /** document_versions rows with no storage.objects row at all: the "looks intact" failure. */
   row_only_versions: number;
   last_run_at: string | null;
+}
+
+/**
+ * search_docket() (migration 43): one row per hit, across every kind of thing Docket holds text
+ * about. The function is SECURITY INVOKER, so a hit is by construction something the caller could
+ * already open — the screens do no filtering of their own and must not start.
+ */
+export type SearchKind =
+  | "matter" | "update" | "message" | "document" | "task" | "deadline" | "court_event"
+  | "adverse_party" | "note" | "internal_note" | "invoice" | "appointment" | "person";
+
+export interface SearchHit {
+  kind: SearchKind;
+  id: string;
+  firm_id: string | null;
+  /** Null for a person: which matters a client has is the wall's to decide, not a search result's. */
+  matter_id: string | null;
+  title: string;
+  /** The matching words wrapped in << >> by ts_headline. Rendered as marks, never as HTML. */
+  snippet: string | null;
+  occurred_at: string | null;
+  rank: number;
 }

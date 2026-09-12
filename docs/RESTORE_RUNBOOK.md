@@ -96,7 +96,9 @@ minutes, each one again after a week — hashes it, and compares the hash to
 `document_versions.checksum`. `/admin/health` reads the result through `storage_integrity()`: how
 many objects the rows describe, how many are verified and matching, how many 404, how many hash
 differently, and — the failure this paragraph is about — how many version rows have no object at
-all. After any restore, that screen is the first thing to read, and "every object verified, none
+all. It also counts the opposite orphan (`documents_without_version`, migration 36): a `documents`
+row whose upload stopped before the bytes arrived, which is a stalled upload rather than a lost
+one — the screens offer to finish or retire it. After any restore, that screen is the first thing to read, and "every object verified, none
 missing" is the sentence that means the documents came back. Until the function has run, the
 screen says so rather than showing zeros.
 

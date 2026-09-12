@@ -29,6 +29,7 @@ const NAV: Array<{ href: string; label: string }> = [
   { href: "/admin#domains", label: "Domains" },
   { href: "/admin/health", label: "Health" },
   { href: "/admin/reference", label: "Reference" },
+  { href: "/admin/workflow", label: "Workflow" },
 ];
 
 // RENDERED PER REQUEST, ALWAYS.

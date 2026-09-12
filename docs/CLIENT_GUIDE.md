@@ -34,7 +34,15 @@ any other app.
 There is a **low-data** switch in the app. With it on, documents and images do not download until
 you tap them. It is remembered on that device.
 
-If you lose signal mid-way, the app shows a plain offline page rather than a broken one.
+If you lose signal mid-way, the app shows a plain offline page rather than a broken one, and a
+small **Offline** mark in the corner while it lasts. A message you were typing is kept on that
+device until you send it: open the thread again and it is there, with the files you attached (each
+was uploaded the moment you attached it, so it is already safe). An upload that stopped
+can be finished from the same Documents tab — you will see **Finish upload** beside it, on any
+device — or removed if you would rather start again. Nothing is sent twice: a message that did go
+through before the reply was lost is recognised, not repeated. If you change the message before
+sending it again, it is treated as a new one, because the first may already have reached your firm
+and a message cannot be unsent.
 
 ---
 
@@ -74,6 +82,15 @@ From your firm's website, choose **Book**. The steps are:
    required must be filled in.
 6. **Sign in**, if you have not already — right there, without losing your place.
 7. **Confirm.**
+
+### Before your consultation
+
+Some firms hold a booking until they confirm it. If yours does, the appointment page says
+**Booked and held** and lists what is still needed: paying the fee, answering any question the
+firm's form requires, sending a document the firm asked for, accepting the firm's terms and
+privacy notice. Each has its action on the page. Anything the firm has to do on its own side is
+shown only as that. You are reminded two days before if something is still missing; the firm
+confirms the booking from its side, and you are told when it does.
 
 ### Paying
 
@@ -130,13 +147,17 @@ lawyer may also keep private working notes — see below.
 Once your firm opens a matter for you, **`/app/matters`** is where you follow it. Each matter has:
 
 - **A timeline** — everything that has happened, newest first: hearings and what came of them,
-  filings, correspondence, documents, fee entries, changes of status. This is the part that means
+  filings, correspondence, documents, fee entries, changes of status (a *Status* entry says the
+  stage your matter moved to, with a line from your firm where they wrote one). This is the part that means
   you do not have to ring and ask.
 - **Documents** — what your firm has shared with you, and anything you upload.
 - **Messages** — a thread with your firm about that matter.
 - **Court dates** — when your matter is next in court, for what, and where.
 
 **`/app/court-dates`** gathers every court date across every matter and every firm you work with.
+Each says where it came from: *fixed by the court, notice on file* when your firm has attached the
+court's notice, or *as recorded by your firm*. A date the registry has vacated is taken off the
+list and out of the calendar file; the timeline keeps what happened.
 **Add to calendar (.ics)** on that page downloads those dates as a calendar file you can import
 into your own calendar. It is a **snapshot, not a live feed**: if a date is moved, download it
 again. The app itself always shows the current dates, and tells you three days and one day before.
@@ -219,6 +240,26 @@ database for them to read it.
   Documents tab, with why and by when. **Upload this** answers it, and your firm is told the moment
   the file arrives. A request your firm withdraws simply disappears from the list.
 - Up to 25 MB per file: PDF, Word, and JPEG, PNG or HEIC photographs.
+
+### Signing a document
+
+Your firm may draw up a document and ask you to sign it. It appears on the matter's Documents tab
+saying so, with **Read and sign**.
+
+- **You read it first, and Docket checks that you did.** The document opens in front of you; only
+  then does the box to sign appear. A signature without that is refused.
+- **You sign by typing your name** — exactly as it is on your profile. If your name there is wrong,
+  correct it on your profile first; Docket will not accept a different name for you.
+- **What is recorded** is: that it was you, the name you typed, the exact version of the file and a
+  fingerprint of its contents, that you opened it, and when. That is what makes it evidence of what
+  you signed rather than of "a document".
+- **Once signed, the document is final.** No new version can be added to it, by anyone. If
+  something must change, your firm draws up a new document.
+- **Some documents cannot be signed here.** A deed, or anything needing a witness or stamping, has
+  to be signed on paper before the right person. Your firm will tell you, and will record on Docket
+  what was executed and when.
+- **You are never asked to sign anything your firm has not shared with you**, and a signature is
+  never taken from you automatically.
 
 ---
 

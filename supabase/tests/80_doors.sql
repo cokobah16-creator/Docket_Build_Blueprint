@@ -53,9 +53,11 @@ end $$;
 -- ---------------------------------------------------------------- fixture
 create temp table fx (k text primary key, v uuid);
 insert into fx select 'firm', id from firms where slug = 'attorneys-klinique';
-insert into auth.users (id, email) values (gen_random_uuid(), 'doors-client@test'), (gen_random_uuid(), 'doors-pushy@test');
+insert into auth.users (id, email) values (gen_random_uuid(), 'doors-client@test'), (gen_random_uuid(), 'doors-pushy@test'), (gen_random_uuid(), 'doors-owner@test');
 insert into fx select 'client', id from auth.users where email = 'doors-client@test';
 insert into fx select 'pushy',  id from auth.users where email = 'doors-pushy@test';
+insert into fx select 'owner',  id from auth.users where email = 'doors-owner@test';
+insert into firm_members (firm_id, user_id, role) values ((select v from fx where k = 'firm'), (select v from fx where k = 'owner'), 'owner');
 update profiles set preferred_channel = 'sms', phone = '+2348000000101', email = null where id = (select v from fx where k = 'client');
 update profiles set preferred_channel = 'sms', phone = '+2348000000102', email = null where id = (select v from fx where k = 'pushy');
 insert into push_subscriptions (user_id, endpoint, keys)
@@ -109,6 +111,46 @@ end $$;
 do $$ begin
   perform t_check('audit_log has no ip column to hold a forged address',
     not exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'audit_log' and column_name = 'ip'));
+end $$;
+
+-- ---------------------------------------------------------------- 6. the money tables are the RPCs' to write
+-- The general rule Wave 0 drew out of the firm_members escalation: where a SECURITY DEFINER
+-- function reads as the authority, check the table beside it is not also open. These four are
+-- the money, and their only writers are create_invoice(), issue_invoice(), cancel_invoice() and
+-- record_payment(). A write grant here would let a member set paid_minor to the total and call
+-- the bill settled, past every refusal those functions make.
+do $$
+declare held text;
+begin
+  select string_agg(g.table_name || ':' || g.privilege_type, ' ' order by 1) into held
+    from information_schema.role_table_grants g
+   where g.grantee in ('anon', 'authenticated') and g.table_schema = 'public'
+     and g.table_name in ('invoices', 'invoice_items', 'payments', 'audit_log', 'firm_baselines', 'document_signatures')
+     and g.privilege_type in ('INSERT', 'UPDATE', 'DELETE');
+  perform t_check('the money and the record are written by their functions alone'
+                  || case when held is not null then ' — GRANTS HELD: ' || held else '' end, held is null);
+end $$;
+
+-- And the same from the outside: a member of the firm, with a second factor, holding the matter.
+do $$
+declare f uuid := (select v from fx where k = 'firm'); l uuid := (select v from fx where k = 'owner'); c uuid := (select v from fx where k = 'client'); inv uuid := gen_random_uuid();
+begin
+  insert into invoices (id, firm_id, number, client_id, currency, subtotal_minor, vat_minor, total_minor, paid_minor, status, issued_at, due_at)
+  values (inv, f, 'DR-INV-2026-000001', c, 'NGN', 100000, 0, 100000, 0, 'issued', now(), current_date + 14);
+  perform t_as(l);
+  perform t_check('a member cannot call an unpaid invoice paid',
+    t_refused(format('update invoices set paid_minor = 100000, status = ''paid'' where id = %L', inv), '42501'));
+  perform t_check('nor change what it is for, or who owes it',
+    t_refused(format('update invoices set total_minor = 1 where id = %L', inv), '42501')
+    and t_refused(format('update invoices set currency = ''USD'' where id = %L', inv), '42501')
+    and t_refused(format('update invoices set client_id = %L where id = %L', l, inv), '42501'));
+  perform t_check('nor delete it, nor add a line to it, nor raise one by hand',
+    t_refused(format('delete from invoices where id = %L', inv), '42501')
+    and t_refused(format('insert into invoice_items (invoice_id, description, quantity, unit_minor) values (%L, ''Extra'', 1, 5000)', inv), '42501')
+    and t_refused(format('insert into invoices (firm_id, number, client_id, currency, subtotal_minor, total_minor, status) values (%L, ''DR-INV-2026-000002'', %L, ''NGN'', 1, 1, ''issued'')', f, c), '42501'));
+  perform t_check('and still reads every one of its firm''s invoices', exists (select 1 from invoices where id = inv));
+  perform t_reset();
+  perform t_check('the invoice is exactly as it was', (select paid_minor = 0 and status = 'issued' and total_minor = 100000 and client_id = c from invoices where id = inv));
 end $$;
 
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;

@@ -8,7 +8,8 @@
 #              IS the authorization layer, so a broken policy is a broken product, and the suite
 #              exercises each read and write from both sides of every wall.
 #   typecheck  TypeScript, strict, over app/, src/, middleware.ts and the tests.
-#   deno       the three Edge Functions type-check. They are Deno, not Node: tsconfig.json
+#   deno       the three Edge Functions type-check, and the PDF writer is RUN against what a
+#              Nigerian invoice actually carries. They are Deno, not Node: tsconfig.json
 #              excludes supabase/functions and the typecheck job never looks at them.
 #   routes     a real `next build`, checked against the content security policy: every route
 #              Next.js prerenders must be one the nonce policy accounts for, or the page ships
@@ -256,7 +257,7 @@ jobs:
 
   # ---------------------------------------------------------------- the Edge Functions
   deno:
-    name: Edge Functions typecheck
+    name: Edge Functions typecheck, and the PDF writer run
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -282,6 +283,18 @@ jobs:
         # how the Supabase Edge runtime resolves them, so it is the honest check as well as the
         # cheap one.
         run: deno check --node-modules-dir=none supabase/functions/*/index.ts
+
+      - name: The PDF writer holds
+        # src/lib/pdf.ts is dependency-free TypeScript and is the only thing between a client and
+        # their invoice, so it is run, not merely compiled: runs of spaces are the invoice's only
+        # column and must survive wrapping, and text the standard fonts cannot draw must be
+        # refused by name rather than printed as "?". No npm specifiers, hence --node-modules-dir=none.
+        #
+        # The script lives under scripts/, which tsconfig.json excludes alongside supabase/functions:
+        # it imports with a .ts extension and calls Deno.exit, neither of which the Next compiler
+        # accepts. A new .ts file anywhere else in the tree lands in that compiler's include by
+        # default — check before adding one.
+        run: deno run --node-modules-dir=none scripts/check-pdf.ts
 
   # ---------------------------------------------------------------- the policy vs the build
   #

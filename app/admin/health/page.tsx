@@ -33,12 +33,13 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import {
-  failedNotifications, notificationHealth, platformContext, settlementHealth, storageIntegrity, webhookEvents,
+  failedNotifications, firmActiveMatters, notificationCost, notificationHealth, platformContext, providerRates,
+  settlementHealth, storageIntegrity, webhookEvents,
 } from "@/lib/admin-data";
 import { formatMoneyByCurrency, formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
-import type { NotificationHealthRow, SettlementHealthRow, WebhookEventRow } from "@/lib/db/types";
-import { FailedNotifications } from "./health-actions";
+import type { NotificationCostRow, NotificationHealthRow, SettlementHealthRow, WebhookEventRow } from "@/lib/db/types";
+import { FailedNotifications, RatesForm } from "./health-actions";
 
 export const metadata = { title: "Platform health" };
 
@@ -47,15 +48,31 @@ const QUEUE_GROUP_LIMIT = 200;
 const SETTLEMENT_LIMIT = 100;
 const WEBHOOK_LIMIT = 100;
 
-/** Failed first, then what is still waiting, then everything that already worked. */
-const STATUS_RANK: Record<string, number> = { failed: 0, queued: 1, sending: 2, sent: 3 };
+/** Failed first, then what is still waiting, then what is in a sender's hands, then everything that already worked. */
+const STATUS_RANK: Record<string, number> = { failed: 0, queued: 1, sending: 2, sent: 3, skipped: 4 };
 
 const STATUS_STYLE: Record<string, string> = {
   failed: "bg-red-100 text-red-900",
   queued: "bg-amber-100 text-amber-900",
   sending: "bg-sky-100 text-sky-900",
   sent: "bg-emerald-100 text-emerald-900",
+  skipped: "bg-gray-100 text-gray-700",
 };
+
+/**
+ * What a group's messages became after the provider took them (migration 37): accepted is the
+ * provider's 2xx with a message id; delivered, bounced and undelivered are its signed receipts.
+ * Web push has no receipt and stays accepted. Nothing here is inferred.
+ */
+function deliveryLabel(row: NotificationHealthRow): string {
+  const parts: string[] = [];
+  if (Number(row.delivered ?? 0) > 0) parts.push(`${row.delivered} delivered`);
+  if (Number(row.bounced ?? 0) > 0) parts.push(`${row.bounced} bounced`);
+  if (Number(row.undelivered ?? 0) > 0) parts.push(`${row.undelivered} undelivered`);
+  const acceptedOnly = Number(row.accepted ?? 0);
+  if (acceptedOnly > 0) parts.push(`${acceptedOnly} accepted, no receipt`);
+  return parts.length ? parts.join(" · ") : "—";
+}
 
 const OUTCOME_MEANING: Record<string, string> = {
   processed: "Verified and acted on.",
@@ -119,14 +136,27 @@ export default async function AdminHealthPage({
   // Each reader says whether its QUERY worked. A failed read is rendered as a failure in its own
   // section — an empty list means "nothing there" and a failed one means "we do not know", and
   // the second must never be dressed as the first on a screen an operator acts on.
-  const [queueRead, settlementRead, webhooksRead, failedRead, storageRead] = await Promise.all([
+  const [queueRead, settlementRead, webhooksRead, failedRead, storageRead, costRead, mattersRead, ratesRead] = await Promise.all([
     notificationHealth(ctx.supabase),
     settlementHealth(ctx.supabase, SETTLEMENT_LIMIT),
     webhookEvents(ctx.supabase, { limit: WEBHOOK_LIMIT }),
     failedNotifications(ctx.supabase),
     storageIntegrity(ctx.supabase),
+    notificationCost(ctx.supabase),
+    firmActiveMatters(ctx.supabase),
+    providerRates(ctx.supabase),
   ]);
   const storage = storageRead.summary;
+  // ---------------------------------------------------------------- cost, per firm and month, by currency
+  const activeMatters = new Map(mattersRead.rows.map((r) => [r.firm_id, Number(r.active_matters ?? 0)]));
+  const costByFirm = new Map<string, { label: string; rows: NotificationCostRow[] }>();
+  for (const row of costRead.rows) {
+    const key = row.firm_id ?? "none";
+    const entry = costByFirm.get(key) ?? { label: firmLabel(row), rows: [] };
+    entry.rows.push(row);
+    costByFirm.set(key, entry);
+  }
+  const costGroups = Array.from(costByFirm.entries()).map(([key, g]) => ({ key, ...g, matters: key === "none" ? null : (activeMatters.get(key) ?? null) }));
   const queue = queueRead.rows;
   const settlement = settlementRead.rows;
   const webhooks = webhooksRead.rows;
@@ -463,6 +493,7 @@ export default async function AdminHealthPage({
                         <TH>Overdue</TH>
                         <TH>Oldest</TH>
                         <TH>Tries</TH>
+                        <TH>Delivery</TH>
                       </TR>
                     </THead>
                     <TBody>
@@ -485,7 +516,13 @@ export default async function AdminHealthPage({
                               {agoLabel(row.oldest, nowMs)}
                             </span>
                           </TD>
-                          <TD className="tabular-nums">{row.most_attempts}</TD>
+                          <TD className="tabular-nums">
+                            {row.most_attempts}
+                            {Number(row.most_send_attempts ?? 0) > 1 && (
+                              <span className="block text-xs text-gray-500">{row.most_send_attempts} sends</span>
+                            )}
+                          </TD>
+                          <TD className="text-xs">{deliveryLabel(row)}</TD>
                         </TR>
                       ))}
                     </TBody>
@@ -526,6 +563,99 @@ export default async function AdminHealthPage({
           <CardHeader title="Send one failed message again" />
           <CardBody>
             <FailedNotifications rows={failed} timezone={ctx.timezone} />
+          </CardBody>
+        </Card>
+
+        <Card>
+          <CardHeader title="What three words mean here" />
+          <CardBody>
+            <dl className="space-y-2 text-sm text-gray-700">
+              <div className="sm:flex sm:gap-3"><dt className="font-medium text-gray-900 sm:w-28 sm:shrink-0">sent</dt><dd>The provider took the message and gave it an id. Accepted, not delivered.</dd></div>
+              <div className="sm:flex sm:gap-3"><dt className="font-medium text-gray-900 sm:w-28 sm:shrink-0">delivered</dt><dd>The provider's signed receipt said the inbox or handset has it. Written only from a receipt the delivery-receipts function verified; web push has none, so push stays at accepted.</dd></div>
+              <div className="sm:flex sm:gap-3"><dt className="font-medium text-gray-900 sm:w-28 sm:shrink-0">read</dt><dd>Known only for the in-app copy, when the person opens it. No email, SMS or push carries a read receipt Docket trusts.</dd></div>
+            </dl>
+          </CardBody>
+        </Card>
+      </section>
+
+      {/* ============================================================ cost */}
+      <section id="cost" className="space-y-4">
+        <h2 className="font-heading text-lg font-semibold text-gray-900">What messages cost</h2>
+        <p className="text-sm text-gray-600">
+          Per firm and month, by currency, at the rate in force when each message was accepted. Naira and dollars are
+          never added together. A message accepted while no rate was entered is counted as <em>unpriced</em> — it is
+          not free, and it is not guessed.
+        </p>
+        {costRead.error ? (
+          <Alert kind="error" title="This screen could not read the cost view">
+            {costRead.error}. That is a failed read, not a zero bill. Check that migration 37&apos;s platform_notification_cost view exists on this project.
+          </Alert>
+        ) : costGroups.length === 0 ? (
+          <Card><EmptyState title="Nothing has been sent since costs were recorded" hint="Every message accepted from now on records its segments and, where a rate exists, its cost." /></Card>
+        ) : (
+          <ul className="space-y-4">
+            {costGroups.map((g) => (
+              <li key={g.key}>
+                <Card>
+                  <CardHeader title={g.label} action={g.matters !== null ? <span className="text-xs text-gray-600">{g.matters} open matter{g.matters === 1 ? "" : "s"}</span> : undefined} />
+                  <Table>
+                    <THead>
+                      <TR><TH>Month</TH><TH>Provider</TH><TH>Channel</TH><TH>Messages</TH><TH>Segments</TH><TH>Cost</TH><TH>Per open matter</TH><TH>Unpriced</TH></TR>
+                    </THead>
+                    <TBody>
+                      {g.rows.map((r) => (
+                        <TR key={`${r.month}-${r.provider}-${r.channel}-${r.cost_currency}`}>
+                          <TD className="whitespace-nowrap">{r.month.slice(0, 7)}</TD>
+                          <TD>{r.provider ?? "—"}</TD>
+                          <TD>{r.channel}</TD>
+                          <TD className="tabular-nums">{r.messages}</TD>
+                          <TD className="tabular-nums">{r.segments}</TD>
+                          <TD className="tabular-nums">{r.cost_minor !== null && r.cost_currency ? formatMoneyMinor(Number(r.cost_minor), r.cost_currency) : "—"}</TD>
+                          <TD className="tabular-nums">
+                            {r.cost_minor !== null && r.cost_currency && g.matters ? formatMoneyMinor(Math.round(Number(r.cost_minor) / g.matters), r.cost_currency) : "—"}
+                          </TD>
+                          <TD className={Number(r.unpriced ?? 0) > 0 ? "font-medium text-amber-800" : ""}>{r.unpriced}</TD>
+                        </TR>
+                      ))}
+                    </TBody>
+                  </Table>
+                </Card>
+              </li>
+            ))}
+          </ul>
+        )}
+        {mattersRead.error && (
+          <p className="text-xs text-red-800">The open-matter count could not be read: {mattersRead.error}. Cost per open matter is left blank rather than computed against a guess.</p>
+        )}
+
+        <Card>
+          <CardHeader title="Provider rates" />
+          <CardBody className="space-y-4">
+            <p className="text-sm text-gray-600">
+              What each provider charges, from its contract, entered here with a second factor and audited. An SMS rate is
+              per segment unless said otherwise; the segment count is computed from the exact text sent.
+            </p>
+            {ratesRead.error ? (
+              <Alert kind="error">{ratesRead.error}</Alert>
+            ) : ratesRead.rows.length === 0 ? (
+              <p className="text-sm text-gray-600">No rate has been entered. Until one is, every message is unpriced.</p>
+            ) : (
+              <Table>
+                <THead><TR><TH>Provider</TH><TH>Channel</TH><TH>Rate</TH><TH>From</TH><TH>Note</TH></TR></THead>
+                <TBody>
+                  {ratesRead.rows.map((r) => (
+                    <TR key={`${r.provider}-${r.channel}-${r.effective_from}`}>
+                      <TD>{r.provider}</TD>
+                      <TD>{r.channel}</TD>
+                      <TD className="tabular-nums">{formatMoneyMinor(Number(r.unit_minor), r.currency)}{r.per_segment ? " per segment" : " per message"}</TD>
+                      <TD className="whitespace-nowrap">{r.effective_from}</TD>
+                      <TD className="break-words text-xs text-gray-600">{r.note ?? ""}</TD>
+                    </TR>
+                  ))}
+                </TBody>
+              </Table>
+            )}
+            <RatesForm />
           </CardBody>
         </Card>
       </section>

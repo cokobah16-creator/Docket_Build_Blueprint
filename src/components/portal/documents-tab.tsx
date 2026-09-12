@@ -9,13 +9,16 @@ import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "reac
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { recordDocumentOpen } from "@/lib/document-open";
-import { createDocument, finalizeDocumentVersion, fulfilDocumentRequest } from "@/lib/actions/portal";
+import { UPLOAD_STOPPED, isAlreadyStored, isNetworkFailure, readDraft, clearDraft, uploadKey, writeDraft, type UploadInProgress } from "@/lib/drafts";
+import { OfflineNote } from "@/components/ui/connection";
+import { createDocument, finalizeDocumentVersion, fulfilDocumentRequest, retireEmptyDocument } from "@/lib/actions/portal";
 import { isLowData } from "@/lib/low-data";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
 import { Modal } from "@/components/ui/modal";
-import type { DocumentRequestRow, DocumentRow, DocumentVersionRow } from "@/lib/db/types";
+import type { DocumentRequestRow, DocumentRow, DocumentSignatureRow, DocumentVersionRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
+import { SignDialog } from "@/components/portal/sign-dialog";
 
 export type DocumentWithVersion = DocumentRow & { version: DocumentVersionRow | null; version_count: number };
 
@@ -28,10 +31,41 @@ function fmtSize(n: number | null | undefined) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** documents/{firm}/{document}/{version}.{ext} — the shape the storage policy reads. */
+function storagePathFor(firmId: string, documentId: string, versionId: string, fileName: string) {
+  const ext = (fileName.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) || "bin";
+  return `${firmId}/${documentId}/${versionId}.${ext}`;
+}
+
 export function DocumentsTab({
-  firmId, matterId, appointmentId, documents, timezone, canUpload = true, requests = [],
-}: { firmId: string; matterId: string | null; appointmentId: string | null; documents: DocumentWithVersion[]; timezone: string; canUpload?: boolean; requests?: DocumentRequestRow[] }) {
+  firmId, matterId, appointmentId, documents, timezone, canUpload = true, requests = [], userId = null, signatures = [], profileName = null, audience = "client",
+}: { firmId: string; matterId: string | null; appointmentId: string | null; documents: DocumentWithVersion[]; timezone: string; canUpload?: boolean; requests?: DocumentRequestRow[]; userId?: string | null;
+  /**
+   * Who is reading. The console reuses this list on a consultation, and the wording here is
+   * written to the client — "wait for your lawyer to share", "Not yet seen by your firm" — which
+   * read as nonsense, or worse as a mistake, when the firm itself is the one looking.
+   */
+  audience?: "client" | "staff";
+  /** Signatures on these documents, and the viewer's name as their profile has it (migration 40). */
+  signatures?: DocumentSignatureRow[]; profileName?: string | null }) {
   const router = useRouter();
+  // A document the firm asked this person to sign, and which they have not signed on its current version.
+  const [signing, setSigning] = useState<DocumentWithVersion | null>(null);
+  // A matter can have more than one client, and request_signature() asks them all. The first to
+  // sign locks the document — on that version — and the database still admits the others on the
+  // same version. So the gate is "this version is not superseded", not "nothing is locked":
+  // testing the lock alone hid the button from everyone else the firm had just asked.
+  // An instrument executed on paper is not also signed here: record_signature() refuses a version
+  // whose kind is 'executed_paper', and record_paper_execution() now withdraws the request when it
+  // locks the document. The kind is tested here too, so a document executed before that migration
+  // stops asking for a signature the database will never take.
+  const toSign = (d: DocumentWithVersion) => Boolean(
+    d.signature_requested_at && d.version && userId
+    && d.version.kind !== "executed_paper"
+    && (!d.locked_version_id || d.locked_version_id === d.version.id)
+    && !signatures.some((sg) => sg.version_id === d.version?.id && sg.signer_id === userId),
+  );
+  const signaturesOf = (d: DocumentWithVersion) => signatures.filter((sg) => sg.document_id === d.id);
   // Which request the next upload answers, if any. Set by "Upload this", cleared once used.
   const [forRequest, setForRequest] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement | null>(null);
@@ -53,22 +87,95 @@ export function DocumentsTab({
     const supabase = supabaseBrowser();
     if (!supabase) { setError("Not configured."); return; }
     setBusy(`Uploading ${file.name}…`);
-    const created = await createDocument({ firmId, matterId, appointmentId, name: file.name, mime: file.type || "application/octet-stream", sizeBytes: file.size });
-    if (!created.ok) { setBusy(null); setError(created.error); return; }
-    const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined, upsert: false });
-    if (upErr) { setBusy(null); setError(`Upload failed: ${upErr.message}`); return; }
-    const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
-    if (fin?.error) { setBusy(null); setError(fin.error); return; }
-    // An upload made for a request answers it; the database refuses a second answer or a
-    // document from another matter, and tells whoever asked.
-    if (forRequest) {
-      const answered = await fulfilDocumentRequest(forRequest, created.documentId);
-      setForRequest(null);
-      if (answered?.error) { setBusy(null); setError(`Uploaded, but not linked to the request: ${answered.error}`); router.refresh(); return; }
+    // Three steps that are not one transaction: the row, the bytes, the version. An upload that
+    // stops between them is finished, not restarted: the ids minted for this file are kept on
+    // the device, the same file chosen again reuses them, bytes already in the store count as
+    // uploaded, and a version already recorded counts as done.
+    const key = uploadKey(userId, matterId ?? appointmentId ?? "");
+    const prior = readDraft<UploadInProgress>(key);
+    try {
+      let created: UploadInProgress;
+      if (prior && prior.name === file.name && prior.size === file.size) {
+        created = prior;
+      } else {
+        const made = await createDocument({ firmId, matterId, appointmentId, name: file.name, mime: file.type || "application/octet-stream", sizeBytes: file.size });
+        if (!made.ok) { setError(made.error); return; }
+        created = { name: file.name, size: file.size, documentId: made.documentId, versionId: made.versionId, storagePath: made.storagePath };
+        writeDraft(key, created);
+      }
+      const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined, upsert: false });
+      // A resume onto a row that has since been retired is refused by the storage policy, and
+      // keeping the record would make every later attempt with this file fail identically —
+      // with no row left on screen to remove. Forget it, and send the file as a new document.
+      if (upErr && !isAlreadyStored(upErr.message)) {
+        if (created === prior) { clearDraft(key); setError("That upload could not be finished — the document it belonged to is gone. Choose the file again to send it as a new one."); }
+        else setError(`Upload failed: ${upErr.message}`);
+        return;
+      }
+      const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
+      if (fin?.error && !/duplicate key|already exists/i.test(fin.error)) { setError(fin.error); return; }
+      clearDraft(key);
+      // An upload made for a request answers it; the database refuses a second answer or a
+      // document from another matter, and tells whoever asked.
+      if (forRequest) {
+        const answered = await fulfilDocumentRequest(forRequest, created.documentId);
+        setForRequest(null);
+        if (answered?.error) { setError(`Uploaded, but not linked to the request: ${answered.error}`); router.refresh(); return; }
+      }
+      router.refresh();
+    } catch (e) {
+      setError(isNetworkFailure(e) ? UPLOAD_STOPPED : (e instanceof Error ? e.message : UPLOAD_STOPPED));
+    } finally {
+      setBusy(null);
     }
-    setBusy(null);
-    router.refresh();
-  }, [appointmentId, firmId, forRequest, matterId, router]);
+  }, [appointmentId, firmId, forRequest, matterId, router, userId]);
+
+  const remove = useCallback(async (doc: DocumentWithVersion) => {
+    setError(null);
+    setBusy(`Removing ${doc.name}…`);
+    try {
+      const r = await retireEmptyDocument(doc.id);
+      if (r?.error) { setError(r.error); return; }
+      const k = uploadKey(userId, matterId ?? appointmentId ?? "");
+      if (readDraft<UploadInProgress>(k)?.documentId === doc.id) clearDraft(k);
+      router.refresh();
+    } catch (e) {
+      setError(isNetworkFailure(e) ? "Not removed — the connection dropped." : (e instanceof Error ? e.message : "Not removed."));
+    } finally {
+      setBusy(null);
+    }
+  }, [appointmentId, matterId, router, userId]);
+
+  /**
+   * Finish the upload of a row that has no file — bound to THIS document, so it works on any
+   * device and for any stopped upload, not only the most recent one whose ids this browser
+   * happens to hold. A version onto an existing row, which is exactly what the row is missing.
+   */
+  const finishUpload = useCallback(async (doc: DocumentWithVersion, e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError(null);
+    if (file.size > MAX_BYTES) { setError("Files must be 25 MB or smaller."); return; }
+    const supabase = supabaseBrowser();
+    if (!supabase) { setError("Not configured."); return; }
+    const versionId = crypto.randomUUID();
+    const path = storagePathFor(doc.firm_id, doc.id, versionId, file.name);
+    setBusy(`Finishing ${doc.name}…`);
+    try {
+      const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || undefined, upsert: false });
+      if (upErr && !isAlreadyStored(upErr.message)) { setError(`Upload failed: ${upErr.message}`); return; }
+      const fin = await finalizeDocumentVersion({ documentId: doc.id, versionId, storagePath: path, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
+      if (fin?.error && !/duplicate key|already exists/i.test(fin.error)) { setError(fin.error); return; }
+      const k = uploadKey(userId, matterId ?? appointmentId ?? "");
+      if (readDraft<UploadInProgress>(k)?.documentId === doc.id) clearDraft(k);
+      router.refresh();
+    } catch (err) {
+      setError(isNetworkFailure(err) ? UPLOAD_STOPPED : (err instanceof Error ? err.message : UPLOAD_STOPPED));
+    } finally {
+      setBusy(null);
+    }
+  }, [appointmentId, matterId, router, userId]);
 
   const openPreview = useCallback(async (doc: DocumentWithVersion, force = false) => {
     if (!doc.version) return;
@@ -110,6 +217,7 @@ export function DocumentsTab({
             {busy ?? "Upload a document"}
             <input ref={fileInput} type="file" accept={ACCEPT} className="sr-only" onChange={upload} disabled={Boolean(busy)} />
           </label>
+          <div className="basis-full"><OfflineNote /></div>
         </div>
       )}
       {/* What the firm has asked for and has not received. An upload made from here answers it. */}
@@ -140,7 +248,9 @@ export function DocumentsTab({
         </p>
       )}
       {documents.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-gray-500">No documents yet. Upload one, or wait for your lawyer to share.</p>
+        <p className="px-5 py-8 text-center text-sm text-gray-500">
+          {audience === "staff" ? "Nothing has been sent in on this consultation yet." : "No documents yet. Upload one, or wait for your lawyer to share."}
+        </p>
       ) : (
         <ul className="divide-y divide-gray-100">
           {documents.map((d) => (
@@ -158,13 +268,43 @@ export function DocumentsTab({
                       now that mark reached a staff counter and never the person waiting on it. */}
                   {d.category === "client_upload" && (
                     <p className={d.reviewed_at ? "mt-1 text-xs text-[#15803D]" : "mt-1 text-xs text-[#92400E]"}>
-                      {d.reviewed_at ? `Seen by your firm ${fmt.format(new Date(d.reviewed_at))}` : "Not yet seen by your firm"}
+                      {audience === "staff"
+                        ? (d.reviewed_at ? `Marked as looked at ${fmt.format(new Date(d.reviewed_at))}` : "Not yet marked as looked at")
+                        : (d.reviewed_at ? `Seen by your firm ${fmt.format(new Date(d.reviewed_at))}` : "Not yet seen by your firm")}
                     </p>
                   )}
+                  {toSign(d) && <p className="mt-1 text-xs font-medium text-[#92400E]">Your firm has asked you to sign this.</p>}
+                  {d.locked_version_id && (
+                    <p className="mt-1 text-xs text-[#15803D]">
+                      {d.version?.kind === "executed_paper" && d.version.executed_on ? `Executed on paper on ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${d.version.executed_on}T00:00:00Z`))}` : "Signed"} · this version is final
+                    </p>
+                  )}
+                  {signaturesOf(d).map((sg) => (
+                    <p key={sg.id} className="text-xs text-gray-600">Signed by {sg.signer_id === userId ? "you" : sg.signer_name}{sg.signer_role === "staff" ? " for the firm" : ""} · {fmt.format(new Date(sg.signed_at))}</p>
+                  ))}
                 </div>
-                <Button size="sm" variant="ghost" onClick={() => openPreview(d)} disabled={!d.version}>
-                  {isImage(d.version?.mime) || isPdf(d.version?.mime) ? "Preview" : "Download"}
-                </Button>
+                {d.version ? (
+                  <span className="flex flex-wrap items-center gap-2">
+                    {toSign(d) && <Button size="sm" onClick={() => setSigning(d)}>Read and sign</Button>}
+                    <Button size="sm" variant="ghost" onClick={() => openPreview(d)}>
+                      {isImage(d.version.mime) || isPdf(d.version.mime) ? "Preview" : "Download"}
+                    </Button>
+                  </span>
+                ) : (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-[#92400E]">No file yet — the upload stopped.</span>
+                    {canUpload && userId && d.uploaded_by === userId && (
+                      <label className="inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-gray-300 px-3 text-sm text-gray-800 hover:bg-black/5">
+                        Finish upload
+                        <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => finishUpload(d, e)} disabled={Boolean(busy)} />
+                      </label>
+                    )}
+                    {/* retire_empty_document() lets the person who started it, or any staff member
+                        who may write the row, retire it — so the firm can clear a client's
+                        stopped upload off its own consultation rather than looking at it forever. */}
+                    {userId && (d.uploaded_by === userId || audience === "staff") && <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>}
+                  </span>
+                )}
               </div>
               {versions[d.id] && (
                 <ul className="mt-2 space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
@@ -179,6 +319,11 @@ export function DocumentsTab({
             </li>
           ))}
         </ul>
+      )}
+
+      {signing?.version && (
+        <SignDialog open name={signing.name} versionId={signing.version.id} storagePath={signing.version.storage_path} matterId={matterId} profileName={profileName}
+          onClose={() => setSigning(null)} onSigned={() => { setSigning(null); router.refresh(); }} />
       )}
 
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title={preview?.doc.name ?? "Document"}>

@@ -34,9 +34,11 @@ import { MessagesThread } from "@/components/portal/messages-thread";
 import { cn } from "@/lib/cn";
 import { formatDay, todayIn } from "@/lib/days";
 import { relativeLabel } from "@/lib/relative";
-import type { FirmThread, DocumentRequestRow, AdversePartyRow, ConflictCheckRow } from "@/lib/db/types";
 import type {
-  DocumentRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
+  FirmThread, DocumentRequestRow, AdversePartyRow, ConflictCheckRow, CauseListRow, CourtRuleRow, FirmDeadlineRow, RuleProvisionRow,
+} from "@/lib/db/types";
+import type {
+  DocumentRow, DocumentSignatureRow, DocumentTemplateRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
   ServiceDirectoryRow, TaskRow,
 } from "@/lib/db/types";
 import { CopyButton, MatterTabs, type TabSpec } from "./matter-tabs";
@@ -45,6 +47,7 @@ import { StaffDocuments, type StaffDocument } from "./staff-documents";
 import { PartiesPanel, type MatterPartyRow, type PendingInvite } from "./parties-panel";
 import { ConflictsPanel } from "./conflicts-panel";
 import { TasksPanel } from "./tasks-panel";
+import { DeadlinesPanel, type RuleWithProvisions, type SittingOption } from "./deadlines-panel";
 import { EditPanel } from "./edit-panel";
 
 export const metadata = { title: "Matter" };
@@ -57,6 +60,7 @@ const TABS: TabSpec[] = [
   { key: "counsel", label: "Counsel" },
   { key: "parties", label: "Parties" },
   { key: "tasks", label: "Tasks" },
+  { key: "deadlines", label: "Deadlines" },
   { key: "edit", label: "Details" },
 ];
 
@@ -338,12 +342,13 @@ export default async function MatterWorkbench({
 
       <Card>
         {tab === "timeline" && <TimelineSection ctx={ctx} matter={matter} names={names} />}
-        {tab === "documents" && <DocumentsSection ctx={ctx} matter={matter} names={names} />}
+        {tab === "documents" && <DocumentsSection ctx={ctx} matter={matter} names={names} clients={parties.filter((p) => p.role === "client").map((p) => ({ id: p.user_id, name: names[p.user_id] ?? "Client" }))} profileName={staff.find((m) => m.user_id === ctx.userId)?.full_name ?? null} />}
         {tab === "messages" && <MessagesSection ctx={ctx} matter={matter} names={names} />}
         {tab === "invoices" && <InvoicesSection ctx={ctx} matter={matter} basePath={basePath} extraQuery={extraQuery} />}
         {tab === "counsel" && <CounselSection ctx={ctx} matter={matter} />}
         {tab === "parties" && <PartiesSection ctx={ctx} matter={matter} parties={parties} profiles={profiles} names={names} />}
         {tab === "tasks" && <TasksSection ctx={ctx} matter={matter} staffOptions={staffOptions} />}
+        {tab === "deadlines" && <DeadlinesSection ctx={ctx} matter={matter} names={names} />}
         {tab === "edit" && (
           <EditSection ctx={ctx} matter={matter} statuses={statuses} staffOptions={staffOptions} leadLawyerId={leadLawyerId} alsoOn={lawyers.filter((l) => !l.is_lead).map((l) => l.user_id)} />
         )}
@@ -397,10 +402,10 @@ async function TimelineSection({ ctx, matter, names }: { ctx: StaffContext; matt
 }
 
 // ---------------------------------------------------------------- documents
-async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; matter: MatterDetail; names: Record<string, string> }) {
+async function DocumentsSection({ ctx, matter, names, clients, profileName }: { ctx: StaffContext; matter: MatterDetail; names: Record<string, string>; clients: Array<{ id: string; name: string }>; profileName: string | null }) {
   const { data: docRows } = await ctx.supabase
     .from("documents")
-    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at")
+    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at, locked_version_id, locked_at, signature_requested_at, signature_requested_by")
     .eq("matter_id", matter.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
@@ -410,10 +415,17 @@ async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; mat
   const { data: versionRows } = docs.length
     ? await ctx.supabase
         .from("document_versions")
-        .select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at")
+        .select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at, checksum, kind, source_template_id, template_version, executed_on, witness_name, attested_by, stamp_ref, registration_ref")
         .in("document_id", docs.map((d) => d.id))
     : { data: [] as DocumentVersionRow[] };
   const versions = (versionRows ?? []) as DocumentVersionRow[];
+
+  // Execution (migration 40): the firm's templates (retired ones too, so a version's origin is
+  // still named) and every signature on these documents.
+  const [{ data: templateRows }, { data: signatureRows }] = await Promise.all([
+    ctx.supabase.from("document_templates").select("id, firm_id, name, matter_types, body, execution, version, note, created_by, created_at, updated_at, retired_at").eq("firm_id", matter.firm_id).order("name"),
+    docs.length ? ctx.supabase.from("document_signatures").select("*").in("document_id", docs.map((d) => d.id)).order("signed_at") : Promise.resolve({ data: [] as DocumentSignatureRow[] }),
+  ]);
 
   const { data: requestRows } = await ctx.supabase
     .from("document_requests")
@@ -441,6 +453,11 @@ async function DocumentsSection({ ctx, matter, names }: { ctx: StaffContext; mat
       documents={documents}
       timezone={ctx.timezone}
       names={names}
+      templates={(templateRows ?? []) as DocumentTemplateRow[]}
+      matterType={matter.type}
+      clients={clients}
+      signatures={(signatureRows ?? []) as DocumentSignatureRow[]}
+      profileName={profileName}
     />
   );
 }
@@ -727,6 +744,44 @@ async function TasksSection({
   );
 }
 
+// ---------------------------------------------------------------- the legal diary
+async function DeadlinesSection({ ctx, matter, names }: { ctx: StaffContext; matter: MatterDetail; names: Record<string, string> }) {
+  const [{ data: deadlineRows }, { data: ruleRows }, { data: provisionRows }, { data: sittingRows }, { data: eventRows }, { data: docRows }, { data: courtRow }] = await Promise.all([
+    ctx.supabase.from("firm_deadlines").select("*").eq("matter_id", matter.id).order("due_on", { ascending: true }).limit(200),
+    ctx.supabase.from("court_rules").select("*").order("effective_from", { ascending: false }).limit(200),
+    ctx.supabase.from("rule_provisions").select("*").order("label", { ascending: true }).limit(1000),
+    ctx.supabase.from("updates").select("id, occurred_at, payload").eq("matter_id", matter.id).eq("kind", "court_sitting").order("occurred_at", { ascending: false }).limit(20),
+    ctx.supabase.from("firm_cause_list").select("*").eq("matter_id", matter.id).order("scheduled_at", { ascending: true }).limit(20),
+    ctx.supabase.from("documents").select("id, name").eq("matter_id", matter.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(100),
+    matter.court_id ? ctx.supabase.from("courts").select("id, level, state_code, name").eq("id", matter.court_id).maybeSingle() : Promise.resolve({ data: null }),
+  ]);
+  const provisions = (provisionRows ?? []) as RuleProvisionRow[];
+  const rules: RuleWithProvisions[] = ((ruleRows ?? []) as CourtRuleRow[]).map((r) => ({ ...r, provisions: provisions.filter((p) => p.rule_id === r.id) }));
+  // The court's calendar day of each sitting, as post_court_update() matches it: Lagos time.
+  const dayIn = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Lagos", year: "numeric", month: "2-digit", day: "2-digit" });
+  const sittings: SittingOption[] = ((sittingRows ?? []) as Array<{ id: string; occurred_at: string; payload: Record<string, unknown> }>).map((u) => {
+    const outcome = String(u.payload?.outcome ?? "");
+    const day = dayIn.format(new Date(u.occurred_at));
+    return { updateId: u.id, outcome, day, label: `${formatWhen(u.occurred_at, ctx.timezone, { dateStyle: "medium" })} — ${outcome.replace(/_/g, " ")}` };
+  }).filter((s) => s.outcome);
+  const court = (courtRow ?? null) as { id: string; level: string | null; state_code: string | null; name: string | null } | null;
+  return (
+    <DeadlinesPanel
+      matterId={matter.id}
+      firmId={matter.firm_id}
+      timezone={ctx.timezone}
+      court={court ? { level: court.level, state_code: court.state_code, name: court.name } : matter.court_name ? { level: null, state_code: null, name: matter.court_name } : null}
+      deadlines={(deadlineRows ?? []) as FirmDeadlineRow[]}
+      rules={rules}
+      sittings={sittings}
+      courtEvents={(eventRows ?? []) as CauseListRow[]}
+      documents={(docRows ?? []) as Array<{ id: string; name: string }>}
+      names={names}
+      canConfirm={ctx.role === "owner" || ctx.role === "admin" || ctx.role === "lawyer"}
+    />
+  );
+}
+
 // ---------------------------------------------------------------- the file itself
 async function EditSection({
   ctx, matter, statuses, staffOptions, leadLawyerId, alsoOn,
@@ -752,6 +807,7 @@ async function EditSection({
       firmId={matter.firm_id}
       timezone={ctx.timezone}
       statuses={statuses}
+      matterType={matter.type}
       courts={courts}
       staff={staffOptions}
       wallsEnabled={wallsEnabled}

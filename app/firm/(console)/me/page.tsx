@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { PushOptIn } from "@/components/push/push-opt-in";
 import { staffSignOut } from "@/lib/actions/staff";
+import { ProfileEditor, type PractitionerProfile } from "./profile-editor";
 
 export const metadata = { title: "Me" };
 
@@ -32,11 +33,19 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
   }
 
   const { supabase, firmId, userId } = ctx;
-  const [overview, staff, { data: invoiceRows }] = await Promise.all([
+  const [overview, staff, { data: invoiceRows }, { data: profileRow }, { data: categoryRows }, { data: firmRow }] = await Promise.all([
     firmOverview(supabase, firmId),
     firmStaff(supabase, firmId),
     supabase.from("invoices").select("id").eq("firm_id", firmId).in("status", ["issued", "partially_paid", "overdue"]),
+    // The practitioner's own row: lawyer_profiles_select is the firm's; the write is their own.
+    supabase.from("lawyer_profiles").select("title, bio, practice_areas, category, is_public, slug").eq("firm_id", firmId).eq("user_id", userId).maybeSingle(),
+    supabase.from("services").select("lawyer_category").eq("firm_id", firmId).limit(200),
+    supabase.from("firms").select("slug, status").eq("id", firmId).maybeSingle(),
   ]);
+  const profile = (profileRow ?? null) as PractitionerProfile | null;
+  const categories = Array.from(new Set(((categoryRows ?? []) as Array<{ lawyer_category: string | null }>).map((r) => (r.lawyer_category ?? "").trim()).filter(Boolean))).sort();
+  const firmSlug = (firmRow as { slug: string; status: "pending" | "active" | "suspended" } | null)?.slug ?? "";
+  const firmStatus = (firmRow as { slug: string; status: "pending" | "active" | "suspended" } | null)?.status ?? "pending";
 
   const me = staff.find((m) => m.user_id === userId) ?? null;
   const name = me ? staffLabel(me) : "You";
@@ -50,6 +59,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
   const openInvoices = (invoiceRows ?? []).length;
 
   const links: Array<{ href: string; label: string; hint: string; count: number | null; urgent?: boolean }> = [
+    { href: "/firm/search", label: "Search", hint: "Every matter, update, message, note and file name", count: null },
     { href: "/firm/sittings", label: "Sittings", hint: "The chase list and the cause list", count: overview?.sittings_due ?? null, urgent: (overview?.sittings_due ?? 0) > 0 },
     { href: "/firm/messages", label: "Messages", hint: "Every thread; the ones awaiting a reply", count: overview?.threads_awaiting_reply ?? null, urgent: (overview?.threads_awaiting_reply ?? 0) > 0 },
     { href: "/firm/tasks", label: "Tasks", hint: "The firm's open tasks, with owners", count: overview?.overdue_tasks ?? null, urgent: (overview?.overdue_tasks ?? 0) > 0 },
@@ -101,6 +111,13 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
           </div>
         </div>
       </Card>
+
+      {profile && (
+        <Card>
+          <CardHeader title="My profile on the firm's site" />
+          <ProfileEditor firmId={firmId} userId={userId} firmSlug={firmSlug} firmStatus={firmStatus} profile={profile} categories={categories} />
+        </Card>
+      )}
 
       <Card>
         <ul>

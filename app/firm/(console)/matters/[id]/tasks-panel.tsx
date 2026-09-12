@@ -173,6 +173,7 @@ export function TasksPanel({
                         ? `${overdue ? "Overdue — was due " : "Due "}${fmt.format(new Date(t.due_at))}${now ? ` (${dueLabel(t.due_at, now)})` : ""}`
                         : "No date fixed"}
                       {t.assignee_id ? ` · ${nameById.get(t.assignee_id) ?? "A colleague"}` : " · anyone in the firm"}
+                      {t.template_key ? ` · from the ${t.pack_key ?? "pack"} pack, at ${(t.status_key ?? "").replace(/_/g, " ")}` : ""}
                     </p>
                   </div>
                   <Button size="sm" variant="ghost" disabled={closing === t.id} onClick={() => close(t.id)}>

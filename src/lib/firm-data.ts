@@ -117,7 +117,7 @@ export async function sittingsDue(supabase: SupabaseClient, firmId: string, limi
 export async function matterStatuses(supabase: SupabaseClient, firmId: string): Promise<MatterStatus[]> {
   const { data } = await supabase
     .from("matter_statuses")
-    .select("id, firm_id, key, label, colour, is_terminal")
+    .select("id, firm_id, key, label, colour, is_terminal, sort, pack_key, pack_version, matter_types, default_next_action")
     .eq("firm_id", firmId)
     .order("sort", { ascending: true });
   return (data ?? []) as MatterStatus[];

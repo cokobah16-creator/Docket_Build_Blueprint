@@ -12,6 +12,9 @@ import { ConsultationRoom } from "@/components/video/consultation-room";
 import { markNoShow } from "@/lib/actions/video";
 import { NotesForm } from "./notes-form";
 import { RescheduleForm } from "./reschedule-form";
+import { CheckinPanel } from "./checkin-panel";
+import { DocumentsTab } from "@/components/portal/documents-tab";
+import type { AppointmentReadiness, DocumentRequestRow, DocumentRow, DocumentVersionRow } from "@/lib/db/types";
 
 export const metadata = { title: "Appointment" };
 
@@ -38,16 +41,28 @@ export default async function FirmAppointmentPage({
   const appt = (data ?? null) as Appt | null;
   if (!appt) notFound();
 
-  const [{ data: me }, { data: client }, { data: service }, { data: intake }, { data: notesRow }, { data: internalRow }, { data: sessionRow }, firm] = await Promise.all([
+  const [{ data: me }, { data: client }, { data: service }, { data: intake }, { data: notesRow }, { data: internalRow }, { data: sessionRow }, firm, { data: readinessRow }, { data: requestRows }, { data: docRows }] = await Promise.all([
     supabase.from("profiles").select("timezone").eq("id", user.id).maybeSingle(),
     supabase.from("profiles").select("full_name, phone, email").eq("id", appt.client_id).maybeSingle(),
     appt.service_id ? supabase.from("services").select("name, duration_min").eq("id", appt.service_id).maybeSingle() : Promise.resolve({ data: null }),
-    supabase.from("intake_responses").select("answers").eq("appointment_id", appt.id).maybeSingle(),
+    // The latest answers: a client may have answered what was missing after booking (migration 35).
+    supabase.from("intake_responses").select("answers").eq("appointment_id", appt.id).eq("client_id", appt.client_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("consultation_notes").select("client_summary, advice_given, follow_up, updated_at").eq("appointment_id", appt.id).maybeSingle(),
     supabase.from("consultation_internal_notes").select("body").eq("appointment_id", appt.id).maybeSingle(),
     supabase.from("consultation_sessions").select("room_name, started_at, client_admitted_at, ended_at").eq("appointment_id", appt.id).maybeSingle(),
     firmById(appt.firm_id),
+    supabase.rpc("appointment_readiness", { p_appointment: appt.id }),
+    supabase.from("document_requests").select("id, firm_id, matter_id, appointment_id, title, why, due_on, requested_by, requested_at, fulfilled_document_id, fulfilled_at, cancelled_at").eq("appointment_id", appt.id).order("requested_at", { ascending: false }).limit(50),
+    supabase.from("documents").select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at").eq("appointment_id", appt.id).is("deleted_at", null).order("created_at", { ascending: false }).limit(100),
   ]);
+  const readiness = (readinessRow ?? null) as AppointmentReadiness | null;
+  const requests = (requestRows ?? []) as DocumentRequestRow[];
+  const docs = (docRows ?? []) as DocumentRow[];
+  const { data: versionRows } = docs.length
+    ? await supabase.from("document_versions").select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at").in("document_id", docs.map((d) => d.id))
+    : { data: [] as DocumentVersionRow[] };
+  const versions = (versionRows ?? []) as DocumentVersionRow[];
+  const documents = docs.map((d) => ({ ...d, version: versions.find((v) => v.id === d.current_version_id) ?? null, version_count: versions.filter((v) => v.document_id === d.id).length }));
   const tz = (me as { timezone: string } | null)?.timezone ?? firm?.timezone ?? "Africa/Lagos";
   const cl = client as { full_name: string | null; phone: string | null; email: string | null } | null;
   const svc = service as { name: string; duration_min: number } | null;
@@ -57,6 +72,7 @@ export default async function FirmAppointmentPage({
   const session = sessionRow as { room_name: string | null; started_at: string | null; client_admitted_at: string | null; ended_at: string | null } | null;
 
   const live = appt.status === "confirmed" || appt.status === "rescheduled";
+  const before = live || appt.status === "pending" || appt.status === "awaiting_payment";
   const startMs = new Date(appt.starts_at).getTime();
   const endMs = new Date(appt.ends_at).getTime();
   const nowMs = Date.now();
@@ -96,6 +112,25 @@ export default async function FirmAppointmentPage({
       {actionError && <Alert kind="error">{actionError}</Alert>}
       {saved && <Alert kind="success">Notes saved. {appt.status === "completed" ? "The consultation is marked completed and the client can see the summary." : ""}</Alert>}
       {appt.status === "cancelled" && appt.cancellation_reason && <Alert kind="warning">Cancelled: {appt.cancellation_reason}</Alert>}
+
+      {readiness && before && (
+        <Card>
+          <CardHeader
+            title={appt.status === "pending" ? "Held — before you confirm" : "Before the consultation"}
+            action={readiness.ready ? <Badge tone="settled" icon="check">Everything in</Badge> : <Badge tone="waiting" icon="clock">{readiness.items.filter((i) => !i.satisfied).length} outstanding</Badge>}
+          />
+          <CardBody>
+            <CheckinPanel appointmentId={appt.id} firmId={appt.firm_id} readiness={readiness} requests={requests} canWrite={before} />
+          </CardBody>
+        </Card>
+      )}
+
+      {(documents.length > 0 || requests.length > 0) && (
+        <Card>
+          <CardHeader title="Documents on this consultation" />
+          <DocumentsTab firmId={appt.firm_id} matterId={null} appointmentId={appt.id} documents={documents} timezone={tz} canUpload={false} requests={[]} userId={user.id} audience="staff" />
+        </Card>
+      )}
 
       {roomOpen && (
         <Card>

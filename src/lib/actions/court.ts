@@ -45,6 +45,8 @@ const postSchema = z.object({
   clientAction: z.string().trim().max(2000).nullish(),
   actionRequired: z.enum(["unstated", "none", "required"]).optional(),
   nextUpdateBy: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "The next update day must be a calendar day.").nullish(),
+  /** Minted by the form per posting; a retry with the same reference returns the posting already made. */
+  clientRef: z.string().uuid().nullish(),
 });
 
 export type CourtUpdateInput = z.infer<typeof postSchema>;
@@ -87,6 +89,7 @@ export async function postCourtUpdate(input: CourtUpdateInput): Promise<PostCour
     p_client_action: d.actionRequired === "required" ? d.clientAction || null : null,
     p_action_required: d.actionRequired === "required" ? true : d.actionRequired === "none" ? false : null,
     p_next_update_by: d.nextUpdateBy || null,
+    p_client_ref: d.clientRef || null,
   });
   if (error) return { error: error.message };
   const updateId = typeof data === "string" ? data : null;

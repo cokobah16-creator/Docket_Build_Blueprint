@@ -61,6 +61,7 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
         ink: "text-[#92400E]",
       };
     }
+    if (a.status === "pending") return { text: "Held — yours to confirm once what you asked for is in", ink: "text-[#92400E]" };
     if (a.status === "rescheduled") return { text: "Rescheduled", ink: "text-[#57534E]" };
     if (a.mode === "virtual" && a.status === "confirmed") {
       return { text: `Room opens ${time(new Date(new Date(a.starts_at).getTime() - 10 * 60 * 1000).toISOString())}`, ink: "text-[#15803D]" };

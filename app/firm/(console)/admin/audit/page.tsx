@@ -50,7 +50,8 @@ interface AuditRow {
 const ROW_AUDITED = [
   "firm_members", "services", "appointments", "matters", "matter_parties", "updates",
   "documents", "invoices", "consent_records", "matter_counsel", "process_service", "courts",
-  "lawyer_profiles", "staff_invites", "matter_court_numbers",
+  "lawyer_profiles", "staff_invites", "matter_court_numbers", "court_events", "deadline", "matter_statuses", "tasks", "firm_workflow_packs",
+  "document_templates",
 ];
 
 /**
@@ -60,12 +61,12 @@ const ROW_AUDITED = [
  * policy (has_firm_role on firm_id) would refuse anyway. The most surprising one is `firms`: a
  * change an owner makes on the settings screen leaves no line anybody can read here.
  */
-const AUDITED_BUT_UNSCOPED = ["firms", "payments", "document_versions", "court_vacations", "public_holidays"];
+const AUDITED_BUT_UNSCOPED = ["firms", "payments", "document_versions", "court_vacations", "public_holidays", "court_rules", "rule_provisions"];
 
 /** Firm-facing tables with no trigger at all. A change to one of these leaves no line here. */
 const NOT_AUDITED = [
-  "intake_forms", "content", "messages", "tasks", "court_events", "invoice_items", "matter_lawyers",
-  "matter_statuses", "availability_rules", "availability_exceptions", "conflict_checks",
+  "intake_forms", "content", "messages", "invoice_items", "matter_lawyers",
+  "availability_rules", "availability_exceptions", "conflict_checks",
   "consultation_notes", "notifications",
 ];
 

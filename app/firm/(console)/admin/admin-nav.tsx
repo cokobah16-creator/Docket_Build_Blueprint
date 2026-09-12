@@ -16,7 +16,11 @@ const NAV: Array<{ href: string; label: string }> = [
   { href: "/firm/admin/settings", label: "Settings" },
   { href: "/firm/admin/services", label: "Services" },
   { href: "/firm/admin/intake", label: "Intake" },
+  { href: "/firm/admin/workflow", label: "Workflow" },
+  { href: "/firm/admin/templates", label: "Templates" },
   { href: "/firm/admin/people", label: "People" },
+  { href: "/firm/admin/import", label: "Import" },
+  { href: "/firm/admin/baseline", label: "Baseline" },
   { href: "/firm/admin/audit", label: "Audit" },
 ];
 

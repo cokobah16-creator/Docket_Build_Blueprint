@@ -19,9 +19,10 @@ a currency that is not in use.
 
 ## Consequences
 
-- `firms.stripe_account` stays as a nullable column; no data ever used it
-  and dropping it is not worth a migration. Remove it in the next schema
-  migration that touches `firms`.
+- `firms.stripe_account` was dropped in migration 9 (`platform_firms`), which
+  was the next migration to touch `firms`. No data ever used it. The column
+  survives only in the generated `src/lib/db/database.types.ts`, which has not
+  been regenerated since.
 - The `PaymentProvider.name` union no longer includes `'stripe'`.
 - Adding a second provider later is still a one-line change in
   `src/lib/providers/payments/index.ts`.

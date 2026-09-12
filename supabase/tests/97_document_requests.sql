@@ -57,6 +57,10 @@ begin
   -- the client uploads (the documents policy lets a party insert a client-visible document on their matter)
   perform t_as(cl, 'aal1');
   insert into documents (id, firm_id, matter_id, name, category, client_visible, uploaded_by) values (d, f, m, 'c-of-o.pdf', 'client_upload', true, cl);
+  -- the bytes arrive (migration 36: a document with no file answers nothing)
+  perform t_reset();
+  insert into document_versions (document_id, storage_path, mime, size_bytes, uploaded_by) values (d, f || '/' || d || '/v.pdf', 'application/pdf', 10, cl);
+  perform t_as(cl, 'aal1');
   perform fulfil_document_request(rq, d);
   perform t_check('the client answers the request with their upload', (select fulfilled_document_id = d and fulfilled_at is not null from document_requests where id = rq));
   ok := t_refused(format('select fulfil_document_request(%L, %L)', rq, d), 'P0001');
@@ -69,6 +73,9 @@ begin
   perform t_reset();
   insert into matters (id, firm_id, reference, title, type) values (other, f, 'DQ-M-2026-000002', 'Other', 'litigation');
   insert into documents (id, firm_id, matter_id, name, category, client_visible, uploaded_by) values (gen_random_uuid(), f, other, 'elsewhere.pdf', 'pleading', true, a);
+  perform t_reset();
+  insert into document_versions (document_id, storage_path, mime, size_bytes, uploaded_by) select id, f || '/' || id || '/v.pdf', 'application/pdf', 10, a from documents where name = 'elsewhere.pdf';
+  perform t_as(a);
   perform t_as(a);
   ok := t_refused(format('select fulfil_document_request(%L, %L)', rq, (select id from documents where name = 'elsewhere.pdf')), 'P0001');
   perform t_check('a document on another matter cannot answer it', ok);

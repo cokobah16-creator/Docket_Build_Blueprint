@@ -18,8 +18,8 @@ import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { CourtPicker } from "@/components/firm/court-picker";
 import { openMatter, inviteMatterParty, runConflictCheck } from "@/lib/actions/matters";
-import { DecideCheck, MatchList } from "../[id]/conflicts-panel";
-import type { ConflictMatch } from "@/lib/db/types";
+import { DecideCheck, MatchList } from "@/components/firm/conflict-decision";
+import { statusFitsType, type ConflictMatch } from "@/lib/db/types";
 import type { StaffMember } from "@/lib/firm-data";
 import { normalizeNigerianPhone } from "@/lib/nigeria";
 import { Alert } from "@/components/ui/alert";
@@ -425,7 +425,7 @@ export function NewMatterForm({
                 </p>
               ) : (
                 <select id="status" value={statusKey} onChange={(e) => setStatusKey(e.target.value)} className={field}>
-                  {statuses.map((s) => (
+                  {statuses.filter((s) => statusFitsType(s, type) && !s.is_terminal).map((s) => (
                     <option key={s.id} value={s.key}>{s.label}</option>
                   ))}
                 </select>

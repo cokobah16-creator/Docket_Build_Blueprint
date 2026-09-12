@@ -71,9 +71,15 @@ somebody you share a matter or an appointment with. Nothing broader.
 | `matter_lawyers`, `matter_counsel` | practitioners on both sides, with contact details for counsel |
 | `matter_court_numbers` | suit numbers by court |
 | `updates` | the timeline. `visibility = 'client'` or `'internal'`; `updates_client_select` allows only `visibility = 'client'` rows to a party |
-| `court_events` | sittings, purposes, outcomes |
-| `tasks` | internal |
+| `court_events` | sittings, purposes, outcomes — and (migration 38) who entered each, the notice it came from (`source_document_id`, a document on the matter) and its reference |
+| `deadlines`, `court_rules`, `rule_provisions` | a deadline counted from a rule: the triggering event and day, the rule as it read, the calculation, the day due, the confirming lawyer, internal notes. **Firm work product: no client policy** — a client never reads a deadline. The rules themselves are platform reference data, readable by anyone |
+| `tasks` | internal — and (migration 39) which pack template started a task, if any. Audited from 39 |
+| `matter_statuses` | the firm's stages: label and colour are read by the firm's clients. Audited from 39 |
+| `workflow_packs`, `firm_workflow_packs` | Docket's catalogue of stage packs (platform data, versioned, immutable) and which version each firm installed. No client policy |
+| `import_rows.raw` | **what a firm typed about each matter and client in a spreadsheet it imported** (migration 34): names, phone numbers, email addresses, the other side, descriptions — kept verbatim as the reconciliation record, readable by the firm's owners and admins only, never deleted. A subject-access search must include it |
+| `matters.legacy_reference` | the firm's old file number |
 | `matter_adverse_parties` | **the other side, by name and alias** — people who have never used Docket, recorded by the firm for conflict checking. Firm work product: no client policy |
+| `intake_responses` (amendments) | a client may answer after booking what the form still required (migration 35): each amendment is a new row carrying the earlier answers, never an edit |
 | `conflict_checks` | what the firm searched for and what matched (names, and which matter each was found on), the lawyer's decision and its note. Staff who can see the matter read it; never edited or deleted through the API |
 | `process_service` | `served_on_name`, `served_on_capacity`, `served_at_address`, `server_name`, the note and the proof |
 | `documents`, `document_versions` | the filename, who uploaded it, size, mime, checksum, and the storage path |
@@ -109,6 +115,22 @@ circumstances, finances. Treat every matter record as capable of holding sensiti
 | `rate_limits` | For a signed-in caller the key **is** `auth.uid()`; for an anonymous one it is a SHA-256 digest of the client address, computed in `src/lib/rate-limit.ts` — **the address itself never reaches the database** | No RLS policy at all: only `rate_limit_hit()` touches it. Rows older than a day are swept opportunistically inside that function |
 | `webhook_events` | provider, event type, provider reference, outcome, firm, invoice | Never the body of a verified event |
 | `domain_requests` | `requested_by`, `decided_by` | |
+| `document_signatures` | `signer_id`, the name the signer typed, their enrolment number where they signed for a firm, the version and its SHA-256, when they opened it, when they signed, the terms version in force | Written only by `record_signature()`; insert, update and delete are revoked from every API role, so a signature is never edited or withdrawn after the fact. It is evidence of execution and is retained with the document |
+| `document_versions` (execution columns) | `executed_recorded_by`, `witness_name`, `attested_by` | For an instrument executed on paper: the witness and the person who attested it are **third parties who are not Docket users**, recorded as free text by the firm because the instrument names them. The firm is the controller of that record; nothing is inferred or looked up |
+
+**A signature is over bytes, not over "a document".** `record_signature()` refuses unless the signer
+opened that exact version within the last thirty minutes (the `document_reads` record the storage
+policy already requires) and the SHA-256 of the version is stored on the signature. That is what
+makes the record answer *what* was signed — a question an audit line saying "signed a document"
+cannot answer. A signed document is then locked on that version: `document_lock_guard` refuses any
+further version, any move of the pointer and any deletion, so the artefact the signature names
+cannot be replaced beneath it.
+
+**Generated documents record their provenance.** A document drawn from a template stores the
+template and the template's version at the time, and the facts it was filled from **with the source
+of each** — so a later question about where a name or an address in an executed document came from
+is answered from the row rather than from memory. The generator refuses outright when the matter has
+no value for something the template names; nothing is guessed into a legal document.
 
 ### 1.7 Storage
 
@@ -387,7 +409,7 @@ not during one.*
 | Which account | `audit_log.actor_id` → `profiles`. A null actor means the database itself — a scheduled job or a provider webhook |
 | Did money go somewhere wrong | `platform_settlement_health`, and `/admin/health`. A mis-settled charge is recorded as a **failed** payment carrying `settlement_mismatch`, `reported_subaccount` and `expected_subaccount`, and audited as `payment.settlement_mismatch` |
 | Did anything arrive unverified | `webhook_events` — `signature_ok` and `outcome`, with `outcome <> 'processed'` indexed |
-| Were messages sent | `notifications` (status, event, channel, `sent_at`) — and remember the **payload is personal data**, so a queue export is itself a disclosure |
+| Were messages sent | `notifications` — three facts, each written only when known (migration 37): `accepted_at` and `provider_ref` when the provider took the message (that is what `status = 'sent'` means, and no more); `delivered_at` / `delivery_status` only from a receipt the provider signed, matched by that message id (`delivery-receipts` function; `webhook_events` keeps every delivery, verified or not, with `notification_id`); `read_at` only for the in-app copy. Web push has no receipt and stops at accepted. Remember the **payload is personal data**, so a queue export is itself a disclosure |
 | Were documents read | `document_reads` (migration 30): one row per open — who, which version, when — and a `document.opened` line in `audit_log`. **The record is the door, not a courtesy log**: the Storage read policy requires a read recorded by the caller within the last five minutes before it will mint a signed URL, so no bytes leave without one. Staff who can see the matter see the record; a client never does. Storage's own access logs remain the second source |
 | Was the schema itself changed | `supabase/migrations/` in git, against the live schema |
 

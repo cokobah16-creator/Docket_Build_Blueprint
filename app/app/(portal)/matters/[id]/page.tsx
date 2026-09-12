@@ -14,7 +14,7 @@ import { DocumentsTab, type DocumentWithVersion } from "@/components/portal/docu
 import { MessagesThread } from "@/components/portal/messages-thread";
 import { Screen, ScreenHeader } from "@/components/portal/screen";
 import { cn } from "@/lib/cn";
-import type { DocumentRow, DocumentVersionRow, MatterRow, MatterStatus, MessageRow, UpdateRow, DocumentRequestRow } from "@/lib/db/types";
+import type { DocumentRow, DocumentSignatureRow, DocumentVersionRow, MatterRow, MatterStatus, MessageRow, UpdateRow, DocumentRequestRow } from "@/lib/db/types";
 
 export const metadata = { title: "Matter" };
 
@@ -84,7 +84,7 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
 
         <Card>
           {tab === "timeline" && <TimelineTab supabase={supabase} matterId={matter.id} tz={tz} />}
-          {tab === "documents" && <DocumentsSection supabase={supabase} matter={matter} tz={tz} />}
+          {tab === "documents" && <DocumentsSection supabase={supabase} matter={matter} tz={tz} userId={user.id} />}
           {tab === "messages" && <MessagesSection supabase={supabase} matter={matter} userId={user.id} tz={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />}
           {tab === "invoices" && <InvoicesSection supabase={supabase} matterId={matter.id} tz={tz} />}
         </Card>
@@ -105,18 +105,20 @@ async function TimelineTab({ supabase, matterId, tz }: { supabase: SB; matterId:
   return <Timeline matterId={matterId} initial={(data ?? []) as UpdateRow[]} timezone={tz} />;
 }
 
-async function DocumentsSection({ supabase, matter, tz }: { supabase: SB; matter: MatterRow; tz: string }) {
+async function DocumentsSection({ supabase, matter, tz, userId }: { supabase: SB; matter: MatterRow; tz: string; userId: string }) {
   const { data: docRows } = await supabase
     .from("documents")
-    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at")
+    .select("id, firm_id, matter_id, appointment_id, name, category, client_visible, current_version_id, uploaded_by, reviewed_at, reviewed_by, created_at, locked_version_id, locked_at, signature_requested_at, signature_requested_by")
     .eq("matter_id", matter.id)
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100);
   const docs = (docRows ?? []) as DocumentRow[];
-  const { data: versionRows } = docs.length
-    ? await supabase.from("document_versions").select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at").in("document_id", docs.map((d) => d.id))
-    : { data: [] };
+  const [{ data: versionRows }, { data: signatureRows }, { data: me }] = await Promise.all([
+    docs.length ? supabase.from("document_versions").select("id, document_id, storage_path, mime, size_bytes, uploaded_by, created_at, checksum, kind, executed_on").in("document_id", docs.map((d) => d.id)) : Promise.resolve({ data: [] as DocumentVersionRow[] }),
+    docs.length ? supabase.from("document_signatures").select("*").in("document_id", docs.map((d) => d.id)).order("signed_at") : Promise.resolve({ data: [] as DocumentSignatureRow[] }),
+    supabase.from("profiles").select("full_name").eq("id", userId).maybeSingle(),
+  ]);
   const versions = (versionRows ?? []) as DocumentVersionRow[];
   const withVersion: DocumentWithVersion[] = docs.map((d) => ({
     ...d,
@@ -129,7 +131,7 @@ async function DocumentsSection({ supabase, matter, tz }: { supabase: SB; matter
     .eq("matter_id", matter.id)
     .order("requested_at", { ascending: false })
     .limit(50);
-  return <DocumentsTab firmId={matter.firm_id} matterId={matter.id} appointmentId={null} documents={withVersion} timezone={tz} requests={(requestRows ?? []) as DocumentRequestRow[]} />;
+  return <DocumentsTab firmId={matter.firm_id} matterId={matter.id} appointmentId={null} documents={withVersion} timezone={tz} requests={(requestRows ?? []) as DocumentRequestRow[]} userId={userId} signatures={(signatureRows ?? []) as DocumentSignatureRow[]} profileName={(me as { full_name: string | null } | null)?.full_name ?? null} />;
 }
 
 async function MessagesSection({ supabase, matter, userId, tz, senderNames, firmName }: { supabase: SB; matter: MatterRow; userId: string; tz: string; senderNames: Record<string, string>; firmName: string }) {
@@ -168,7 +170,7 @@ async function InvoicesSection({ supabase, matterId, tz }: { supabase: SB; matte
               <Link href={`/app/payments/${inv.id}`} className="text-sm font-medium text-gray-900 underline">{inv.number}</Link>
               <p className="text-xs text-gray-500">
                 {formatMoneyMinor(inv.total_minor, inv.currency)}{inv.paid_minor > 0 && inv.paid_minor < inv.total_minor ? ` · ${formatMoneyMinor(inv.paid_minor, inv.currency)} paid` : ""}
-                {inv.due_at ? ` · due ${fmt.format(new Date(inv.due_at))}` : ""}
+                {inv.due_at ? ` · due ${formatDay(inv.due_at)}` : ""}
               </p>
             </div>
             <div className="flex items-center gap-2">

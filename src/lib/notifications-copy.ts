@@ -9,6 +9,11 @@ export function describeNotification(event: string, payload: Record<string, unkn
   const matter = p.matter_id ? `/app/matters/${p.matter_id}` : "/app/matters";
   switch (event) {
     case "appointment_confirmed": return { title: "Consultation confirmed", body: `${p.reference ?? ""} · ${when}`, url: appt };
+    case "appointment_held": return { title: "Booking held", body: `${when} · see what is still needed`, url: appt };
+    case "appointment_checkin_due": return { title: "Before your consultation", body: `${when} · not yet confirmed`, url: appt };
+    case "appointment_awaiting_confirmation": return { title: "A held consultation needs confirming", body: when, url: `/firm/appointments/${p.appointment_id ?? ""}` };
+    case "document_requested": return { title: "A document is needed", body: String(p.title ?? ""), url: p.appointment_id ? `/app/appointments/${p.appointment_id}` : `${matter}?tab=documents` };
+    case "document_received": return { title: "A requested document arrived", body: String(p.name ?? p.title ?? ""), url: p.appointment_id ? `/firm/appointments/${p.appointment_id}` : `/firm/matters/${p.matter_id ?? ""}?tab=documents` };
     case "appointment_reminder_24h": return { title: "Consultation tomorrow", body: when, url: appt };
     case "appointment_reminder_1h": return { title: "Consultation in 1 hour", body: when, url: appt };
     case "appointment_reminder_10m": return { title: "Consultation in 10 minutes", body: "Join the waiting room.", url: `${appt}/waiting-room` };
@@ -21,6 +26,14 @@ export function describeNotification(event: string, payload: Record<string, unkn
     case "matter_update": return { title: String(p.title ?? "Update on your matter"), body: firmName, url: `${matter}?tab=timeline` };
     case "court_date_t3": return { title: "Court date in 3 days", body: `${when}${p.purpose ? ` · ${p.purpose}` : ""}`, url: "/app/court-dates" };
     case "court_date_t1": return { title: "Court date tomorrow", body: `${when}${p.court_name ? ` · ${p.court_name}` : ""}`, url: "/app/court-dates" };
+    case "deadline_due_t7": return { title: `${p.title ?? "A deadline"} in a week`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
+    case "deadline_due_t1": return { title: `${p.title ?? "A deadline"} tomorrow`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
+    case "deadline_due_t0": return { title: `${p.title ?? "A deadline"} today`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
+    case "document_ready_to_sign": return { title: "A document is ready for your signature", body: String(p.name ?? ""), url: `${matter}?tab=documents` };
+    // Two audiences: the client is told the firm countersigned, the firm that the client signed.
+    // The payload says which, because a client sent to /firm/… lands on a page they cannot open.
+    case "document_signed": return { title: `Signed: ${p.name ?? "a document"}`, body: `${p.signer ?? "The signer"} signed it.`,
+      url: p.audience === "client" ? `${matter}?tab=documents` : `/firm/matters/${p.matter_id ?? ""}?tab=documents` };
     case "new_message": return { title: `New message from ${firmName}`, body: "Open the thread.", url: p.matter_id ? `${matter}?tab=messages` : p.appointment_id ? `/app/messages/appointment/${p.appointment_id}` : "/app/messages" };
     default: return { title: event.replace(/_/g, " "), body: "", url: "/app" };
   }
@@ -28,6 +41,8 @@ export function describeNotification(event: string, payload: Record<string, unkn
 
 export const PREFERENCE_EVENTS: Array<{ event: string; label: string }> = [
   { event: "appointment_confirmed", label: "Consultation confirmed" },
+  { event: "appointment_held", label: "Booking held: what is still needed" },
+  { event: "appointment_checkin_due", label: "Reminder: before your consultation" },
   { event: "appointment_reminder_24h", label: "Reminder: 24 hours before" },
   { event: "appointment_reminder_1h", label: "Reminder: 1 hour before" },
   { event: "appointment_reminder_10m", label: "Reminder: 10 minutes before" },
@@ -39,6 +54,7 @@ export const PREFERENCE_EVENTS: Array<{ event: string; label: string }> = [
   { event: "court_date_t3", label: "Court date in 3 days" },
   { event: "court_date_t1", label: "Court date tomorrow" },
   { event: "new_message", label: "New message" },
+  { event: "document_ready_to_sign", label: "A document to sign" },
 ];
 export const PREFERENCE_CHANNELS: Array<{ channel: "push" | "email" | "sms"; label: string }> = [
   { channel: "push", label: "Push" },

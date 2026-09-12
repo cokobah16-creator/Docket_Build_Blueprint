@@ -21,8 +21,7 @@ export interface Read<T> {
   error: string | null;
 }
 import type {
-  DomainRequestRow, FailedNotificationRow, FirmAdminRow, NotificationHealthRow,
-  SettlementHealthRow, StorageIntegrity, WebhookEventRow,
+  DomainRequestRow, FailedNotificationRow, FirmAdminRow, NotificationHealthRow, SettlementHealthRow, StorageIntegrity, WebhookEventRow, NotificationCostRow, FirmActiveMattersRow, ProviderRateRow,
 } from "@/lib/db/types";
 
 export interface PlatformContext {
@@ -117,6 +116,35 @@ export async function failedNotifications(
     .order("created_at", { ascending: false })
     .limit(limit);
   return { rows: (data ?? []) as FailedNotificationRow[], error: error?.message ?? null };
+}
+
+/**
+ * What messages cost, per firm and month, by currency (migration 37). Amounts in minor units of
+ * the row's own currency; rows with a null currency hold only unpriced messages.
+ */
+export async function notificationCost(supabase: SupabaseClient, limit = 300): Promise<Read<NotificationCostRow>> {
+  const { data, error } = await supabase
+    .from("platform_notification_cost")
+    .select("*")
+    .order("month", { ascending: false })
+    .limit(limit);
+  return { rows: (data ?? []) as NotificationCostRow[], error: error?.message ?? null };
+}
+
+/** How many matters each firm has open — the denominator for cost per active matter. */
+export async function firmActiveMatters(supabase: SupabaseClient): Promise<Read<FirmActiveMattersRow>> {
+  const { data, error } = await supabase.from("platform_firm_active_matters").select("*").limit(500);
+  return { rows: (data ?? []) as FirmActiveMattersRow[], error: error?.message ?? null };
+}
+
+/** The rates the platform has entered, newest first. */
+export async function providerRates(supabase: SupabaseClient): Promise<Read<ProviderRateRow>> {
+  const { data, error } = await supabase
+    .from("provider_rates")
+    .select("*")
+    .order("effective_from", { ascending: false })
+    .limit(100);
+  return { rows: (data ?? []) as ProviderRateRow[], error: error?.message ?? null };
 }
 
 /** What providers sent us. `badOnly` is the view an operator actually wants. */

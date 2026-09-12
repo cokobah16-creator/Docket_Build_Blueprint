@@ -13,6 +13,8 @@
 // the rest of the firm's work behind Me: a lawyer uses this in a corridor.
 
 import Link from "next/link";
+import { ServiceWorkerRegistrar } from "@/components/portal/sw-registrar";
+import { ConnectionBadge } from "@/components/ui/connection";
 import { redirect } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -94,6 +96,8 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
   return (
     <div style={CONSOLE_TOKENS} className="min-h-screen bg-brand-surface">
       <link rel="stylesheet" href={CONSOLE_FONTS} />
+      {/* The offline shell for the console too: without it a dropped connection shows the browser's own error page. */}
+      <ServiceWorkerRegistrar />
       <div className="mx-auto max-w-lg pb-[calc(72px+env(safe-area-inset-bottom))]">
         <header className="sticky top-0 z-30 flex min-h-[50px] items-center justify-between gap-3 border-b border-[#E6E2DB] bg-white/[0.94] px-4 py-2.5 backdrop-blur-xl">
           <div className="flex min-w-0 items-center gap-2">
@@ -103,6 +107,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
             <Badge>{role}</Badge>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            <ConnectionBadge />
             {firm?.status === "pending" && <Badge tone="waiting" icon="clock">awaiting verification</Badge>}
             {firm?.status === "suspended" && <Badge tone="wrong" icon="alert">suspended</Badge>}
             {/* Every write depends on it, so the MFA state is never hidden. */}

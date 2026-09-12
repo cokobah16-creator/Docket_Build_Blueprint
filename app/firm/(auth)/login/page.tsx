@@ -4,6 +4,7 @@
 // MFA-verified (aal2) session — the database refuses staff writes below it.
 
 import { useState, type FormEvent } from "react";
+import { DraftSweeper } from "@/components/ui/connection";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ export default function StaffLoginPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
+      <DraftSweeper />
       <h1 className="font-heading text-2xl font-semibold text-brand">Staff console</h1>
       <p className="mt-1 text-sm text-gray-600">
         Sign in with your firm email. Two-factor authentication is required.

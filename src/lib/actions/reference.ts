@@ -453,3 +453,132 @@ export async function savePlatformCourt(input: PlatformCourtInput): Promise<Refe
       : `Saved, and marked closed. “${d.name}” no longer appears when a firm picks a court, and every matter already pointing at it keeps it.`,
   };
 }
+
+// ---------------------------------------------------------------- the rules of court (migration 38)
+//
+// A rule is what the platform entered from the Rules of Court, with its citation and version and
+// the day it came into force; a provision is one period under it — how many days, counted how,
+// from which event. Nothing is seeded. The write policies on court_rules and rule_provisions read
+// is_platform_admin() and mfa_ok(), exactly as the vacations above; a deadline computed from a
+// provision keeps a snapshot of the rule as it read, so correcting a rule here never rewrites a
+// deadline already counted.
+
+export interface CourtRuleInput {
+  id?: string | null;
+  level: string;
+  stateCode: string;
+  name: string;
+  citation: string;
+  version: string;
+  effectiveFrom: string;
+  note: string;
+}
+
+export interface RuleProvisionInput {
+  id?: string | null;
+  ruleId: string;
+  key: string;
+  label: string;
+  citation: string;
+  triggerKind: string;
+  period: number;
+  unit: "days" | "months";
+  countMode: "calendar" | "clear" | "working";
+  excludesVacation: boolean;
+  rollsForward: boolean;
+  note: string;
+}
+
+const ruleSchema = z.object({
+  id: uuid.nullish(),
+  level: z.string().max(40),
+  stateCode: z.string().max(2),
+  name: z.string().trim().min(2, "Give the rules their name.").max(200),
+  citation: z.string().trim().max(300),
+  version: z.string().trim().min(1, "Give the version — the year, usually.").max(60),
+  effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "The day the rules came into force is YYYY-MM-DD."),
+  note: z.string().trim().max(1000),
+});
+
+const provisionSchema = z.object({
+  id: uuid.nullish(),
+  ruleId: uuid,
+  key: z.string().trim().regex(/^[a-z0-9_]{2,60}$/, "A key is lower-case letters, digits and underscores."),
+  label: z.string().trim().min(2, "Say what the period is for.").max(200),
+  citation: z.string().trim().max(300),
+  triggerKind: z.enum(["judgment_delivered", "ruling_delivered", "order_made", "service_effected", "hearing_held", "filing", "other"]),
+  period: z.number().int().min(1).max(3660),
+  unit: z.enum(["days", "months"]),
+  countMode: z.enum(["calendar", "clear", "working"]),
+  excludesVacation: z.boolean(),
+  rollsForward: z.boolean(),
+  note: z.string().trim().max(1000),
+});
+
+export async function saveCourtRule(input: CourtRuleInput): Promise<ReferenceResult> {
+  const parsed = ruleSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  const d = parsed.data;
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const row = { level: orNull(d.level), state_code: orNull(d.stateCode), name: d.name, citation: orNull(d.citation), version: d.version, effective_from: d.effectiveFrom, note: orNull(d.note) };
+  if (d.id) {
+    const { error, count } = await supabase.from("court_rules").update(row, { count: "exact" }).eq("id", d.id);
+    if (error) return { error: error.message };
+    if (count === 0) return { error: await whyNothingChanged(supabase, "rule") };
+  } else {
+    const { error } = await supabase.from("court_rules").insert({ id: crypto.randomUUID(), ...row });
+    if (error) return { error: error.message };
+  }
+  refresh();
+  return { ok: true, notice: `Saved. "${d.name}" (${d.version}) is offered for ${coverageLabel(orNull(d.level), orNull(d.stateCode))} on any event from ${dayLabel(d.effectiveFrom)}; a deadline counted from it keeps this version's wording.` };
+}
+
+/** Retire a set of rules from a day: a deadline whose event falls on or after it will not be counted under them. */
+export async function retireCourtRule(id: string, retiredOn: string): Promise<ReferenceResult> {
+  if (!uuid.safeParse(id).success) return { error: "Unknown rule." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(retiredOn)) return { error: "The day the rules were retired is YYYY-MM-DD." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error, count } = await supabase.from("court_rules").update({ retired_on: retiredOn }, { count: "exact" }).eq("id", id);
+  if (error) return { error: error.message };
+  if (count === 0) return { error: await whyNothingChanged(supabase, "rule") };
+  refresh();
+  return { ok: true, notice: `Retired from ${dayLabel(retiredOn)}. Deadlines already counted under it are unchanged.` };
+}
+
+export async function saveRuleProvision(input: RuleProvisionInput): Promise<ReferenceResult> {
+  const parsed = provisionSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the form and try again." };
+  const d = parsed.data;
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const row = {
+    rule_id: d.ruleId, key: d.key, label: d.label, citation: orNull(d.citation), trigger_kind: d.triggerKind, period: d.period, unit: d.unit,
+    count_mode: d.countMode, excludes_vacation: d.excludesVacation, rolls_forward: d.rollsForward, note: orNull(d.note),
+  };
+  if (d.id) {
+    const { error, count } = await supabase.from("rule_provisions").update(row, { count: "exact" }).eq("id", d.id);
+    if (error) return { error: error.message };
+    if (count === 0) return { error: await whyNothingChanged(supabase, "provision") };
+  } else {
+    const { error } = await supabase.from("rule_provisions").insert({ id: crypto.randomUUID(), ...row });
+    if (error) return { error: error.message };
+  }
+  refresh();
+  return {
+    ok: true,
+    notice: `Saved. "${d.label}": ${d.period} ${d.unit === "months" ? "calendar months" : `${d.countMode} days`} from ${d.triggerKind.replace(/_/g, " ")}${d.excludesVacation ? ", time stopped during a vacation" : ""}${d.rollsForward ? ", rolling past a day the court does not sit" : ""}.`,
+  };
+}
+
+export async function deleteRuleProvision(id: string): Promise<ReferenceResult> {
+  if (!uuid.safeParse(id).success) return { error: "Unknown provision." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error, count } = await supabase.from("rule_provisions").delete({ count: "exact" }).eq("id", id);
+  if (error) return { error: error.message };
+  if (count === 0) return { error: await whyNothingChanged(supabase, "provision") };
+  refresh();
+  return { ok: true, notice: "Removed. Deadlines already counted under it keep their snapshot of the rule." };
+}

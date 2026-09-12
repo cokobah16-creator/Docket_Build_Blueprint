@@ -462,6 +462,15 @@ export async function updateConflictChecksRequired(firmId: string, enabled: bool
   return updateFirm(firmId, { conflict_checks_required: Boolean(enabled) });
 }
 
+/**
+ * firms.checkin_before_confirm. On, a booking is held until the firm confirms it, and the
+ * database refuses the confirmation until what appointment_readiness() requires is in.
+ */
+export async function updateCheckinBeforeConfirm(firmId: string, enabled: boolean): Promise<SettingsResult> {
+  if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
+  return updateFirm(firmId, { checkin_before_confirm: Boolean(enabled) });
+}
+
 export async function updateServiceOfProcess(firmId: string, input: ServiceOfProcessInput): Promise<SettingsResult> {
   if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
 
