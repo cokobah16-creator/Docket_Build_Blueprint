@@ -125,7 +125,7 @@ begin
   perform t_reset();
   perform t_check('the signature is audited, the lawyers are told, and the client''s timeline says so',
     (t_audit('document.signed', d) -> 'meta' ->> 'signer_role') = 'client'
-    and exists (select 1 from notifications where user_id = l and event = 'document_signed' and channel = 'in_app')
+    and exists (select 1 from notifications where user_id = l and event = 'document_signed' and channel = 'in_app' and payload ->> 'audience' = 'firm')
     and exists (select 1 from updates where matter_id = m and kind = 'document' and visibility = 'client' and title = 'Signed: Engagement letter — Okafor'));
   perform t_as(l);
   perform t_check('no further version can be added, by staff', t_fails(format('insert into document_versions (id, document_id, storage_path, mime, checksum, uploaded_by) values (%L, %L, %L, ''application/pdf'', repeat(''b'', 64), %L)', v2, d, f || '/' || d || '/' || v2 || '.pdf', l), 'locked on its executed version'));
@@ -134,6 +134,9 @@ begin
   perform open_document_version(v);
   sig2 := record_signature(v, 'Ngozi Adeyemi');
   perform t_check('the firm countersigns the same bytes, with the practitioner''s enrolment number', (select signer_role = 'staff' and signer_scn = 'SCN/12345' and version_id = v from document_signatures where id = sig2));
+  perform t_reset();
+  perform t_check('and the client is told, on a row addressed to the client rather than to the firm',
+    exists (select 1 from notifications where user_id = cl and event = 'document_signed' and channel = 'in_app' and payload ->> 'audience' = 'client'));
   perform t_reset();
   perform t_as(cl, 'aal1');
   perform t_check('no further version can be added, by the client either', t_refused(format('insert into document_versions (id, document_id, storage_path, mime, checksum, uploaded_by) values (%L, %L, %L, ''application/pdf'', repeat(''c'', 64), %L)', gen_random_uuid(), d, f || '/' || d || '/x.pdf', cl), '42501')

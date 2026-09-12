@@ -347,15 +347,19 @@ begin
   end if;
   perform audit('document.signed', 'document', d.id, d.firm_id,
                 jsonb_build_object('matter_id', d.matter_id, 'version_id', v.id, 'checksum', v.checksum, 'signer_role', case when v_staff then 'staff' else 'client' end, 'signature_id', v_id, 'read_at', v_read));
+  -- This is the one event in Docket with two audiences: the client hears that the firm
+  -- countersigned, and the firm hears that the client signed. They open different screens, and a
+  -- client sent to /firm/… reaches a page they cannot see — so the payload says whose it is and
+  -- both renderers read it rather than guessing from the event name.
   if v_staff then
     if d.client_visible then
       for r in select mp.user_id from matter_parties mp where mp.matter_id = d.matter_id and mp.role = 'client' loop
-        perform enqueue_notification(r.user_id, d.firm_id, 'document_signed', jsonb_build_object('document_id', d.id, 'matter_id', d.matter_id, 'name', d.name, 'signer', btrim(p_typed_name)));
+        perform enqueue_notification(r.user_id, d.firm_id, 'document_signed', jsonb_build_object('document_id', d.id, 'matter_id', d.matter_id, 'name', d.name, 'signer', btrim(p_typed_name), 'audience', 'client'));
       end loop;
     end if;
   else
     for r in select ml.user_id from matter_lawyers ml where ml.matter_id = d.matter_id loop
-      perform enqueue_notification(r.user_id, d.firm_id, 'document_signed', jsonb_build_object('document_id', d.id, 'matter_id', d.matter_id, 'name', d.name, 'signer', btrim(p_typed_name)));
+      perform enqueue_notification(r.user_id, d.firm_id, 'document_signed', jsonb_build_object('document_id', d.id, 'matter_id', d.matter_id, 'name', d.name, 'signer', btrim(p_typed_name), 'audience', 'firm'));
     end loop;
   end if;
   if d.client_visible and d.matter_id is not null then

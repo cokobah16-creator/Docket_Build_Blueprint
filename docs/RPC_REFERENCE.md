@@ -558,6 +558,10 @@ carry a checksum — which is stored on the signature, so what was signed is nam
 signature also stores the practitioner's enrolment number. The signature locks the document on that
 version: no further version, no move of the pointer, no deletion. The firm is told
 (`document_signed`), and a client signature posts a client-visible `document` entry on the timeline.
+`document_signed` is the one event in Docket with **two audiences** — the client hears that the firm
+countersigned, the firm that the client signed — so its payload carries `audience` (`client` or
+`firm`) and both renderers read it. Without that a client's row would link into `/firm/…`, a page
+they cannot open.
 One signature per signer per version (`23505` on a second). Audits `document.signed`.
 
 Refuses: `not permitted` *(42501)* · `the firm has not asked for a signature on this document` ·

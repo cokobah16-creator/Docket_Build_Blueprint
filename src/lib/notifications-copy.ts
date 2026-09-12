@@ -30,7 +30,10 @@ export function describeNotification(event: string, payload: Record<string, unkn
     case "deadline_due_t1": return { title: `${p.title ?? "A deadline"} tomorrow`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
     case "deadline_due_t0": return { title: `${p.title ?? "A deadline"} today`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
     case "document_ready_to_sign": return { title: "A document is ready for your signature", body: String(p.name ?? ""), url: `${matter}?tab=documents` };
-    case "document_signed": return { title: `Signed: ${p.name ?? "a document"}`, body: `${p.signer ?? "The signer"} signed it.`, url: `/firm/matters/${p.matter_id ?? ""}?tab=documents` };
+    // Two audiences: the client is told the firm countersigned, the firm that the client signed.
+    // The payload says which, because a client sent to /firm/… lands on a page they cannot open.
+    case "document_signed": return { title: `Signed: ${p.name ?? "a document"}`, body: `${p.signer ?? "The signer"} signed it.`,
+      url: p.audience === "client" ? `${matter}?tab=documents` : `/firm/matters/${p.matter_id ?? ""}?tab=documents` };
     case "new_message": return { title: `New message from ${firmName}`, body: "Open the thread.", url: p.matter_id ? `${matter}?tab=messages` : p.appointment_id ? `/app/messages/appointment/${p.appointment_id}` : "/app/messages" };
     default: return { title: event.replace(/_/g, " "), body: "", url: "/app" };
   }
