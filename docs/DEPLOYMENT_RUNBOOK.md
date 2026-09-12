@@ -532,6 +532,23 @@ access — which is what they asked for, but find out first rather than from the
 alone for a party and gains meaning only for a representation; the two console lines that claimed
 otherwise are removed in the same commit.
 
+**45 is additive and safe either side, with one caveat worth stating.** The collaboration screens
+call six new RPCs, so applying it after the app deploy leaves `/firm/collaborations` and the matter's
+*Working with* tab answering PGRST202 until it lands — nothing else breaks, and no existing call
+changes. The caveat is that 45 re-creates `can_access_document_version()` to add one arm for a
+collaborating firm. That function is the door to the object bytes through the storage policies, so
+after applying it, confirm it still carries every arm it had:
+
+```sql
+select pg_get_functiondef('public.can_access_document_version(uuid)'::regprocedure);
+```
+
+Four arms are expected: the firm's own members through `matter_row_r`, the client side (a party with
+`can_view_docs`, a live representation with the documents right, or an appointment's client), the
+served firm through `is_served_firm`, and now `is_collaborating_firm`. A version of this function
+with three arms means an edit dropped one, and somebody has quietly lost access to their own
+documents. Suite `96_document_reads.sql` and `99_collaboration.sql` both exercise it.
+
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|
 | **App** | `bcc1dc8` (the merge of PR #20), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |

@@ -48,6 +48,21 @@ export function describeNotification(event: string, payload: Record<string, unkn
     case "client_contact_changed": return { title: "A client changed how they are reached",
       body: `${p.phone_changed ? "Phone" : ""}${p.phone_changed && p.email_changed ? " and " : ""}${p.email_changed ? "Email" : ""} changed. If you were not expecting it, ring the number you had before.`,
       url: `/firm/clients/${p.client_id ?? ""}` };
+    // Firm to firm (migration 45). A collaboration is proposed, answered, fed and ended, and both
+    // firms — and, when it starts, the client — hear the part that concerns them.
+    case "collaboration_proposed": return { title: `${p.from_firm_name ?? "A firm"} has asked you to take something on`,
+      body: `${p.case_title ?? "A matter"}${p.suit_number ? ` · ${p.suit_number}` : ""}`, url: "/firm/collaborations" };
+    case "collaboration_accepted": return { title: `${p.with_firm_name ?? "The firm"} accepted`,
+      body: "They are on the matter now.", url: `/firm/matters/${p.matter_id ?? ""}?tab=working` };
+    case "collaboration_declined": return { title: `${p.with_firm_name ?? "The firm"} declined`,
+      body: String(p.reason ?? "No reason given."), url: `/firm/matters/${p.matter_id ?? ""}?tab=working` };
+    case "collaboration_document_shared": return { title: "A document was shared with you",
+      body: `${p.name ?? "A document"}${p.case_title ? ` · ${p.case_title}` : ""}`, url: "/firm/collaborations" };
+    case "collaboration_ended": return { title: "An arrangement between firms has ended",
+      body: `${p.case_title ?? "A matter"} · ended by ${p.by_firm_name ?? "one of the firms"}`, url: "/firm/collaborations" };
+    // The client's own notice: another firm is on their file.
+    case "collaboration_started": return { title: `${p.with_firm_name ?? "Another firm"} is working on your matter`,
+      body: "Your firm has brought them in. Open the matter to see what they are doing.", url: `${matter}?tab=timeline` };
     case "new_message": return { title: `New message from ${firmName}`, body: "Open the thread.", url: p.matter_id ? `${matter}?tab=messages` : p.appointment_id ? `/app/messages/appointment/${p.appointment_id}` : "/app/messages" };
     default: return { title: event.replace(/_/g, " "), body: "", url: "/app" };
   }

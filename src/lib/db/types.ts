@@ -1295,3 +1295,65 @@ export interface IdentityEventRow {
   new_value: string | null;
   changed_at: string;
 }
+
+/** matter_collaborations (migration 45): a referral, joint retainer or agency between two firms. */
+export interface CollaborationRow {
+  id: string;
+  firm_id: string;
+  matter_id: string;
+  with_firm_id: string;
+  kind: string;
+  /** A snapshot taken at proposal. The other firm never reads the live matter. */
+  case_title: string | null;
+  suit_number: string | null;
+  court_name: string | null;
+  scope_note: string;
+  share_updates: boolean;
+  ends_on: string | null;
+  proposed_by: string | null;
+  proposed_at: string;
+  accepted_at: string | null;
+  declined_at: string | null;
+  decline_reason: string | null;
+  ended_at: string | null;
+  end_reason: string | null;
+}
+
+/** collaboration_inbox (migration 45): the collaborating firm's only read path. */
+export interface CollaborationInboxRow {
+  id: string;
+  kind: string;
+  case_title: string | null;
+  suit_number: string | null;
+  court_name: string | null;
+  scope_note: string;
+  share_updates: boolean;
+  ends_on: string | null;
+  proposed_at: string;
+  accepted_at: string | null;
+  declined_at: string | null;
+  ended_at: string | null;
+  from_firm_id: string;
+  from_firm_name: string;
+  with_firm_id: string;
+  shared_documents: number;
+}
+
+export interface CollaborationDocumentRow {
+  id: string;
+  collaboration_id: string;
+  document_id: string;
+  document_version_id: string;
+  checksum: string | null;
+  shared_at: string;
+  withdrawn_at: string | null;
+}
+
+export interface CollaborationNoteRow {
+  id: string;
+  collaboration_id: string;
+  firm_id: string;
+  author_id: string | null;
+  body: string;
+  created_at: string;
+}

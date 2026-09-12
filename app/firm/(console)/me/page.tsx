@@ -65,6 +65,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
     { href: "/firm/tasks", label: "Tasks", hint: "The firm's open tasks, with owners", count: overview?.overdue_tasks ?? null, urgent: (overview?.overdue_tasks ?? 0) > 0 },
     { href: "/firm/uploads", label: "Uploads to review", hint: "What clients sent in, unlooked-at", count: overview?.client_uploads ?? null, urgent: (overview?.client_uploads ?? 0) > 0 },
     { href: "/firm/matters", label: "Matters", hint: "Every live file, searchable", count: overview?.open_matters ?? null },
+    { href: "/firm/collaborations", label: "Work from other firms", hint: "Referrals, joint counsel and agency asked of us", count: null },
     { href: "/firm/inbox", label: "Service inbox", hint: "Process served on this firm", count: overview?.service_to_acknowledge ?? null, urgent: (overview?.service_to_acknowledge ?? 0) > 0 },
     { href: "/firm/invoices", label: "Invoices", hint: "Issued, part-paid and overdue", count: openInvoices },
     { href: "/firm/availability", label: "Availability", hint: "Hours, breaks and the daily cap", count: null },
