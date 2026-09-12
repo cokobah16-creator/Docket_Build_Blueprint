@@ -14,17 +14,24 @@ type Err = { error: string } | undefined;
 const uuid = z.string().uuid();
 const packKey = z.string().regex(/^[a-z0-9_]{2,40}$/, "A pack key is lower-case letters, digits and underscores.");
 
-export async function installWorkflowPack(firmId: string, key: string, version?: number | null): Promise<{ error: string } | { version: number; added: number; recognised: number }> {
+export async function installWorkflowPack(firmId: string, key: string, version?: number | null): Promise<{ error: string } | { version: number; added: number; recognised: number; ofAnotherPack: number }> {
   if (!uuid.safeParse(firmId).success || !packKey.safeParse(key).success) return { error: "Unknown pack." };
   if (version !== null && version !== undefined && (!Number.isInteger(version) || version < 1)) return { error: "Unknown version." };
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
   const { data, error } = await supabase.rpc("install_workflow_pack", { p_firm: firmId, p_key: key, p_version: version ?? null });
   if (error) return { error: error.message };
-  const r = (data ?? {}) as { version?: number; statuses_added?: number; statuses_recognised?: number };
+  // All three counts, because the three of them add up to the pack's stage list and two of them
+  // do not. install_workflow_pack() separates a stage this pack already owns from one the firm
+  // holds under a DIFFERENT pack — which it leaves exactly as it reads — and dropping the second
+  // number here left the administrator looking at "9 stages" and a notice accounting for 7.
+  const r = (data ?? {}) as { version?: number; statuses_added?: number; statuses_recognised?: number; statuses_of_another_pack?: number };
   revalidatePath("/firm/admin/workflow");
   revalidatePath("/firm/matters");
-  return { version: Number(r.version ?? 0), added: Number(r.statuses_added ?? 0), recognised: Number(r.statuses_recognised ?? 0) };
+  return {
+    version: Number(r.version ?? 0), added: Number(r.statuses_added ?? 0),
+    recognised: Number(r.statuses_recognised ?? 0), ofAnotherPack: Number(r.statuses_of_another_pack ?? 0),
+  };
 }
 
 /** The firm's own wording, colour and order on a stage. Never the key: matters and packs point at it. */

@@ -535,7 +535,7 @@ export function StaffDocuments({
                     {!isLocked(d) && executionOf(d) !== "paper" && !d.signature_requested_at && (
                       <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => askSignature(d)}>Ask the client to sign</Button>
                     )}
-                    {executionOf(d) !== "paper" && !signaturesOf(d).some((sg) => sg.signer_id === userId && sg.version_id === d.version?.id) && (!isLocked(d) || d.locked_version_id === d.version.id) && (
+                    {executionOf(d) !== "paper" && d.version.kind !== "executed_paper" && !signaturesOf(d).some((sg) => sg.signer_id === userId && sg.version_id === d.version?.id) && (!isLocked(d) || d.locked_version_id === d.version.id) && (
                       <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => d.version && setSigning({ doc: d, version: d.version })}>Sign for the firm</Button>
                     )}
                     {!isLocked(d) && executionOf(d) !== "electronic" && (

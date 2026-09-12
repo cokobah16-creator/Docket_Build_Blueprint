@@ -414,10 +414,19 @@ begin
          attested_by = nullif(btrim(coalesce(p_attested_by, '')), ''), stamp_ref = nullif(btrim(coalesce(p_stamp_ref, '')), ''),
          registration_ref = nullif(btrim(coalesce(p_registration_ref, '')), ''), executed_recorded_by = auth.uid()
    where id = p_version;
-  update documents set locked_version_id = p_version, locked_at = now(), current_version_id = p_version where id = p_document;
+  -- An outstanding request to sign here is withdrawn by the execution, not left standing. It can
+  -- never be satisfied — record_signature() refuses a version whose kind is 'executed_paper' —
+  -- and while it stood the client's screen asked them to sign an instrument it also told them was
+  -- final, with a button whose only possible outcome was a refusal. Withdrawn in the audit entry
+  -- as well, so that a request WAS outstanding is not erased along with it.
+  update documents
+     set locked_version_id = p_version, locked_at = now(), current_version_id = p_version,
+         signature_requested_at = null, signature_requested_by = null
+   where id = p_document;
   perform audit('document.executed_on_paper', 'document', p_document, d.firm_id,
                 jsonb_build_object('matter_id', d.matter_id, 'version_id', p_version, 'checksum', v.checksum, 'executed_on', p_executed_on,
-                                   'witness', nullif(btrim(coalesce(p_witness_name, '')), ''), 'attested_by', nullif(btrim(coalesce(p_attested_by, '')), '')));
+                                   'witness', nullif(btrim(coalesce(p_witness_name, '')), ''), 'attested_by', nullif(btrim(coalesce(p_attested_by, '')), ''),
+                                   'signature_request_withdrawn', d.signature_requested_at is not null));
   if d.client_visible and d.matter_id is not null then
     insert into updates (matter_id, firm_id, kind, visibility, title, body, occurred_at, posted_by, payload)
     values (d.matter_id, d.firm_id, 'document', 'client', 'Executed: ' || d.name, d.name || ' was executed on ' || to_char(p_executed_on, 'FMDD FMMonth YYYY') || '.', now(), auth.uid(),

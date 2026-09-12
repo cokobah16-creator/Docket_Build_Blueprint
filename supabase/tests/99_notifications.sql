@@ -183,5 +183,38 @@ begin
     (select status = 'queued' and send_attempts = 0 and attempts = 1 and failure_kind is null and error is null from notifications where id = n));
 end $$;
 
+-- ---------------------------------------------------------------- 8. a timezone that is a timezone
+-- profiles.timezone is text the owner may PATCH directly, and enqueue_notification renders quiet
+-- hours with `at time zone` on it: an unrecognised string raised 22023 and took down whatever
+-- staff action was enqueuing — and the dispatcher, which hands the same string to Intl, died on
+-- the whole batch. The rule is the database's, so it is asserted as the database's.
+do $$
+declare cl uuid := (select v from fx where k='client'); f uuid := (select v from fx where k='firm');
+begin
+  perform t_as(cl, 'aal1');
+  perform t_check('a client cannot write a timezone Postgres does not know',
+    t_fails('update profiles set timezone = ''Mars/Olympus'' where id = auth.uid()', 'unknown timezone'));
+  perform t_check('a zone with a stray space is not a zone either',
+    t_fails('update profiles set timezone = ''Africa/Lagos '' where id = auth.uid()', 'unknown timezone'));
+  perform t_check('a real zone is still their own to set',
+    (select timezone from profiles where id = cl) is distinct from 'Europe/London');
+  update profiles set timezone = 'Europe/London' where id = auth.uid();
+  perform t_check('and it is written', (select timezone = 'Europe/London' from profiles where id = cl));
+  perform t_reset();
+  -- With quiet hours set, enqueue_notification formats the send time in that zone: `p_send_after
+  -- at time zone v_tz`, the expression that raised 22023 and aborted the caller's transaction. A
+  -- zone the trigger admits can never raise there, which is the point of putting the check in the
+  -- database. The window is pinned around this instant so the assertion does not depend on the
+  -- hour the suite happens to run.
+  update profiles set timezone = 'Africa/Lagos',
+         quiet_hours_start = ((now() at time zone 'Africa/Lagos') - interval '1 hour')::time,
+         quiet_hours_end   = ((now() at time zone 'Africa/Lagos') + interval '1 hour')::time
+   where id = cl;
+  perform enqueue_notification(cl, f, 'matter_update', jsonb_build_object('update_id', gen_random_uuid(), 'title', 'Quiet hours'));
+  perform t_check('a message enqueued inside quiet hours is deferred, not refused, and the zone is what defers it',
+    exists (select 1 from notifications where user_id = cl and channel = 'sms' and send_after > now()));
+  update profiles set quiet_hours_start = null, quiet_hours_end = null where id = cl;
+end $$;
+
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
 rollback;

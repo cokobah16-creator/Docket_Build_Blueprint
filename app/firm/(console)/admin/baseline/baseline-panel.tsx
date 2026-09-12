@@ -188,9 +188,13 @@ export function BaselinePanel({ firmId, timezone, canWrite, from, to, metrics, b
           <CardHeader title="Record this baseline" />
           <CardBody>
             <p className="mb-3 text-xs text-gray-600">
-              The figures above are stored exactly as they are, with this window and your name against them, and cannot be
-              edited afterwards. Below them you may record what the firm says about how the work went <em>before</em> Docket.
-              Those are your words, kept as a stated claim: Docket cannot measure them and never presents them as if it had.
+              The database counts this window again at the instant you record it, and stores what it counts then — with the
+              window and your name against it, and it cannot be edited afterwards. The figures for the window itself will
+              come back the same; the four that describe this moment rather than the window &mdash; <em>Open matters now</em>,
+              <em>Next actions overdue now</em>, <em>Consultations ahead</em> and <em>Still unanswered</em> &mdash; are read
+              again then, so they may differ from what is on screen. Below them you may
+              record what the firm says about how the work went <em>before</em> Docket. Those are your words, kept as a
+              stated claim: Docket cannot measure them and never presents them as if it had.
             </p>
             <form onSubmit={record} className="space-y-3">
               <label className="block text-sm">

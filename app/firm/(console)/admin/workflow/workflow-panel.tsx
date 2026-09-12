@@ -41,7 +41,8 @@ export function WorkflowPanel({ firmId, packs, installed, statuses, canWrite }: 
     try {
       const r = await installWorkflowPack(firmId, key, version);
       if ("error" in r) { setError(r.error); return; }
-      setNotice(`${key} version ${r.version}: ${r.added} stage${r.added === 1 ? "" : "s"} added, ${r.recognised} already yours and left as they read.`);
+      setNotice(`${key} version ${r.version}: ${r.added} stage${r.added === 1 ? "" : "s"} added, ${r.recognised} already yours and left as they read`
+        + (r.ofAnotherPack > 0 ? `, and ${r.ofAnotherPack} you already have from another pack, left exactly as they are.` : "."));
       router.refresh();
     } catch { setError("Nothing was installed — the connection may have dropped. Try again."); }
     finally { setBusy(null); }

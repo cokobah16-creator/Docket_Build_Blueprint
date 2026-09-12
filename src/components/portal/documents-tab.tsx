@@ -55,8 +55,13 @@ export function DocumentsTab({
   // sign locks the document — on that version — and the database still admits the others on the
   // same version. So the gate is "this version is not superseded", not "nothing is locked":
   // testing the lock alone hid the button from everyone else the firm had just asked.
+  // An instrument executed on paper is not also signed here: record_signature() refuses a version
+  // whose kind is 'executed_paper', and record_paper_execution() now withdraws the request when it
+  // locks the document. The kind is tested here too, so a document executed before that migration
+  // stops asking for a signature the database will never take.
   const toSign = (d: DocumentWithVersion) => Boolean(
     d.signature_requested_at && d.version && userId
+    && d.version.kind !== "executed_paper"
     && (!d.locked_version_id || d.locked_version_id === d.version.id)
     && !signatures.some((sg) => sg.version_id === d.version?.id && sg.signer_id === userId),
   );

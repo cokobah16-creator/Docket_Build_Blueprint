@@ -264,7 +264,8 @@ signed with a different private one.
 
 **Proves it worked:** `curl -X POST https://<ref>.supabase.co/functions/v1/dispatch-notifications`
 with no header returns `unauthorized` (401), and with the right `x-cron-secret` returns
-`{"sent":0,"failed":0,"requeued":0}`. `curl -X POST https://<ref>.supabase.co/functions/v1/delivery-receipts/termii`
+`{"sent":0,"failed":0,"requeued":0,"unfinalised":0}` — four fields, and `unfinalised` must stay
+zero on every run thereafter, for the reason §7 gives. `curl -X POST https://<ref>.supabase.co/functions/v1/delivery-receipts/termii`
 with no token returns `unverified` (401) and leaves an `unverified` row in `webhook_events`. The same call to `/functions/v1/storage-manifest` returns
 `forbidden` (403) without the header and a JSON count of what it verified with it; within an hour
 `/admin/health` should show every object verified and none missing.

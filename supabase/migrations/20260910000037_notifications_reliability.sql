@@ -123,6 +123,34 @@ begin
   end loop;
 end $$;
 
+-- ------------------------------------------------- 2b. a timezone that is a timezone
+-- profiles.timezone is text, the owner may PATCH their own row through PostgREST, and the only
+-- check was a try/catch around Intl in a server action — a screen doing the database's work, the
+-- same guarded-RPC-beside-a-writable-table shape as firm_members and invoices. The value is not
+-- decorative: enqueue_notification does `p_send_after at time zone v_tz` when the person has
+-- quiet hours, which raises 22023 and takes the whole calling transaction down with it — so a
+-- client who wrote "Mars/Olympus" into their own profile could make confirm_appointment(),
+-- record_payment() and post_court_update() fail for the staff acting on their matter. The
+-- dispatcher then hands the same string to Intl, which throws. create_firm() has always checked
+-- firms.timezone against pg_timezone_names; a profile is checked the same way, in the same place
+-- the rule belongs.
+create or replace function public.guard_profile_timezone() returns trigger language plpgsql as $$
+begin
+  if new.timezone is not null and not exists (select 1 from pg_timezone_names where name = new.timezone) then
+    raise exception 'unknown timezone %', new.timezone;
+  end if;
+  return new;
+end $$;
+drop trigger if exists guard_profile_timezone on public.profiles;
+create trigger guard_profile_timezone before insert or update of timezone on public.profiles
+  for each row execute function public.guard_profile_timezone();
+
+-- Any row already carrying a zone Postgres does not know is moved to the app default rather than
+-- left to break the next notification. Written as an update, not a silent coalesce at read time:
+-- the row says what it says.
+update public.profiles set timezone = 'Africa/Lagos'
+ where timezone is not null and not exists (select 1 from pg_timezone_names t where t.name = profiles.timezone);
+
 -- ---------------------------------------------------------------- 3. claim, then finish
 -- Both are the dispatcher's alone: execute is revoked from every API role, and a caller with a
 -- session (auth.uid() set) is refused besides — the service role carries none.

@@ -208,6 +208,35 @@ begin
   update matters set type = 'litigation' where id = m;
 end $$;
 
+-- ---------------------------------------------------------------- 4b. execution withdraws an outstanding request
+-- A request to sign that is left standing after the instrument is executed can never be met:
+-- record_signature() refuses the version. The client's screen was reading "your firm has asked
+-- you to sign this" beside "executed on paper · this version is final", with a button whose only
+-- outcome was a refusal, and nothing anywhere could clear it. The execution withdraws it, and
+-- says in the audit entry that there was one to withdraw.
+do $$
+declare l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm'); m uuid := (select v from fx where k='matter');
+        cl uuid := (select v from fx where k='client'); d uuid := gen_random_uuid(); v uuid := gen_random_uuid();
+begin
+  perform t_reset(); perform t_as(l);
+  insert into documents (id, firm_id, matter_id, name, category, client_visible, uploaded_by) values (d, f, m, 'undertaking.pdf', 'firm_upload', true, l);
+  insert into document_versions (id, document_id, storage_path, mime, size_bytes, checksum, uploaded_by) values (v, d, f || '/' || d || '/' || v || '.pdf', 'application/pdf', 1024, repeat('f', 64), l);
+  perform request_signature(d);
+  perform t_check('the request stands while the document is open', (select signature_requested_at is not null and signature_requested_by = l from documents where id = d));
+  perform record_paper_execution(d, v, '2026-03-04');
+  perform t_check('executing it on paper withdraws the request rather than leaving it unanswerable',
+    (select signature_requested_at is null and signature_requested_by is null and locked_version_id = v from documents where id = d));
+  perform t_check('and the audit entry records that there was a request to withdraw',
+    (t_audit('document.executed_on_paper', d) -> 'meta' ->> 'signature_request_withdrawn') = 'true');
+  perform t_reset(); perform t_as(cl, 'aal1');
+  perform open_document_version(v);
+  -- The withdrawal is the first thing the client meets, not the last: with no request standing,
+  -- record_signature() refuses before it ever reaches the executed-on-paper test.
+  perform t_check('the client asking to sign it anyway is told no signature was asked for',
+    t_fails(format('select record_signature(%L, ''Adaeze Okafor'')', v), 'has not asked for a signature'));
+  perform t_reset();
+end $$;
+
 -- ---------------------------------------------------------------- 5. what the API may still write
 -- Migration 40 narrows two grants that were blanket before it. This section is the proof the
 -- runbook's "safe either side" rests on: the columns the deployed front end writes still go

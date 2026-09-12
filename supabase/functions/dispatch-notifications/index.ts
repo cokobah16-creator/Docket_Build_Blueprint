@@ -181,12 +181,23 @@ async function readJson(r: Response): Promise<Record<string, any>> {
   try { return await r.json(); } catch { return {}; }
 }
 
+/**
+ * The HTML part carries no markup the sender did not write. Several events paste text the OTHER
+ * party controls into the sentence — document_received renders the uploading client's own file
+ * name, document_signed the signer's own profile name — so interpolating it raw put a working,
+ * client-chosen link into an email arriving under the firm's own name. Escaped here, and the
+ * newlines the plain part relies on become <br> instead of vanishing.
+ */
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
 async function sendEmail(to: string, subject: string, text: string, fromName: string): Promise<Sent> {
   let r: Response;
   try {
     r = await fetch('https://api.resend.com/emails', {
       method: 'POST', headers: { Authorization: `Bearer ${Deno.env.get('RESEND_API_KEY')}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: `${fromName} <${Deno.env.get('EMAIL_FROM')}>`, to, subject, text, html: `<p>${text}</p>` }),
+      body: JSON.stringify({ from: `${fromName} <${Deno.env.get('EMAIL_FROM')}>`, to, subject, text, html: `<p>${escapeHtml(text).replace(/\n/g, '<br>')}</p>` }),
     });
   } catch (e: any) { throw new SendError(`resend unreachable: ${String(e?.message ?? e)}`, true, 'resend'); }
   const j = await readJson(r);
@@ -294,25 +305,31 @@ Deno.serve(async (req: Request) => {
   for (const r of (rows ?? []) as Row[]) {
     const firm = r.firm_name ?? 'Docket';
     const tz = r.timezone ?? 'Africa/Lagos';
-    const built = render(r, firm, tz);
-    const url = built.url;
-
-    // The firm's own words win where the firm has written them.
-    const templates = (r.notification_templates ?? {}) as Record<string, Template>;
-    const override = templates[r.event];
-    let subject = built.subject;
-    let text = built.text;
-    if (override && typeof override.text === 'string' && override.text.trim().length > 0) {
-      const vars = placeholders(r, firm, tz);
-      text = fill(override.text, vars);
-      // A firm may replace the sentence and leave Docket's subject line alone.
-      if (typeof override.subject === 'string' && override.subject.trim().length > 0) {
-        subject = fill(override.subject, vars);
-      }
-    }
-
-    const appUrl = (Deno.env.get('APP_URL') ?? '') + url;
     try {
+      // Rendering is inside the try, and not above it. fmt() asks Intl for the recipient's zone,
+      // and an unknown zone throws a RangeError rather than returning nothing — outside the try
+      // that exception escaped Deno.serve and killed the whole run, leaving every row already
+      // claimed at 'sending' to be re-claimed, poisoned row first, ten minutes later. The zone is
+      // now constrained in the database too (migration 37), but one unrenderable row must fail
+      // itself through finish_notification, never the batch.
+      const built = render(r, firm, tz);
+      const url = built.url;
+
+      // The firm's own words win where the firm has written them.
+      const templates = (r.notification_templates ?? {}) as Record<string, Template>;
+      const override = templates[r.event];
+      let subject = built.subject;
+      let text = built.text;
+      if (override && typeof override.text === 'string' && override.text.trim().length > 0) {
+        const vars = placeholders(r, firm, tz);
+        text = fill(override.text, vars);
+        // A firm may replace the sentence and leave Docket's subject line alone.
+        if (typeof override.subject === 'string' && override.subject.trim().length > 0) {
+          subject = fill(override.subject, vars);
+        }
+      }
+
+      const appUrl = (Deno.env.get('APP_URL') ?? '') + url;
       let result: Sent;
       let segments = 1;
       if (r.channel === 'email') {

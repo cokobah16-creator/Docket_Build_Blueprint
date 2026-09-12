@@ -170,7 +170,7 @@ async function InvoicesSection({ supabase, matterId, tz }: { supabase: SB; matte
               <Link href={`/app/payments/${inv.id}`} className="text-sm font-medium text-gray-900 underline">{inv.number}</Link>
               <p className="text-xs text-gray-500">
                 {formatMoneyMinor(inv.total_minor, inv.currency)}{inv.paid_minor > 0 && inv.paid_minor < inv.total_minor ? ` · ${formatMoneyMinor(inv.paid_minor, inv.currency)} paid` : ""}
-                {inv.due_at ? ` · due ${fmt.format(new Date(inv.due_at))}` : ""}
+                {inv.due_at ? ` · due ${formatDay(inv.due_at)}` : ""}
               </p>
             </div>
             <div className="flex items-center gap-2">

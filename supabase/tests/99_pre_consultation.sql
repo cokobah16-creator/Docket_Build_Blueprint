@@ -348,5 +348,34 @@ begin
   perform t_reset();
 end $$;
 
+-- ------------------------------------------- the zone the browser reports is not always a zone
+-- book_appointment takes the client's timezone from the browser and stores it. A browser can
+-- report a name this Postgres does not carry; storing it would leave a string that raises 22023
+-- the first time anything formats with it. A booking is not lost over that, so an unknown zone is
+-- recorded as the firm's.
+do $$
+declare cl uuid := (select v from fx where k='client'); f uuid := (select v from fx where k='firm');
+        s uuid := (select v from fx where k='svc_free'); l uuid := (select v from fx where k='lawyer'); slot timestamptz; res jsonb;
+begin
+  -- An earlier section unpublished this firm's policies to test the readiness list; booking asks
+  -- for them, so they go back before a booking is made.
+  perform t_reset();
+  update firms set policies = jsonb_build_object('terms', jsonb_build_object('version', '2026-09', 'text', 'Terms.'),
+                                                 'privacy', jsonb_build_object('version', '2026-09', 'text', 'Privacy.'))
+   where id = f;
+  perform t_as(cl, 'aal1');
+  select x.starts_at into slot from available_slots(f, l, s, current_date + 7) x order by 1 desc limit 1;
+  res := book_appointment(f, s, l, slot, 'virtual', 'Mars/Olympus', null, null);
+  perform t_reset();
+  perform t_check('a zone Postgres does not know is recorded as the firm''s, and the booking stands',
+    (select a.client_timezone = (select timezone from firms where id = f) from appointments a where a.id = (res ->> 'appointment_id')::uuid));
+  perform t_as(cl, 'aal1');
+  select x.starts_at into slot from available_slots(f, l, s, current_date + 7) x order by 1 desc limit 1;
+  res := book_appointment(f, s, l, slot, 'virtual', 'Europe/London', null, null);
+  perform t_reset();
+  perform t_check('a zone it does know is kept as the client reported it',
+    (select a.client_timezone = 'Europe/London' from appointments a where a.id = (res ->> 'appointment_id')::uuid));
+end $$;
+
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
 rollback;

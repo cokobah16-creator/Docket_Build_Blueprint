@@ -2,8 +2,9 @@
 //
 // The assessment's twenty-fifth recommendation: record the baseline before claiming any saving.
 // Every figure here is computed by the database from this firm's own rows (firm_metrics, which
-// asks is_firm_member); the caveats it returns are printed as it wrote them. Recording one is an
-// owner or administrator's act with a second factor, and the record cannot afterwards be edited.
+// asks admin_w — see below); the caveats it returns are printed as it wrote them. Reading them
+// and recording one are both an owner's or administrator's act with a second factor, and the
+// record cannot afterwards be edited.
 
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";

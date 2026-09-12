@@ -81,17 +81,34 @@ function textWidth(s: string, size: number, bold: boolean): number {
   return w * size * (bold ? 1.06 : 1);
 }
 
-/** Break a paragraph into lines that fit the text width. A word longer than a line is cut. */
+/**
+ * Break a paragraph into lines that fit the text width. A word longer than a line is cut.
+ *
+ * Runs of spaces are carried through, not collapsed. This writer has no tables: the invoice
+ * aligns its figures with runs of spaces (`Subtotal    NGN 50,000.00`) and a generated instrument
+ * indents its clauses the same way, so splitting on /\s+/ and rejoining with one space destroyed
+ * every column and every indent on the page. A run of whitespace is therefore a token of its own,
+ * measured like any other; a tab becomes four spaces here, since the font has no tab and
+ * winAnsiBytes would otherwise draw it as a single one. Only the whitespace at a break is
+ * dropped, because a line never begins or ends on it.
+ */
 export function wrapText(text: string, size: number, bold = false, maxWidth = TEXT_W): string[] {
   const out: string[] = [];
   for (const para of text.split(/\r?\n/)) {
     if (para.trim() === "") { out.push(""); continue; }
     let line = "";
-    for (const word of para.split(/\s+/)) {
-      const candidate = line ? `${line} ${word}` : word;
+    let atStart = true; // leading indentation belongs to the line; a wrapped line starts clean
+    for (const token of para.match(/\s+|\S+/g) ?? []) {
+      if (/^\s+$/.test(token)) {
+        if (line !== "" || atStart) line += token.replace(/\t/g, "    ");
+        continue;
+      }
+      atStart = false;
+      const candidate = line + token;
       if (textWidth(candidate, size, bold) <= maxWidth) { line = candidate; continue; }
-      if (line) out.push(line);
-      let rest = word;
+      if (line.trim() !== "") out.push(line.replace(/\s+$/, ""));
+      line = "";
+      let rest = token;
       while (textWidth(rest, size, bold) > maxWidth && rest.length > 1) {
         let cut = rest.length - 1;
         while (cut > 1 && textWidth(rest.slice(0, cut), size, bold) > maxWidth) cut -= 1;
@@ -100,7 +117,7 @@ export function wrapText(text: string, size: number, bold = false, maxWidth = TE
       }
       line = rest;
     }
-    out.push(line);
+    out.push(line.replace(/\s+$/, ""));
   }
   return out;
 }

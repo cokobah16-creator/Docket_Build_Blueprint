@@ -429,6 +429,13 @@ begin
   end if;
   select coalesce(p.timezone, v_firm.timezone) into v_tz from profiles p where p.id = p_lawyer;
   v_tz := coalesce(v_tz, v_firm.timezone);
+  -- The client's zone comes from the browser and is stored as a record of where they were. A
+  -- browser can report a zone this Postgres has never heard of, so an unknown one is recorded as
+  -- the firm's rather than refused (a booking is not lost over it) and never as a string that
+  -- would raise 22023 the first time something formats with it.
+  if p_client_timezone is null or not exists (select 1 from pg_timezone_names where name = p_client_timezone) then
+    p_client_timezone := v_firm.timezone;
+  end if;
 
   if not exists (select 1 from available_slots(p_firm, p_lawyer, p_service, (p_starts_at at time zone v_tz)::date) s
                  where s.starts_at = p_starts_at) then

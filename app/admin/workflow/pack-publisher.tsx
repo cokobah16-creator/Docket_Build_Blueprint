@@ -30,12 +30,19 @@ export function PackPublisher({ packs }: { packs: WorkflowPackRow[] }) {
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ error?: string; ok?: string } | null>(null);
 
+  /**
+   * Loading an existing pack replaces everything in the form, so it is an act, not a side effect
+   * of typing. It used to run on every keystroke: a new key with an existing key as a prefix
+   * ("litigation_fast_track") passed through an exact match mid-word and silently threw away the
+   * definition the operator had written, with no undo and nowhere the text had been kept.
+   */
   function loadLatest(k: string) {
-    setKey(k);
     const latest = packs.filter((p) => p.key === k).sort((a, b) => b.version - a.version)[0];
-    if (!latest) return;
+    if (!latest) { setResult({ error: `No pack is published under the key "${k}".` }); return; }
     setName(latest.name); setTypes(latest.matter_types ?? []); setDefinition(JSON.stringify(latest.definition, null, 2)); setNote("");
+    setResult({ ok: `Loaded ${latest.key} version ${latest.version}. Publishing writes version ${latest.version + 1}.` });
   }
+  const loadable = packs.some((p) => p.key === key);
 
   async function publish() {
     setBusy(true); setResult(null);
@@ -52,9 +59,15 @@ export function PackPublisher({ packs }: { packs: WorkflowPackRow[] }) {
       {result?.ok && <Alert kind="success">{result.ok}</Alert>}
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm text-gray-900">Pack key
-          <input type="text" list="pack-keys" value={key} onChange={(e) => loadLatest(e.target.value.trim())} pattern="[a-z0-9_]{2,40}" placeholder="conveyancing" className={field} />
+          <input type="text" list="pack-keys" value={key} onChange={(e) => setKey(e.target.value.trim())} pattern="[a-z0-9_]{2,40}" placeholder="conveyancing" className={field} />
           <datalist id="pack-keys">{Array.from(new Set(packs.map((p) => p.key))).map((k) => <option key={k} value={k} />)}</datalist>
           <span className="mt-1 block text-xs text-gray-500">An existing key publishes the next version of that pack; a new key starts one.</span>
+          {loadable && (
+            <button type="button" onClick={() => loadLatest(key)}
+                    className="mt-1 min-h-[36px] rounded-lg border border-gray-300 bg-white px-3 text-xs text-gray-700 hover:border-brand">
+              Load the latest version of {key} into this form
+            </button>
+          )}
         </label>
         <label className="text-sm text-gray-900">Name<input type="text" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} className={field} /></label>
       </div>

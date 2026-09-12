@@ -118,6 +118,7 @@ export function DeadlinesPanel({
     if (!s) return;
     setTriggerOn(s.day);
     setTriggerKind(OUTCOME_TRIGGER[s.outcome] ?? "other");
+    setProvisionId("");
     setPreview(null);
   }
 
@@ -139,8 +140,12 @@ export function DeadlinesPanel({
     setBusy("save"); setError(null);
     try {
       const sitting = sittings.find((x) => x.updateId === sittingId);
+      // `provision` is what the form rendered; `provisionId` may be a rule that has since dropped
+      // out of `applicable` — the day was moved outside its force window, say. Sending the id then
+      // threw away the day the lawyer had typed into the box the screen was showing them, and
+      // compute_deadline() refused, naming a rule the select read as unselected.
       const r = await computeDeadline({
-        matterId, triggerKind, triggerOn, provisionId: provisionId || null, dueOn: provisionId ? null : dueOn || null, title: title || null,
+        matterId, triggerKind, triggerOn, provisionId: provision ? provision.id : null, dueOn: provision ? null : dueOn || null, title: title || null,
         triggerRef: sitting ? { update_id: sitting.updateId, outcome: sitting.outcome } : {}, supersedes, note: note || null,
       });
       if ("error" in r) { setError(r.error); return; }
@@ -270,7 +275,7 @@ export function DeadlinesPanel({
                 </select>
               </label>
               <label className="text-sm text-gray-900">On (the court&apos;s calendar day)
-                <input type="date" required value={triggerOn} onChange={(e) => { setTriggerOn(e.target.value); setPreview(null); }} className={field} />
+                <input type="date" required value={triggerOn} onChange={(e) => { setTriggerOn(e.target.value); setProvisionId(""); setPreview(null); }} className={field} />
               </label>
             </div>
             <label className="block text-sm text-gray-900">Rule
@@ -299,7 +304,7 @@ export function DeadlinesPanel({
               </div>
             ) : (
               <label className="block text-sm text-gray-900">Falls due on
-                <input type="date" required={!provisionId} value={dueOn} onChange={(e) => setDueOn(e.target.value)} className={field} />
+                <input type="date" required value={dueOn} onChange={(e) => setDueOn(e.target.value)} className={field} />
               </label>
             )}
             <label className="block text-sm text-gray-900">Title{provision ? " (blank keeps the rule's)" : ""}
@@ -310,7 +315,7 @@ export function DeadlinesPanel({
             </label>
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={busy === "save"}>{busy === "save" ? "Saving…" : supersedes ? "Save the new count" : "Propose the deadline"}</Button>
-              <Button type="button" variant="ghost" onClick={() => { setOpen(false); setSupersedes(null); setPreview(null); }}>Cancel</Button>
+              <Button type="button" variant="ghost" onClick={() => { setOpen(false); setSupersedes(null); setPreview(null); setProvisionId(""); setDueOn(""); }}>Cancel</Button>
             </div>
           </form>
         )}

@@ -3,9 +3,10 @@
 // The pilot baseline (migration 41): what the firm's own rows say over a window, and the dated
 // record of it.
 //
-// Rules enforced here: firm_metrics() asks is_firm_member() and record_firm_baseline() asks
-// admin_w(), so the database decides who may compute and who may record — this file only carries
-// the window. Nothing is computed in TypeScript: a figure the screen shows is a figure the
+// Rules enforced here: firm_metrics() and record_firm_baseline() both ask admin_w() with a second
+// factor — the figures read across every matter of the firm, money included, over a window the
+// caller chooses, so they are an owner's or administrator's read and not every member's. The
+// database decides; this file only carries the window. Nothing is computed in TypeScript: a figure the screen shows is a figure the
 // database returned, and the caveats travel with it rather than being written into the markup.
 // What the firm states about the work before Docket is passed through as the claim it is.
 
