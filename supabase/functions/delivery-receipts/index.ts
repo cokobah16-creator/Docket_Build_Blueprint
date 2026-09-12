@@ -55,12 +55,17 @@ async function record(d: Delivery): Promise<void> {
 
 const enc = new TextEncoder();
 
-async function hmac(algorithm: 'SHA-1' | 'SHA-256', key: Uint8Array, data: string): Promise<Uint8Array> {
+// The key is typed over a plain ArrayBuffer, not ArrayBufferLike: Web Crypto's BufferSource
+// excludes a view onto a SharedArrayBuffer, and a Uint8Array whose buffer is merely "like" one
+// does not satisfy it.
+type Bytes = Uint8Array<ArrayBuffer>;
+
+async function hmac(algorithm: 'SHA-1' | 'SHA-256', key: Bytes, data: string): Promise<Bytes> {
   const k = await crypto.subtle.importKey('raw', key, { name: 'HMAC', hash: algorithm }, false, ['sign']);
-  return new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(data)));
+  return new Uint8Array(await crypto.subtle.sign('HMAC', k, enc.encode(data))) as Bytes;
 }
-function toBase64(bytes: Uint8Array): string { return btoa(String.fromCharCode(...bytes)); }
-function fromBase64(s: string): Uint8Array { return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)); }
+function toBase64(bytes: Bytes): string { return btoa(String.fromCharCode(...bytes)); }
+function fromBase64(s: string): Bytes { return Uint8Array.from(atob(s), (c) => c.charCodeAt(0)) as Bytes; }
 
 /** Walks both strings whole, so the time taken says nothing about where they differ. */
 function timingSafeEqual(a: string, b: string): boolean {
