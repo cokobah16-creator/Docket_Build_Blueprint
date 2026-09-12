@@ -102,10 +102,10 @@ values ((select v from fx where k='firm'), (select v from fx where k='matter'), 
 
 -- ---------------------------------------------------------------- 1. every figure is a row this file wrote
 do $$
-declare l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm');
+declare ow uuid := (select v from fx where k='owner'); f uuid := (select v from fx where k='firm');
         wf timestamptz := (select wfrom from win); wt timestamptz := (select wto from win); m jsonb;
 begin
-  perform t_as(l);
+  perform t_as(ow);
   m := firm_metrics(f, wf, wt);
   perform t_check('three bookings were made in the window, one of them paid, a day after booking',
     (m -> 'bookings' ->> 'made')::int = 3 and (m -> 'bookings' ->> 'paid')::int = 1
@@ -150,7 +150,7 @@ end $$;
 
 -- ---------------------------------------------------------------- 1b. an invoice paid in two parts is one paid booking
 do $$
-declare l uuid := (select v from fx where k='lawyer'); cl uuid := (select v from fx where k='client'); f uuid := (select v from fx where k='firm');
+declare l uuid := (select v from fx where k='lawyer'); ow uuid := (select v from fx where k='owner'); cl uuid := (select v from fx where k='client'); f uuid := (select v from fx where k='firm');
         a uuid := gen_random_uuid(); inv uuid := gen_random_uuid();
         wf timestamptz := (select wfrom from win); wt timestamptz := (select wto from win); m jsonb;
 begin
@@ -166,7 +166,7 @@ begin
   insert into payments (invoice_id, provider, provider_ref, status, amount_minor, currency, paid_at) values
     (inv, 'paystack', 'bl-ref-part-1', 'succeeded', 2500000, 'NGN', now() - interval '8 days'),
     (inv, 'paystack', 'bl-ref-part-2', 'succeeded', 2500000, 'NGN', now() - interval '4 days');
-  perform t_as(l);
+  perform t_as(ow);
   m := firm_metrics(f, wf, wt);
   perform t_check('two successful payments on one invoice are one paid booking, not two',
     (m -> 'bookings' ->> 'made')::int = 4 and (m -> 'bookings' ->> 'paid')::int = 2);
@@ -180,7 +180,7 @@ end $$;
 
 -- ---------------------------------------------------------------- 2. one firm's numbers, and nobody else's
 do $$
-declare l uuid := (select v from fx where k='lawyer'); cl uuid := (select v from fx where k='client'); st uuid := (select v from fx where k='stranger');
+declare l uuid := (select v from fx where k='lawyer'); ow uuid := (select v from fx where k='owner'); cl uuid := (select v from fx where k='client'); st uuid := (select v from fx where k='stranger');
         f uuid := (select v from fx where k='firm'); o uuid := (select v from fx where k='other');
         wf timestamptz := (select wfrom from win); wt timestamptz := (select wto from win);
 begin
@@ -188,8 +188,18 @@ begin
   perform t_check('a stranger computes nothing', t_refused(format('select firm_metrics(%L, %L, %L)', f, wf, wt), '42501'));
   perform t_reset(); perform t_as(cl, 'aal1');
   perform t_check('nor does a client of the firm', t_refused(format('select firm_metrics(%L, %L, %L)', f, wf, wt), '42501'));
+  -- The window is the caller's to choose, so narrowing it to the minute one invoice was issued
+  -- would return that invoice's exact amount. Firm-wide money is not a junior's to read by
+  -- picking a window, and this function bypasses RLS — so the gate is the one the baseline
+  -- record already asks for.
   perform t_reset(); perform t_as(l);
-  perform t_check('nor a member, for another firm', t_refused(format('select firm_metrics(%L, %L, %L)', o, wf, wt), '42501'));
+  perform t_check('nor a lawyer of the firm, however narrow the window',
+    t_refused(format('select firm_metrics(%L, %L, %L)', f, wf, wt), '42501')
+    and t_refused(format('select firm_metrics(%L, %L, %L)', f, wf, wf + interval '1 minute'), '42501'));
+  perform t_reset(); perform t_as(ow, 'aal1');
+  perform t_check('nor an owner without a second factor', t_refused(format('select firm_metrics(%L, %L, %L)', f, wf, wt), '42501'));
+  perform t_reset(); perform t_as(ow);
+  perform t_check('nor an owner, for another firm', t_refused(format('select firm_metrics(%L, %L, %L)', o, wf, wt), '42501'));
   perform t_check('a window must be a window', t_fails(format('select firm_metrics(%L, %L, %L)', f, wt, wf), 'give a window'));
   perform t_reset();
 end $$;
@@ -227,10 +237,10 @@ end $$;
 
 -- ---------------------------------------------------------------- 4. the same window twice is the same answer
 do $$
-declare l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm');
+declare ow uuid := (select v from fx where k='owner'); f uuid := (select v from fx where k='firm');
         wf timestamptz := (select wfrom from win); wt timestamptz := (select wto from win); a jsonb; b jsonb;
 begin
-  perform t_as(l);
+  perform t_as(ow);
   a := firm_metrics(f, wf, wt); b := firm_metrics(f, wf, wt);
   perform t_check('a fixed window recomputes identically, but for the moment it was asked',
     (a - 'computed_at') = (b - 'computed_at'));

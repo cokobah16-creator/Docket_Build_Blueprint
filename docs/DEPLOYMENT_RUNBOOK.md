@@ -483,9 +483,10 @@ deploys. Everything else in 40 is new tables, new columns at the end of `documen
 `document_signed` renderers — they are in the same v9 that 37 requires — before the first signature
 is asked for, or the ask goes out with the generic sentence. 41 is additive and safe either side:
 `firm_baselines`, `firm_metrics()`, `record_firm_baseline()` and the `audit_log (firm_id, action,
-at desc)` index are all new, and only the new screen reads any of them. It re-creates the
-`audit_log` platform allow-list with `firm` already on it, so nothing a platform admin can read
-today stops being readable. 42 is safe either side and is the one migration in this wave that
+at desc)` index are all new, and only the new screen reads any of them. It deliberately leaves the
+`audit_log` platform allow-list alone: taking a baseline is the firm's own act over its own rows,
+and an earlier draft that re-created the policy to add an entity nobody needed silently dropped
+four arms of it. 42 is safe either side and is the one migration in this wave that
 **removes** something: the `insert`, `update` and `delete` grants on `invoices` and `invoice_items`,
 with their policies. Checked before writing it — every reference to either table in `app/` and
 `src/`, on this branch and on `origin/main`, is a `.select()`; the four invoice functions are

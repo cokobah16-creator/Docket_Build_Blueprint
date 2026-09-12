@@ -139,7 +139,7 @@ create policy audit_log_platform_select on public.audit_log for select
 -- ---------------------------------------------------------------- 3. installing: adds, recognises, never rewrites
 create or replace function public.install_workflow_pack(p_firm uuid, p_key text, p_version int default null)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare pk workflow_packs%rowtype; v_installed int; v_added int := 0; v_recognised int := 0; s jsonb;
+declare pk workflow_packs%rowtype; v_installed int; v_added int := 0; v_recognised int := 0; v_other int := 0; v_rows int; s jsonb;
 begin
   if not admin_w(p_firm) then raise exception 'not permitted' using errcode = '42501'; end if;
   if p_version is null then
@@ -156,19 +156,32 @@ begin
       update matter_statuses set pack_key = p_key, pack_version = pk.version,
              default_next_action = coalesce(default_next_action, nullif(s ->> 'next_action', ''))
        where firm_id = p_firm and key = s ->> 'key' and (pack_key is null or pack_key = p_key);
-      v_recognised := v_recognised + 1;
+      -- What was actually stamped, not what was looked at. A stage already claimed by another
+      -- pack is left exactly as it is — which is right — but counting it as recognised told the
+      -- administrator this install had touched rows it had not.
+      get diagnostics v_rows = row_count;
+      if v_rows > 0 then v_recognised := v_recognised + 1; else v_other := v_other + 1; end if;
     else
+      -- A stage's reach is the stage's own, not the pack's. Conveyancing is a property pack, but
+      -- its own note says "completed" and "closed" are shared with every other pack — and writing
+      -- the pack's {property} onto them would leave set_matter_status() refusing to complete or
+      -- close any litigation matter at that firm, for ever. A stage may carry `matter_types`:
+      -- absent means the pack's list, and [] means every type.
       insert into matter_statuses (firm_id, key, label, colour, sort, is_terminal, pack_key, pack_version, matter_types, default_next_action)
       values (p_firm, s ->> 'key', s ->> 'label', nullif(s ->> 'colour', ''), coalesce((s ->> 'sort')::int, 0), coalesce((s ->> 'is_terminal')::boolean, false),
-              p_key, pk.version, pk.matter_types, nullif(s ->> 'next_action', ''));
+              p_key, pk.version,
+              case when s ? 'matter_types'
+                   then nullif(array(select jsonb_array_elements_text(s -> 'matter_types'))::matter_type[], '{}'::matter_type[])
+                   else pk.matter_types end,
+              nullif(s ->> 'next_action', ''));
       v_added := v_added + 1;
     end if;
   end loop;
   insert into firm_workflow_packs (firm_id, pack_key, installed_version, installed_by) values (p_firm, p_key, pk.version, auth.uid())
   on conflict (firm_id, pack_key) do update set installed_version = excluded.installed_version, installed_at = now(), installed_by = excluded.installed_by;
   perform audit('workflow_pack.installed', 'firm_workflow_packs', null, p_firm,
-                jsonb_build_object('key', p_key, 'version', pk.version, 'from_version', v_installed, 'statuses_added', v_added, 'statuses_recognised', v_recognised));
-  return jsonb_build_object('key', p_key, 'version', pk.version, 'statuses_added', v_added, 'statuses_recognised', v_recognised);
+                jsonb_build_object('key', p_key, 'version', pk.version, 'from_version', v_installed, 'statuses_added', v_added, 'statuses_recognised', v_recognised, 'statuses_of_another_pack', v_other));
+  return jsonb_build_object('key', p_key, 'version', pk.version, 'statuses_added', v_added, 'statuses_recognised', v_recognised, 'statuses_of_another_pack', v_other);
 end $$;
 revoke execute on function public.install_workflow_pack(uuid, text, int) from public, anon;
 grant  execute on function public.install_workflow_pack(uuid, text, int) to authenticated;
@@ -357,27 +370,27 @@ insert into public.workflow_packs (key, version, name, matter_types, note, defin
    {"key": "ctc_judgment", "title": "Apply for the certified true copy of the judgment", "on_status_key": "judgment_delivered", "due_offset_days": 3, "assignee": "lead"},
    {"key": "appeal_advice", "title": "Advise the client in writing on appeal, and count the deadline on the Deadlines tab", "on_status_key": "judgment_delivered", "due_offset_days": 5, "assignee": "lead"},
    {"key": "notice_of_appeal", "title": "File the notice of appeal within time and diarise the record", "on_status_key": "appeal", "due_offset_days": 7, "assignee": "lead"},
-   {"key": "close_file", "title": "Render the final account, return the client''s documents and archive the file", "on_status_key": "completed", "due_offset_days": 14}
+   {"key": "close_file", "title": "Render the final account, return the client's documents and archive the file", "on_status_key": "completed", "due_offset_days": 14}
  ]}$j$::jsonb),
 ('conveyancing', 1, 'Conveyancing', array['property']::matter_type[], 'Docket''s default for property matters: from instructions to the registered title. Stages are offered only on property matters; "completed" and "closed" are shared with every other pack.',
  $j${"statuses": [
-   {"key": "instructions_received", "label": "Instructions Received", "colour": "slate", "sort": 10, "next_action": "Obtain the vendor''s title documents and the survey plan"},
+   {"key": "instructions_received", "label": "Instructions Received", "colour": "slate", "sort": 10, "next_action": "Obtain the vendor's title documents and the survey plan"},
    {"key": "title_search", "label": "Title Search", "colour": "blue", "sort": 20, "next_action": "Conduct the search at the Lands Registry and report to the client"},
    {"key": "contract_of_sale", "label": "Contract of Sale", "colour": "indigo", "sort": 30, "next_action": "Settle the contract of sale and the deposit"},
    {"key": "deed_executed", "label": "Deed Executed", "colour": "green", "sort": 40, "next_action": "Have the deed of assignment executed by both parties"},
-   {"key": "governors_consent", "label": "Governor''s Consent", "colour": "amber", "sort": 50, "next_action": "Lodge the application for consent and pay the fees"},
+   {"key": "governors_consent", "label": "Governor's Consent", "colour": "amber", "sort": 50, "next_action": "Lodge the application for consent and pay the fees"},
    {"key": "stamping", "label": "Stamping", "colour": "amber", "sort": 60, "next_action": "Stamp the deed at the Stamp Duties office"},
    {"key": "registration", "label": "Registration", "colour": "green", "sort": 70, "next_action": "Register the deed and collect the registered title"},
-   {"key": "completed", "label": "Completed", "colour": "gray", "sort": 90, "is_terminal": true},
-   {"key": "closed", "label": "Closed", "colour": "gray", "sort": 100, "is_terminal": true}
+   {"key": "completed", "label": "Completed", "colour": "gray", "sort": 90, "is_terminal": true, "matter_types": []},
+   {"key": "closed", "label": "Closed", "colour": "gray", "sort": 100, "is_terminal": true, "matter_types": []}
  ],
  "task_templates": [
-   {"key": "collect_title_docs", "title": "Collect the vendor''s title documents, survey plan and identification", "on_status_key": "instructions_received", "due_offset_days": 3, "assignee": "lead"},
+   {"key": "collect_title_docs", "title": "Collect the vendor's title documents, survey plan and identification", "on_status_key": "instructions_received", "due_offset_days": 3, "assignee": "lead"},
    {"key": "registry_search", "title": "Conduct the search at the Lands Registry", "on_status_key": "title_search", "due_offset_days": 5, "assignee": "lead"},
    {"key": "search_report", "title": "Write the search report and advise the client on the root of title", "on_status_key": "title_search", "due_offset_days": 7, "assignee": "lead"},
    {"key": "draft_contract", "title": "Draft the contract of sale and agree the deposit terms", "on_status_key": "contract_of_sale", "due_offset_days": 5, "assignee": "lead"},
    {"key": "deed_execution", "title": "Prepare the deed of assignment for execution by both parties", "on_status_key": "deed_executed", "due_offset_days": 5, "assignee": "lead"},
-   {"key": "consent_application", "title": "Lodge the application for Governor''s consent with the deed and supporting documents", "on_status_key": "governors_consent", "due_offset_days": 7, "assignee": "lead"},
+   {"key": "consent_application", "title": "Lodge the application for Governor's consent with the deed and supporting documents", "on_status_key": "governors_consent", "due_offset_days": 7, "assignee": "lead"},
    {"key": "consent_fees", "title": "Pay the consent, charting and endorsement fees and keep the receipts on the file", "on_status_key": "governors_consent", "due_offset_days": 7},
    {"key": "stamp_deed", "title": "Present the deed for stamping and keep the stamped copy", "on_status_key": "stamping", "due_offset_days": 5},
    {"key": "register_deed", "title": "Register the deed at the Lands Registry", "on_status_key": "registration", "due_offset_days": 10, "assignee": "lead"},

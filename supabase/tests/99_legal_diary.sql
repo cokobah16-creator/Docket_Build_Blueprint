@@ -169,15 +169,35 @@ begin
   perform t_as(l); perform confirm_deadline(d3); perform t_reset();
   update deadlines set due_on = v_today + 1 where id = d3;
   n := enqueue_deadline_reminders();
-  perform t_check('a deadline due tomorrow: the week-out and day-out nudges, to the lawyer', n = 2
-    and exists (select 1 from notifications where user_id = l and event = 'deadline_due_t7' and channel = 'in_app' and (payload ->> 'deadline_id')::uuid = d3)
-    and exists (select 1 from notifications where user_id = l and event = 'deadline_due_t1' and channel = 'in_app')
-    and (select reminders_sent @> array['t7', 't1'] from deadlines where id = d3));
+  -- ONE nudge, the nearest mark that fits. A deadline confirmed inside the week must not fire
+  -- every mark it has passed at once: the week-out copy reads "is due in a week", so a deadline
+  -- due tomorrow announced that way is the firm telling itself something untrue, by email and SMS.
+  perform t_check('a deadline due tomorrow gets the day-out nudge, and only that one', n = 1
+    and exists (select 1 from notifications where user_id = l and event = 'deadline_due_t1' and channel = 'in_app' and (payload ->> 'deadline_id')::uuid = d3)
+    and not exists (select 1 from notifications where user_id = l and event = 'deadline_due_t7' and (payload ->> 'deadline_id')::uuid = d3));
+  perform t_check('the week-out mark is stamped as past, so it cannot fire late',
+    (select reminders_sent @> array['t7', 't1'] from deadlines where id = d3));
   perform t_check('and not again', enqueue_deadline_reminders() = 0);
   update deadlines set due_on = v_today where id = d3;
   n := enqueue_deadline_reminders();
   perform t_check('on the day, the last one', n = 1 and exists (select 1 from notifications where user_id = l and event = 'deadline_due_t0'));
   perform t_check('the cron function is nobody''s to call from the API', not has_function_privilege('authenticated', 'public.enqueue_deadline_reminders()', 'execute'));
+end $$;
+
+-- ---------------------------------------------------------------- 4b. a deadline confirmed on the day it falls due
+do $$
+declare l uuid := (select v from fx where k='lawyer'); m uuid := (select v from fx where k='matter'); d uuid; n int;
+        v_today date := (now() at time zone 'Africa/Lagos')::date;
+begin
+  perform t_reset(); perform t_as(l);
+  d := compute_deadline(m, 'judgment_delivered', v_today - 30, null, v_today, 'Written address, filed today');
+  perform confirm_deadline(d);
+  perform t_reset();
+  n := enqueue_deadline_reminders();
+  perform t_check('is announced once, as due today — not also as due in a week', n = 1
+    and exists (select 1 from notifications where user_id = l and event = 'deadline_due_t0' and (payload ->> 'deadline_id')::uuid = d)
+    and not exists (select 1 from notifications where user_id = l and event in ('deadline_due_t7', 'deadline_due_t1') and (payload ->> 'deadline_id')::uuid = d));
+  perform t_check('with every earlier mark recorded as past', (select reminders_sent @> array['t7', 't1', 't0'] from deadlines where id = d));
 end $$;
 
 -- ---------------------------------------------------------------- 5. where a court date came from

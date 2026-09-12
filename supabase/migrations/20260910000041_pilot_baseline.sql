@@ -48,14 +48,25 @@ declare
   v_sat int; v_with_outcome int; v_within_day int; v_update_hours numeric;
   v_threads int; v_answered int; v_reply_hours numeric; v_waiting int; v_oldest_wait numeric;
   v_req int; v_fulfilled int; v_req_hours numeric;
-  v_overdue int; v_active int;
+  v_overdue int; v_active int; v_walled boolean;
 begin
-  if not is_firm_member(p_firm) then raise exception 'not permitted' using errcode = '42501'; end if;
+  -- admin_w, not is_firm_member: this reads across every matter of the firm, including money, and
+  -- the window is the caller's to choose — so narrowing it to the minute one invoice was issued
+  -- turns an "aggregate" into that invoice's exact amount. A junior on one matter is not entitled
+  -- to the firm's whole book, and record_firm_baseline() already asks admin_w. It also requires a
+  -- second factor, as every other firm-wide read does.
+  if not admin_w(p_firm) then raise exception 'not permitted' using errcode = '42501'; end if;
   select * into f from firms where id = p_firm;
   if not found then raise exception 'firm not found'; end if;
   if p_from is null or p_to is null or p_to <= p_from then raise exception 'give a window: from, then to'; end if;
 
   -- 1. bookings made in the window, and how long a paid one took to pay.
+  -- A walled matter (access = 'team') is invisible to anyone off its team, and can_see_matter()
+  -- has no bypass for an owner. That holds here too: a definer function must not be the way round
+  -- the wall. Where it changes a figure, the caveats say so rather than letting a number quietly
+  -- omit rows.
+  select exists (select 1 from matters mt where mt.firm_id = p_firm and mt.deleted_at is null
+                   and mt.access = 'team' and not can_see_matter(mt.id)) into v_walled;
   select count(*) into v_booked from appointments a where a.firm_id = p_firm and a.created_at >= p_from and a.created_at < p_to;
   -- One row per PAID BOOKING, not per successful payment. An invoice settled in two parts has two
   -- succeeded payments, and joining straight to them would report the booking as two paid bookings
@@ -111,9 +122,13 @@ begin
   end if;
 
   -- 4. sittings: a court date that came and went, and whether the client heard about it.
+  -- Within a day means after it sat and within a day, not merely before that moment: an update
+  -- posted the week before (an adjournment noted in advance) would otherwise count as prompt and
+  -- drag the median negative, which is not a length of time at all.
   select count(*), count(*) filter (where ce.outcome_update_id is not null),
-         count(*) filter (where u.created_at is not null and u.created_at <= ce.scheduled_at + interval '24 hours'),
+         count(*) filter (where u.created_at is not null and u.created_at >= ce.scheduled_at and u.created_at <= ce.scheduled_at + interval '24 hours'),
          percentile_cont(0.5) within group (order by extract(epoch from (u.created_at - ce.scheduled_at)) / 3600.0)
+           filter (where u.created_at >= ce.scheduled_at)
     into v_sat, v_with_outcome, v_within_day, v_update_hours
     from court_events ce
     left join updates u on u.id = ce.outcome_update_id
@@ -162,17 +177,23 @@ begin
   v_collection := jsonb_build_object(
     'invoiced', coalesce((select jsonb_object_agg(x.currency, x.minor) from (
         select i.currency::text as currency, sum(i.total_minor) as minor from invoices i
-         where i.firm_id = p_firm and i.issued_at >= p_from and i.issued_at < p_to and i.status <> 'draft'
+         where i.firm_id = p_firm and i.issued_at >= p_from and i.issued_at < p_to
+           -- Not a draft, and not one that was withdrawn: a cancelled invoice was never owed, and
+           -- counting it makes the firm look as though it failed to collect money it never billed.
+           and i.status not in ('draft', 'cancelled')
+           and (i.matter_id is null or can_see_matter(i.matter_id))
          group by i.currency) x), '{}'::jsonb),
     'collected', coalesce((select jsonb_object_agg(x.currency, x.minor) from (
         select i.currency::text as currency, sum(pm.amount_minor) as minor
           from payments pm join invoices i on i.id = pm.invoice_id
          where i.firm_id = p_firm and pm.status = 'succeeded' and pm.paid_at >= p_from and pm.paid_at < p_to
+           and (i.matter_id is null or can_see_matter(i.matter_id))
          group by i.currency) x), '{}'::jsonb),
     'median_days_to_collect', coalesce((select round(percentile_cont(0.5) within group (
           order by extract(epoch from (pm.paid_at - i.issued_at)) / 86400.0)::numeric, 2)
         from payments pm join invoices i on i.id = pm.invoice_id
-       where i.firm_id = p_firm and pm.status = 'succeeded' and pm.paid_at >= p_from and pm.paid_at < p_to and i.issued_at is not null), 0));
+       where i.firm_id = p_firm and pm.status = 'succeeded' and pm.paid_at >= p_from and pm.paid_at < p_to and i.issued_at is not null
+         and (i.matter_id is null or can_see_matter(i.matter_id))), 0));
 
   -- 8. the work itself, as it stands now — not a window, and said so on the screen.
   select count(*) into v_overdue from matters m
@@ -198,6 +219,9 @@ begin
   where u is not null and not exists (select 1 from firm_members fm where fm.firm_id = p_firm and fm.user_id = u);
   v_clients := jsonb_build_object('active_in_window', v_active);
   v_caveats := array_append(v_caveats, 'Active clients counts people who read a message or a document, read a notification, or sent a message in the window. Docket keeps no record of a client merely opening a page, so this is a floor, not a total.');
+  if v_walled then
+    v_caveats := array_append(v_caveats, 'This firm has restricted matters you are not on. They are not in these figures — a restricted matter is invisible to everyone off its team, and this screen is no way round that. The numbers are the firm''s work as you may see it.');
+  end if;
   v_caveats := array_append(v_caveats, 'Every figure here is computed from this firm''s own rows at the moment it was asked for. The PostHog funnel is not part of it: its key is optional, two of its five steps are never emitted, and a client who signs in by phone is never joined to their earlier visits.');
 
   return jsonb_build_object(

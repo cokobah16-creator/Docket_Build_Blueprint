@@ -57,8 +57,18 @@ create trigger court_events_provenance before insert or update on public.court_e
 -- The diary is audited from here: a date made, moved, vacated, closed or evidenced leaves a line
 -- the firm can read. Reminder stamps do not (that is the cron's own bookkeeping).
 drop trigger if exists audit_court_events on public.court_events;
-create trigger audit_court_events after insert or delete or update of scheduled_at, court_id, court_name, purpose, purpose_kind, source, source_document_id, source_ref, confirmed_at, vacated_at, outcome_update_id
+create trigger audit_court_events after insert or delete or update of scheduled_at, court_id, court_name, purpose, purpose_kind, source, source_document_id, source_ref, created_by, confirmed_by, confirmed_at, vacated_at, outcome_update_id
   on public.court_events for each row execute function public.audit_row_change();
+
+-- The provenance is the RPC's to write, not the API's. attach_court_event_source() forces
+-- confirmed_by = auth.uid(), and beside it court_events carried a whole-row update grant — the
+-- door-beside-a-door the firm_members and invoices holes were. So a member could set confirmed_by
+-- to a partner, or set source and source_ref by hand and flip firm_cause_list.evidenced to true
+-- with no document on file, making the diary say a date was confirmed by somebody who never saw
+-- it. The columns a lawyer legitimately edits stay; the evidence does not.
+revoke insert, update on public.court_events from anon, authenticated;
+grant  insert (id, matter_id, firm_id, scheduled_at, court_id, court_name, courtroom, purpose, purpose_kind) on public.court_events to authenticated;
+grant  update (scheduled_at, court_id, court_name, courtroom, purpose, purpose_kind, vacated_at) on public.court_events to authenticated;
 
 -- Attach the evidence: the notice or cause-list page this date came from, and the reference on
 -- it. Whoever attaches it confirms the date. Staff who can write the matter (the wall applies).
@@ -70,10 +80,14 @@ begin
   if not found or not matter_row_w(e.firm_id, e.matter_id) then raise exception 'not permitted' using errcode = '42501'; end if;
   if p_document is null and nullif(btrim(coalesce(p_ref, '')), '') is null then raise exception 'attach a document, a reference, or both'; end if;
   if p_source is not null and p_source not in ('hearing_notice', 'cause_list') then raise exception 'a source is hearing_notice or cause_list'; end if;
+  -- A typed reference is a claim; only a document is evidence. Promoting 'firm' (we entered this
+  -- date) to 'hearing_notice' (the court gave it to us) on a note alone made firm_cause_list call
+  -- the date evidenced with nothing on file — the opposite of what this migration's header says.
+  -- So the promotion needs either an explicit source from the caller or a document to rest on.
   update court_events
      set source_document_id = coalesce(p_document, source_document_id),
          source_ref = coalesce(nullif(btrim(p_ref), ''), source_ref),
-         source = coalesce(p_source, case when source = 'firm' then 'hearing_notice' else source end),
+         source = coalesce(p_source, case when source = 'firm' and p_document is not null then 'hearing_notice' else source end),
          confirmed_by = auth.uid(), confirmed_at = now()
    where id = p_event;
 end $$;
@@ -85,7 +99,10 @@ create or replace view public.firm_cause_list with (security_invoker = true) as
          m.suit_number, ce.scheduled_at, (ce.scheduled_at at time zone 'Africa/Lagos')::date as on_date,
          ce.court_id, coalesce(c.name, ce.court_name) as court, ce.courtroom, ce.judge, ce.purpose_kind, ce.purpose, ce.source,
          ce.source_document_id, ce.source_ref, ce.created_by, ce.created_at, ce.confirmed_by, ce.confirmed_at,
-         (ce.source <> 'firm' and (ce.source_document_id is not null or ce.source_ref is not null)) as evidenced
+         -- Evidenced means there is a document on file. A reference somebody typed is a claim about
+         -- where the date came from, which is worth keeping and is not the same thing — the
+         -- migration's own header says so: a chip is a claim, a document is evidence.
+         (ce.source <> 'firm' and ce.source_document_id is not null) as evidenced
   from public.court_events ce
   join public.matters m on m.id = ce.matter_id and m.deleted_at is null
   left join public.courts c on c.id = ce.court_id
@@ -372,20 +389,34 @@ revoke insert, update, delete, truncate, references, trigger on public.firm_dead
 -- ---------------------------------------------------------------- 5. reminders, to the matter's lawyers
 create or replace function public.enqueue_deadline_reminders() returns int
 language plpgsql security definer set search_path = public as $$
-declare r record; p record; n int := 0; v_key text; v_today date := (now() at time zone 'Africa/Lagos')::date; v_days int;
+declare r record; p record; n int := 0; v_key text; v_past text; v_sent text[]; v_today date := (now() at time zone 'Africa/Lagos')::date; v_days int;
 begin
+  -- One reminder per deadline per run: the nearest mark that fits, not every mark whose threshold
+  -- the deadline has passed. The old test had a lower bound of nothing, so a deadline confirmed on
+  -- the day it falls due fired t7, t1 and t0 together — and the firm sent itself an email and an
+  -- SMS saying a deadline that expires today is due in a week. Marks the deadline has already gone
+  -- past are stamped as sent without a message, so none of them can fire late.
   for r in select * from deadlines where status = 'confirmed' and due_on between v_today and v_today + 7 loop
-    foreach v_key in array array['t7', 't1', 't0'] loop
-      v_days := case v_key when 't7' then 7 when 't1' then 1 else 0 end;
-      if not (v_key = any(r.reminders_sent)) and r.due_on - v_today <= v_days then
-        for p in select user_id from matter_lawyers where matter_id = r.matter_id loop
-          perform enqueue_notification(p.user_id, r.firm_id, 'deadline_due_' || v_key,
-            jsonb_build_object('deadline_id', r.id, 'matter_id', r.matter_id, 'title', r.title, 'due_on', r.due_on));
-        end loop;
-        update deadlines set reminders_sent = reminders_sent || v_key::text where id = r.id;
-        n := n + 1;
+    v_days := r.due_on - v_today;
+    v_key := case when v_days <= 0 then 't0' when v_days = 1 then 't1' else 't7' end;
+    -- Everything nearer than the mark that fits is still ahead; everything further is behind us.
+    v_sent := r.reminders_sent;
+    foreach v_past in array array['t7', 't1', 't0'] loop
+      if (case v_past when 't7' then 7 when 't1' then 1 else 0 end) > v_days and not (v_past = any(v_sent)) then
+        v_sent := v_sent || v_past::text;
       end if;
     end loop;
+    if v_sent <> r.reminders_sent then
+      update deadlines set reminders_sent = v_sent where id = r.id;
+    end if;
+    if not (v_key = any(v_sent)) then
+      for p in select user_id from matter_lawyers where matter_id = r.matter_id loop
+        perform enqueue_notification(p.user_id, r.firm_id, 'deadline_due_' || v_key,
+          jsonb_build_object('deadline_id', r.id, 'matter_id', r.matter_id, 'title', r.title, 'due_on', r.due_on));
+      end loop;
+      update deadlines set reminders_sent = reminders_sent || v_key::text where id = r.id;
+      n := n + 1;
+    end if;
   end loop;
   return n;
 end $$;

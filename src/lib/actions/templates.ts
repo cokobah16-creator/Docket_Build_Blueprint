@@ -105,7 +105,7 @@ export async function generateDocument(input: GenerateInput): Promise<{ error: s
   if (upError) return { error: `The file could not be stored: ${upError.message}. The document is listed without a file; remove it or try again.` };
   const { error: finError } = await supabase.rpc("finalize_generated_version", {
     p_document: prep.document_id, p_version: prep.version_id, p_storage_path: prep.storage_path, p_size_bytes: bytes.byteLength,
-    p_checksum: checksum, p_template: d.templateId, p_facts: prep.facts,
+    p_checksum: checksum, p_template: d.templateId, p_facts: prep.facts, p_template_version: prep.template_version,
   });
   if (finError) return { error: finError.message };
   refreshMatter(d.matterId);

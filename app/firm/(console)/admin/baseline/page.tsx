@@ -27,8 +27,13 @@ export default async function BaselinePage({ searchParams }: { searchParams: Pro
   const to = sp.to && !Number.isNaN(Date.parse(sp.to)) ? new Date(sp.to) : new Date();
   const from = sp.from && !Number.isNaN(Date.parse(sp.from)) ? new Date(sp.from) : new Date(to.getTime() - 30 * 24 * 60 * 60 * 1000);
 
+  // firm_metrics() asks admin_w(): it reads across every matter of the firm, money included, over
+  // a window the caller chooses — so it is an owner's or administrator's read, as recording a
+  // baseline already was. A lawyer is told that rather than shown a refusal.
   const [{ data: metrics, error: metricsError }, { data: rows, error: rowsError }] = await Promise.all([
-    supabase.rpc("firm_metrics", { p_firm: firmId, p_from: from.toISOString(), p_to: to.toISOString() }),
+    ctx.isAdmin
+      ? supabase.rpc("firm_metrics", { p_firm: firmId, p_from: from.toISOString(), p_to: to.toISOString() })
+      : Promise.resolve({ data: null, error: null }),
     supabase.from("firm_baselines").select("id, firm_id, taken_at, window_from, window_to, metrics, stated, note, taken_by")
       .eq("firm_id", firmId).order("taken_at", { ascending: false }).limit(50),
   ]);
@@ -41,7 +46,12 @@ export default async function BaselinePage({ searchParams }: { searchParams: Pro
       </header>
       {metricsError && <Alert kind="error" title="The figures could not be computed">{metricsError.message}. That is a failed read, not a firm with no work.</Alert>}
       {rowsError && <Alert kind="error" title="The records could not be read">{rowsError.message}.</Alert>}
-      {!ctx.isAdmin && <Alert kind="info">You are {ctx.role} here: the figures are shown, and an owner or administrator records a baseline.</Alert>}
+      {!ctx.isAdmin && (
+        <Alert kind="info" title="An owner or administrator sees this">
+          You are {ctx.role} here. The baseline reads across every matter of the firm, money included, so it is kept to the
+          principals — the same people who record one. The baselines already taken are listed below.
+        </Alert>
+      )}
       <BaselinePanel
         firmId={firmId}
         timezone={ctx.timezone}

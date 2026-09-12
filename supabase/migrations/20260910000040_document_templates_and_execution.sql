@@ -116,6 +116,19 @@ comment on column public.documents.locked_version_id is 'Set by the first signat
 -- The API roles update what the screens update and nothing else: the pointer and the lock are the functions'.
 revoke update on public.documents from anon, authenticated;
 grant update (name, category, client_visible, reviewed_at, reviewed_by) on public.documents to authenticated;
+-- And INSERT, for the same reason and more urgently. Narrowing the update alone left every column
+-- added here writable at insert time, and documents_client_insert lets a CLIENT insert a row — so
+-- a client could stamp signature_requested_at and signature_requested_by (naming a partner), add
+-- a version, and sign. record_signature() reads exactly that column to decide whether the firm
+-- asked, so the refusal "the firm has not asked for a signature on this document" was the
+-- client's to switch off; what came out was a document_signatures row — evidence of execution —
+-- against a document nobody asked to be signed, permanently locked, with a lawyer's name on the
+-- request and on the review. Reproduced before this was written.
+-- The eight columns below are what the two insert paths in the tree actually write: the staff
+-- upload and the client upload. current_version_id, the lock, the signature request, the review
+-- and deleted_at belong to the triggers and the definer functions, as this migration's header says.
+revoke insert on public.documents from anon, authenticated;
+grant  insert (id, firm_id, matter_id, appointment_id, name, category, client_visible, uploaded_by) on public.documents to authenticated;
 
 create or replace function public.document_lock_guard() returns trigger
 language plpgsql set search_path = public as $$
@@ -258,7 +271,7 @@ end $$;
 revoke execute on function public.prepare_generated_document(uuid, uuid, text, uuid, jsonb) from public, anon;
 grant  execute on function public.prepare_generated_document(uuid, uuid, text, uuid, jsonb) to authenticated;
 
-create or replace function public.finalize_generated_version(p_document uuid, p_version uuid, p_storage_path text, p_size_bytes bigint, p_checksum text, p_template uuid, p_facts jsonb)
+create or replace function public.finalize_generated_version(p_document uuid, p_version uuid, p_storage_path text, p_size_bytes bigint, p_checksum text, p_template uuid, p_facts jsonb, p_template_version int default null)
 returns void language plpgsql security definer set search_path = public as $$
 declare d documents%rowtype; t document_templates%rowtype;
 begin
@@ -270,13 +283,18 @@ begin
   if p_storage_path <> d.firm_id || '/' || d.id || '/' || p_version || '.pdf' then raise exception 'the storage path is not this version''s'; end if;
   select * into t from document_templates where id = p_template and firm_id = d.firm_id;
   if not found then raise exception 'template not found'; end if;
+  -- The version the PDF was actually rendered from, which prepare_generated_document() returned
+  -- and the caller carries back. Re-reading document_templates.version here would record whatever
+  -- the template is NOW: an administrator who edits the wording between preparing and finalising
+  -- would have the document claim a version whose words it does not contain.
   insert into document_versions (id, document_id, storage_path, mime, size_bytes, checksum, uploaded_by, kind, source_template_id, template_version, facts)
-  values (p_version, p_document, p_storage_path, 'application/pdf', p_size_bytes, p_checksum, auth.uid(), 'generated', t.id, t.version, coalesce(p_facts, '{}'::jsonb));
+  values (p_version, p_document, p_storage_path, 'application/pdf', p_size_bytes, p_checksum, auth.uid(), 'generated', t.id,
+          coalesce(p_template_version, t.version), coalesce(p_facts, '{}'::jsonb));
   perform audit('document.generated', 'document', p_document, d.firm_id,
                 jsonb_build_object('matter_id', d.matter_id, 'version_id', p_version, 'checksum', p_checksum, 'template_id', t.id, 'template_version', t.version, 'template', t.name));
 end $$;
-revoke execute on function public.finalize_generated_version(uuid, uuid, text, bigint, text, uuid, jsonb) from public, anon;
-grant  execute on function public.finalize_generated_version(uuid, uuid, text, bigint, text, uuid, jsonb) to authenticated;
+revoke execute on function public.finalize_generated_version(uuid, uuid, text, bigint, text, uuid, jsonb, int) from public, anon;
+grant  execute on function public.finalize_generated_version(uuid, uuid, text, bigint, text, uuid, jsonb, int) to authenticated;
 
 -- ---------------------------------------------------------------- 5. execution
 -- How an instrument may be executed, from the template that made its current version; an

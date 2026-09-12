@@ -83,8 +83,12 @@ begin
   perform t_check('installing the same version again changes nothing', (install_workflow_pack(f, 'litigation', 2) ->> 'statuses_added')::int = 0);
   perform t_check('a pack nobody published is refused', t_fails(format('select install_workflow_pack(%L, ''pigeon'')', f), 'no such pack'));
   r := install_workflow_pack(f, 'conveyancing');
+  -- "recognised" means stamped by this install. completed and closed are already the litigation
+  -- pack's, so conveyancing leaves them exactly as they are and says so under its own name rather
+  -- than counting rows it did not touch.
   perform t_check('conveyancing adds its stages for property matters only, sharing completed and closed',
-    (r ->> 'version')::int = 1 and (r ->> 'statuses_added')::int = 7 and (r ->> 'statuses_recognised')::int = 2
+    (r ->> 'version')::int = 1 and (r ->> 'statuses_added')::int = 7
+    and (r ->> 'statuses_recognised')::int = 0 and (r ->> 'statuses_of_another_pack')::int = 2
     and (select matter_types = array['property']::matter_type[] from matter_statuses where firm_id = f and key = 'title_search')
     and (select matter_types is null and pack_key = 'litigation' from matter_statuses where firm_id = f and key = 'completed'));
   perform t_check('the stages are audited', exists (select 1 from audit_log where action = 'matter_statuses.insert' and firm_id = f));
@@ -150,6 +154,35 @@ begin
   insert into firms (id, slug, name, reference_prefix) values (gen_random_uuid(), 'wp-new', 'New Chambers', 'NC') returning id into nf;
   perform seed_firm_defaults(nf);
   perform t_check('a new firm still starts with the fifteen stages and no pack on its ledger', (select count(*) = 15 from matter_statuses where firm_id = nf) and (select count(*) = 0 from firm_workflow_packs where firm_id = nf));
+end $$;
+
+-- ---------------------------------------------------------------- a firm that installs conveyancing FIRST
+-- The stage's reach is the stage's own, not the pack's. A property pack writing {property} onto
+-- "completed" and "closed" would leave every litigation matter at that firm impossible to close,
+-- for ever, and installing litigation afterwards would not undo it.
+do $$
+declare ow uuid; f2 uuid; r jsonb; mt uuid;
+begin
+  perform t_reset();
+  insert into firms (slug, name, reference_prefix, status) values ('wp-conv', 'Conveyancing First', 'CF', 'active') returning id into f2;
+  insert into auth.users (id, email) values (gen_random_uuid(), 'wp-conv-owner@test') returning id into ow;
+  insert into firm_members (firm_id, user_id, role) values (f2, ow, 'owner');
+  delete from matter_statuses where firm_id = f2;          -- a firm with no stages of its own yet
+  perform t_as(ow);
+  r := install_workflow_pack(f2, 'conveyancing');
+  perform t_check('the shared terminal stages are not scoped to property',
+    (select matter_types is null from matter_statuses where firm_id = f2 and key = 'completed')
+    and (select matter_types is null from matter_statuses where firm_id = f2 and key = 'closed')
+    and (select matter_types = array['property']::matter_type[] from matter_statuses where firm_id = f2 and key = 'title_search'));
+  mt := (open_matter(f2, 'A debt claim', 'litigation') ->> 'matter_id')::uuid;
+  -- The call first, then the reading of what it did: `a and b` in SQL does not promise to run a
+  -- before b, and a check that reads the row before the function wrote it fails for the wrong reason.
+  r := set_matter_status(mt, 'completed');
+  perform t_check('so a litigation matter at a conveyancing firm can still be completed and closed',
+    (r ->> 'closed')::bool
+    and (select status_id = (select id from matter_statuses where firm_id = f2 and key = 'completed')
+             and closed_at is not null from matters where id = mt));
+  perform t_reset();
 end $$;
 
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;

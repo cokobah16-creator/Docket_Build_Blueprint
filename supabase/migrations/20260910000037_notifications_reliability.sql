@@ -324,7 +324,9 @@ create or replace view public.platform_failed_notifications with (security_invok
 
 create or replace view public.platform_notification_cost with (security_invoker = false) as
   select n.firm_id, f.name as firm_name, f.slug as firm_slug,
-         date_trunc('month', n.sent_at)::date as month,
+         -- The firm's month, not UTC's: a message sent at half past midnight in Lagos on the first
+         -- is 23:30 UTC on the last day of the month before, and would be billed to it.
+         date_trunc('month', n.sent_at at time zone coalesce(f.timezone, 'Africa/Lagos'))::date as month,
          n.provider, n.channel, n.cost_currency,
          count(*) as messages,
          coalesce(sum(n.segments), 0) as segments,
@@ -333,7 +335,7 @@ create or replace view public.platform_notification_cost with (security_invoker 
     from public.notifications n
     left join public.firms f on f.id = n.firm_id
    where public.is_platform_admin() and n.status = 'sent' and n.channel in ('email', 'sms', 'push') and n.sent_at is not null
-   group by n.firm_id, f.name, f.slug, date_trunc('month', n.sent_at)::date, n.provider, n.channel, n.cost_currency;
+   group by n.firm_id, f.name, f.slug, date_trunc('month', n.sent_at at time zone coalesce(f.timezone, 'Africa/Lagos'))::date, n.provider, n.channel, n.cost_currency;
 grant select on public.platform_notification_cost to authenticated;
 revoke insert, update, delete, truncate, references, trigger on public.platform_notification_cost from anon, authenticated;
 

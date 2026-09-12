@@ -236,5 +236,35 @@ begin
   perform t_reset();
 end $$;
 
+-- ---------------------------------------------------------------- 5. the client cannot ask the firm to sign
+-- Reproduced before the fix: narrowing UPDATE on documents while leaving INSERT table-wide let a
+-- client insert a row with signature_requested_at and signature_requested_by already set — naming
+-- a partner — then add a version and sign it. record_signature() reads exactly that column to
+-- decide whether the firm asked, so the refusal was the client's to switch off, and what came out
+-- was a signature record against a document nobody asked to be signed, permanently locked.
+do $$
+declare cl uuid := (select v from fx where k='client'); l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm');
+        m uuid := (select v from fx where k='matter'); d uuid := gen_random_uuid(); v uuid := gen_random_uuid();
+begin
+  perform t_reset(); perform t_as(cl, 'aal1');
+  perform t_check('a client cannot stamp the firm''s signature request onto a document',
+    t_refused(format('insert into documents (id, firm_id, matter_id, name, category, client_visible, uploaded_by, signature_requested_at, signature_requested_by) values (%L, %L, %L, ''Deed of release.pdf'', ''client_upload'', true, %L, now(), %L)',
+                     d, f, m, cl, l), '42501'));
+  perform t_check('nor name a lawyer as having reviewed it',
+    t_refused(format('insert into documents (id, firm_id, matter_id, name, category, client_visible, uploaded_by, reviewed_at, reviewed_by) values (%L, %L, %L, ''x.pdf'', ''client_upload'', true, %L, now(), %L)', d, f, m, cl, l), '42501'));
+  perform t_check('nor open one already locked, or pointing at a version',
+    t_refused(format('insert into documents (id, firm_id, matter_id, name, category, client_visible, uploaded_by, locked_version_id) values (%L, %L, %L, ''x.pdf'', ''client_upload'', true, %L, %L)', d, f, m, cl, v), '42501')
+    and t_refused(format('insert into documents (id, firm_id, matter_id, name, category, client_visible, uploaded_by, current_version_id) values (%L, %L, %L, ''x.pdf'', ''client_upload'', true, %L, %L)', d, f, m, cl, v), '42501'));
+  -- The ordinary upload, which is what the columns granted are for, still goes through.
+  insert into documents (id, firm_id, matter_id, name, category, client_visible, uploaded_by) values (d, f, m, 'my-lease.pdf', 'client_upload', true, cl);
+  insert into document_versions (id, document_id, storage_path, mime, size_bytes, checksum, uploaded_by)
+    values (v, d, f || '/' || d || '/' || v || '.pdf', 'application/pdf', 2048, repeat('9', 64), cl);
+  perform t_check('the client''s own upload is unaffected', (select current_version_id = v from documents where id = d));
+  perform open_document_version(v);
+  perform t_check('and it cannot be signed, because the firm never asked',
+    t_fails(format('select record_signature(%L, ''Adaeze Okafor'')', v), 'has not asked for a signature'));
+  perform t_reset();
+end $$;
+
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
 rollback;

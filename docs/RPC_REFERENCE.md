@@ -470,15 +470,22 @@ Refuses: `service record not found` · `not permitted` *(42501)*
 ### The pilot baseline (migration 41)
 
 #### `firm_metrics(p_firm uuid, p_from timestamptz, p_to timestamptz = now())`
-Returns `jsonb`. **Who:** any member of the firm. Computes, from the firm's own rows and nothing
+Returns `jsonb`. **Who:** `admin_w` — an owner or administrator with a second factor, the same gate
+`record_firm_baseline()` asks. Not every member: the function runs as the owner and so reads past
+RLS across every matter of the firm, money included, and the window is the **caller's to choose** —
+narrowing it to the minute one invoice was issued would return that invoice's exact amount. A
+restricted matter stays restricted even here: `can_see_matter()` has no bypass for an owner, the
+money figures respect it, and where it changes a figure the caveats say so. Computes, from the firm's own rows and nothing
 else: bookings made and paid in the window with the median hours to pay; attendance over
 consultations whose time has passed, split **attended / missed / unrecorded**; consultations
 followed by a matter for the same client within sixty days, with the median days; sittings that
 came and went, how many carry an update and how many within a day; messages from clients, how many
 were answered and how long the first reply took, and how long the oldest unanswered one has waited;
 documents asked for and sent in; invoiced and collected **per currency** with the median days to
-collect; open matters, matters opened, overdue next actions judged in the firm's own timezone, and
-client updates posted; and clients who did something the rows can see.
+collect (a **cancelled** invoice is not counted as billed); open matters, matters opened, overdue
+next actions judged in the firm's own timezone, and client updates posted; and clients who did
+something the rows can see. "Updated within a day" means after the sitting and within a day of it,
+so an adjournment noted in advance cannot count as prompt or drag the median below zero.
 
 Every answer carries a `caveats` array written by the function itself, and the screens print it
 rather than summarising it away. Three of them matter:

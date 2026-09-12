@@ -177,7 +177,9 @@ export function BaselinePanel({ firmId, timezone, canWrite, from, to, metrics, b
               </button>
             ))}
           </div>
-          {metrics ? <Figures m={metrics} /> : <p className="text-sm text-gray-600">No figures — the read did not return.</p>}
+          {metrics ? <Figures m={metrics} />
+            : canWrite ? <p className="text-sm text-gray-600">No figures — the read did not return.</p>
+            : <p className="text-sm text-gray-600">The figures for a window are an owner&apos;s or administrator&apos;s to read.</p>}
         </CardBody>
       </Card>
 

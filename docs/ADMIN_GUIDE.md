@@ -228,7 +228,11 @@ confirming lawyer is confirming the day, not the arithmetic.
 ## The baseline: measuring before you claim a saving
 
 **`/firm/admin/baseline`** shows what your own records say over a window you choose — the last
-week, month, quarter or half-year — and lets an owner or administrator **record** one.
+week, month, quarter or half-year — and lets you **record** one. It is an owner's and
+administrator's screen: the figures read across every matter of the firm, money included, and the
+window is yours to set as narrowly as you like, so it is kept to the principals rather than shown
+to everyone. A matter restricted to its own team stays out of the figures even for you, and the
+screen says so when that is the case.
 
 What it shows, all of it computed from your rows: consultations booked, paid and attended; how many
 consultations were followed by a matter, and how long that took; what share of your sittings the
