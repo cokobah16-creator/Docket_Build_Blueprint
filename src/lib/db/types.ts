@@ -1255,3 +1255,43 @@ export interface SearchHit {
   occurred_at: string | null;
   rank: number;
 }
+
+/** representations (migration 44): who may act for a client, on what, until when. */
+export interface RepresentationRow {
+  id: string;
+  firm_id: string;
+  principal_id: string;
+  /** Null until somebody redeems the token — being named is not the same as being bound. */
+  representative_id: string | null;
+  capacity: string;
+  organisation_name: string | null;
+  scope: "matter" | "all_matters";
+  matter_id: string | null;
+  can_view_docs: boolean;
+  can_pay: boolean;
+  /** Calendar days. Never rendered through a timezone. */
+  starts_on: string;
+  expires_on: string | null;
+  authority_kind: string;
+  authority_ref: string | null;
+  verification_note: string | null;
+  verified_by: string;
+  verified_at: string;
+  invited_email: string | null;
+  invited_phone: string | null;
+  accepted_at: string | null;
+  revoked_at: string | null;
+  revoked_by: string | null;
+  revoke_reason: string | null;
+  created_at: string;
+}
+
+/** identity_events (migration 44): a client changed the number or address their firm reaches them on. */
+export interface IdentityEventRow {
+  id: string;
+  user_id: string;
+  field: "phone" | "email";
+  old_value: string | null;
+  new_value: string | null;
+  changed_at: string;
+}

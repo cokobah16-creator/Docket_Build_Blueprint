@@ -514,6 +514,24 @@ every table as the caller, so a walled matter is absent from a search because it
 wall-free read of everything in one word, and suite `99_search.sql` asserts `prosecdef` is false
 for exactly that reason.
 
+**44 goes before the app**, for the same reason: the client screen, the authority screens and the
+acceptance page call `grant_representation()`, `accept_representation()` and
+`revoke_representation()`, none of which exist before it. It also makes a switch real that the
+console has been printing since migration 1 and the database never asked — `matter_parties.can_view_docs`
+now decides whether a party reaches a document, its versions and its bytes. **Check before applying**
+that no firm has a party row with the switch off and an expectation that it meant nothing:
+
+```sql
+select count(*) from matter_parties where not can_view_docs;   -- expected: 0
+```
+
+Zero is the expected answer, because nothing in the app has ever written the column, so every row
+carries its default of `true` and no party loses a document the day this is applied. A non-zero
+answer means somebody set it by hand through the API, and those people are about to lose document
+access — which is what they asked for, but find out first rather than from them. `can_pay` is left
+alone for a party and gains meaning only for a representation; the two console lines that claimed
+otherwise are removed in the same commit.
+
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|
 | **App** | `bcc1dc8` (the merge of PR #20), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |

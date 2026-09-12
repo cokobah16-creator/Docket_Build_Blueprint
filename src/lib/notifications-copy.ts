@@ -34,6 +34,20 @@ export function describeNotification(event: string, payload: Record<string, unkn
     // The payload says which, because a client sent to /firm/… lands on a page they cannot open.
     case "document_signed": return { title: `Signed: ${p.name ?? "a document"}`, body: `${p.signer ?? "The signer"} signed it.`,
       url: p.audience === "client" ? `${matter}?tab=documents` : `/firm/matters/${p.matter_id ?? ""}?tab=documents` };
+    // Delegation (migration 44). The principal is told at each step, because an authority the
+    // client never hears about is the one worth worrying about.
+    case "representation_granted": return { title: "Someone has been authorised to act for you",
+      body: `Your firm recorded an authority${p.organisation ? ` for ${p.organisation}` : ""}. Check it, and end it if you did not ask for it.`,
+      url: "/app/authority" };
+    case "representation_accepted": return { title: "That authority has been taken up",
+      body: "The person your firm named can now act on your files. You can end it at any time.", url: "/app/authority" };
+    case "representation_revoked": return { title: "An authority has ended",
+      body: "Nobody is acting under it from now on.", url: "/app/authority" };
+    case "representation_accepted_staff": return { title: "A representative took up their authority",
+      body: "They can now act on the matters you named.", url: `/firm/clients/${p.principal_id ?? ""}` };
+    case "client_contact_changed": return { title: "A client changed how they are reached",
+      body: `${p.phone_changed ? "Phone" : ""}${p.phone_changed && p.email_changed ? " and " : ""}${p.email_changed ? "Email" : ""} changed. If you were not expecting it, ring the number you had before.`,
+      url: `/firm/clients/${p.client_id ?? ""}` };
     case "new_message": return { title: `New message from ${firmName}`, body: "Open the thread.", url: p.matter_id ? `${matter}?tab=messages` : p.appointment_id ? `/app/messages/appointment/${p.appointment_id}` : "/app/messages" };
     default: return { title: event.replace(/_/g, " "), body: "", url: "/app" };
   }
