@@ -226,5 +226,100 @@ begin
   perform t_check('a held booking still in the future is untouched', (select status = 'pending' from appointments where id = a));
 end $$;
 
+-- ---------------------------------------------------------------- 6. the review's findings: whose answers, which form, which way in
+do $$
+declare cl uuid := (select v from fx where k='client'); st uuid := (select v from fx where k='stranger'); l uuid := (select v from fx where k='lawyer');
+        f uuid := (select v from fx where k='firm'); a uuid := gen_random_uuid(); mt uuid := gen_random_uuid(); other_firm uuid; other_form uuid; n int;
+begin
+  perform t_reset();
+  update firms set checkin_before_confirm = true where id = f;
+  insert into appointments (id, firm_id, reference, client_id, lawyer_id, service_id, mode, status, starts_at, ends_at, client_timezone, fee_minor, currency)
+  values (a, f, 'CK-2026-900010', cl, l, (select v from fx where k='svc_free'), 'virtual', 'pending', now() + interval '10 days', now() + interval '10 days 30 minutes', 'Africa/Lagos', 0, 'NGN');
+
+  -- A stranger writing the client's answers. The insert policy admits the row on its own terms;
+  -- the trigger is what refuses it.
+  perform t_as(st, 'aal1');
+  perform t_check('a stranger writes no answers onto somebody else''s consultation',
+    t_fails(format('insert into intake_responses (form_id, firm_id, appointment_id, client_id, answers) values (%L, %L, %L, %L, ''{"issue_summary":"not mine to write","urgency":"This week"}'')',
+                   (select v from fx where k='form'), f, a, st), 'own client'));
+  perform t_reset();
+  perform t_check('and the readiness still says the questions are unanswered',
+    (select (i ->> 'satisfied')::bool = false from jsonb_array_elements(appointment_checkin(a) -> 'items') i where i ->> 'kind' = 'intake'));
+
+  -- A form belonging to another firm, named by the client's own response.
+  insert into firms (slug, name, reference_prefix, status) values ('ck-other', 'Other Chambers', 'CO', 'active') returning id into other_firm;
+  insert into intake_forms (firm_id, service_id, name, is_active, schema) values (other_firm, null, 'Nothing asked', true, jsonb_build_object('questions', '[]'::jsonb)) returning id into other_form;
+  perform t_as(cl, 'aal1');
+  perform t_check('a response cannot name another firm''s form',
+    t_fails(format('insert into intake_responses (form_id, firm_id, appointment_id, client_id, answers) values (%L, %L, %L, %L, ''{}'')', other_form, f, a, cl), 'not this firm'));
+  perform t_reset();
+
+  -- Even if such a row existed, the readiness would not take its form: written here as the
+  -- definer, past the trigger, exactly as a row written before this guard would look.
+  alter table intake_responses disable trigger intake_responses_guard;
+  insert into intake_responses (form_id, firm_id, appointment_id, client_id, answers, created_at) values (other_form, f, a, cl, '{}'::jsonb, clock_timestamp());
+  alter table intake_responses enable trigger intake_responses_guard;
+  perform t_check('and the readiness ignores it, keeping the firm''s own form',
+    (select (i ->> 'satisfied')::bool = false and (i ->> 'ref')::uuid = (select v from fx where k='form')
+       from jsonb_array_elements(appointment_checkin(a) -> 'items') i where i ->> 'kind' = 'intake'));
+
+  -- Every way into a live state meets the same rule, not only an update naming 'confirmed'.
+  perform t_as(l);
+  perform t_check('staff cannot make a held booking live by calling it rescheduled',
+    t_fails(format('update appointments set status = ''rescheduled'' where id = %L', a), 'only once what it asked for is in'));
+  perform t_check('nor by inserting one live outright',
+    t_fails(format('insert into appointments (firm_id, reference, client_id, lawyer_id, service_id, mode, status, starts_at, ends_at, client_timezone, fee_minor, currency) values (%L, ''CK-2026-900011'', %L, %L, %L, ''virtual'', ''confirmed'', now() + interval ''11 days'', now() + interval ''11 days 30 minutes'', ''Africa/Lagos'', 0, ''NGN'')',
+                   f, cl, l, (select v from fx where k='svc_free')), 'only once what it asked for is in'));
+  perform t_reset();
+
+  -- A request is on a matter or on a consultation, never both. Both of this firm's own, so it
+  -- is the scope rule that refuses it and not the row-firm trigger.
+  insert into matters (id, firm_id, reference, title, type) values (mt, f, 'CK-M-2026-000001', 'Nwosu v Eze', 'litigation');
+  perform t_check('a document request carries one scope, not two',
+    t_refused(format('insert into document_requests (firm_id, matter_id, appointment_id, title, requested_by) values (%L, %L, %L, ''Both'', %L)', f, mt, a, l), '23514'));
+  perform t_check('and either one alone is accepted',
+    not t_refused(format('insert into document_requests (firm_id, matter_id, title, requested_by) values (%L, %L, ''On the matter'', %L)', f, mt, l), '23514')
+    and not t_refused(format('insert into document_requests (firm_id, appointment_id, title, requested_by) values (%L, %L, ''On the consultation'', %L)', f, a, l), '23514'));
+
+  -- Nothing outstanding from the client: no nudge, and the key still recorded so it stays once.
+  update document_requests set cancelled_at = now() where appointment_id = a;   -- the one asked above, withdrawn
+  perform t_as(cl, 'aal1');
+  perform amend_intake_response(a, '{"issue_summary":"A land dispute","urgency":"This week"}'::jsonb);
+  perform t_reset();
+  update firms set policies = '{}'::jsonb where id = f;         -- no published terms, so no consent item
+  update appointments set starts_at = now() + interval '30 hours', ends_at = now() + interval '30 hours 30 minutes' where id = a;
+  perform t_check('nothing is outstanding from the client now', (appointment_checkin(a) ->> 'ready')::bool);
+  n := enqueue_appointment_reminders();
+  perform t_check('a client with nothing left to do is not told to finish something',
+    not exists (select 1 from notifications where user_id = cl and event = 'appointment_checkin_due' and (payload ->> 'appointment_id')::uuid = a)
+    and (select reminders_sent @> array['checkin'] from appointments where id = a));
+end $$;
+
+-- ---------------------------------------------------------------- 7. a service the firm is paid for later is not held for the fee
+do $$
+declare cl uuid := (select v from fx where k='client'); l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm');
+        svc uuid; a uuid := gen_random_uuid(); inv uuid := gen_random_uuid();
+begin
+  perform t_reset();
+  insert into services (firm_id, slug, name, price_minor, currency, duration_min, requires_prepayment, is_active)
+  values (f, 'later', 'Paid in chambers', 5000000, 'NGN', 45, false, true) returning id into svc;
+  insert into appointments (id, firm_id, reference, client_id, lawyer_id, service_id, mode, status, starts_at, ends_at, client_timezone, fee_minor, currency, invoice_id)
+  values (a, f, 'CK-2026-900020', cl, l, svc, 'in_person', 'pending', now() + interval '9 days', now() + interval '9 days 45 minutes', 'Africa/Lagos', 5000000, 'NGN', null);
+  insert into invoices (id, firm_id, number, client_id, appointment_id, currency, subtotal_minor, vat_minor, total_minor, status, issued_at, due_at)
+  values (inv, f, 'CK-INV-2026-900020', cl, a, 'NGN', 5000000, 0, 5000000, 'issued', now(), current_date + 30);
+  update appointments set invoice_id = inv where id = a;
+  perform t_check('an unpaid fee the firm collects later is not a readiness item',
+    not exists (select 1 from jsonb_array_elements(appointment_checkin(a) -> 'items') i where i ->> 'kind' = 'payment'));
+  perform t_as(cl, 'aal1');
+  perform amend_intake_response(a, '{"issue_summary":"A tenancy","urgency":"This month"}'::jsonb);
+  perform t_reset();
+  perform t_check('so the firm can confirm the booking and be paid in chambers', (appointment_checkin(a) ->> 'ready')::bool);
+  -- The same fee on a service the firm is paid for in advance is an item, as before.
+  update appointments set service_id = (select v from fx where k='svc_paid') where id = a;
+  perform t_check('a service paid in advance still holds the booking until it is paid',
+    exists (select 1 from jsonb_array_elements(appointment_checkin(a) -> 'items') i where i ->> 'kind' = 'payment' and (i ->> 'satisfied')::bool = false));
+  perform t_reset();
+end $$;
+
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
 rollback;

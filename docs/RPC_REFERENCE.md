@@ -183,6 +183,19 @@ Computed from real rows every time (migration 35); nothing is stored as done. A 
 conflict item only as "the firm's own checks", never its substance. A required question shown on
 a condition (`show_if`) is not counted, nor is a file question.
 
+Three things it is careful about, each because the obvious reading is wrong:
+- **Whose answers.** Only the appointment's own client's `intake_responses` rows count. The insert
+  policy asks no more than that a row names the caller as its client, so without this any
+  signed-in person who learned an appointment id could write the answers the firm reads. A trigger
+  on `intake_responses` now refuses such a row outright as well.
+- **Which form.** Only a form belonging to this firm. `form_id` is a bare foreign key, so a
+  response could otherwise name another firm's form — one with nothing required — and answer
+  nothing while reading as answered.
+- **Whose fee.** The payment item appears only where `services.requires_prepayment` is true. A
+  service the firm is paid for later is not turned into a pay-first one by switching the check-in
+  on, which would hold the booking for a fee the firm never asked for and release it unpaid at its
+  hour.
+
 Refuses: `not permitted` *(42501)*
 
 ### `amend_intake_response(p_appointment uuid, p_answers jsonb)`
@@ -191,6 +204,20 @@ new `intake_responses` row carrying the earlier answers plus these — answers s
 the latest row is the one that counts. Audits `intake.amended`.
 
 Refuses: `not permitted` *(42501)* · `this consultation is <status>` · `answers must be an object`
+
+The earlier answers it carries forward are the client's own, on a form of this firm's — the same
+two filters `appointment_checkin()` applies, so an amendment never carries a stranger's text or
+another firm's form into the row that counts.
+
+#### The guard on going live
+`guard_appointment_confirm` fires **after insert or update of status**, and asks about the state
+reached rather than about one column being set to one value: entering `confirmed` **or**
+`rescheduled` from anything else, by either route, is the confirmation the rule is about. Both are
+live everywhere else in Docket — reminders go out for either, the console opens the room for
+either, `release_expired_holds()` releases neither — so guarding only the word "confirmed" on an
+update left staff able to make a held booking live by calling it rescheduled, or by inserting one
+live outright. AFTER rather than BEFORE because `appointment_checkin()` reads the appointment back
+out of the table and can only see a row that is already there.
 
 ### `invoice_settlement(p_invoice uuid)`
 Returns `jsonb` — the Paystack subaccount the checkout must route to, and the invoice's state.
@@ -202,6 +229,11 @@ Refuses:
 
 ### `fulfil_document_request(p_request uuid, p_document uuid)`
 Returns `void`. **Who:** a party to the matter, or firm staff who can see it (the wall applies).
+
+Requests themselves carry an optional `client_ref` (migration 36), unique per firm: a request form
+whose reply was lost is sent again with the same reference, the duplicate is refused, and the client
+is asked once rather than twice. Insert is narrowed to the columns the forms write, so
+`fulfilled_document_id` and `fulfilled_at` stay this function's to set.
 
 Answers a request the firm made (`document_requests`, migration 31) with an uploaded document:
 marks it fulfilled once, audits `document_request.fulfilled`, and tells the lawyer who asked
@@ -361,7 +393,9 @@ matter the caller is not on comes back with `restricted: true`, no `matter_id`, 
 lawyer's id. Records the search as a `conflict_checks` row (undecided) and audits
 `conflict_check.run`. Never another firm's register; never a decision. With `p_appointment` (migration
 35) the search includes the person who booked, and the check is recorded on the consultation, where
-`appointment_readiness()` reads it.
+`appointment_readiness()` reads it. Only a check naming the consultation clears its readiness item,
+so that is what the consultation's check-in panel runs — *Run the check*, then the decision — and
+a check run from the matter screens never satisfies it.
 
 Refuses: `not permitted` *(42501)* — a matter of another firm, or one behind a wall ·
 `nothing to check: give at least one name`

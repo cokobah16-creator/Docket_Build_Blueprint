@@ -81,5 +81,27 @@ begin
   perform t_check('retiring is audited', exists (select 1 from audit_log where action = 'document.retired' and entity_id = d));
 end $$;
 
+-- ---------------------------------------------------------------- 4. a request sent twice is one request
+do $$
+declare l uuid := (select v from fx where k='lawyer'); cl uuid := (select v from fx where k='client'); m uuid := (select v from fx where k='matter'); f uuid := (select v from fx where k='firm');
+        ref uuid := gen_random_uuid(); n int;
+begin
+  perform t_reset(); perform t_as(l);
+  insert into document_requests (firm_id, matter_id, title, requested_by, client_ref) values (f, m, 'The certificate of occupancy', l, ref);
+  perform t_check('the same reference twice is refused, so the retry lands once',
+    t_refused(format('insert into document_requests (firm_id, matter_id, title, requested_by, client_ref) values (%L, %L, ''The certificate of occupancy'', %L, %L)', f, m, l, ref), '23505'));
+  perform t_check('one request, and the client told once',
+    (select count(*) = 1 from document_requests where client_ref = ref)
+    and (select count(*) = count(distinct channel) from notifications n2 where n2.user_id = cl and n2.event = 'document_requested' and n2.payload ->> 'title' = 'The certificate of occupancy'));
+  perform t_check('a different reference is a different request',
+    not t_refused(format('insert into document_requests (firm_id, matter_id, title, requested_by, client_ref) values (%L, %L, ''The survey plan'', %L, %L)', f, m, l, gen_random_uuid()), '23505'));
+  perform t_check('and one without a reference is not blocked by another without one',
+    not t_refused(format('insert into document_requests (firm_id, matter_id, title, requested_by) values (%L, %L, ''No reference at all'', %L)', f, m, l), '23505')
+    and not t_refused(format('insert into document_requests (firm_id, matter_id, title, requested_by) values (%L, %L, ''No reference either'', %L)', f, m, l), '23505'));
+  perform t_check('what fulfilment writes is not the API''s to write',
+    t_refused(format('insert into document_requests (firm_id, matter_id, title, requested_by, fulfilled_at) values (%L, %L, ''Already answered?'', %L, now())', f, m, l), '42501'));
+  perform t_reset();
+end $$;
+
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;
 rollback;

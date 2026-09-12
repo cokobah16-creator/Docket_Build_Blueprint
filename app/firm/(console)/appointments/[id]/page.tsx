@@ -46,7 +46,7 @@ export default async function FirmAppointmentPage({
     supabase.from("profiles").select("full_name, phone, email").eq("id", appt.client_id).maybeSingle(),
     appt.service_id ? supabase.from("services").select("name, duration_min").eq("id", appt.service_id).maybeSingle() : Promise.resolve({ data: null }),
     // The latest answers: a client may have answered what was missing after booking (migration 35).
-    supabase.from("intake_responses").select("answers").eq("appointment_id", appt.id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("intake_responses").select("answers").eq("appointment_id", appt.id).eq("client_id", appt.client_id).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("consultation_notes").select("client_summary, advice_given, follow_up, updated_at").eq("appointment_id", appt.id).maybeSingle(),
     supabase.from("consultation_internal_notes").select("body").eq("appointment_id", appt.id).maybeSingle(),
     supabase.from("consultation_sessions").select("room_name, started_at, client_admitted_at, ended_at").eq("appointment_id", appt.id).maybeSingle(),
@@ -128,7 +128,7 @@ export default async function FirmAppointmentPage({
       {(documents.length > 0 || requests.length > 0) && (
         <Card>
           <CardHeader title="Documents on this consultation" />
-          <DocumentsTab firmId={appt.firm_id} matterId={null} appointmentId={appt.id} documents={documents} timezone={tz} canUpload={false} requests={[]} />
+          <DocumentsTab firmId={appt.firm_id} matterId={null} appointmentId={appt.id} documents={documents} timezone={tz} canUpload={false} requests={[]} userId={user.id} audience="staff" />
         </Card>
       )}
 

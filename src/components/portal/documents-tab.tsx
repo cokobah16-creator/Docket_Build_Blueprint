@@ -31,9 +31,21 @@ function fmtSize(n: number | null | undefined) {
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** documents/{firm}/{document}/{version}.{ext} — the shape the storage policy reads. */
+function storagePathFor(firmId: string, documentId: string, versionId: string, fileName: string) {
+  const ext = (fileName.split(".").pop() ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 8) || "bin";
+  return `${firmId}/${documentId}/${versionId}.${ext}`;
+}
+
 export function DocumentsTab({
-  firmId, matterId, appointmentId, documents, timezone, canUpload = true, requests = [], userId = null, signatures = [], profileName = null,
+  firmId, matterId, appointmentId, documents, timezone, canUpload = true, requests = [], userId = null, signatures = [], profileName = null, audience = "client",
 }: { firmId: string; matterId: string | null; appointmentId: string | null; documents: DocumentWithVersion[]; timezone: string; canUpload?: boolean; requests?: DocumentRequestRow[]; userId?: string | null;
+  /**
+   * Who is reading. The console reuses this list on a consultation, and the wording here is
+   * written to the client — "wait for your lawyer to share", "Not yet seen by your firm" — which
+   * read as nonsense, or worse as a mistake, when the firm itself is the one looking.
+   */
+  audience?: "client" | "staff";
   /** Signatures on these documents, and the viewer's name as their profile has it (migration 40). */
   signatures?: DocumentSignatureRow[]; profileName?: string | null }) {
   const router = useRouter();
@@ -79,7 +91,14 @@ export function DocumentsTab({
         writeDraft(key, created);
       }
       const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined, upsert: false });
-      if (upErr && !isAlreadyStored(upErr.message)) { setError(`Upload failed: ${upErr.message}`); return; }
+      // A resume onto a row that has since been retired is refused by the storage policy, and
+      // keeping the record would make every later attempt with this file fail identically —
+      // with no row left on screen to remove. Forget it, and send the file as a new document.
+      if (upErr && !isAlreadyStored(upErr.message)) {
+        if (created === prior) { clearDraft(key); setError("That upload could not be finished — the document it belonged to is gone. Choose the file again to send it as a new one."); }
+        else setError(`Upload failed: ${upErr.message}`);
+        return;
+      }
       const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
       if (fin?.error && !/duplicate key|already exists/i.test(fin.error)) { setError(fin.error); return; }
       clearDraft(key);
@@ -104,10 +123,42 @@ export function DocumentsTab({
     try {
       const r = await retireEmptyDocument(doc.id);
       if (r?.error) { setError(r.error); return; }
-      clearDraft(uploadKey(userId, matterId ?? appointmentId ?? ""));
+      const k = uploadKey(userId, matterId ?? appointmentId ?? "");
+      if (readDraft<UploadInProgress>(k)?.documentId === doc.id) clearDraft(k);
       router.refresh();
     } catch (e) {
       setError(isNetworkFailure(e) ? "Not removed — the connection dropped." : (e instanceof Error ? e.message : "Not removed."));
+    } finally {
+      setBusy(null);
+    }
+  }, [appointmentId, matterId, router, userId]);
+
+  /**
+   * Finish the upload of a row that has no file — bound to THIS document, so it works on any
+   * device and for any stopped upload, not only the most recent one whose ids this browser
+   * happens to hold. A version onto an existing row, which is exactly what the row is missing.
+   */
+  const finishUpload = useCallback(async (doc: DocumentWithVersion, e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setError(null);
+    if (file.size > MAX_BYTES) { setError("Files must be 25 MB or smaller."); return; }
+    const supabase = supabaseBrowser();
+    if (!supabase) { setError("Not configured."); return; }
+    const versionId = crypto.randomUUID();
+    const path = storagePathFor(doc.firm_id, doc.id, versionId, file.name);
+    setBusy(`Finishing ${doc.name}…`);
+    try {
+      const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || undefined, upsert: false });
+      if (upErr && !isAlreadyStored(upErr.message)) { setError(`Upload failed: ${upErr.message}`); return; }
+      const fin = await finalizeDocumentVersion({ documentId: doc.id, versionId, storagePath: path, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
+      if (fin?.error && !/duplicate key|already exists/i.test(fin.error)) { setError(fin.error); return; }
+      const k = uploadKey(userId, matterId ?? appointmentId ?? "");
+      if (readDraft<UploadInProgress>(k)?.documentId === doc.id) clearDraft(k);
+      router.refresh();
+    } catch (err) {
+      setError(isNetworkFailure(err) ? UPLOAD_STOPPED : (err instanceof Error ? err.message : UPLOAD_STOPPED));
     } finally {
       setBusy(null);
     }
@@ -184,7 +235,9 @@ export function DocumentsTab({
         </p>
       )}
       {documents.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-gray-500">No documents yet. Upload one, or wait for your lawyer to share.</p>
+        <p className="px-5 py-8 text-center text-sm text-gray-500">
+          {audience === "staff" ? "Nothing has been sent in on this consultation yet." : "No documents yet. Upload one, or wait for your lawyer to share."}
+        </p>
       ) : (
         <ul className="divide-y divide-gray-100">
           {documents.map((d) => (
@@ -202,7 +255,9 @@ export function DocumentsTab({
                       now that mark reached a staff counter and never the person waiting on it. */}
                   {d.category === "client_upload" && (
                     <p className={d.reviewed_at ? "mt-1 text-xs text-[#15803D]" : "mt-1 text-xs text-[#92400E]"}>
-                      {d.reviewed_at ? `Seen by your firm ${fmt.format(new Date(d.reviewed_at))}` : "Not yet seen by your firm"}
+                      {audience === "staff"
+                        ? (d.reviewed_at ? `Marked as looked at ${fmt.format(new Date(d.reviewed_at))}` : "Not yet marked as looked at")
+                        : (d.reviewed_at ? `Seen by your firm ${fmt.format(new Date(d.reviewed_at))}` : "Not yet seen by your firm")}
                     </p>
                   )}
                   {toSign(d) && <p className="mt-1 text-xs font-medium text-[#92400E]">Your firm has asked you to sign this.</p>}
@@ -224,8 +279,17 @@ export function DocumentsTab({
                   </span>
                 ) : (
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-[#92400E]">No file yet — the upload stopped. Choose the same file again to finish it.</span>
-                    {userId && d.uploaded_by === userId && <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>}
+                    <span className="text-xs text-[#92400E]">No file yet — the upload stopped.</span>
+                    {canUpload && userId && d.uploaded_by === userId && (
+                      <label className="inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-gray-300 px-3 text-sm text-gray-800 hover:bg-black/5">
+                        Finish upload
+                        <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => finishUpload(d, e)} disabled={Boolean(busy)} />
+                      </label>
+                    )}
+                    {/* retire_empty_document() lets the person who started it, or any staff member
+                        who may write the row, retire it — so the firm can clear a client's
+                        stopped upload off its own consultation rather than looking at it forever. */}
+                    {userId && (d.uploaded_by === userId || audience === "staff") && <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>}
                   </span>
                 )}
               </div>

@@ -434,13 +434,19 @@ resolves to it), pg_trgm goes into the `extensions` schema, and the clearance gu
 firm switches it on. 33 is safe either side for the same reasons: it tightens what 29, 31 and 32
 admit without changing any call the deployed front end makes. 34 is additive and safe either side:
 nothing the deployed front end reads changes, and the new screens read only the new function
-and tables. 35 is safe either side too: with every firm's `checkin_before_confirm` off, `book_appointment()`
-and `record_payment()` behave exactly as before, and `document_requests.matter_id` becoming nullable
-changes nothing the deployed front end selects. 36 is safe either side: `post_court_update()` gains one
-trailing defaulted parameter (the deployed form passes named arguments and resolves to it), the new
-column is nullable and unindexed until set, and the one refusal it adds — a document with no file
-cannot answer a request — is a case the deployed front end could only reach by an upload that had
-already failed. 37 goes **first, then the functions**: the deployed dispatcher (v8) keeps working
+and tables. **35 goes first, and so does 36** — the "safe either side" this entry first claimed was argued
+only in the schema-ahead direction, which is half the question. Schema first is indeed harmless
+for both: with every firm's `checkin_before_confirm` off, `book_appointment()` and
+`record_payment()` behave exactly as before, `document_requests.matter_id` becoming nullable
+changes nothing the deployed front end selects, and `post_court_update()` merely gains trailing
+defaulted parameters that the deployed form's named arguments still resolve to. **App first
+breaks both screens outright.** The settings page selects `firms.checkin_before_confirm`, and
+against a schema without it PostgREST answers 42703, the row reads as null and the page renders
+its "this firm's row could not be read" card — taking brand, policies, settlement and domain down
+with it, for every firm. And the new court-update form always sends `p_client_ref`; PostgREST
+matches an RPC by the set of named parameters supplied, so against the 20-parameter
+`post_court_update` there is no such function and every court update is refused with PGRST202.
+Apply 35 and 36, then deploy. 37 goes **first, then the functions**: the deployed dispatcher (v8) keeps working
 against 37 — it updates rows as the service role, which the column rule lets through, and simply
 records nothing new — while v9 calls `claim_notifications()`, which exists only after 37, so v9
 deployed ahead of 37 sends nothing and answers 500 every minute. Apply 37, deploy

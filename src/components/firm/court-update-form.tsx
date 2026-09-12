@@ -90,10 +90,16 @@ function chipClass(active: boolean): string {
 
 export function CourtUpdateForm({
   matterId, firmId, timezone, courts, currentCourtId, currentCourtName, judicialDivision, autoFocus = false,
-  sittingAt = null,
+  sittingAt = null, userId = null,
 }: {
   matterId: string;
   firmId: string;
+  /**
+   * The signed-in member, for the draft key. Passed rather than looked up: the draft exists for
+   * the moment the connection drops, and a key that needed a round trip would be null exactly
+   * then — losing everything typed while the form says it is kept.
+   */
+  userId?: string | null;
   timezone: string;
   courts: CourtRow[];
   currentCourtId: string | null;
@@ -152,10 +158,14 @@ export function CourtUpdateForm({
   // One key per person and matter (and sitting, when opened from the chase list). The client
   // reference is minted with the draft and travels with it, so a retry after a lost reply is
   // the same posting to post_court_update() and not a second one.
-  const owner = useDraftOwner();
+  const owner = useDraftOwner(userId);
   const key = owner ? draftKey(owner, `court-update:${matterId}:${sittingAt ?? "new"}`) : null;
   const [restored, setRestored] = useState(false);
   const [clientRef, setClientRef] = useState<string>(() => crypto.randomUUID());
+  // Set when a post threw before its reply arrived. The posting may or may not have landed, so
+  // the next attempt keeps the same reference — until the lawyer changes something, at which
+  // point it is no longer the same posting and needs a reference of its own.
+  const [attemptLost, setAttemptLost] = useState(false);
   const hydrated = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
@@ -173,6 +183,10 @@ export function CourtUpdateForm({
     setNoteToClient(str("noteToClient")); setInternalNote(str("internalNote"));
     if (d.shape && typeof d.shape === "object") setShape({ ...EMPTY_SHAPE, ...(d.shape as ClientUpdateShape) });
     setJudge(str("judge")); setCourtroom(str("courtroom")); setCourtName(str("courtName")); if (str("division")) setDivision(str("division"));
+    // The court chosen under "More" is part of the draft too: without it a restored update went
+    // to the matter's current court, and the database takes the court_event, the matter's court
+    // and the non-sitting rules from that one.
+    if (str("courtId")) { setCourtId(str("courtId")); setCourt(courts.find((c) => c.id === str("courtId")) ?? null); }
     if (str("clientRef")) setClientRef(str("clientRef"));
     setRestored(true);
   }, [key]);
@@ -183,10 +197,27 @@ export function CourtUpdateForm({
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => {
       if (draftEmpty) clearDraft(key);
-      else writeDraft(key, { outcome, satOn, instance, otherInstance, nextDate, nextTime, purposeKind, nextPurpose, purposeEdited, allowNonSitting, noteToClient, internalNote, shape, judge, courtroom, courtName, division, clientRef });
+      else writeDraft(key, { outcome, satOn, instance, otherInstance, nextDate, nextTime, purposeKind, nextPurpose, purposeEdited, allowNonSitting, noteToClient, internalNote, shape, judge, courtroom, courtName, division, courtId, clientRef });
     }, 400);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [key, draftEmpty, outcome, satOn, instance, otherInstance, nextDate, nextTime, purposeKind, nextPurpose, purposeEdited, allowNonSitting, noteToClient, internalNote, shape, judge, courtroom, courtName, division, clientRef]);
+  }, [key, draftEmpty, outcome, satOn, instance, otherInstance, nextDate, nextTime, purposeKind, nextPurpose, purposeEdited, allowNonSitting, noteToClient, internalNote, shape, judge, courtroom, courtName, division, courtId, clientRef]);
+
+  // A posting whose reply was lost, then edited, is a different posting. Without this the same
+  // reference goes back to post_court_update(), which returns the row the first attempt wrote
+  // and reports success — so the correction the lawyer just made is never on the timeline, and
+  // the client's notification carries the uncorrected words.
+  const postedFields = [outcome, satOn, instance, nextDate, nextTime, purposeKind, nextPurpose, noteToClient, internalNote,
+    shape.meaning, shape.nextStep, shape.clientAction, shape.nextUpdateBy, String(shape.actionRequired),
+    judge, courtroom, courtName, division, courtId ?? ""].join("\u0000");
+  const postedAtAttempt = useRef<string | null>(null);
+  useEffect(() => {
+    if (!attemptLost) { postedAtAttempt.current = postedFields; return; }
+    if (postedAtAttempt.current !== null && postedAtAttempt.current !== postedFields) {
+      setClientRef(crypto.randomUUID());
+      setAttemptLost(false);
+      postedAtAttempt.current = postedFields;
+    }
+  }, [attemptLost, postedFields]);
 
   const level = court?.level ?? null;
   const stateCode = court?.state_code ?? null;
@@ -265,13 +296,18 @@ export function CourtUpdateForm({
         });
       } catch (e) {
         // The reply never came: the draft stays on this device, and the same client reference
-        // makes the next attempt the same posting.
+        // makes the next attempt the same posting — unless something is changed before it, which
+        // the effect below treats as a different posting. Otherwise post_court_update() would
+        // return the row the lost reply had in fact written, and the correction would be
+        // reported as posted while never reaching the timeline.
+        setAttemptLost(true);
         setError(isNetworkFailure(e) ? NOT_SENT : (e instanceof Error ? e.message : NOT_SENT));
         return;
       }
       if ("error" in result) { setError(result.error); return; }
       if (key) clearDraft(key);
       setRestored(false);
+      setAttemptLost(false);
       setClientRef(crypto.randomUUID());
       setShape(EMPTY_SHAPE);
       setPosted(true);

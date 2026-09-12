@@ -28,7 +28,11 @@ comment on column public.firms.checkin_before_confirm is
 -- ---------------------------------------------------------------- 2. document requests reach a consultation
 alter table public.document_requests alter column matter_id drop not null;
 alter table public.document_requests add column appointment_id uuid references public.appointments(id) on delete cascade;
-alter table public.document_requests add constraint document_requests_scope_chk check (matter_id is not null or appointment_id is not null);
+-- Exactly one scope, not at least one. A request carrying a matter AND a consultation of a
+-- different client would be readable by that client through the appointment arm of the select
+-- policy, and fulfil_document_request() would accept a document that is on neither — which is
+-- precisely the guarantee migration 31 exists to make.
+alter table public.document_requests add constraint document_requests_scope_chk check ((matter_id is null) <> (appointment_id is null));
 create index document_requests_appointment_open_idx on public.document_requests (appointment_id) where appointment_id is not null and fulfilled_at is null and cancelled_at is null;
 drop policy if exists document_requests_select on public.document_requests;
 create policy document_requests_select on public.document_requests for select
@@ -167,14 +171,18 @@ create or replace function public.appointment_checkin(p_appointment uuid)
 returns jsonb language plpgsql stable security definer set search_path = public as $$
 declare a appointments%rowtype; f firms%rowtype; v_items jsonb := '[]'::jsonb; v_ready bool := true;
         v_inv invoices%rowtype; v_form intake_forms%rowtype; v_answers jsonb; v_missing jsonb; v_open jsonb; v_terms text; v_privacy text;
-        v_consent_ok bool; v_conflict_ok bool; v_paid bool; v_required int;
+        v_consent_ok bool; v_conflict_ok bool; v_paid bool; v_required int; v_prepay bool;
 begin
   select * into a from appointments where id = p_appointment;
   if not found then raise exception 'appointment not found'; end if;
   select * into f from firms where id = a.firm_id;
 
-  -- 1. payment
-  if a.invoice_id is not null then
+  -- 1. payment, but only where the firm's own service is paid in advance. A service the firm
+  --    settled to be paid later (or in chambers) is not turned into a pay-first one by switching
+  --    the check-in on: that would hold the booking for a fee the firm never asked for yet, and
+  --    release it unpaid at its hour.
+  select coalesce((select sv.requires_prepayment from services sv where sv.id = a.service_id), false) into v_prepay;
+  if a.invoice_id is not null and v_prepay then
     select * into v_inv from invoices where id = a.invoice_id;
     v_paid := v_inv.status = 'paid' or v_inv.total_minor = 0;
     v_items := v_items || jsonb_build_object('kind', 'payment', 'label', 'Pay the consultation fee', 'satisfied', v_paid,
@@ -185,9 +193,17 @@ begin
 
   -- 2. the form's required questions, against the latest answers. A question shown only on a
   --    condition (show_if) is not counted: whether it applies is the browser's rule, not this one's.
-  select ir.answers into v_answers from intake_responses ir where ir.appointment_id = a.id order by ir.created_at desc limit 1;
+  --    Only the appointment's own client's answers count. The insert policy on intake_responses
+  --    asks no more than client_id = auth.uid(), so without this filter any signed-in person who
+  --    knew an appointment id could write the answers the firm reads and the readiness trusts.
+  --    The trigger below closes the door as well; this closes the window.
+  select ir.answers into v_answers from intake_responses ir
+   where ir.appointment_id = a.id and ir.client_id = a.client_id order by ir.created_at desc limit 1;
+  --    And only a form of this firm's own: form_id is a bare foreign key, so a response could
+  --    otherwise name another firm's form — one with no required questions — and answer nothing.
   select fm.* into v_form from intake_forms fm
-   where fm.id = (select ir.form_id from intake_responses ir where ir.appointment_id = a.id order by ir.created_at desc limit 1);
+   where fm.firm_id = a.firm_id
+     and fm.id = (select ir.form_id from intake_responses ir where ir.appointment_id = a.id and ir.client_id = a.client_id order by ir.created_at desc limit 1);
   if v_form.id is null then
     select fm.* into v_form from intake_forms fm where fm.firm_id = a.firm_id and fm.is_active and fm.service_id = a.service_id limit 1;
   end if;
@@ -265,6 +281,34 @@ end $$;
 revoke execute on function public.appointment_readiness(uuid) from public, anon;
 grant  execute on function public.appointment_readiness(uuid) to authenticated;
 
+-- The door itself. The live insert policy on intake_responses asks only that the row names the
+-- caller as its client, and check_row_firm() only that the firm matches the appointment's — so
+-- any signed-in person who learned an appointment id could write answers onto somebody else's
+-- consultation, and the firm's screens and the readiness would read them as the client's. They
+-- are now refused at the table: a response naming an appointment must be that client's own, and
+-- the form it names must be the same firm's. book_appointment() and amend_intake_response() are
+-- SECURITY DEFINER and write the client's own row, so neither is affected.
+create or replace function public.guard_intake_response() returns trigger
+language plpgsql security definer set search_path = public as $$
+declare a appointments%rowtype;
+begin
+  if new.appointment_id is not null then
+    select * into a from appointments where id = new.appointment_id;
+    if not found then raise exception 'appointment not found'; end if;
+    if new.client_id is distinct from a.client_id then
+      raise exception 'answers to a consultation are its own client''s' using errcode = '42501';
+    end if;
+  end if;
+  if new.form_id is not null and not exists (select 1 from intake_forms fm where fm.id = new.form_id and fm.firm_id = new.firm_id) then
+    raise exception 'that form is not this firm''s' using errcode = '42501';
+  end if;
+  return new;
+end $$;
+revoke execute on function public.guard_intake_response() from public, anon, authenticated;
+drop trigger if exists intake_responses_guard on public.intake_responses;
+create trigger intake_responses_guard before insert or update on public.intake_responses
+  for each row execute function public.guard_intake_response();
+
 -- ---------------------------------------------------------------- 5. the client answers what is still missing
 -- Answers are insert-once (migration 24) and stay so: a new row carries the old answers plus the
 -- new ones, and the latest row is the one that counts.
@@ -276,8 +320,11 @@ begin
   if not found or a.client_id is distinct from auth.uid() then raise exception 'not permitted' using errcode = '42501'; end if;
   if a.status not in ('pending', 'awaiting_payment', 'confirmed', 'rescheduled') then raise exception 'this consultation is %', a.status; end if;
   if p_answers is null or jsonb_typeof(p_answers) <> 'object' then raise exception 'answers must be an object'; end if;
-  select * into v_prev from intake_responses where appointment_id = a.id order by created_at desc limit 1;
-  v_form := v_prev.form_id;
+  -- The client's own latest answers, and a form of this firm's: the same two filters the
+  -- readiness applies, so an amendment never carries a stranger's text or another firm's form
+  -- forward into the row that counts.
+  select * into v_prev from intake_responses where appointment_id = a.id and client_id = a.client_id order by created_at desc limit 1;
+  select v_prev.form_id into v_form from intake_forms fm where fm.id = v_prev.form_id and fm.firm_id = a.firm_id;
   if v_form is null then
     select id into v_form from intake_forms where firm_id = a.firm_id and is_active and service_id = a.service_id limit 1;
   end if;
@@ -316,13 +363,18 @@ end $$;
 revoke execute on function public.confirm_appointment(uuid) from public, anon;
 grant  execute on function public.confirm_appointment(uuid) to authenticated;
 
--- The rule, whoever writes: with the switch on, a row does not become confirmed until it is
--- ready. Staff UPDATE on appointments is whole-row, so a direct PATCH meets the same trigger.
+-- The rule, whoever writes: with the switch on, a booking does not go live until it is ready.
+-- Staff UPDATE on appointments is whole-row and staff INSERT is unrestricted, so the guard has
+-- to be about the state reached rather than about one column being set to one value. 'confirmed'
+-- and 'rescheduled' are both live everywhere else in Docket — reminders go out for either, the
+-- console opens the room for either, release_expired_holds() releases neither — so entering
+-- either one, by update or by insert, is the confirmation this rule is about.
 create or replace function public.guard_appointment_confirm() returns trigger
 language plpgsql security definer set search_path = public as $$
-declare v jsonb;
+declare v jsonb; v_was_live bool;
 begin
-  if new.status = 'confirmed' and old.status is distinct from 'confirmed'
+  v_was_live := tg_op = 'UPDATE' and old.status in ('confirmed', 'rescheduled');
+  if new.status in ('confirmed', 'rescheduled') and not v_was_live
      and (select checkin_before_confirm from firms where id = new.firm_id) then
     v := appointment_checkin(new.id);
     if not (v ->> 'ready')::bool then
@@ -332,8 +384,11 @@ begin
   end if;
   return new;
 end $$;
+-- AFTER, not BEFORE, and insert as well as update: appointment_checkin() reads the appointment
+-- back out of the table, so it can only see a row that is already there. Raising from an AFTER
+-- trigger rolls the statement back just the same.
 drop trigger if exists appointments_guard_confirm on public.appointments;
-create trigger appointments_guard_confirm before update of status on public.appointments
+create trigger appointments_guard_confirm after insert or update of status on public.appointments
   for each row execute function public.guard_appointment_confirm();
 revoke execute on function public.guard_appointment_confirm() from public, anon, authenticated;
 
@@ -518,10 +573,18 @@ begin
   -- outstanding, and the lawyer once, a day out, that it is theirs to confirm.
   for r in select * from appointments where status = 'pending' and starts_at between now() and now() + interval '49 hours' loop
     if not ('checkin' = any(r.reminders_sent)) and r.starts_at - now() <= interval '48 hours' then
-      perform enqueue_notification(r.client_id, r.firm_id, 'appointment_checkin_due',
-        jsonb_build_object('appointment_id', r.id, 'reference', r.reference, 'starts_at', r.starts_at));
+      -- Only where something is actually the client's to do. A client who has paid, answered,
+      -- sent what was asked for and accepted the terms is waiting on the firm — telling them to
+      -- "finish what is still needed" would be telling them to do nothing, at the firm's expense.
+      -- The conflict item is the firm's own work and never counts here. The key is recorded
+      -- either way, so the nudge stays a once-only thing.
+      if exists (select 1 from jsonb_array_elements(appointment_checkin(r.id) -> 'items') i
+                  where not (i ->> 'satisfied')::bool and i ->> 'kind' <> 'conflict') then
+        perform enqueue_notification(r.client_id, r.firm_id, 'appointment_checkin_due',
+          jsonb_build_object('appointment_id', r.id, 'reference', r.reference, 'starts_at', r.starts_at));
+        n := n + 1;
+      end if;
       update appointments set reminders_sent = reminders_sent || 'checkin'::text where id = r.id;
-      n := n + 1;
     end if;
     if r.lawyer_id is not null and not ('unconfirmed' = any(r.reminders_sent)) and r.starts_at - now() <= interval '24 hours' then
       perform enqueue_notification(r.lawyer_id, r.firm_id, 'appointment_awaiting_confirmation',

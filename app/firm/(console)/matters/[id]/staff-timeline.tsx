@@ -78,9 +78,12 @@ export function StaffTimeline({
   const router = useRouter();
   const [items, setItems] = useState<StaffUpdate[]>(initial);
   // The note as typed, kept on this device until it is posted (src/lib/drafts.ts).
-  const draft = useDeviceDraft<{ title: string; body: string; visibility: "client" | "internal"; shape: ClientUpdateShape }>(
+  // The note's id is part of the draft, not minted at submit: a form whose reply was lost is
+  // sent again with the same id, the database refuses the duplicate primary key, and the client
+  // is not told about the same note twice. The id is replaced once a note is actually posted.
+  const draft = useDeviceDraft<{ title: string; body: string; visibility: "client" | "internal"; shape: ClientUpdateShape; id: string }>(
     draftKey(userId, `note:${matterId}`),
-    { title: "", body: "", visibility: "client", shape: EMPTY_SHAPE },
+    { title: "", body: "", visibility: "client", shape: EMPTY_SHAPE, id: crypto.randomUUID() },
     (v) => !v.title.trim() && !v.body.trim() && !v.shape.meaning && !v.shape.nextStep && !v.shape.clientAction && !v.shape.nextUpdateBy,
   );
   const { title, body, visibility, shape } = draft.value;
@@ -123,7 +126,7 @@ export function StaffTimeline({
 
     setBusy(true);
     const row = {
-      id: crypto.randomUUID(),
+      id: draft.value.id,
       matter_id: matterId,
       firm_id: firmId,
       kind: "note",
@@ -141,7 +144,7 @@ export function StaffTimeline({
       next_update_by: visibility === "client" ? shape.nextUpdateBy || null : null,
     };
     // No .select(): the select policy cannot read a row inserted by the same statement.
-    let insertError: { message: string } | null = null;
+    let insertError: { message: string; code?: string } | null = null;
     try {
       ({ error: insertError } = await supabase.from("updates").insert(row));
     } catch (e) {
@@ -150,10 +153,13 @@ export function StaffTimeline({
       return;
     }
     setBusy(false);
-    if (insertError) { setError(insertError.message); return; }
+    // The same id landing twice is this note already posted — the reply to the first attempt was
+    // lost, not the note. Treated as sent, so nothing is posted or notified a second time.
+    if (insertError && insertError.code !== "23505") { setError(insertError.message); return; }
 
-    setItems((cur) => [{ ...row, payload: {}, created_at: row.occurred_at } as StaffUpdate, ...cur]);
+    setItems((cur) => (cur.some((u) => u.id === row.id) ? cur : [{ ...row, payload: {}, created_at: row.occurred_at } as StaffUpdate, ...cur]));
     draft.clear();
+    draft.set((v) => ({ ...v, id: crypto.randomUUID() }));
     setNoted(visibility);
     router.refresh();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -172,6 +178,7 @@ export function StaffTimeline({
           <CourtUpdateForm
             matterId={matterId}
             firmId={firmId}
+            userId={userId}
             timezone={timezone}
             courts={courts}
             currentCourtId={currentCourtId}

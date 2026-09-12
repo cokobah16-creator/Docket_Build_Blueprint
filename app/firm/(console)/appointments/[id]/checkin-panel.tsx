@@ -7,10 +7,12 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { confirmAppointment, requestAppointmentDocument, withdrawAppointmentDocumentRequest } from "@/lib/actions/checkin";
+import { runConflictCheck } from "@/lib/actions/matters";
+import { DecideCheck, MatchList } from "@/components/firm/conflict-decision";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { formatDay } from "@/lib/days";
-import type { AppointmentReadiness, DocumentRequestRow } from "@/lib/db/types";
+import type { AppointmentReadiness, ConflictMatch, DocumentRequestRow } from "@/lib/db/types";
 
 const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
 
@@ -21,6 +23,13 @@ export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWr
   const [title, setTitle] = useState("");
   const [why, setWhy] = useState("");
   const [dueOn, setDueOn] = useState("");
+  // The reference travels with the form: a request whose reply was lost is asked once, not twice
+  // (migration 36). Replaced only after one is actually made.
+  const [askRef, setAskRef] = useState<string>(() => crypto.randomUUID());
+  // The firm's own check, run against this consultation. conflict_cleared_for_appointment() reads
+  // exactly the checks that name it, so this is the only thing that can satisfy that item.
+  const [check, setCheck] = useState<{ checkId: string; matches: ConflictMatch[] } | null>(null);
+  const [checking, setChecking] = useState(false);
   const open = requests.filter((r) => !r.fulfilled_at && !r.cancelled_at);
   const answered = requests.filter((r) => r.fulfilled_at);
 
@@ -36,9 +45,9 @@ export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWr
     e.preventDefault();
     setError(null);
     start(async () => {
-      const r = await requestAppointmentDocument(appointmentId, firmId, { title, why: why || null, dueOn: dueOn || null });
+      const r = await requestAppointmentDocument(appointmentId, firmId, { title, why: why || null, dueOn: dueOn || null }, askRef);
       if (r?.error) { setError(r.error); return; }
-      setTitle(""); setWhy(""); setDueOn("");
+      setTitle(""); setWhy(""); setDueOn(""); setAskRef(crypto.randomUUID());
       router.refresh();
     });
   }
@@ -66,6 +75,36 @@ export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWr
         ))}
         {readiness.items.length === 0 && <li className="py-2 text-sm text-gray-600">Nothing is required of the client before this consultation.</li>}
       </ul>
+
+      {/* The firm's own check. It exists as a readiness item only where the firm requires
+          clearance, and only a check naming this consultation clears it. */}
+      {readiness.items.some((i) => i.kind === "conflict") && (
+        <div className="rounded-lg border border-gray-200 p-3">
+          <p className="text-sm font-medium text-gray-900">The firm&rsquo;s own check</p>
+          <p className="text-xs text-gray-600">Run against this consultation, over the firm&rsquo;s own register. The client never sees what it found.</p>
+          {readiness.items.find((i) => i.kind === "conflict")?.satisfied ? (
+            <p className="mt-2 text-sm text-emerald-800">Cleared.</p>
+          ) : (
+            <div className="mt-2 space-y-2">
+              {!check && (
+                <Button type="button" size="sm" disabled={checking || !canWrite} onClick={() => {
+                  setError(null); setChecking(true);
+                  runConflictCheck(firmId, { appointmentId })
+                    .then((r) => { if ("error" in r) setError(r.error); else setCheck({ checkId: r.checkId, matches: r.matches }); })
+                    .catch(() => setError("The check did not run — the connection may have dropped. Try again."))
+                    .finally(() => setChecking(false));
+                }}>{checking ? "Checking…" : "Run the check"}</Button>
+              )}
+              {check && (
+                <>
+                  <MatchList matches={check.matches} names={{}} />
+                  <DecideCheck checkId={check.checkId} matterId={null} appointmentId={appointmentId} onDone={() => { setCheck(null); router.refresh(); }} />
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {readiness.held && (
         <div className="flex flex-wrap items-center gap-3">

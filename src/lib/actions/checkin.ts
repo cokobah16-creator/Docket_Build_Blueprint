@@ -54,7 +54,7 @@ export async function confirmAppointment(appointmentId: string): Promise<Err> {
 const plainDay = z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Give the day as YYYY-MM-DD.");
 
 /** Ask the client for a document before the consultation. Under document_requests_insert. */
-export async function requestAppointmentDocument(appointmentId: string, firmId: string, input: { title: string; why?: string | null; dueOn?: string | null }): Promise<Err> {
+export async function requestAppointmentDocument(appointmentId: string, firmId: string, input: { title: string; why?: string | null; dueOn?: string | null }, clientRef?: string | null): Promise<Err> {
   if (!uuid.safeParse(appointmentId).success || !uuid.safeParse(firmId).success) return { error: "Unknown appointment." };
   const schema = z.object({
     title: z.string().trim().min(2, "Say what document you need.").max(200),
@@ -68,11 +68,13 @@ export async function requestAppointmentDocument(appointmentId: string, firmId: 
   if (!supabase) return { error: "Not configured." };
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { error: "Not signed in." };
+  const ref = clientRef && uuid.safeParse(clientRef).success ? clientRef : null;
   const { error } = await supabase.from("document_requests").insert({
     firm_id: firmId, appointment_id: appointmentId, matter_id: null,
-    title: d.title, why: d.why || null, due_on: d.dueOn || null, requested_by: auth.user.id,
+    title: d.title, why: d.why || null, due_on: d.dueOn || null, requested_by: auth.user.id, client_ref: ref,
   });
-  if (error) return { error: error.message };
+  // The same reference is the same request (migration 36): a retry after a lost reply asks once.
+  if (error && !(ref && error.code === "23505")) return { error: error.message };
   refresh(appointmentId);
   return undefined;
 }

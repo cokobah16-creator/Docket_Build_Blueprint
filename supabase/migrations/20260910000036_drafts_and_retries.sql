@@ -131,6 +131,20 @@ end $function$;
 revoke execute on function public.post_court_update(uuid, text, timestamptz, text, text, timestamptz, text, text, text, uuid, text, boolean, text, text, text, text, text, text, boolean, date, uuid) from public, anon;
 grant  execute on function public.post_court_update(uuid, text, timestamptz, text, text, timestamptz, text, text, text, uuid, text, boolean, text, text, text, text, text, text, boolean, date, uuid) to authenticated;
 
+-- A request has a reference too, for the same reason. The guides say a form that lost its reply
+-- can be sent again safely; that was true of a court update and of a message, and not of a
+-- request for a document, which had no reference at all and so was asked twice — with a second
+-- notification to the client. The reference is per firm, because a request is on a matter or on
+-- a consultation and the two live in one table.
+alter table public.document_requests add column client_ref uuid;
+create unique index document_requests_client_ref_idx on public.document_requests (firm_id, client_ref) where client_ref is not null;
+comment on column public.document_requests.client_ref is 'Minted by the form for one request; the same reference in the same firm is the same request, so a retry after a lost reply lands once.';
+-- Narrowed while we are here, the way 33 narrowed the update: insert was blanket, so a column
+-- added later would have been writable by the API by omission. fulfilled_document_id and
+-- fulfilled_at are fulfil_document_request()'s to write, never the caller's.
+revoke insert on public.document_requests from authenticated;
+grant  insert (id, firm_id, matter_id, appointment_id, title, why, due_on, requested_by, client_ref) on public.document_requests to authenticated;
+
 -- ---------------------------------------------------------------- 2. a document with no file answers nothing, and can be retired
 create or replace function public.fulfil_document_request(p_request uuid, p_document uuid)
 returns void language plpgsql security definer set search_path = public as $$

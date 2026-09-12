@@ -13,6 +13,7 @@ export function describeNotification(event: string, payload: Record<string, unkn
     case "appointment_checkin_due": return { title: "Before your consultation", body: `${when} · not yet confirmed`, url: appt };
     case "appointment_awaiting_confirmation": return { title: "A held consultation needs confirming", body: when, url: `/firm/appointments/${p.appointment_id ?? ""}` };
     case "document_requested": return { title: "A document is needed", body: String(p.title ?? ""), url: p.appointment_id ? `/app/appointments/${p.appointment_id}` : `${matter}?tab=documents` };
+    case "document_received": return { title: "A requested document arrived", body: String(p.name ?? p.title ?? ""), url: p.appointment_id ? `/firm/appointments/${p.appointment_id}` : `/firm/matters/${p.matter_id ?? ""}?tab=documents` };
     case "appointment_reminder_24h": return { title: "Consultation tomorrow", body: when, url: appt };
     case "appointment_reminder_1h": return { title: "Consultation in 1 hour", body: when, url: appt };
     case "appointment_reminder_10m": return { title: "Consultation in 10 minutes", body: "Join the waiting room.", url: `${appt}/waiting-room` };

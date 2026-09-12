@@ -96,14 +96,26 @@ export function useDeviceDraft<T>(key: string | null, initial: T, empty: (v: T) 
   return { value, set, restored, clear };
 }
 
-/** The signed-in person's id, for a draft key, in a component that was not handed it. */
-export function useDraftOwner(): string | null {
-  const [id, setId] = useState<string | null>(null);
+/**
+ * The signed-in person's id, for a draft key, in a component that was not handed it.
+ *
+ * getSession() and not getUser(): getUser() is a round trip to /auth/v1/user, and this id is
+ * what the draft key is built from — so on the one occasion the draft exists for, a connection
+ * that has already dropped, the round trip fails, the key stays null and nothing is kept, while
+ * the form goes on saying that what you type is kept on this device. getSession() reads the
+ * token the browser already holds. A caller that knows the id should pass it instead: `given`
+ * short-circuits this entirely.
+ */
+export function useDraftOwner(given?: string | null): string | null {
+  const [id, setId] = useState<string | null>(given ?? null);
   useEffect(() => {
+    if (given) { setId(given); return; }
     const supabase = supabaseBrowser();
     if (!supabase) return;
-    supabase.auth.getUser().then(({ data }) => setId(data.user?.id ?? null)).catch(() => undefined);
-  }, []);
+    supabase.auth.getSession()
+      .then(({ data }) => setId(data.session?.user?.id ?? null))
+      .catch(() => undefined);
+  }, [given]);
   return id;
 }
 

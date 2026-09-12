@@ -84,7 +84,9 @@ export function StaffDocuments({
   const router = useRouter();
   const [askOpen, setAskOpen] = useState(false);
   // The request as typed, kept on this device until it is asked (src/lib/drafts.ts).
-  const askDraft = useDeviceDraft<{ title: string; why: string; due: string }>(draftKey(userId, `document-request:${matterId}`), { title: "", why: "", due: "" }, (v) => !v.title.trim() && !v.why.trim() && !v.due);
+  // The reference is part of the draft, so a request whose reply was lost is the same request on
+  // the next attempt and the client is not asked twice (migration 36).
+  const askDraft = useDeviceDraft<{ title: string; why: string; due: string; ref: string }>(draftKey(userId, `document-request:${matterId}`), { title: "", why: "", due: "", ref: crypto.randomUUID() }, (v) => !v.title.trim() && !v.why.trim() && !v.due);
   const askTitle = askDraft.value.title, askWhy = askDraft.value.why, askDue = askDraft.value.due;
   const setAskTitle = (t: string) => askDraft.set((v) => ({ ...v, title: t }));
   const setAskWhy = (t: string) => askDraft.set((v) => ({ ...v, why: t }));
@@ -97,9 +99,11 @@ export function StaffDocuments({
     e.preventDefault();
     setAskError(null); setAskBusy(true);
     try {
-      const r = await requestDocument(matterId, firmId, { title: askTitle, why: askWhy || undefined, dueOn: askDue || null });
+      const r = await requestDocument(matterId, firmId, { title: askTitle, why: askWhy || undefined, dueOn: askDue || null }, askDraft.value.ref);
       if (r?.error) { setAskError(r.error); return; }
-      askDraft.clear(); setAskOpen(false);
+      askDraft.clear();
+      askDraft.set((v) => ({ ...v, ref: crypto.randomUUID() }));
+      setAskOpen(false);
       router.refresh();
     } catch (err) {
       setAskError(isNetworkFailure(err) ? NOT_SENT : (err instanceof Error ? err.message : NOT_SENT));
@@ -153,6 +157,9 @@ export function StaffDocuments({
     setBusy(`Uploading ${file.name}…`);
     try {
       if (!reuse) {
+        // Kept before the insert, not after its reply: the ids are minted here, so a reply that
+        // never arrives must not be the reason the device forgets which row it just made.
+        writeDraft(key, { name: file.name, size: file.size, documentId, versionId, storagePath: path });
         const { error: docError } = await supabase.from("documents").insert({
           id: documentId,
           firm_id: firmId,
@@ -163,15 +170,23 @@ export function StaffDocuments({
           client_visible: false,
           uploaded_by: userId,
         });
-        if (docError) { setError(docError.message); return; }
-        writeDraft(key, { name: file.name, size: file.size, documentId, versionId, storagePath: path });
+        // The same id twice is this row already made — the first reply was lost, not the insert.
+        if (docError && docError.code !== "23505") { clearDraft(key); setError(docError.message); return; }
       }
 
       // Hash before the upload, from the file the person actually chose.
       const checksum = await sha256Hex(file);
 
       const { error: upError } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || undefined, upsert: false });
-      if (upError && !isAlreadyStored(upError.message)) { setError(`Upload failed: ${upError.message}`); return; }
+      // A resume that fails for anything but the network is a resume onto a row that is no
+      // longer there to write to — retired by a colleague, most often. Keeping the record would
+      // make every later attempt with the same file fail the same way, with no row on screen to
+      // remove and no way out but renaming the file. Forget it and start a fresh document.
+      if (upError && !isAlreadyStored(upError.message)) {
+        if (reuse) { clearDraft(key); setError(`That upload could not be finished — the document it belonged to is gone. Choose the file again to send it as a new one.`); }
+        else setError(`Upload failed: ${upError.message}`);
+        return;
+      }
 
       const { error: versionError } = await supabase.from("document_versions").insert({
         id: versionId,
@@ -182,7 +197,7 @@ export function StaffDocuments({
         checksum,
         uploaded_by: userId,
       });
-      if (versionError && versionError.code !== "23505") { setError(versionError.message); return; }
+      if (versionError && versionError.code !== "23505") { if (reuse) clearDraft(key); setError(versionError.message); return; }
       clearDraft(key);
       router.refresh();
     } catch (err) {
@@ -198,7 +213,9 @@ export function StaffDocuments({
     try {
       const r = await retireEmptyDocument(doc.id);
       if (r?.error) { setError(r.error); return; }
-      clearDraft(uploadKey(userId, `matter:${matterId}`));
+      // Only when it is this row's record: another row's stopped upload is still finishable.
+      const k = uploadKey(userId, `matter:${matterId}`);
+      if (readDraft<UploadInProgress>(k)?.documentId === doc.id) clearDraft(k);
       router.refresh();
     } catch (err) {
       setError(isNetworkFailure(err) ? "Not removed — the connection dropped." : (err instanceof Error ? err.message : "Not removed."));
@@ -486,7 +503,13 @@ export function StaffDocuments({
                     </Button>
                   ) : (
                     <span className="flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-[#92400E]">No file yet — the upload stopped. Choose the same file again to finish it, or remove the entry.</span>
+                      <span className="text-xs text-[#92400E]">No file yet — the upload stopped.</span>
+                      {/* Bound to this row, so it finishes THIS document on any device, rather than
+                          depending on ids this browser happens to still hold. */}
+                      <label className="inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-gray-300 px-3 text-sm text-gray-800 hover:bg-black/5">
+                        Finish upload
+                        <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => uploadVersion(d, e)} disabled={Boolean(busy)} />
+                      </label>
                       <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>
                     </span>
                   )}

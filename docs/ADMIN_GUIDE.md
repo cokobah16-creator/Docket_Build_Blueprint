@@ -72,7 +72,9 @@ made or paid, as it always was. Switched on, every booking is **held** — the t
 client's, the slot is taken — until you confirm it, and the database refuses the confirmation
 until what you asked for is in:
 
-- the fee, where the service is paid;
+- the fee, but only where the service is one you are **paid in advance for**. A service you
+  settled to be paid later, or in chambers, is not turned into a pay-first one by switching this
+  on: the booking is not held for a fee you have not asked for yet;
 - the questions your intake form marks required (a client who skipped one answers it in their
   app, on the consultation, without redoing the rest);
 - any document you asked for **on the consultation** (the consultation page → Ask the client for
@@ -125,13 +127,21 @@ with the file, and whoever asked is told it arrived.
 A court update posted from a corridor, a note, a message, a document request: each is kept on the
 device as you type it, and offered back when you open the same form again on that device. A form
 that lost its reply can be sent again safely — Docket recognises the posting it already made and
-does not make a second timeline entry, court event or client notification. While you are offline
-the console says so in the corner and the send buttons wait.
+does not make a second timeline entry, court event, request or client notification. While you are
+offline the console says so in the corner and the send buttons wait.
+
+**One thing to know if you correct something before re-sending.** A send whose reply never arrived
+may in fact have gone through. So if you change anything — the outcome, the next date, the words to
+the client — before trying again, Docket treats it as a new posting rather than the same one,
+because the old one may already be on the timeline and cannot be edited. Re-send unchanged and it
+lands once; correct it first and you may get both, the original and the correction. Look at the
+timeline after a dropped connection before you retype.
 
 An upload that stopped part-way leaves a document with no file. It is listed, but it answers no
-request and the client cannot open it. **Finish upload** beside it completes it; **Remove** retires
-it if you would rather start again. Drafts live on the device, not in Docket: they are not backed
-up, they are not visible to anyone else, and they are cleared when you sign out.
+request and the client cannot open it. **Finish upload** beside it completes it — from any device,
+not only the one that started it; **Remove** retires it if you would rather start again. Drafts
+live on the device, not in Docket: they are not backed up, they are not visible to anyone else,
+and they are cleared when you sign out.
 
 ## Conflict checks
 

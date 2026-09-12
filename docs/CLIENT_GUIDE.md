@@ -38,9 +38,11 @@ If you lose signal mid-way, the app shows a plain offline page rather than a bro
 small **Offline** mark in the corner while it lasts. A message you were typing is kept on that
 device until you send it: open the thread again and it is there, with the files you attached (each
 was uploaded the moment you attached it, so it is already safe). An upload that stopped
-can be finished from the same Documents tab — you will see **Finish upload** beside it — or removed
-if you would rather start again. Nothing is sent twice: a message that did go through before the
-reply was lost is recognised, not repeated.
+can be finished from the same Documents tab — you will see **Finish upload** beside it, on any
+device — or removed if you would rather start again. Nothing is sent twice: a message that did go
+through before the reply was lost is recognised, not repeated. If you change the message before
+sending it again, it is treated as a new one, because the first may already have reached your firm
+and a message cannot be unsent.
 
 ---
 

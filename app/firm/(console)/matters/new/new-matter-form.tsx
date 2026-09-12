@@ -18,7 +18,7 @@ import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { CourtPicker } from "@/components/firm/court-picker";
 import { openMatter, inviteMatterParty, runConflictCheck } from "@/lib/actions/matters";
-import { DecideCheck, MatchList } from "../[id]/conflicts-panel";
+import { DecideCheck, MatchList } from "@/components/firm/conflict-decision";
 import { statusFitsType, type ConflictMatch } from "@/lib/db/types";
 import type { StaffMember } from "@/lib/firm-data";
 import { normalizeNigerianPhone } from "@/lib/nigeria";

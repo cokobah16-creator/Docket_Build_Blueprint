@@ -29,8 +29,15 @@ export function MessagesThread({
   );
   const body = draft.value.body;
   const attachments = draft.value.attachments;
-  const setBody = (b: string) => draft.set((v) => ({ ...v, body: b }));
-  const setAttachments = (f: (a: MessageAttachment[]) => MessageAttachment[]) => draft.set((v) => ({ ...v, attachments: f(v.attachments) }));
+  // Changing the message after a send whose reply was lost makes it a different message: the
+  // first may well have landed, and sendMessage() treats the same id arriving twice as already
+  // sent — so without a fresh id the edit would be dropped and reported as sent. Messages are
+  // immutable, so there would be no way back.
+  const [attemptLost, setAttemptLost] = useState(false);
+  const edited = <T,>(v: { body: string; attachments: MessageAttachment[]; id: string }, next: Partial<typeof v> & T) =>
+    ({ ...v, ...next, id: attemptLost ? crypto.randomUUID() : v.id });
+  const setBody = (b: string) => { draft.set((v) => edited(v, { body: b })); if (attemptLost) setAttemptLost(false); };
+  const setAttachments = (f: (a: MessageAttachment[]) => MessageAttachment[]) => { draft.set((v) => edited(v, { attachments: f(v.attachments) })); if (attemptLost) setAttemptLost(false); };
   const { online } = useConnectionState();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -98,8 +105,10 @@ export function MessagesThread({
       const r = await sendMessage({ firmId, matterId, appointmentId, body, attachments, id: draft.value.id });
       if (r?.error) { setError(r.error); return; }
       draft.clear();
+      setAttemptLost(false);
       draft.set({ body: "", attachments: [], id: crypto.randomUUID() });
     } catch (e) {
+      setAttemptLost(true);
       setError(isNetworkFailure(e) ? NOT_SENT : (e instanceof Error ? e.message : NOT_SENT));
     } finally {
       setBusy(null);

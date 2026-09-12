@@ -337,19 +337,22 @@ const requestSchema = z.object({
 });
 
 /** Ask the client on a matter for a named document. Under document_requests_insert (the wall applies). */
-export async function requestDocument(matterId: string, firmId: string, input: z.input<typeof requestSchema>): Promise<Err> {
+export async function requestDocument(matterId: string, firmId: string, input: z.input<typeof requestSchema>, clientRef?: string | null): Promise<Err> {
   if (!z.string().uuid().safeParse(matterId).success || !z.string().uuid().safeParse(firmId).success) return { error: "Unknown matter." };
   const parsed = requestSchema.safeParse(input);
   if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const ref = clientRef && z.string().uuid().safeParse(clientRef).success ? clientRef : null;
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Sign in first." };
   const { error } = await supabase.from("document_requests").insert({
     firm_id: firmId, matter_id: matterId, title: parsed.data.title, why: parsed.data.why || null,
-    due_on: parsed.data.dueOn ?? null, requested_by: user.id,
+    due_on: parsed.data.dueOn ?? null, requested_by: user.id, client_ref: ref,
   });
-  if (error) return { error: error.message };
+  // The same reference is the same request: a form whose reply was lost and was sent again has
+  // already asked, and the client is not asked twice (migration 36).
+  if (error && !(ref && error.code === "23505")) return { error: error.message };
   refreshMatter(matterId);
   return undefined;
 }
@@ -590,18 +593,23 @@ export type ConflictCheckResult =
  * named, everyone that matter names. run_conflict_check() records the search as a
  * conflict_checks row; the decision is a separate step. Never another firm's register.
  */
-export async function runConflictCheck(firmId: string, input: { matterId?: string | null; names?: string[] }): Promise<ConflictCheckResult> {
+export async function runConflictCheck(firmId: string, input: { matterId?: string | null; names?: string[]; appointmentId?: string | null }): Promise<ConflictCheckResult> {
   if (!z.string().uuid().safeParse(firmId).success) return { error: "Unknown firm." };
   const matterId = input.matterId && z.string().uuid().safeParse(input.matterId).success ? input.matterId : null;
+  // A check run on a consultation is what conflict_cleared_for_appointment() reads, and so what
+  // the readiness item asks for. Without it the firm's own check could never be satisfied and a
+  // held booking could never be confirmed.
+  const appointmentId = input.appointmentId && z.string().uuid().safeParse(input.appointmentId).success ? input.appointmentId : null;
   const names = (input.names ?? []).map((n) => n.trim()).filter((n) => n.length > 0).slice(0, 20);
-  if (!matterId && names.length === 0) return { error: "Give at least one name to check." };
+  if (!matterId && !appointmentId && names.length === 0) return { error: "Give at least one name to check." };
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
-  const { data, error } = await supabase.rpc("run_conflict_check", { p_firm: firmId, p_matter: matterId, p_names: names.length > 0 ? names : null });
+  const { data, error } = await supabase.rpc("run_conflict_check", { p_firm: firmId, p_matter: matterId, p_names: names.length > 0 ? names : null, p_appointment: appointmentId });
   if (error) return { error: error.message };
   const r = (data ?? null) as { check_id?: string; keys?: string[]; matches?: import("@/lib/db/types").ConflictMatch[]; match_count?: number } | null;
   if (!r?.check_id) return { error: "The check could not be run. Try again." };
   if (matterId) refreshMatter(matterId);
+  if (appointmentId) { revalidatePath(`/firm/appointments/${appointmentId}`); revalidatePath(`/app/appointments/${appointmentId}`); }
   return { checkId: r.check_id, keys: r.keys ?? [], matches: r.matches ?? [], matchCount: Number(r.match_count ?? 0) };
 }
 
@@ -611,6 +619,7 @@ export async function decideConflictCheck(
   outcome: "clear" | "conflict" | "waived",
   note: string | null | undefined,
   matterId?: string | null,
+  appointmentId?: string | null,
 ): Promise<Err> {
   if (!z.string().uuid().safeParse(checkId).success) return { error: "Unknown check." };
   if (!["clear", "conflict", "waived"].includes(outcome)) return { error: "The outcome is clear, conflict or waived." };
@@ -622,5 +631,6 @@ export async function decideConflictCheck(
   const { error } = await supabase.rpc("decide_conflict_check", { p_check: checkId, p_outcome: outcome, p_note: trimmed || null });
   if (error) return { error: error.message };
   refreshMatter(matterId ?? null);
+  if (appointmentId) { revalidatePath(`/firm/appointments/${appointmentId}`); revalidatePath(`/app/appointments/${appointmentId}`); }
   return undefined;
 }

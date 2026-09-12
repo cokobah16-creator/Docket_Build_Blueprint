@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { Screen, ScreenHeader, FactRow } from "@/components/portal/screen";
 import { PayPanel } from "@/components/portal/pay-panel";
 import { selectedFirm } from "@/lib/portal-firm";
+import { clientTimezone } from "@/lib/portal-data";
 import type { PaymentChannel } from "@/lib/providers/payments";
 import { cancelAppointment, startPayment } from "@/lib/actions/booking";
 import { DocumentsTab } from "@/components/portal/documents-tab";
@@ -18,7 +19,7 @@ import type { AppointmentReadiness, DocumentRequestRow, DocumentVersionRow, Docu
 export const metadata = { title: "Appointment" };
 
 interface Appt {
-  id: string; reference: string; status: string; mode: string;
+  id: string; firm_id: string; reference: string; status: string; mode: string;
   starts_at: string; ends_at: string; client_timezone: string | null;
   fee_minor: number | null; currency: string | null; invoice_id: string | null;
   lawyer_id: string | null; service_id: string | null; hold_expires_at: string | null;
@@ -40,7 +41,7 @@ export default async function AppointmentPage({
 
   const { data } = await supabase
     .from("appointments")
-    .select("id, reference, status, mode, starts_at, ends_at, client_timezone, fee_minor, currency, invoice_id, lawyer_id, service_id, hold_expires_at")
+    .select("id, firm_id, reference, status, mode, starts_at, ends_at, client_timezone, fee_minor, currency, invoice_id, lawyer_id, service_id, hold_expires_at")
     .eq("id", id)
     .maybeSingle();
   const appt = (data ?? null) as Appt | null;
@@ -74,7 +75,16 @@ export default async function AppointmentPage({
   const law = lawyer as { full_name: string | null; title: string | null } | null;
   const inv = invoice as { id: string; number: string; status: string; total_minor: number; currency: string } | null;
 
+  // The zone the viewer reads in, not the one captured at booking: a document's dates belong to
+  // the person looking at them, as on every other portal screen. The consultation's own time
+  // stays in the zone it was booked in, which is what client_timezone is for.
   const tz = appt.client_timezone ?? "Africa/Lagos";
+  const viewerTz = await clientTimezone(supabase, user.id);
+  // The firm that owns this consultation. `firm` is the host or the cookie's choice, which for a
+  // client of two firms can be the other one — and a document written with that firm's id is
+  // refused by the row-firm trigger, so the upload simply failed.
+  const { data: ownerFirm } = await supabase.from("firm_public").select("id, name").eq("id", appt.firm_id).maybeSingle();
+  const apptFirm = (ownerFirm as { id: string; name: string } | null) ?? null;
   const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(appt.starts_at));
   const live = ["awaiting_payment", "pending", "confirmed", "rescheduled"].includes(appt.status);
   const upcoming = new Date(appt.starts_at).getTime() > Date.now();
@@ -124,7 +134,7 @@ export default async function AppointmentPage({
 
         {appt.status === "pending" && (
           <Alert kind="info" title="Booked and held">
-            The time is yours. {firm?.name ?? "Your firm"} confirms it once what it asked for is in — see below.
+            The time is yours. {apptFirm?.name ?? firm?.name ?? "Your firm"} confirms it once what it asked for is in — see below.
           </Alert>
         )}
 
@@ -178,10 +188,10 @@ export default async function AppointmentPage({
           </Card>
         )}
 
-        {live && firm && (
+        {live && (
           <Card>
             <CardHeader title="Documents" />
-            <DocumentsTab firmId={firm.id} matterId={null} appointmentId={appt.id} documents={documents} timezone={tz} requests={requests} userId={user.id} />
+            <DocumentsTab firmId={appt.firm_id} matterId={null} appointmentId={appt.id} documents={documents} timezone={viewerTz} requests={requests} userId={user.id} />
           </Card>
         )}
 

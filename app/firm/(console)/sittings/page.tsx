@@ -225,6 +225,7 @@ export default async function SittingsPage({
                       <CourtUpdateForm
                         matterId={s.matter_id}
                         firmId={firmId}
+                        userId={ctx.userId}
                         timezone={tz}
                         courts={courts}
                         currentCourtId={matter?.court_id ?? null}
