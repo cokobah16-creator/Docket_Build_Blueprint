@@ -143,6 +143,38 @@ begin
     or t_fails(format('insert into document_versions (id, document_id, storage_path, mime, checksum, uploaded_by) values (%L, %L, %L, ''application/pdf'', repeat(''c'', 64), %L)', gen_random_uuid(), d, f || '/' || d || '/x.pdf', cl), 'locked'));
   perform t_reset(); perform t_as(st, 'aal1');
   perform t_check('a stranger signs nothing and sees no signature', t_refused(format('select record_signature(%L, ''Nobody Here'')', v), '42501') and (select count(*) = 0 from document_signatures where document_id = d));
+  -- A contact on the matter is a party, but not the person whose signature was asked for.
+  perform t_reset();
+  insert into matter_parties (matter_id, firm_id, user_id, role) values (m, f, st, 'contact');
+  update profiles set full_name = 'Nobody Here' where id = st;
+  perform t_as(st, 'aal1');
+  perform open_document_version(v);
+  perform t_check('a contact on the matter is not a client, and signs nothing',
+    t_refused(format('select record_signature(%L, ''Nobody Here'')', v), '42501'));
+  perform t_reset();
+  delete from matter_parties where matter_id = m and user_id = st;
+end $$;
+
+-- ---------------------------------------------------------------- 3b. a second client still signs the version the first locked
+do $$
+declare l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm'); m uuid := (select v from fx where k='matter');
+        d uuid := (select v from fx where k='doc'); v uuid := (select v from fx where k='ver'); c2 uuid; sig uuid;
+begin
+  perform t_reset();
+  insert into auth.users (id, email) values (gen_random_uuid(), 'te-client2@test') returning id into c2;
+  update profiles set full_name = 'Chidi Okafor' where id = c2;
+  insert into matter_parties (matter_id, firm_id, user_id, role) values (m, f, c2, 'client');
+  perform t_as(c2, 'aal1');
+  perform t_check('the second client sees the document the firm shared', exists (select 1 from documents where id = d));
+  perform open_document_version(v);
+  sig := record_signature(v, 'Chidi Okafor');
+  perform t_check('and signs the very version the first client locked',
+    (select version_id = v and signer_role = 'client' from document_signatures where id = sig));
+  perform t_reset();
+  perform t_check('the lock did not move', (select locked_version_id = v from documents where id = d));
+  -- Put the matter back to one client: the sections below generate documents addressed to "the
+  -- client", and a second one changes which facts that resolves to.
+  delete from matter_parties where matter_id = m and user_id = c2;
   perform t_reset();
 end $$;
 

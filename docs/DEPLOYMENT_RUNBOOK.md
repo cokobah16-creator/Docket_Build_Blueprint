@@ -453,7 +453,13 @@ against 37 — it updates rows as the service role, which the column rule lets t
 records nothing new — while v9 calls `claim_notifications()`, which exists only after 37, so v9
 deployed ahead of 37 sends nothing and answers 500 every minute. Apply 37, deploy
 `dispatch-notifications` v9 and `delivery-receipts`, set the three receipt secrets, then enter the
-provider rates on `/admin/health`; nothing the front end reads changes except the two health views
+provider rates on `/admin/health`. **Watch `unfinalised` in the dispatcher's answer.** The run
+returns `{sent, failed, requeued, unfinalised}`; the last is the count of messages the provider
+accepted whose outcome could not be written back after three attempts. Those rows are still
+`sending`, `claim_notifications()` requeues them after ten minutes, and the person is sent the same
+message a second time. It should be zero; anything else is a database the function could reach to
+claim and not to finish, and is worth looking at the moment it appears rather than hearing about
+from a client; nothing the front end reads changes except the two health views
 gaining columns at the end. 38 is additive and safe either side: `firm_cause_list` gains columns
 at the end, every new table and function is new, and the deadline reminders (`docket-deadline-remind`,
 06:00 daily) render through the v9 dispatcher — deploy v9 before the first confirmed deadline

@@ -549,14 +549,20 @@ Refuses: `not permitted` *(42501)* · `this document has no file yet` ·
 `this document is already executed`
 
 #### `record_signature(p_version uuid, p_typed_name text)`
-Returns `uuid` (the signature). **Who:** anyone who may see the version — the client the firm asked,
-or a member of the firm countersigning. What it records is evidence, so each part is checked rather
+Returns `uuid` (the signature). **Who:** the matter's **client** — a party whose role is `client`,
+or the consultation's client — or a member of the firm countersigning. Not every party: a `contact`
+or `co_counsel` is a party to the matter and may see a shared document, but `request_signature()`
+asks only the clients, and a contact signing as though they were one would lock the document before
+the person whose signature was wanted. What it records is evidence, so each part is checked rather
 than accepted: the signer must have **opened this version in the last thirty minutes**
 (`document_reads`, the same record the storage policy needs before it mints a URL), the typed name
 must match `profiles.full_name` exactly once case and spacing are normalised, and the version must
 carry a checksum — which is stored on the signature, so what was signed is nameable bytes. A staff
 signature also stores the practitioner's enrolment number. The signature locks the document on that
-version: no further version, no move of the pointer, no deletion. The firm is told
+version: no further version, no move of the pointer, no deletion. **The lock does not end the
+signing** — a matter can have more than one client and `request_signature()` asks them all, so the
+others still sign that same version; what the lock refuses is a signature on a *different* one. The
+firm is told
 (`document_signed`), and a client signature posts a client-visible `document` entry on the timeline.
 `document_signed` is the one event in Docket with **two audiences** — the client hears that the firm
 countersigned, the firm that the client signed — so its payload carries `audience` (`client` or

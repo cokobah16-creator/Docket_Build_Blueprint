@@ -51,7 +51,15 @@ export function DocumentsTab({
   const router = useRouter();
   // A document the firm asked this person to sign, and which they have not signed on its current version.
   const [signing, setSigning] = useState<DocumentWithVersion | null>(null);
-  const toSign = (d: DocumentWithVersion) => Boolean(d.signature_requested_at && d.version && !d.locked_version_id && userId && !signatures.some((sg) => sg.version_id === d.version?.id && sg.signer_id === userId));
+  // A matter can have more than one client, and request_signature() asks them all. The first to
+  // sign locks the document — on that version — and the database still admits the others on the
+  // same version. So the gate is "this version is not superseded", not "nothing is locked":
+  // testing the lock alone hid the button from everyone else the firm had just asked.
+  const toSign = (d: DocumentWithVersion) => Boolean(
+    d.signature_requested_at && d.version && userId
+    && (!d.locked_version_id || d.locked_version_id === d.version.id)
+    && !signatures.some((sg) => sg.version_id === d.version?.id && sg.signer_id === userId),
+  );
   const signaturesOf = (d: DocumentWithVersion) => signatures.filter((sg) => sg.document_id === d.id);
   // Which request the next upload answers, if any. Set by "Upload this", cleared once used.
   const [forRequest, setForRequest] = useState<string | null>(null);

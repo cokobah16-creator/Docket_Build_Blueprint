@@ -295,6 +295,33 @@ begin
     and (select reminders_sent @> array['checkin'] from appointments where id = a));
 end $$;
 
+-- ---------------------------------------------------------------- 6b. an empty value is not an answer
+do $$
+declare cl uuid := (select v from fx where k='client'); l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm');
+        a uuid := gen_random_uuid();
+begin
+  perform t_reset();
+  insert into appointments (id, firm_id, reference, client_id, lawyer_id, service_id, mode, status, starts_at, ends_at, client_timezone, fee_minor, currency)
+  values (a, f, 'CK-2026-900030', cl, l, (select v from fx where k='svc_free'), 'virtual', 'pending', now() + interval '8 days', now() + interval '8 days 30 minutes', 'Africa/Lagos', 0, 'NGN');
+  perform t_as(cl, 'aal1');
+  -- ->> renders every JSON type as text, so "[]" and "{}" are two characters and would read as
+  -- answered. The client controls this object, so that would be a way to satisfy a required
+  -- question with nothing in it and have the firm confirm the booking.
+  perform amend_intake_response(a, '{"issue_summary": [], "urgency": {}}'::jsonb);
+  perform t_reset();
+  perform t_check('an empty array and an empty object answer nothing',
+    (select (i ->> 'satisfied')::bool = false and (i ->> 'detail') like '2 still%'
+       from jsonb_array_elements(appointment_checkin(a) -> 'items') i where i ->> 'kind' = 'intake'));
+  perform t_as(cl, 'aal1');
+  perform amend_intake_response(a, '{"issue_summary": "   ", "urgency": null}'::jsonb);
+  perform t_reset();
+  perform t_check('nor does whitespace, nor a null', (select (i ->> 'satisfied')::bool = false from jsonb_array_elements(appointment_checkin(a) -> 'items') i where i ->> 'kind' = 'intake'));
+  perform t_as(cl, 'aal1');
+  perform amend_intake_response(a, '{"issue_summary": "A boundary dispute", "urgency": "This week"}'::jsonb);
+  perform t_reset();
+  perform t_check('a real answer does', (select (i ->> 'satisfied')::bool from jsonb_array_elements(appointment_checkin(a) -> 'items') i where i ->> 'kind' = 'intake'));
+end $$;
+
 -- ---------------------------------------------------------------- 7. a service the firm is paid for later is not held for the fee
 do $$
 declare cl uuid := (select v from fx where k='client'); l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm');

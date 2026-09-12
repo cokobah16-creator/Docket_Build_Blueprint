@@ -310,7 +310,7 @@ grant  execute on function public.request_signature(uuid) to authenticated;
 
 create or replace function public.record_signature(p_version uuid, p_typed_name text)
 returns uuid language plpgsql security definer set search_path = public as $$
-declare v document_versions%rowtype; d documents%rowtype; v_uid uuid := auth.uid(); v_staff boolean; v_name text; v_typed text; v_read timestamptz;
+declare v document_versions%rowtype; d documents%rowtype; v_uid uuid := auth.uid(); v_staff boolean; v_is_client boolean; v_name text; v_typed text; v_read timestamptz;
         v_scn text; v_id uuid; v_consent text; r record; v_norm text; v_typed_norm text;
 begin
   if v_uid is null then raise exception 'not authenticated' using errcode = '42501'; end if;
@@ -319,7 +319,14 @@ begin
   select * into d from documents where id = v.document_id and deleted_at is null for update;
   if not found then raise exception 'document not found'; end if;
   v_staff := staff_w(d.firm_id) and can_see_matter(d.matter_id);
-  if not (v_staff or (d.client_visible and (is_matter_party(d.matter_id) or is_appointment_client(d.appointment_id)))) then
+  -- Who may sign as the client is the matter's CLIENT, not any party to it. is_matter_party() is
+  -- true for a contact and for co-counsel as well, and request_signature() asks only the clients —
+  -- so without this a contact on a shared document could sign, be recorded as the client signer,
+  -- and lock the document before the person whose signature was actually wanted.
+  v_is_client := exists (select 1 from matter_parties mp
+                          where mp.matter_id = d.matter_id and mp.user_id = v_uid and mp.role = 'client')
+              or is_appointment_client(d.appointment_id);
+  if not (v_staff or (d.client_visible and v_is_client)) then
     raise exception 'not permitted' using errcode = '42501';
   end if;
   if not v_staff and d.signature_requested_at is null then raise exception 'the firm has not asked for a signature on this document'; end if;

@@ -214,7 +214,15 @@ begin
     select coalesce(jsonb_agg(jsonb_build_object('key', q ->> 'key', 'label', q ->> 'label')), '[]'::jsonb), count(*) into v_missing, v_required
       from jsonb_array_elements(v_form.schema -> 'questions') q
      where (q ->> 'required')::bool is true and coalesce(q ->> 'type', 'text') <> 'file' and q -> 'show_if' is null
-       and length(btrim(coalesce(v_answers ->> (q ->> 'key'), ''))) = 0;
+       -- An answer is a value with something in it. `->>` renders every JSON type as text, so an
+       -- empty array arrives as "[]" and an empty object as "{}" — two characters, and the
+       -- question would read as answered. amend_intake_response() takes an arbitrary object from
+       -- the client, so that is a way to satisfy a required question with nothing at all.
+       and (    (v_answers -> (q ->> 'key')) is null
+             or jsonb_typeof(v_answers -> (q ->> 'key')) = 'null'
+             or (jsonb_typeof(v_answers -> (q ->> 'key')) = 'string' and btrim(v_answers ->> (q ->> 'key')) = '')
+             or (jsonb_typeof(v_answers -> (q ->> 'key')) = 'array'  and jsonb_array_length(v_answers -> (q ->> 'key')) = 0)
+             or (jsonb_typeof(v_answers -> (q ->> 'key')) = 'object' and (v_answers -> (q ->> 'key')) = '{}'::jsonb));
     if v_required > 0 then
       v_items := v_items || jsonb_build_object('kind', 'intake', 'label', 'Answer the questions your firm asks before a consultation', 'satisfied', false,
                    'detail', format('%s still unanswered.', v_required), 'missing', v_missing, 'ref', v_form.id);

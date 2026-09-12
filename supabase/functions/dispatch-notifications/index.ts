@@ -262,9 +262,22 @@ async function rateFor(provider: string, channel: string): Promise<Rate | null> 
   return rate;
 }
 
-async function finish(id: string, args: Record<string, unknown>) {
-  const { error } = await supabase.rpc('finish_notification', { p_id: id, ...args });
-  if (error) console.error('finish_notification failed', id, error.message);
+/**
+ * Record what the provider said. This is the one call that must not be lost: the message has
+ * already gone, and a row left 'sending' is requeued by claim_notifications() after ten minutes
+ * and SENT AGAIN. So it is retried rather than logged once, and a failure that survives every
+ * attempt is returned to the caller, which counts it and reports it in the run's answer — an
+ * operator seeing `unfinalised` above zero is being told a message may go out twice, instead of
+ * finding out from the client.
+ */
+async function finish(id: string, args: Record<string, unknown>): Promise<boolean> {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const { error } = await supabase.rpc('finish_notification', { p_id: id, ...args });
+    if (!error) return true;
+    console.error(`finish_notification failed (attempt ${attempt + 1})`, id, error.message);
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 250 * (attempt + 1)));
+  }
+  return false;
 }
 
 Deno.serve(async (req: Request) => {
@@ -277,7 +290,7 @@ Deno.serve(async (req: Request) => {
   const { data: rows, error } = await supabase.rpc('claim_notifications', { p_limit: 50 });
   if (error) return new Response(error.message, { status: 500 });
 
-  let sent = 0, failed = 0, requeued = 0;
+  let sent = 0, failed = 0, requeued = 0, unfinalised = 0;
   for (const r of (rows ?? []) as Row[]) {
     const firm = r.firm_name ?? 'Docket';
     const tz = r.timezone ?? 'Africa/Lagos';
@@ -320,15 +333,20 @@ Deno.serve(async (req: Request) => {
       // else without a rate is recorded as unpriced, never as free.
       const rate = await rateFor(result.provider, r.channel);
       const cost = rate ? (rate.per_segment ? rate.unit_minor * Math.max(segments, 1) : rate.unit_minor) : result.provider === 'webpush' ? 0 : null;
-      await finish(r.id, { p_outcome: 'sent', p_provider: result.provider, p_provider_ref: result.ref, p_segments: segments, p_cost_minor: cost, p_cost_currency: rate?.currency ?? null });
+      const recorded = await finish(r.id, { p_outcome: 'sent', p_provider: result.provider, p_provider_ref: result.ref, p_segments: segments, p_cost_minor: cost, p_cost_currency: rate?.currency ?? null });
       sent++;
+      // The message went, but the row still says 'sending' and will be claimed again in ten
+      // minutes — so this one may reach the person twice. Counted and returned rather than
+      // buried in a log line nobody reads.
+      if (!recorded) unfinalised++;
     } catch (e: any) {
       // Anything that is not a classified send failure — a bug here, a provider library throwing —
       // is treated as transient: the row comes back, bounded, rather than dying on a guess.
       const se = e instanceof SendError ? e : new SendError(String(e?.message ?? e), true, null);
-      await finish(r.id, { p_outcome: 'failed', p_provider: se.provider, p_error: se.message.slice(0, 500), p_failure_kind: se.transient ? 'transient' : 'permanent' });
+      const recorded = await finish(r.id, { p_outcome: 'failed', p_provider: se.provider, p_error: se.message.slice(0, 500), p_failure_kind: se.transient ? 'transient' : 'permanent' });
+      if (!recorded) unfinalised++;
       if (se.transient && r.send_attempts < 5) requeued++; else failed++;
     }
   }
-  return new Response(JSON.stringify({ sent, failed, requeued }), { headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ sent, failed, requeued, unfinalised }), { headers: { 'Content-Type': 'application/json' } });
 });

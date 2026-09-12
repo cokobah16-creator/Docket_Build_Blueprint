@@ -57,12 +57,17 @@ begin
 
   -- 1. bookings made in the window, and how long a paid one took to pay.
   select count(*) into v_booked from appointments a where a.firm_id = p_firm and a.created_at >= p_from and a.created_at < p_to;
-  select count(*), percentile_cont(0.5) within group (order by extract(epoch from (pm.paid_at - a.created_at)) / 3600.0)
+  -- One row per PAID BOOKING, not per successful payment. An invoice settled in two parts has two
+  -- succeeded payments, and joining straight to them would report the booking as two paid bookings
+  -- and take the time-to-pay from the first part, when the fee was not yet paid. The booking is
+  -- paid when its invoice is, and the clock stops at the payment that settled it.
+  select count(*), percentile_cont(0.5) within group (order by extract(epoch from (s.settled_at - a.created_at)) / 3600.0)
     into v_paid_n, v_pay_hours
     from appointments a
-    join invoices i on i.id = a.invoice_id
-    join payments pm on pm.invoice_id = i.id and pm.status = 'succeeded'
-   where a.firm_id = p_firm and a.created_at >= p_from and a.created_at < p_to and pm.paid_at is not null;
+    join invoices i on i.id = a.invoice_id and i.status = 'paid'
+   cross join lateral (select max(pm.paid_at) as settled_at from payments pm
+                        where pm.invoice_id = i.id and pm.status = 'succeeded' and pm.paid_at is not null) s
+   where a.firm_id = p_firm and a.created_at >= p_from and a.created_at < p_to and s.settled_at is not null;
   v_bookings := jsonb_build_object('made', v_booked, 'paid', v_paid_n,
                                    'median_hours_to_pay', round(coalesce(v_pay_hours, 0)::numeric, 2));
 
@@ -266,9 +271,9 @@ grant  execute on function public.record_firm_baseline(uuid, timestamptz, timest
 -- history scans the lot. Additive, and it costs nothing until something asks.
 create index if not exists audit_log_firm_action_idx on public.audit_log (firm_id, action, at desc);
 
--- The platform's own allow-list gains the new entity, so a baseline shows on the platform audit
--- screen as the operational event it is (migrations 37, 38, 39 do the same for theirs).
-drop policy if exists audit_log_platform_select on public.audit_log;
-create policy audit_log_platform_select on public.audit_log for select
-  using (is_platform_admin() and entity in ('firm', 'firm_member', 'domain_request', 'platform_admin', 'notification',
-                                            'provider_rates', 'workflow_packs', 'court_rules', 'rule_provisions'));
+-- The platform's audit allow-list is deliberately NOT touched here. Taking a baseline is the
+-- firm's own operational act over its own rows, not a platform matter, and the compliance stance
+-- is that a platform admin sees lifecycle and never a firm's work. Re-creating the policy to add
+-- an entity nobody needs would also have been the easy way to narrow it by accident: migration
+-- 39's version is an allow-list of six arms, several of them qualified by action or by
+-- `firm_id is null`, and a shorter replacement silently takes visibility away.

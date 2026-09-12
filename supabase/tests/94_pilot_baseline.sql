@@ -148,6 +148,36 @@ begin
   perform t_reset();
 end $$;
 
+-- ---------------------------------------------------------------- 1b. an invoice paid in two parts is one paid booking
+do $$
+declare l uuid := (select v from fx where k='lawyer'); cl uuid := (select v from fx where k='client'); f uuid := (select v from fx where k='firm');
+        a uuid := gen_random_uuid(); inv uuid := gen_random_uuid();
+        wf timestamptz := (select wfrom from win); wt timestamptz := (select wto from win); m jsonb;
+begin
+  perform t_reset();
+  insert into appointments (id, firm_id, reference, client_id, lawyer_id, service_id, mode, status, starts_at, ends_at, client_timezone, fee_minor, currency, created_at)
+  values (a, f, 'BL-2026-000004', cl, l, (select v from fx where k='svc'), 'in_person', 'completed',
+          now() - interval '6 days', now() - interval '6 days' + interval '45 minutes', 'Africa/Lagos', 5000000, 'NGN', now() - interval '8 days');
+  insert into invoices (id, firm_id, number, client_id, appointment_id, currency, subtotal_minor, vat_minor, total_minor, paid_minor, status, issued_at, due_at)
+  values (inv, f, 'BL-INV-2026-000004', cl, a, 'NGN', 5000000, 0, 5000000, 5000000, 'paid', now() - interval '8 days', (now() - interval '1 day')::date);
+  update appointments set invoice_id = inv where id = a;
+  -- Half on the day it was booked, the rest four days later. The fee was paid when the second
+  -- part landed, not the first.
+  insert into payments (invoice_id, provider, provider_ref, status, amount_minor, currency, paid_at) values
+    (inv, 'paystack', 'bl-ref-part-1', 'succeeded', 2500000, 'NGN', now() - interval '8 days'),
+    (inv, 'paystack', 'bl-ref-part-2', 'succeeded', 2500000, 'NGN', now() - interval '4 days');
+  perform t_as(l);
+  m := firm_metrics(f, wf, wt);
+  perform t_check('two successful payments on one invoice are one paid booking, not two',
+    (m -> 'bookings' ->> 'made')::int = 4 and (m -> 'bookings' ->> 'paid')::int = 2);
+  perform t_check('and the clock stops at the payment that settled it, not the first part',
+    (m -> 'bookings' ->> 'median_hours_to_pay')::numeric between 60 and 60 + 25);
+  perform t_reset();
+  delete from payments where invoice_id = inv;
+  delete from invoices where id = inv;
+  delete from appointments where id = a;
+end $$;
+
 -- ---------------------------------------------------------------- 2. one firm's numbers, and nobody else's
 do $$
 declare l uuid := (select v from fx where k='lawyer'); cl uuid := (select v from fx where k='client'); st uuid := (select v from fx where k='stranger');
