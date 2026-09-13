@@ -117,7 +117,35 @@ vacuous by showing the same colleague *does* see it before the wall goes up.
 own decision row, whatever later happens to the suit number on the matter. Correcting a typo does
 not make "we confirmed this" disappear.
 
-## 3. The pilot, as proposed
+## 3. Two things that will bite in the first week
+
+Neither is a defect; both are consequences of how matching works, and a pilot that meets one
+without warning will conclude the connector is broken.
+
+**A registry speaks for one court row, not for a judiciary.** `registries.court_id` is unique, and
+Docket's directory holds the Federal High Court as *one row per judicial division*, and the State
+High Courts likewise. So "the Lagos State High Court registry" is not one registry here — it is one
+per division the pilot covers, each with its own members and its own cause list. For a single
+division that is exactly right; for a state judiciary wanting one account for everything, it is not
+what this builds, and pretending otherwise would mean a registry publishing listings for courts it
+does not sit in.
+
+**A firm that made its own court row will match nothing.** A matter matches on `(court_id,
+suit_number)`, and any firm may add a private court entry of its own (`courts.firm_id` set) — an
+ordinary thing to have done before the platform's directory covered a court. A matter pointed at
+that private row carries a different `court_id` from the registry's, so the registry's notices for
+the very same court pass it by in silence. Before a pilot firm starts, check:
+
+```sql
+select m.reference, c.name from matters m join courts c on c.id = m.court_id
+ where m.firm_id = '<firm>' and c.firm_id is not null and m.deleted_at is null;
+```
+
+Anything that comes back should be repointed at the platform-wide court row. Docket does not merge
+the two automatically: a firm's own court entry is its own note, and deciding which court a matter
+is in is not a thing software should do on a firm's behalf.
+
+## 4. The pilot, as proposed
 
 One registry. One court. Listings only. A term.
 
@@ -134,10 +162,10 @@ One registry. One court. Listings only. A term.
 - **Ends:** with a written note from the registry and from each firm on what it was worth, and the
   decision on section 5.
 
-## 4. What to ask the registry contact before creating the registry
+## 5. What to ask the registry contact before creating the registry
 
 The platform screen at **Administration → Registries** creates a registry only when these are
-answered. None of them is technical.
+answered — and after the two checks in §3. None of them is technical.
 
 1. **What can you export, and how often?** A cause list as a spreadsheet or CSV, weekly or daily? If
    the answer is "a photocopy on the noticeboard", the pilot is a clerk retyping it, and that is
@@ -153,7 +181,7 @@ answered. None of them is technical.
 5. **What happens when you get it wrong?** Withdrawal with a reason is the only correction. Is the
    registry content to have its corrections on the record?
 
-## 5. What would come next, and what each needs
+## 6. What would come next, and what each needs
 
 | Workflow | Needs, before it is built |
 |---|---|

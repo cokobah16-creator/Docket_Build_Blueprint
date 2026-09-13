@@ -729,7 +729,7 @@ parties, registry co-members, and the platform for registry members only. A five
 an edit dropped one.
 
 **Then create no registry.** `/admin/registries` creates one only when a real court registry has
-agreed to the pilot — `docs/COURT_REGISTRY_PILOT.md` §4 has the questions to ask first. Until a
+agreed to the pilot — `docs/COURT_REGISTRY_PILOT.md` §5 has the questions to ask first, and §3 the two checks (one registry per court ROW, not per judiciary; and a firm whose matters point at its own private court entry will match nothing) that decide whether the pilot can work at all. Until a
 registry exists nothing on any firm's screen changes: the "From the court registry" card appears
 on Sittings only when a published notice matches one of that firm's suits.
 
