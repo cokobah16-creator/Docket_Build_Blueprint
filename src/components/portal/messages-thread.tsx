@@ -8,6 +8,7 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { createDocument, finalizeDocumentVersion, markThreadRead, sendMessage } from "@/lib/actions/portal";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { Icon } from "@/components/ui/icon";
 import type { MessageAttachment, MessageRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
 import { NOT_SENT, draftKey, isNetworkFailure, useDeviceDraft } from "@/lib/drafts";
@@ -120,7 +121,10 @@ export function MessagesThread({
 
   return (
     <div className="flex flex-col">
-      <div className="max-h-[55vh] space-y-3 overflow-y-auto px-5 py-4">
+      {/* dvh, not vh: the on-screen keyboard shrinks the viewport, and vh does
+          not notice — the transcript would keep a height the phone no longer
+          has and push the composer under the keyboard. */}
+      <div className="max-h-[50dvh] space-y-3 overflow-y-auto px-4 py-4 sm:px-5 lg:max-h-[55dvh]">
         {messages.length === 0 && <p className="py-6 text-center text-sm text-gray-500">No messages yet. Say hello — your lawyer is notified.</p>}
         {messages.map((m) => {
           const mine = m.sender_id === userId;
@@ -133,7 +137,7 @@ export function MessagesThread({
                 {m.attachments?.length > 0 && (
                   <ul className="mt-1 space-y-0.5 text-xs">
                     {m.attachments.map((a) => (
-                      <li key={a.document_id}><a href={docsHref} className="underline">📎 {a.name}</a></li>
+                      <li key={a.document_id}><a href={docsHref} className="inline-flex items-center gap-1 underline"><Icon name="paperclip" size={12} />{a.name}</a></li>
                     ))}
                   </ul>
                 )}
@@ -146,14 +150,24 @@ export function MessagesThread({
         })}
         <div ref={endRef} />
       </div>
-      <form onSubmit={submit} className="space-y-2 border-t border-gray-100 px-5 py-3">
+      {/* Sticky, so Send stays on screen when the keyboard opens over the page
+          and the bottom bar sits above it. */}
+      <form onSubmit={submit} className="sticky bottom-0 space-y-2 border-t border-gray-100 bg-white px-4 py-3 sm:px-5">
         {error && <Alert kind="error">{error}</Alert>}
         {attachments.length > 0 && (
           <ul className="flex flex-wrap gap-2 text-xs">
             {attachments.map((a) => (
-              <li key={a.document_id} className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700">
-                📎 {a.name}{" "}
-                <button type="button" aria-label={`Remove ${a.name}`} onClick={() => setAttachments((c) => c.filter((x) => x.document_id !== a.document_id))}>✕</button>
+              <li key={a.document_id} className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 py-1 pl-2.5 pr-1 text-gray-700">
+                <Icon name="paperclip" size={12} />
+                {a.name}
+                <button
+                  type="button"
+                  aria-label={`Remove ${a.name}`}
+                  onClick={() => setAttachments((c) => c.filter((x) => x.document_id !== a.document_id))}
+                  className="grid size-6 place-items-center rounded-full hover:bg-gray-200"
+                >
+                  <Icon name="close" size={12} strokeWidth={2.4} />
+                </button>
               </li>
             ))}
           </ul>
@@ -164,10 +178,12 @@ export function MessagesThread({
           rows={2}
           maxLength={4000}
           placeholder="Write a message…"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+          // 16px: below that iOS Safari zooms the page the moment this takes
+          // focus, and the person is left pinching back out to read the reply.
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
         />
         <div className="flex items-center justify-between gap-2">
-          <label className="cursor-pointer text-sm text-brand underline">
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 text-sm text-brand underline focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand">
             {busy?.startsWith("Attaching") ? busy : "Attach a document"}
             <input type="file" className="sr-only" onChange={attach} disabled={Boolean(busy)} />
           </label>

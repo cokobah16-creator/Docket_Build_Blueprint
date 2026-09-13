@@ -324,7 +324,7 @@ export default async function FirmClientsPage({
 
   const chipClass = (active: boolean) =>
     cn(
-      "flex min-h-10 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
+      "flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
       active ? "border-[#141414] bg-[#141414] text-white" : "border-[#D6D3CE] bg-white text-[#57534E]",
     );
 

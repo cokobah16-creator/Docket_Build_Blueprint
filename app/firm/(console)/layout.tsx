@@ -9,18 +9,21 @@
 // thing — something is late, unpaid, or waiting on you — so the ground is
 // near-monochrome and the status pills are the only saturated things on screen.
 //
-// Navigation is four bottom tabs (Today · Consultations · Clients · Me), with
-// the rest of the firm's work behind Me: a lawyer uses this in a corridor.
+// It is the same console at every size, not a different product per device: a
+// grouped sidebar on a desk, an icon rail on a tablet, and four thumbs plus
+// More on a phone. Width changes the arrangement and nothing else — a lawyer on
+// a phone is still a lawyer, with the same destinations and the same rights.
 
 import Link from "next/link";
-import { ServiceWorkerRegistrar } from "@/components/portal/sw-registrar";
-import { ConnectionBadge } from "@/components/ui/connection";
 import { redirect } from "next/navigation";
 import type { CSSProperties, ReactNode } from "react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { ConsoleNav } from "@/components/firm/console-nav";
+import { ConnectionBadge } from "@/components/ui/connection";
+import { ServiceWorkerRegistrar } from "@/components/portal/sw-registrar";
+import { AppShell } from "@/components/shell/app-shell";
+import { CONSOLE_NAV } from "@/components/shell/nav";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 
 /** Docket's own working-tool palette — deliberately not a firm's brand. */
@@ -92,57 +95,126 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
     ? await supabase.from("firms").select("id, name").in("id", otherIds)
     : { data: [] as Array<{ id: string; name: string }> };
   const others = (otherRows ?? []) as Array<{ id: string; name: string }>;
+  const firmName = firm?.name ?? ctx.firmName;
+
+  /** Which firm, and who you are in it. Written once, placed twice. */
+  const identity = (
+    <>
+      <Link
+        href="/firm"
+        className="block truncate font-heading text-[15px] font-bold tracking-[-0.02em] text-[#141414]"
+      >
+        {firmName}
+      </Link>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+        <Badge>{role}</Badge>
+        {firm?.status === "pending" && <Badge tone="waiting" icon="clock">awaiting verification</Badge>}
+        {firm?.status === "suspended" && <Badge tone="wrong" icon="alert">suspended</Badge>}
+      </div>
+    </>
+  );
+
+  /** A member of several firms changes which one they are in, from anywhere. */
+  const switcher = others.length > 0 && (
+    <nav aria-label="Switch firm" className="text-[12px] leading-relaxed text-[#57534E]">
+      <span className="block">Switch to</span>
+      {others.map((f) => (
+        <Link
+          key={f.id}
+          href={`/firm?firm=${encodeURIComponent(f.id)}`}
+          className="mt-1 flex min-h-9 items-center rounded-lg px-2 -mx-2 font-medium text-[#141414] hover:bg-black/[0.04]"
+        >
+          <span className="truncate">{f.name}</span>
+        </Link>
+      ))}
+    </nav>
+  );
 
   return (
-    <div style={CONSOLE_TOKENS} className="min-h-screen bg-brand-surface">
+    <div style={CONSOLE_TOKENS} className="min-h-[100dvh] bg-brand-surface">
       <link rel="stylesheet" href={CONSOLE_FONTS} />
       {/* The offline shell for the console too: without it a dropped connection shows the browser's own error page. */}
       <ServiceWorkerRegistrar />
-      <div className="mx-auto max-w-lg pb-[calc(72px+env(safe-area-inset-bottom))]">
-        <header className="sticky top-0 z-30 flex min-h-[50px] items-center justify-between gap-3 border-b border-[#E6E2DB] bg-white/[0.94] px-4 py-2.5 backdrop-blur-xl">
-          <div className="flex min-w-0 items-center gap-2">
-            <Link href="/firm" className="truncate font-heading text-[15px] font-bold tracking-[-0.02em] text-[#141414]">
-              {firm?.name ?? ctx.firmName}
-            </Link>
-            <Badge>{role}</Badge>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <ConnectionBadge />
-            {firm?.status === "pending" && <Badge tone="waiting" icon="clock">awaiting verification</Badge>}
-            {firm?.status === "suspended" && <Badge tone="wrong" icon="alert">suspended</Badge>}
-            {/* Every write depends on it, so the MFA state is never hidden. */}
-            <Link href="/firm/security/mfa" aria-label="Security and two-factor">
-              <Badge tone="settled" icon="check">MFA</Badge>
-            </Link>
-          </div>
-        </header>
 
-        {others.length > 0 && (
-          <nav aria-label="Switch firm" className="border-b border-[#E6E2DB] bg-[#FAF9F7] px-4 py-2 text-[12px] text-[#57534E]">
-            Showing <span className="font-semibold text-[#141414]">{ctx.firmName}</span>
-            {" · switch to "}
-            {others.map((f, i) => (
-              <span key={f.id}>
-                {i > 0 && ", "}
-                <Link href={`/firm?firm=${encodeURIComponent(f.id)}`} className="font-medium text-[#141414] underline underline-offset-2">
-                  {f.name}
-                </Link>
-              </span>
-            ))}
-          </nav>
-        )}
-
-        {firm?.status === "suspended" && (
-          <div className="px-4 pt-4">
-            <Alert kind="error" title="This firm is suspended">
-              You can still read everything. Writing is refused by the database until Docket lifts the suspension.
-            </Alert>
+      <AppShell
+        nav={CONSOLE_NAV}
+        tone="neutral"
+        navLabel="Console"
+        masthead={
+          <div className="min-w-0">
+            {identity}
+            <div className="mt-2 flex items-center gap-2">
+              <ConnectionBadge />
+              {/* Every write depends on it, so the MFA state is never hidden. */}
+              <Link href="/firm/security/mfa" aria-label="Security and two-factor">
+                <Badge tone="settled" icon="check">MFA</Badge>
+              </Link>
+            </div>
           </div>
-        )}
-
-        <main className="px-4 py-3.5">{children}</main>
-      </div>
-      <ConsoleNav />
+        }
+        navFooter={switcher || undefined}
+        header={
+          // The phone has no sidebar, so the firm's name lives in a bar of its
+          // own. Hidden from tablet up, where the rail and sidebar carry it.
+          // The two links here are a name and a badge — small things to read,
+          // but each is given the full 44px of height the bar can spare, so
+          // they are ordinary targets rather than precision work.
+          <header className="sticky top-0 z-20 flex min-h-[52px] items-center justify-between gap-3 border-b border-[#E6E2DB] bg-white/[0.94] px-4 py-1 backdrop-blur-xl md:hidden">
+            <div className="flex min-w-0 items-center gap-2">
+              <Link
+                href="/firm"
+                className="flex min-h-11 min-w-0 items-center truncate font-heading text-[15px] font-bold tracking-[-0.02em] text-[#141414]"
+              >
+                {firmName}
+              </Link>
+              <Badge>{role}</Badge>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              <ConnectionBadge />
+              {firm?.status === "pending" && <Badge tone="waiting" icon="clock">pending</Badge>}
+              {firm?.status === "suspended" && <Badge tone="wrong" icon="alert">suspended</Badge>}
+              <Link
+                href="/firm/security/mfa"
+                aria-label="Security and two-factor"
+                className="flex min-h-11 items-center"
+              >
+                <Badge tone="settled" icon="check">MFA</Badge>
+              </Link>
+            </div>
+          </header>
+        }
+        banner={
+          <>
+            {/* On a phone the sidebar's switcher is not on screen; say it here. */}
+            {others.length > 0 && (
+              <nav
+                aria-label="Switch firm"
+                className="border-b border-[#E6E2DB] bg-[#FAF9F7] px-4 py-2 text-[12px] text-[#57534E] md:hidden"
+              >
+                Showing <span className="font-semibold text-[#141414]">{ctx.firmName}</span>
+                {" · switch to "}
+                {others.map((f, i) => (
+                  <span key={f.id}>
+                    {i > 0 && ", "}
+                    <Link href={`/firm?firm=${encodeURIComponent(f.id)}`} className="font-medium text-[#141414] underline underline-offset-2">
+                      {f.name}
+                    </Link>
+                  </span>
+                ))}
+              </nav>
+            )}
+            {firm?.status === "suspended" && (
+              <div className="px-4 pt-4 md:px-6 lg:px-8">
+                <Alert kind="error" title="This firm is suspended">
+                  You can still read everything. Writing is refused by the database until Docket lifts the suspension.
+                </Alert>
+              </div>
+            )}
+          </>
+        }
+      >
+        {children}
+      </AppShell>
     </div>
   );
 }

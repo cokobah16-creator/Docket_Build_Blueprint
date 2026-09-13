@@ -3,9 +3,10 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/icon";
 
-// The portal shell holds no horizontal padding of its own, so a screen can
-// run a header, a progress bar or a dark call surface edge to edge. Screens
-// that want the ordinary gutter wrap their content in <Screen>.
+// The gutter belongs to the shell (src/components/shell/app-shell.tsx), which
+// widens it as the window does. <Screen> is the vertical rhythm inside that
+// gutter and nothing else, so a screen is laid out once and simply has more
+// room on a laptop than on a phone.
 
 export function Screen({
   className,
@@ -15,7 +16,7 @@ export function Screen({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("flex flex-col gap-3.5 px-4 pb-6 pt-3.5", className)}>
+    <div className={cn("flex flex-col gap-3.5 pb-2", className)}>
       {children}
     </div>
   );
@@ -24,7 +25,7 @@ export function Screen({
 /** The big screen title — Appointments, Matters, Messages, Profile. */
 export function ScreenTitle({ children }: { children: ReactNode }) {
   return (
-    <h1 className="font-heading text-[23px] font-semibold leading-tight tracking-[-0.015em] text-brand">
+    <h1 className="font-heading text-[23px] font-semibold leading-tight tracking-[-0.015em] text-brand md:text-[26px]">
       {children}
     </h1>
   );
@@ -38,6 +39,9 @@ export function ScreenTitle({ children }: { children: ReactNode }) {
  * `back` is a real href rather than history.back(): a client who opened the
  * waiting room from a push notification has no history to go back to, and a
  * dead chevron is worse than one that goes somewhere sensible.
+ *
+ * It runs edge to edge by cancelling the shell's gutter, so its underline
+ * spans the column at every width.
  */
 export function ScreenHeader({
   back,
@@ -60,7 +64,7 @@ export function ScreenHeader({
 }) {
   const Title = titleAs === "heading" ? "h1" : "p";
   return (
-    <header className="sticky top-0 z-20 flex min-h-[50px] items-center gap-2.5 border-b border-[#EBE7E0] bg-white/[0.92] px-3.5 py-2.5 backdrop-blur-xl">
+    <header className="sticky top-0 z-20 -mx-4 -mt-3.5 mb-0.5 flex min-h-[50px] items-center gap-2.5 border-b border-[#EBE7E0] bg-white/[0.92] px-3.5 py-2.5 backdrop-blur-xl md:-mx-6 md:-mt-5 md:px-6 lg:-mx-8 lg:px-8">
       <Link
         href={back}
         aria-label={backLabel}

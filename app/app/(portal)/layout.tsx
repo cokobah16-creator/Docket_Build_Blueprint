@@ -1,24 +1,31 @@
-// Client PWA shell: the selected firm's brand tokens + bottom navigation.
+// Client PWA shell: the selected firm's brand tokens + navigation.
 //
 // The brand comes from the firm the client is *reading* (src/lib/portal-firm),
 // not from the request host — one client may be acting with several firms, and
 // the app takes the name and colours of whichever one they have open.
 //
-// The shell carries no horizontal padding: a screen may run its header, its
-// progress bar or its dark call surface edge to edge. Gutters come from
-// <Screen> (src/components/portal/screen.tsx).
+// A client on a laptop is still a client: the same destinations and the same
+// rights as on the phone, laid out with the room a laptop has. Below 768px the
+// bottom bar carries five thumbs; above it a sidebar does the same job, and the
+// page stops being a single narrow column.
+//
+// The shell carries no horizontal padding of its own, so a screen may run its
+// header, its progress bar or its dark call surface edge to edge. Gutters come
+// from <Screen> (src/components/portal/screen.tsx) and from AppShell's main.
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
 import { currentFirm } from "@/lib/firm";
 import { selectedFirm } from "@/lib/portal-firm";
 import { brandFontsUrl, brandStyle } from "@/lib/brand";
-import { BottomNav } from "@/components/ui/bottom-nav";
 import { ToastProvider } from "@/components/ui/toast";
 import { ServiceWorkerRegistrar } from "@/components/portal/sw-registrar";
 import { ConnectionBadge } from "@/components/ui/connection";
 import { Alert } from "@/components/ui/alert";
 import { Screen } from "@/components/portal/screen";
+import { AppShell } from "@/components/shell/app-shell";
+import { PORTAL_NAV } from "@/components/shell/nav";
 import { ConsentGate } from "./consent-gate";
 
 /**
@@ -85,21 +92,39 @@ export default async function PortalLayout({ children }: { children: ReactNode }
   const gate = supabase && firm ? await consentGateFor(supabase, firm) : null;
 
   return (
-    <div style={brandStyle(firm?.brand)} className="min-h-screen bg-brand-surface">
+    <div style={brandStyle(firm?.brand)} className="min-h-[100dvh] bg-brand-surface">
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
       <ToastProvider>
         <ServiceWorkerRegistrar />
-        <div className="px-4 pt-2 empty:hidden"><ConnectionBadge /></div>
         {gate ? (
-          // No tab bar behind the gate: there is nowhere to go until it is answered.
-          <div className="mx-auto max-w-lg">{gate}</div>
+          // No navigation behind the gate, at any width: there is nowhere to go
+          // until it is answered.
+          <main id="main" className="mx-auto max-w-lg px-4 pb-8 pt-3.5">
+            <div className="pb-2 empty:hidden"><ConnectionBadge /></div>
+            {gate}
+          </main>
         ) : (
-          <>
-            <div className="mx-auto max-w-lg pb-[calc(72px+env(safe-area-inset-bottom))]">
-              {children}
-            </div>
-            <BottomNav />
-          </>
+          <AppShell
+            nav={PORTAL_NAV}
+            navLabel="Primary"
+            masthead={
+              <div className="min-w-0">
+                <Link
+                  href="/app"
+                  className="block truncate font-heading text-[15px] font-semibold tracking-[-0.015em] text-brand"
+                >
+                  {firm?.name ?? "Docket"}
+                </Link>
+                <p className="mt-0.5 text-[11.5px] text-gray-500">Your client portal</p>
+                <div className="mt-2 empty:hidden"><ConnectionBadge /></div>
+              </div>
+            }
+            header={
+              <div className="px-4 pt-2 empty:hidden md:hidden"><ConnectionBadge /></div>
+            }
+          >
+            {children}
+          </AppShell>
         )}
       </ToastProvider>
     </div>
