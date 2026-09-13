@@ -16,7 +16,8 @@ so nobody reads the table below as a description of a finished thing:
 | Project created (`wtfxbmrrpwdbyrspeeka`, `us-east-2`) | yes |
 | Migrations applied | **yes — all 52**, in order. Verified: all eight fingerprints match a local reference built from the same files, `functions` included, which hashes every function body. Migration 50 rehearsed here before production, which is what this project is for |
 | `supabase/seed.sql` loaded | **yes** — 1 firm, 14 services, 1 intake form, 15 matter statuses, matching production's counts exactly |
-| Edge Functions deployed | not yet |
+| Edge Functions deployed | **`partner-api` only, so far.** Its discovery route, and its 405/401/404 refusals, were exercised over HTTP against the deployment and match `docs/partner-api.v1.yaml` — the first time that document has been checked against something running rather than against the source. The other nine are still to deploy |
+| `DOCKET_SANDBOX=true` on staging | **not yet, and it matters.** Until it is set, staging's discovery answers `sandbox: false`, which is wrong. It is wrong in the safe direction by design — a deployment that forgets says "assume real data" — but it should be set before any partner key is issued here |
 | Auth configured (site URL, redirect allow-list) | not yet — needs `scripts/configure-providers.sh` and a `SUPABASE_ACCESS_TOKEN` |
 | Test accounts seeded | not yet — see `tests/integration/README.md` for what the journeys need |
 | GitHub repository secrets set | not yet — only a person can write those |
