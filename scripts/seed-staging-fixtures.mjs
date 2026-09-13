@@ -1,12 +1,10 @@
 #!/usr/bin/env node
 // Provision the accounts and rows the authenticated journeys need, on a STAGING project.
 //
-// STATUS: INCOMPLETE, and never yet run. It creates the people, reaches aal2 with a real second
-// factor, and opens the firm. It does NOT yet activate the firm, attach the colleague, invite and
-// accept the client, open the matters, post a message or store a document — those steps are named
-// in tests/integration/README.md and are still done by hand. Finishing them needs a project with
-// the full schema to run against, which did not exist when this was written. Do not cite it as
-// though staging were provisioned by it.
+// STATUS: complete, and NEVER YET RUN. Every step below is written against the real policies and
+// RPCs — the signatures were read out of supabase/migrations and docs/RPC_REFERENCE.md rather than
+// remembered — but nothing has executed it end to end, because staging was still applying its
+// schema when it was written. Treat the first clean run as the moment it becomes evidence.
 //
 // WHY THIS EXISTS. tests/integration/README.md asks a person to hand-make six things before the
 // journeys can run: a client with a matter, a message and a document; a second firm acting for the
@@ -75,6 +73,17 @@ async function api(path, { method = 'GET', token, body, headers = {} } = {}) {
     throw new Error(`${method} ${path} -> ${res.status}: ${text.slice(0, 400)}`);
   }
   return json;
+}
+
+/** Storage wants raw bytes and a real content type, not JSON. */
+async function putObject(bucket, path, bytes, contentType, token) {
+  const res = await fetch(`${base}/storage/v1/object/${bucket}/${path}`, {
+    method: 'POST',
+    headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'Content-Type': contentType, 'x-upsert': 'true' },
+    body: bytes,
+  });
+  if (!res.ok) throw new Error(`upload ${bucket}/${path} -> ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  return res;
 }
 
 const admin = (path, opts = {}) =>
@@ -208,6 +217,7 @@ const FIXTURES = {
   colleague:  { email: 'staff.colleague@docket-staging.invalid', fullName: 'Bode Colleague' },
   client:     { email: 'client@docket-staging.invalid', phone: '+2348000000001', fullName: 'Chidi Client' },
   otherStaff: { email: 'staff.secondfirm@docket-staging.invalid', fullName: 'Dupe Second' },
+  platform:   { email: 'platform.admin@docket-staging.invalid', fullName: 'Platform Admin' },
   firm:       { name: 'Staging Legal Partners', slug: 'staging-legal' },
   secondFirm: { name: 'Second Staging Chambers', slug: 'second-staging' },
 };
@@ -245,20 +255,146 @@ async function main() {
     console.log(`\n  firm ${FIXTURES.firm.slug} present (${firm.status})`);
   }
 
-  console.log('\n' + '-'.repeat(72));
-  console.log('INCOMPLETE. Still to do by hand (tests/integration/README.md): activate the firm,');
-  console.log('attach the colleague, invite and accept the client, open the matters including the one');
-  console.log('the client is not a party to, post a message, and store a document version.');
-  console.log('-'.repeat(72) + '\n');
+  // 4. activate it. create_firm always opens a firm 'pending', and firm_public filters to
+  //    status = 'active' — so until this runs the slug resolves to nothing and every tenant-facing
+  //    screen is blank. Done through set_firm_status() by a real platform admin rather than by
+  //    updating the column, because the guard on those columns is part of what staging exists to
+  //    keep honest.
+  if (firm.status !== 'active') {
+    await admin('/rest/v1/platform_admins', { method: 'POST', body: { user_id: out.platform.id } })
+      .catch((e) => { if (!/duplicate|conflict|23505/.test(e.message)) throw e; });
+    const { token: paToken } = await enrolTotp(FIXTURES.platform.email);
+    await rpcAs(paToken, 'set_firm_status', { p_firm: firm.id, p_status: 'active' });
+    firm = (await svcSelect('firms', `slug=eq.${FIXTURES.firm.slug}&select=id,status`))[0];
+    console.log(`  activated: ${firm.status}`);
+  }
 
-  console.log('# environment for tests/integration — paste into GitHub repository secrets');
+  // 5. publish the policies. Every new firm's terms and privacy are '0-draft', and the portal
+  //    layout renders one info alert and NO navigation until both are published — so a client
+  //    journey against an unpublished firm would walk into an empty shell and prove nothing.
+  //    firms_update is admin_w(id), so the owner does this himself; only status/plan/slug/domain
+  //    are fenced off by the lifecycle trigger.
+  await api(`/rest/v1/firms?id=eq.${firm.id}`, {
+    method: 'PATCH', token: staffToken,
+    headers: { Prefer: 'return=minimal' },
+    body: {
+      policies: {
+        terms:   { version: '2026-09', text: 'Staging terms. Not a real engagement.' },
+        privacy: { version: '2026-09', text: 'Staging privacy notice. No real client data lives here.' },
+      },
+    },
+  });
+  console.log('  policies published (terms + privacy at 2026-09)');
+
+  // 6. the colleague, through the real invitation. firm_members has had its INSERT grant revoked
+  //    from every API role since migration 22 — the RPCs are the only doors, which is the whole
+  //    point of that migration.
+  const already = await svcSelect('firm_members', `firm_id=eq.${firm.id}&user_id=eq.${out.colleague.id}&select=user_id`);
+  if (already.length === 0) {
+    const invite = await api('/rest/v1/staff_invites', {
+      method: 'POST', token: staffToken,
+      headers: { Prefer: 'return=representation' },
+      body: { firm_id: firm.id, email: FIXTURES.colleague.email, role: 'lawyer', created_by: out.staff.id },
+    });
+    const token = (Array.isArray(invite) ? invite[0] : invite).token;
+    const colleagueToken = await signInWithPassword(FIXTURES.colleague.email, PASSWORD);
+    await rpcAs(colleagueToken, 'accept_staff_invite', { p_token: token });
+    console.log('  colleague joined as lawyer');
+  } else {
+    console.log('  colleague already a member');
+  }
+
+  // 7. two matters. The SECOND is the one the client is never joined to: the denial journey needs a
+  //    matter that demonstrably EXISTS (the staff account can read it) and that the client cannot
+  //    reach. A matter at some unrelated third firm cannot be vouched for by anything these tests
+  //    hold, which is why the id under test is one of this firm's own.
+  async function matterFor(title) {
+    const existing = await svcSelect('matters', `firm_id=eq.${firm.id}&title=eq.${encodeURIComponent(title)}&select=id`);
+    if (existing.length) return existing[0].id;
+    const r = await rpcAs(staffToken, 'open_matter', { p_firm: firm.id, p_title: title, p_type: 'litigation' });
+    const id = r?.matter_id ?? r?.id ?? r?.matter?.id;
+    if (!id) throw new Error(`open_matter returned no id: ${JSON.stringify(r).slice(0, 200)}`);
+    return id;
+  }
+  const clientMatter = await matterFor('Staging client matter');
+  const forbiddenMatter = await matterFor('Staging matter the client is not on');
+  console.log(`  matters: client ${clientMatter}, forbidden ${forbiddenMatter}`);
+
+  // 8. join the client to the first one, through the invitation a firm really sends.
+  const parties = await svcSelect('matter_parties', `matter_id=eq.${clientMatter}&user_id=eq.${out.client.id}&select=user_id`);
+  if (parties.length === 0) {
+    const inv = await rpcAs(staffToken, 'invite_matter_party', {
+      p_matter: clientMatter, p_email: FIXTURES.client.email, p_role: 'client',
+    });
+    const clientToken = await signInClientByMagicLink(FIXTURES.client.email);
+    await rpcAs(clientToken, 'accept_invite', { p_token: inv.token });
+    console.log('  client joined the matter');
+  } else {
+    console.log('  client already on the matter');
+  }
+
+  // 9. something to read. A thread the client started (messages_insert requires
+  //    sender_id = auth.uid() and is_matter_party), and a document with real bytes behind it.
+  const clientToken = await signInClientByMagicLink(FIXTURES.client.email);
+  const msgs = await svcSelect('messages', `matter_id=eq.${clientMatter}&select=id&limit=1`);
+  if (msgs.length === 0) {
+    await api('/rest/v1/messages', {
+      method: 'POST', token: clientToken, headers: { Prefer: 'return=minimal' },
+      body: { firm_id: firm.id, matter_id: clientMatter, sender_id: out.client.id,
+              body: 'Staging fixture: a message from the client, so the thread exists.' },
+    });
+    console.log('  client posted a message');
+  } else {
+    console.log('  the thread already has a message');
+  }
+
+  const docs = await svcSelect('documents', `matter_id=eq.${clientMatter}&select=id&limit=1`);
+  if (docs.length === 0) {
+    // The same three steps the portal takes: the row, then the bytes, then the version. The trigger
+    // on document_versions sets documents.current_version_id, so it is never set by hand.
+    const documentId = crypto.randomUUID();
+    const versionId = crypto.randomUUID();
+    const storagePath = `${firm.id}/${documentId}/${versionId}.txt`;
+    const bytes = new TextEncoder().encode('Staging fixture document. Not a real client file.\n');
+    await api('/rest/v1/documents', {
+      method: 'POST', token: clientToken, headers: { Prefer: 'return=minimal' },
+      body: { id: documentId, firm_id: firm.id, matter_id: clientMatter, name: 'staging-fixture.txt',
+              category: 'client_upload', client_visible: true, uploaded_by: out.client.id },
+    });
+    await putObject('documents', storagePath, bytes, 'text/plain', clientToken);
+    const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
+    const checksum = [...digest].map((b) => b.toString(16).padStart(2, '0')).join('');
+    await api('/rest/v1/document_versions', {
+      method: 'POST', token: clientToken, headers: { Prefer: 'return=minimal' },
+      body: { id: versionId, document_id: documentId, storage_path: storagePath,
+              mime: 'text/plain', size_bytes: bytes.byteLength, checksum, uploaded_by: out.client.id },
+    });
+    console.log('  client uploaded a document, with a real checksum');
+  } else {
+    console.log('  the matter already has a document');
+  }
+
+  console.log('\n' + '='.repeat(72));
+  console.log('# environment for tests/integration — set these as GitHub repository secrets');
+  console.log('='.repeat(72));
   console.log(`NEXT_PUBLIC_SUPABASE_URL=${base}`);
   console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY=<the anon key you passed in>');
   console.log(`E2E_FIRM_SLUG=${FIXTURES.firm.slug}`);
   console.log(`E2E_STAFF_EMAIL=${FIXTURES.staff.email}`);
   console.log(`E2E_STAFF_PASSWORD=${PASSWORD}`);
   console.log(`E2E_STAFF_TOTP_SECRET=${staffSecret}`);
-  console.log(`E2E_CLIENT_EMAIL=${FIXTURES.client.email}`);
+  console.log(`E2E_FORBIDDEN_MATTER_ID=${forbiddenMatter}`);
+  console.log('');
+  console.log('# The client signs in with a phone OTP and nothing else: /auth/callback handles only');
+  console.log('# ?code= with exchangeCodeForSession, and a magic link arrives as a URL fragment that');
+  console.log('# nothing on /app reads. So register this number as a Supabase SMS TEST number with a');
+  console.log('# fixed code (Authentication -> Providers -> Phone), then set both:');
+  console.log(`E2E_CLIENT_PHONE=${FIXTURES.client.phone}`);
+  console.log('E2E_CLIENT_OTP=<the fixed code you mapped to that number>');
+  console.log('');
+  console.log('# Journey 6 (a client acting through two firms) still needs a second firm acting for');
+  console.log('# this same client. Not created here yet.');
+  console.log('# E2E_SECOND_FIRM_NAME=');
 }
 
 main().catch((e) => die(`failed: ${e.message}`));
