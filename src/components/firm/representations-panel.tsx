@@ -140,7 +140,7 @@ export function RepresentationsPanel({
 
             <label className="block text-sm text-gray-900">Over what
               <select value={form.matterId} onChange={(e) => setForm({ ...form, matterId: e.target.value })} className={field}>
-                <option value="">Every matter this client has with us, now and later</option>
+                <option value="">Every unrestricted matter this client has with us, now and later</option>
                 {matters.map((m) => <option key={m.id} value={m.id}>{m.reference} — {m.title}</option>)}
               </select>
             </label>
@@ -196,8 +196,9 @@ export function RepresentationsPanel({
               </label>
             </div>
             <p className="text-xs text-gray-500">
-              Give one of the two. Whoever opens the link must be signed in as that exact person — an address or a
-              number on its own gives nobody access, and neither does the link on its own.
+              One of the two is required. Whoever opens the link must be signed in as that exact person, measured
+              against the address or number they authenticated with — not one typed into a profile afterwards. An
+              address on its own gives nobody access, and neither does the link on its own.
             </p>
 
             <Button type="submit" disabled={busy === "grant"}>{busy === "grant" ? "Recording…" : "Record the authority"}</Button>
@@ -216,7 +217,7 @@ export function RepresentationsPanel({
             <li key={r.id} className="border-t border-gray-100 px-[15px] py-3 first:border-t-0">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-[13.5px] font-semibold text-gray-900">
-                  {r.representative_id ? (names[r.representative_id] ?? "A person") : (r.invited_email ?? r.invited_phone ?? "Invited")}
+                  {r.representative_name ?? (r.representative_id ? (names[r.representative_id] ?? "A person") : (r.invited_email ?? r.invited_phone ?? "Invited"))}
                   <span className="font-normal text-gray-600"> · {CAPACITY_LABEL.get(r.capacity) ?? r.capacity}</span>
                   {r.organisation_name ? <span className="font-normal text-gray-600"> for {r.organisation_name}</span> : null}
                 </p>

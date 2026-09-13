@@ -115,22 +115,25 @@ declare l uuid := (select v from fx where k='lawyer'); f uuid := (select v from 
 begin
   perform t_as(ag, 'aal1');
   perform t_check('a client cannot grant an authority over anybody',
-    t_refused(format('select grant_representation(%L, %L, ''family'', ''in_person'', null, null, false, false, null, null, null, ''met them'')', f, cl), '42501'));
+    t_refused(format('select grant_representation(%L, %L, ''family'', ''in_person'', null, null, false, false, null, null, null, ''met them'', ''x@test'')', f, cl), '42501'));
   perform t_reset(); perform t_as(l, 'aal1');
   perform t_check('nor a lawyer without a second factor',
-    t_refused(format('select grant_representation(%L, %L, ''family'', ''in_person'', null, null, false, false, null, null, null, ''met them'')', f, cl), '42501'));
+    t_refused(format('select grant_representation(%L, %L, ''family'', ''in_person'', null, null, false, false, null, null, null, ''met them'', ''x@test'')', f, cl), '42501'));
   perform t_reset(); perform t_as(l);
   perform t_check('a stranger to the firm cannot be made a principal',
-    t_fails(format('select grant_representation(%L, %L, ''family'', ''in_person'', null, null, false, false, null, null, null, ''met them'')', f, ag),
+    t_fails(format('select grant_representation(%L, %L, ''family'', ''in_person'', null, null, false, false, null, null, null, ''met them'', ''x@test'')', f, ag),
             'not a client of this firm'));
   perform t_check('nor a member of the firm itself',
-    t_fails(format('select grant_representation(%L, %L, ''employee'', ''in_person'', null, null, false, false, null, null, null, ''met them'')', f, l),
+    t_fails(format('select grant_representation(%L, %L, ''employee'', ''in_person'', null, null, false, false, null, null, null, ''met them'', ''x@test'')', f, l),
             'not a client of this firm'));
   perform t_check('an authority that expired yesterday is refused rather than stored',
-    t_fails(format('select grant_representation(%L, %L, ''family'', ''in_person'', null, null, false, false, %L, null, null, ''met them'')',
+    t_fails(format('select grant_representation(%L, %L, ''family'', ''in_person'', null, null, false, false, %L, null, null, ''met them'', ''x@test'')',
                    f, cl, current_date - 1), 'already expired'));
+  perform t_check('an authority naming nobody is refused: a link that binds whoever holds it is not an authority',
+    t_fails(format('select grant_representation(%L, %L, ''family'', ''in_person'', null, null, false, false, null, null, null, ''met them'')', f, cl),
+            'name the person'));
   perform t_check('and the firm must record what it saw',
-    t_fails(format('select grant_representation(%L, %L, ''company_officer'', ''board_resolution'', null, ''Acme Holdings Ltd'', false, false, null, null, null, null)', f, cl),
+    t_fails(format('select grant_representation(%L, %L, ''company_officer'', ''board_resolution'', null, ''Acme Holdings Ltd'', false, false, null, null, null, null, ''x@test'')', f, cl),
             'representations_authority_chk'));
   perform t_reset();
 end $$;
@@ -296,7 +299,8 @@ declare l uuid := (select v from fx where k='lawyer'); f uuid := (select v from 
         m2 uuid := (select v from fx where k='matter2'); r jsonb; m3 uuid;
 begin
   perform t_as(l);
-  r := grant_representation(f, cl, 'attorney', 'power_of_attorney', null, null, false, false, null, 'POA/2026/17');
+  r := grant_representation(f, cl, 'attorney', 'power_of_attorney', null, null, false, false, null, 'POA/2026/17',
+                            null, null, 'rp-impostor@test');
   perform t_reset();
   perform t_as(ag2, 'aal1');
   perform accept_representation(r ->> 'token');
@@ -356,6 +360,139 @@ begin
   perform t_reset();
   perform t_as(l);
   perform t_check('the firm reads it too', exists (select 1 from identity_events where user_id = cl));
+  perform t_reset();
+end $$;
+
+-- ------------------------------------------- 12. the review round: what the fixes actually changed
+-- Each of these reproduces a hole a review found in the first draft of this slice.
+
+-- (a) The invited address is measured against the identity provider, not the profile. When the
+-- invited person has no account yet, that address belongs to nobody — so whoever held the link
+-- could once write it onto their OWN profile and satisfy the check. profiles.email is theirs to
+-- edit; auth.users is not.
+do $$
+declare l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm');
+        cl uuid := (select v from fx where k='client'); imp uuid := (select v from fx where k='impostor');
+        m2 uuid := (select v from fx where k='matter2'); r jsonb;
+begin
+  perform t_reset(); perform t_as(l);
+  -- Nobody on Docket holds this address.
+  r := grant_representation(f, cl, 'carer', 'in_person', m2, null, false, false, null, null, null,
+                            'Met her at the office', 'newcomer@test');
+  perform t_reset();
+  perform t_check('nobody holds the invited address yet', not exists (select 1 from profiles where email = 'newcomer@test'));
+
+  perform t_as(imp, 'aal1');
+  -- The attack: take the address on your own profile, which the owner may do, then redeem.
+  update profiles set email = 'newcomer@test' where id = auth.uid();
+  perform t_check('...and a profile may indeed claim it', (select email = 'newcomer@test' from profiles where id = imp));
+  perform t_check('but redeeming is measured against auth.users, so the link still binds nobody',
+    t_refused(format('select accept_representation(%L)', r ->> 'token'), '42501'));
+  perform t_reset();
+  -- Asserted on the representation rather than on what the impostor can see: this account already
+  -- holds a firm-wide authority from section 9, so "they see nothing" would be false for reasons
+  -- that have nothing to do with this attack.
+  perform t_check('...and the authority is still nobody''s',
+    (select accepted_at is null and representative_id is null from representations where id = (r ->> 'representation_id')::uuid));
+  update profiles set email = 'rp-impostor@test' where id = imp;
+end $$;
+
+-- (b) An all-matters authority never reaches a walled matter, and is refused outright where the
+-- granting lawyer cannot see one of the client's files.
+do $$
+declare l uuid := (select v from fx where k='lawyer'); ow uuid := (select v from fx where k='owner');
+        f uuid := (select v from fx where k='firm'); cl uuid := (select v from fx where k='client');
+        m uuid := (select v from fx where k='matter'); imp uuid := (select v from fx where k='impostor');
+begin
+  perform t_reset();
+  update firms set matter_walls = true where id = f;
+  perform t_as(ow);
+  insert into matter_lawyers (matter_id, firm_id, user_id, is_lead) values (m, f, ow, true);
+  update matters set access = 'team' where id = m;
+  perform t_reset();
+  perform t_check('the matter is walled to the owner''s team', (select access = 'team' from matters where id = m));
+
+  perform t_as(l);   -- the lawyer is NOT on that team
+  perform t_check('a lawyer outside the team cannot grant an authority over all of the client''s matters',
+    t_fails(format('select grant_representation(%L, %L, ''attorney'', ''power_of_attorney'', null, null, false, false, null, ''POA/9'', null, null, ''x2@test'')', f, cl),
+            'a matter you cannot see'));
+  perform t_reset();
+
+  -- The one accepted in section 9 is firm-wide and live; it must have lost the walled matter.
+  perform t_as(imp, 'aal1');
+  perform t_check('and a standing all-matters authority does not reach a matter walled afterwards',
+    not acts_for_matter(m, 'base') and not exists (select 1 from matters where id = m));
+  perform t_check('...while the client''s unwalled matter is still reached',
+    acts_for_matter((select v from fx where k='matter2'), 'base'));
+  perform t_reset();
+  update matters set access = 'firm' where id = m;
+  update firms set matter_walls = false where id = f;
+  delete from matter_lawyers where matter_id = m and user_id = ow;
+end $$;
+
+-- (c) can_pay reaches the WHOLE payment path, or it is a promise the database refuses.
+do $$
+declare l uuid := (select v from fx where k='lawyer'); f uuid := (select v from fx where k='firm');
+        cl uuid := (select v from fx where k='client'); ag uuid := (select v from fx where k='agent');
+        m uuid := (select v from fx where k='matter'); inv uuid; r jsonb;
+begin
+  perform t_reset();
+  select id into inv from invoices where number = 'DC-INV-2026-000001';
+  insert into invoice_items (invoice_id, description, quantity, unit_minor)
+    values (inv, 'Professional fee', 1, 50000000);
+  insert into payments (invoice_id, provider, provider_ref, status, amount_minor, currency)
+    values (inv, 'paystack', 'ref_dc_1', 'succeeded', 10000000, 'NGN');
+  -- A fresh authority with the money right, taken up by the agent.
+  perform t_as(l);
+  r := grant_representation(f, cl, 'company_officer', 'board_resolution', m, 'Acme Holdings Ltd',
+                            false, true, null, 'Board resolution of 4 September 2026', null, null, 'rp-agent@test');
+  perform t_reset(); perform t_as(ag, 'aal1');
+  perform accept_representation(r ->> 'token');
+  perform t_check('the invoice is readable',            exists (select 1 from invoices where id = inv));
+  perform t_check('...and so are its items',            exists (select 1 from invoice_items where invoice_id = inv));
+  perform t_check('...and what has been paid so far',   exists (select 1 from payments where invoice_id = inv));
+  perform t_check('...and the settlement details the payment needs',
+    (invoice_settlement(inv) ->> 'invoice_number') = 'DC-INV-2026-000001');
+  perform t_reset();
+
+  -- Without the money right, none of it.
+  perform t_reset();
+  update representations set can_pay = false where id = (r ->> 'representation_id')::uuid;
+  perform t_as(ag, 'aal1');
+  perform t_check('and with the right withdrawn, the items go too',
+    not exists (select 1 from invoice_items where invoice_id = inv)
+    and not exists (select 1 from payments where invoice_id = inv));
+  perform t_check('...and settlement is refused', t_refused(format('select invoice_settlement(%L)', inv), '42501'));
+  perform t_reset();
+end $$;
+
+-- (d) A representative with the base right cannot create a document on the file.
+do $$
+declare ag uuid := (select v from fx where k='agent'); f uuid := (select v from fx where k='firm');
+        m uuid := (select v from fx where k='matter');
+begin
+  perform t_as(ag, 'aal1');
+  perform t_check('a representative without the documents right cannot insert a document row either',
+    t_refused(format('insert into documents (firm_id, matter_id, name, category, client_visible, uploaded_by) values (%L, %L, ''sneaked-in.pdf'', ''client_upload'', true, %L)', f, m, ag), '42501'));
+  perform t_reset();
+  update representations set can_view_docs = true where representative_id = ag and revoked_at is null;
+  perform t_as(ag, 'aal1');
+  insert into documents (firm_id, matter_id, name, category, client_visible, uploaded_by)
+    values (f, m, 'sent-by-the-officer.pdf', 'client_upload', true, ag);
+  perform t_check('...and with it, they can', exists (select 1 from documents where name = 'sent-by-the-officer.pdf'));
+  perform t_reset();
+end $$;
+
+-- (e) The client's own screen can name who accepted, which is the whole point of that screen.
+do $$
+declare cl uuid := (select v from fx where k='client');
+begin
+  perform t_reset();
+  perform t_check('the name of whoever took it up is recorded, because the client cannot read their profile',
+    exists (select 1 from representations where principal_id = cl and accepted_at is not null and representative_name = 'Chidi Eze'));
+  perform t_as(cl, 'aal1');
+  perform t_check('and the client reads it',
+    exists (select 1 from representations where principal_id = cl and representative_name is not null));
   perform t_reset();
 end $$;
 

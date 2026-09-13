@@ -49,6 +49,12 @@ export async function grantRepresentation(input: GrantInput): Promise<{ error: s
   if (!d.authorityRef && !d.note) {
     return { error: "Record what you saw: a reference for the document, or a note of how you verified it." };
   }
+  // An authority must name somebody. Without one, redeeming the link would have nothing to be
+  // measured against — and a link that binds whoever holds it is not an authority. The database
+  // refuses it too (representations_invitee_chk); this is only the kinder sentence.
+  if (!d.invitedEmail && !d.invitedPhone) {
+    return { error: "Give the email or phone of the person who may act. They take it up by signing in as that person, and nobody else can." };
+  }
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
   const { data, error } = await supabase.rpc("grant_representation", {

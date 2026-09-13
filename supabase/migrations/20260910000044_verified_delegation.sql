@@ -96,6 +96,10 @@ create table public.representations (
   token                 text unique not null default encode(gen_random_bytes(24), 'hex'),
   token_expires_at      timestamptz not null default now() + interval '14 days',
   accepted_at           timestamptz,
+  -- The name of whoever redeemed it, captured then. The principal is not a member of the firm, so
+  -- can_see_profile() does not let them read the representative's profile row — without this their
+  -- own screen could not tell them who is acting for them, which is what that screen is for.
+  representative_name   text,
   revoked_at            timestamptz,
   revoked_by            uuid references public.profiles(id) on delete set null,
   revoke_reason         text check (revoke_reason is null or length(revoke_reason) <= 1000),
@@ -107,7 +111,12 @@ create table public.representations (
   constraint representations_authority_chk check (
     authority_ref is not null or authority_document_id is not null
     or (authority_kind = 'in_person' and verification_note is not null)),
-  constraint representations_not_self_chk check (representative_id is null or representative_id <> principal_id)
+  constraint representations_not_self_chk check (representative_id is null or representative_id <> principal_id),
+  -- An authority must NAME somebody. Without this the acceptance check below has nothing to compare
+  -- against and skips itself, so any holder of the link binds — which is the whole thing this slice
+  -- exists to prevent. "The firm chose to name nobody" is not a case worth supporting for an
+  -- authority over another person's legal files.
+  constraint representations_invitee_chk check (invited_email is not null or invited_phone is not null)
 );
 create index representations_firm_idx      on public.representations (firm_id, principal_id);
 create index representations_rep_idx       on public.representations (representative_id) where representative_id is not null;
@@ -164,10 +173,19 @@ language sql stable security definer set search_path = public as $$
             -- Firm-wide: every matter of that firm the principal is themselves a party to. A matter
             -- opened tomorrow is covered without anything being written, and a matter the principal
             -- leaves stops being covered the same way.
+            --
+            -- EXCEPT A WALLED ONE. `access = 'team'` is here because otherwise delegation walks
+            -- straight through migration 29: a lawyer outside a restricted matter's team could
+            -- grant an all-matters authority to somebody of their choosing and reach it that way.
+            -- A restricted matter is reached only by an authority that NAMES it, and naming it at
+            -- grant time asks can_see_matter() of the lawyer granting it. Fail-closed on purpose: a
+            -- firm that raises a wall tomorrow narrows every standing all-matters authority that
+            -- day, which is the safe direction for a change nobody re-reviewed.
             or (rp.scope = 'all_matters'
                 and exists (select 1 from matter_parties pp
                              where pp.matter_id = m and pp.user_id = rp.principal_id)
-                and exists (select 1 from matters mt where mt.id = m and mt.firm_id = rp.firm_id)))
+                and exists (select 1 from matters mt
+                             where mt.id = m and mt.firm_id = rp.firm_id and mt.access = 'firm')))
        and case p_right when 'docs' then rp.can_view_docs
                         when 'pay'  then rp.can_pay
                         else true end)
@@ -226,6 +244,18 @@ language sql stable security definer set search_path = public as $$
                  or public.is_appointment_client(doc.appointment_id))) ) )
 $$;
 
+-- Finding from review: widening is_matter_party() also widened documents_client_insert (migration
+-- 21), which authorised a client-visible INSERT on that predicate alone. can_upload_document()
+-- guards the version and the bytes, but the first write — the document ROW — went through the base
+-- right. A representative trusted with nothing but the matter could therefore create a document on
+-- the file. The policy now asks for the documents right from whichever side the writer comes.
+drop policy if exists documents_client_insert on public.documents;
+create policy documents_client_insert on public.documents for insert
+  with check (uploaded_by = (select auth.uid()) and client_visible
+              and ( public.party_may_see_docs(matter_id)
+                 or public.acts_for_matter(matter_id, 'docs')
+                 or public.is_appointment_client(appointment_id)));
+
 -- Money. can_pay earns its meaning here and nowhere else: a representative the firm has trusted
 -- with it may see what their principal owes on the matters they cover, and pay it. A party's own
 -- can_pay still decides nothing, because a party still never sees an invoice.
@@ -249,10 +279,52 @@ language sql stable security definer set search_path = public as $$
        and (rp.matter_id = m
             or (rp.scope = 'all_matters'
                 and exists (select 1 from matter_parties pp where pp.matter_id = m and pp.user_id = rp.principal_id)
-                and exists (select 1 from matters mt where mt.id = m and mt.firm_id = rp.firm_id))))
+                -- Walled matters are excluded here too, for the reason acts_for_matter() gives.
+                and exists (select 1 from matters mt
+                             where mt.id = m and mt.firm_id = rp.firm_id and mt.access = 'firm'))))
 $$;
 revoke execute on function public.acts_for_client(uuid, uuid) from public;
 grant  execute on function public.acts_for_client(uuid, uuid) to anon, authenticated;
+
+-- Finding from review: exposing the invoice ROW alone made can_pay useless. invoice_items_select
+-- and payments_select both ask can_access_invoice(), and invoice_settlement() — which the payment
+-- action needs before it can reach Paystack — had its own copy of the same test. So a
+-- representative the firm trusted with money saw an invoice with no items, no history, and a
+-- refusal when they pressed pay. A right the product offers and the database refuses is exactly the
+-- kind of claim this codebase is not allowed to make, so the predicate is fixed in one place and
+-- the settlement function is brought to it.
+--
+-- While re-creating it: the member arm becomes matter_row_r() rather than is_firm_member(). Since
+-- migration 29 the invoices SELECT policy has been walled and this function has not, so a colleague
+-- outside a restricted matter's team could read that matter's invoice ITEMS — the narrative of the
+-- work — through invoice_items_select. That is a wall hole nobody had noticed; it closes here. An
+-- invoice with no matter (a consultation fee) is unaffected: matter_row_r(f, null) is is_firm_member(f).
+create or replace function public.can_access_invoice(i uuid) returns bool
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1 from invoices inv
+     where inv.id = i
+       and ( public.matter_row_r(inv.firm_id, inv.matter_id)
+          or (inv.client_id = auth.uid() and inv.status <> 'draft')
+          or (inv.matter_id is not null and inv.status <> 'draft'
+              and public.acts_for_client(inv.matter_id, inv.client_id))))
+$$;
+
+create or replace function public.invoice_settlement(p_invoice uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_inv invoices%rowtype; v_sub text; v_status text;
+begin
+  select * into v_inv from invoices where id = p_invoice;
+  if not found or not (v_inv.client_id = auth.uid()
+                       or is_firm_member(v_inv.firm_id)
+                       or (v_inv.matter_id is not null and v_inv.status <> 'draft'
+                           and acts_for_client(v_inv.matter_id, v_inv.client_id))) then
+    raise exception 'not permitted' using errcode = '42501';
+  end if;
+  select paystack_subaccount, status into v_sub, v_status from firms where id = v_inv.firm_id;
+  return jsonb_build_object('paystack_subaccount', v_sub, 'firm_status', v_status,
+                            'invoice_number', v_inv.number, 'total_minor', v_inv.total_minor, 'currency', v_inv.currency);
+end $$;
 
 drop policy if exists invoices_select on public.invoices;
 create policy invoices_select on public.invoices for select
@@ -295,8 +367,22 @@ begin
       raise exception 'that person is not a party to that matter';
     end if;
   end if;
+  -- An all-matters authority is refused outright where this client has a matter the granting lawyer
+  -- cannot see. acts_for_matter() already refuses to reach a walled matter through such an
+  -- authority, so this is belt to that brace — but it is the half that produces a sentence a lawyer
+  -- can act on, instead of an authority that silently covers less than they think.
+  if p_matter is null and exists (
+       select 1 from matter_parties mp join matters mt on mt.id = mp.matter_id
+        where mp.user_id = p_principal and mt.firm_id = p_firm and mt.deleted_at is null
+          and not can_see_matter(mt.id)) then
+    raise exception 'this client has a matter you cannot see, so an authority over all of them is not yours to give — grant it on the matters you can, one at a time';
+  end if;
   if p_expires_on is not null and p_expires_on < v_today then
     raise exception 'an authority that has already expired grants nothing — give a day in the future, or none';
+  end if;
+  if nullif(btrim(lower(coalesce(p_invited_email, ''))), '') is null
+     and nullif(btrim(coalesce(p_invited_phone, '')), '') is null then
+    raise exception 'name the person: an authority is taken up by somebody signed in as the email or phone you record here, and by nobody else';
   end if;
   if p_authority_document is not null
      and not exists (select 1 from documents d where d.id = p_authority_document and d.firm_id = p_firm) then
@@ -334,7 +420,7 @@ grant  execute on function public.grant_representation(uuid, uuid, text, text, u
 -- on the email or phone the firm recorded.
 create or replace function public.accept_representation(p_token text)
 returns jsonb language plpgsql security definer set search_path = public as $$
-declare r representations%rowtype;
+declare r representations%rowtype; v_email text; v_phone text; v_name text;
 begin
   if auth.uid() is null then raise exception 'not authenticated' using errcode = '42501'; end if;
   select * into r from representations
@@ -347,22 +433,33 @@ begin
   if exists (select 1 from firm_members fm where fm.firm_id = r.firm_id and fm.user_id = auth.uid()) then
     raise exception 'a member of the firm cannot also act for its client' using errcode = '42501';
   end if;
-  -- Where the firm recorded who it was inviting, the person redeeming must BE them. profiles.email
-  -- and profiles.phone are unique, so this is a real second condition and not a formality: holding
-  -- the link is not enough, and holding the phone number is not enough either. Neither confers
-  -- anything alone — which is the whole of "a shared phone number must not confer representation".
-  -- Where the firm recorded neither, the token alone binds, because the firm chose to name nobody.
-  if r.invited_email is not null or r.invited_phone is not null then
-    if not exists (select 1 from profiles p
-                    where p.id = auth.uid()
-                      and ( (r.invited_email is not null and lower(p.email) = lower(r.invited_email))
-                         or (r.invited_phone is not null and p.phone = r.invited_phone))) then
-      raise exception 'this invitation was sent to somebody else — sign in as the person the firm named'
-        using errcode = '42501';
-    end if;
+  -- The person redeeming must BE the person the firm named, and the table requires one to be named.
+  --
+  -- MEASURED AGAINST THE IDENTITY PROVIDER, NOT THE PROFILE. An earlier draft compared
+  -- profiles.email / profiles.phone, which the owner may edit through profiles_update: where the
+  -- invited address did not yet belong to anybody, a holder of the link could simply write it onto
+  -- their own profile and then satisfy the check. The unique index on those columns only stops that
+  -- when the real person already has an account — which is precisely the case where an invitation
+  -- was least needed. So the comparison is against auth.users, where the address is what the person
+  -- authenticated with and nothing in `public` can rewrite it. accept_staff_invite() has done it
+  -- this way since migration 14; this is the same rule for the same reason.
+  select coalesce(auth.jwt() ->> 'email', (select u.email from auth.users u where u.id = auth.uid())),
+         coalesce(auth.jwt() ->> 'phone', (select u.phone from auth.users u where u.id = auth.uid()))
+    into v_email, v_phone;
+  if not ( (r.invited_email is not null and v_email is not null and lower(v_email) = lower(r.invited_email))
+        or (r.invited_phone is not null and v_phone is not null and btrim(v_phone) = btrim(r.invited_phone))
+        -- A phone as Supabase stores it has no leading '+'; the firm types one. Compare the digits.
+        or (r.invited_phone is not null and v_phone is not null
+            and regexp_replace(v_phone, '\D', '', 'g') = regexp_replace(r.invited_phone, '\D', '', 'g')) ) then
+    raise exception 'this invitation was sent to somebody else — sign in as the person the firm named'
+      using errcode = '42501';
   end if;
 
-  update representations set representative_id = auth.uid(), accepted_at = now() where id = r.id;
+  select coalesce(nullif(btrim(full_name), ''), v_email, v_phone) into v_name from profiles where id = auth.uid();
+  update representations
+     set representative_id = auth.uid(), accepted_at = now(),
+         representative_name = coalesce(v_name, 'A person')
+   where id = r.id;
   perform audit('representation.accepted', 'representation', r.id, r.firm_id,
                 jsonb_build_object('principal_id', r.principal_id, 'matter_id', r.matter_id));
   perform enqueue_notification(r.principal_id, r.firm_id, 'representation_accepted',

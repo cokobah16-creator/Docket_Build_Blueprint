@@ -44,8 +44,12 @@ export function AuthorityList({ rows, firms, today }: {
           <li key={r.id} className="px-4 py-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm font-medium text-gray-900">
-                {CAPACITY_LABEL.get(r.capacity) ?? r.capacity}
-                {r.organisation_name ? ` for ${r.organisation_name}` : ""}
+                {/* Who, before what. An authority you cannot put a name to is one you cannot check. */}
+                {r.representative_name ?? r.invited_email ?? r.invited_phone ?? "Somebody"}
+                <span className="font-normal text-gray-600">
+                  {" · "}{CAPACITY_LABEL.get(r.capacity) ?? r.capacity}
+                  {r.organisation_name ? ` for ${r.organisation_name}` : ""}
+                </span>
               </p>
               <span className={live(r) ? "text-xs font-medium text-emerald-700" : "text-xs text-gray-500"}>
                 {r.revoked_at ? "Ended"
@@ -54,8 +58,13 @@ export function AuthorityList({ rows, firms, today }: {
                   : r.expires_on ? `Until ${formatDay(r.expires_on)}` : "Until you end it"}
               </span>
             </div>
+            {r.representative_name && (r.invited_email || r.invited_phone) && (
+              <p className="text-xs text-gray-500">
+                Invited as {r.invited_email ?? r.invited_phone}
+              </p>
+            )}
             <p className="mt-0.5 text-xs text-gray-600">
-              {firms[r.firm_id] ?? "Your firm"} · {r.scope === "all_matters" ? "all your matters there" : "one matter"} ·
+              {firms[r.firm_id] ?? "Your firm"} · {r.scope === "all_matters" ? "all your unrestricted matters there" : "one matter"} ·
               {" "}{r.can_view_docs ? "may read your documents" : "no documents"} ·
               {" "}{r.can_pay ? "may pay on your behalf" : "no payments"} · cannot sign anything for you
             </p>

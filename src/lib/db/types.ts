@@ -1280,6 +1280,8 @@ export interface RepresentationRow {
   invited_email: string | null;
   invited_phone: string | null;
   accepted_at: string | null;
+  /** Captured when the authority was taken up: the principal cannot read the representative's profile. */
+  representative_name: string | null;
   revoked_at: string | null;
   revoked_by: string | null;
   revoke_reason: string | null;

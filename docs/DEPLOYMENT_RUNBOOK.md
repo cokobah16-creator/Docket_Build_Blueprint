@@ -532,6 +532,15 @@ access — which is what they asked for, but find out first rather than from the
 alone for a party and gains meaning only for a representation; the two console lines that claimed
 otherwise are removed in the same commit.
 
+A review round on 44 tightened four things after it was first written, all inside the same
+migration: acceptance is measured against `auth.users` rather than the editable profile, an
+all-matters authority never reaches a walled matter, an authority must name its invitee, and
+`can_access_invoice()` and `invoice_settlement()` admit a representative trusted with money. That
+last edit also closes a wall gap that predates this wave — `can_access_invoice()` had stayed on
+`is_firm_member()` when migration 29 walled `invoices_select`, so a colleague outside a restricted
+matter's team could read that matter's invoice ITEMS. If you have already applied 44 from an earlier
+build of this branch, re-apply it: every statement in it is idempotent.
+
 **45 is additive and safe either side, with one caveat worth stating.** The collaboration screens
 call six new RPCs, so applying it after the app deploy leaves `/firm/collaborations` and the matter's
 *Working with* tab answering PGRST202 until it lands — nothing else breaks, and no existing call
