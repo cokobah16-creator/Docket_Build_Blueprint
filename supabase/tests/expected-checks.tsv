@@ -1,0 +1,47 @@
+# Per-suite assertion floors — what each SQL suite must still prove.
+#
+# WHY. CI counted SUITES, not CHECKS: it compared the number of files in supabase/tests against the
+# number that printed "ALL CHECKS PASSED". A suite gutted to a single assertion still prints it, so
+# a whole wall could be deleted from the suite and the build would stay green with a tick that
+# meant "31 files ran". A check that cannot fail is not a check.
+#
+# HOW TO USE. Each line is <suite> <TAB> <the number of PASS assertions it must reach>. CI runs
+# scripts/check-suite-counts.sh over the test log and fails any suite that comes in under its
+# number. Adding checks is meant to be easy and REMOVING them is meant to be visible: when you add
+# assertions, raise the number here in the same commit and the diff shows exactly what changed.
+#
+# Regenerate after a deliberate change:
+#   bash scripts/check-suite-counts.sh --write db-test.log
+#
+# Generated from a clean run on 13 September 2026: 31 suites, 1,416 assertions, all passing.
+tests/10_rls_isolation.sql	66
+tests/20_platform.sql	75
+tests/30_nigeria.sql	51
+tests/40_counsel_service.sql	54
+tests/50_staff_console.sql	46
+tests/60_admin_surfaces.sql	90
+tests/70_deployed_frontend_compat.sql	14
+tests/80_doors.sql	19
+tests/90_message_reads.sql	28
+tests/91_next_actions.sql	7
+tests/92_structured_update.sql	10
+tests/93_storage_manifest.sql	8
+tests/94_pilot_baseline.sql	32
+tests/95_matter_walls.sql	45
+tests/96_document_reads.sql	13
+tests/97_document_requests.sql	15
+tests/98_conflict_checks.sql	50
+tests/99_calendar_feed.sql	35
+tests/99_collaboration.sql	49
+tests/99_court_registry.sql	154
+tests/99_delegation.sql	69
+tests/99_document_text.sql	51
+tests/99_legal_diary.sql	54
+tests/99_notifications.sql	47
+tests/99_onboarding_import.sql	73
+tests/99_partner_api.sql	56
+tests/99_pre_consultation.sql	54
+tests/99_retries.sql	16
+tests/99_search.sql	40
+tests/99_templates_execution.sql	56
+tests/99_workflow_packs.sql	39

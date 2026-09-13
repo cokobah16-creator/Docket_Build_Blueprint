@@ -1,0 +1,436 @@
+# Docket partner API — v1, as an OpenAPI document.
+#
+# This file is a TRANSCRIPTION, not a design. Every path, parameter, field and refusal below is
+# taken from two places and from nowhere else:
+#
+#   supabase/functions/partner-api/index.ts   the routes, the parameters and the refusals
+#   supabase/migrations/20260910000046_partner_api.sql  the four api_v1_* functions, which decide
+#                                                       the field names and the shapes
+#
+# `docs/PARTNER_API.md` is the same contract in prose, and is the document to hand a person.
+# This one is for a generator. Where the two disagree, the migration wins and both are wrong.
+#
+# scripts/check-openapi-routes.sh asserts that every route the function serves appears here, so
+# this document cannot quietly fall behind the code it describes.
+#
+# NOT DESCRIBED HERE, because it does not exist: a sandbox, and any write. Both are stated in the
+# discovery response as data (`sandbox`, `read_only`) rather than only in prose, so a partner's
+# own code can read them.
+
+openapi: 3.1.0
+
+info:
+  title: Docket partner API
+  version: "1.0.0"
+  summary: A read-only contract over one firm's matters, invoices, clients and event feed.
+  description: |
+    A key speaks for exactly one firm, carries only the scopes it was issued with, and is refused
+    the moment it is revoked, expires, or its firm is suspended. None of that is decided here: the
+    HTTP layer holds the bearer token and no firm id, and `api_authorize()` in the database decides
+    everything before any row is read.
+
+    **Money is minor units with its currency, always together.** `total_minor: 25000000` with
+    `currency: NGN` is 250,000.00 naira. Two currencies are never summed and no bare number is
+    ever returned.
+
+    **A date is a calendar day.** `opened_on`, `closed_on` and `due_on` are days a court or a firm
+    named. Do not shift them through a timezone. `issued_at`, `occurred_at` and `updated_at` are
+    instants and are UTC.
+  contact:
+    name: The contract in prose
+    url: https://github.com/cokobah16-creator/Docket_Build_Blueprint/blob/main/docs/PARTNER_API.md
+
+servers:
+  - url: https://{projectRef}.supabase.co/functions/v1/partner-api
+    description: A Docket deployment. There is one; see `sandbox` in the discovery response.
+    variables:
+      projectRef:
+        default: your-project-ref
+        description: The Supabase project reference of the Docket deployment you were given a key for.
+
+security:
+  - bearerKey: []
+
+tags:
+  - name: discovery
+    description: What this deployment serves. No key required.
+  - name: resources
+    description: The read surface. Each route requires its own scope.
+
+paths:
+  /:
+    get:
+      tags: [discovery]
+      operationId: discover
+      summary: What this deployment serves
+      description: |
+        The only route that takes no key, because a partner needs to know what they are pointed at
+        before they have one. `sandbox` is `false` on every deployment that is somebody's production.
+      security: []
+      responses:
+        "200":
+          description: The deployment's own description of itself.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Discovery" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+
+  /v1/matters:
+    get:
+      tags: [resources]
+      operationId: listMatters
+      summary: The firm's matters
+      description: |
+        Requires the `matters:read` scope.
+
+        `restricted` says the matter is walled to its team **inside** the firm. It is reported
+        rather than withheld, because the key belongs to the firm and not to a member of it. That
+        is the one place where a key is wider than a person; if a firm does not want it, the firm
+        should not issue a key carrying `matters:read`.
+
+        Deleted matters are never returned.
+      parameters:
+        - $ref: "#/components/parameters/Since"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of matters, oldest activity first.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Matter" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/invoices:
+    get:
+      tags: [resources]
+      operationId: listInvoices
+      summary: The firm's issued invoices
+      description: |
+        Requires the `invoices:read` scope. **Drafts are never returned** — an invoice nobody has
+        issued is not a statement the firm has made.
+      parameters:
+        - $ref: "#/components/parameters/Since"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of invoices.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Invoice" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/clients:
+    get:
+      tags: [resources]
+      operationId: listClients
+      summary: Who the firm acts for
+      description: |
+        Requires the `clients:read` scope.
+
+        **No matter is named here.** Which matters a person has is decided by the firm's own walls,
+        and a key is not a way round them. This route answers "who", never "about what".
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of clients, by name.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Client" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+  /v1/events:
+    get:
+      tags: [resources]
+      operationId: listEvents
+      summary: The event feed, in order
+      description: |
+        Requires the `events:read` scope.
+
+        **Page on `seq`, not on time.** It is monotonic and unique, so asking for everything after
+        the last sequence you processed is complete by construction. Two events can share a
+        timestamp; they cannot share a `seq`.
+
+        An event's `data` is the mapped shape **as it was when the event happened** — replaying the
+        feed a year later gives what was true then, not what the tables say today. No event carries
+        privileged content: a reference, a stage, a number and an amount, never a note, a message
+        or a document.
+
+        The `id` is stable for ever and is the same id a pushed webhook carries, so a partner using
+        both the feed and webhooks never processes one event twice.
+      parameters:
+        - $ref: "#/components/parameters/After"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: A page of events, by ascending `seq`.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/Envelope"
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items: { $ref: "#/components/schemas/Event" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+        "500": { $ref: "#/components/responses/InternalError" }
+
+components:
+  securitySchemes:
+    bearerKey:
+      type: http
+      scheme: bearer
+      description: |
+        `Authorization: Bearer dk_live_1a2b3c4d_…`
+
+        Issued by an owner or administrator of the firm, with a second factor, from
+        **Me → Administration → Partner API**. Shown once and never again: Docket stores only its
+        SHA-256 hash, so a database dump is not a set of working credentials.
+
+        **Rate limit:** 600 calls a minute per key.
+
+  parameters:
+    Since:
+      name: since
+      in: query
+      required: false
+      description: |
+        An ISO 8601 instant. Only rows that changed after it are returned. A malformed value is
+        **refused with 400** rather than silently ignored, because a sync that quietly reads
+        everything is worse than one that stops.
+      schema: { type: string, format: date-time }
+      example: "2026-09-01T00:00:00Z"
+    After:
+      name: after
+      in: query
+      required: false
+      description: The last `seq` you processed. Defaults to 0, which is the whole feed.
+      schema: { type: integer, format: int64, minimum: 0, default: 0 }
+    Limit:
+      name: limit
+      in: query
+      required: false
+      description: How many rows to return. Anything above 500 is served as 500; anything below 1 as 1.
+      schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+
+  schemas:
+    Discovery:
+      type: object
+      required: [version, read_only, sandbox, resources, documentation]
+      properties:
+        version: { type: string, const: "v1" }
+        read_only:
+          type: boolean
+          const: true
+          description: v1 changes nothing. Any method other than GET is refused with 405.
+        sandbox:
+          type: boolean
+          description: Whether this deployment is a sandbox rather than a firm's real data.
+        resources:
+          type: array
+          items: { type: string }
+          example: ["/v1/matters", "/v1/invoices", "/v1/clients", "/v1/events"]
+        documentation: { type: string, format: uri }
+
+    Envelope:
+      type: object
+      required: [version, count, data]
+      description: Every resource response has this shape, including an empty one.
+      properties:
+        version: { type: string, const: "v1" }
+        count:
+          type: integer
+          description: How many rows are in `data` — this page, not the total.
+        data: { type: array, items: {} }
+
+    Matter:
+      type: object
+      required: [id, reference, title, type, opened_on, restricted, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        reference:
+          type: string
+          description: The firm's own file reference, unique across Docket.
+          example: "AK-M-2026-000014"
+        title: { type: string, example: "Adebayo v Union Bank" }
+        type:
+          type: string
+          enum: [litigation, property, corporate, estate, family, employment,
+                 debt_recovery, ip, regulatory, immigration, advisory, other]
+        status:
+          type: [string, "null"]
+          description: |
+            The firm's own stage label, not a Docket enum — firms name their own stages, and a
+            matter that has not been given one reads `null`.
+          example: "Filed"
+        court: { type: [string, "null"], example: "Federal High Court" }
+        suit_number: { type: [string, "null"], example: "FHC/L/CS/77/2026" }
+        opened_on:
+          type: string
+          format: date
+          description: A calendar day. Never shift it through a timezone.
+        closed_on: { type: [string, "null"], format: date }
+        restricted:
+          type: boolean
+          description: The matter is walled to its team inside the firm. See the route description.
+        updated_at:
+          type: string
+          format: date-time
+          description: The later of the matter's creation and its most recent update.
+
+    Invoice:
+      type: object
+      required: [id, number, status, currency, total_minor, paid_minor]
+      properties:
+        id: { type: string, format: uuid }
+        number: { type: string, example: "AK-INV-2026-000003" }
+        matter_id:
+          type: [string, "null"]
+          format: uuid
+          description: Null for an invoice raised against a consultation rather than a matter.
+        status:
+          type: string
+          enum: [issued, partially_paid, paid, overdue, cancelled]
+          description: "`draft` is never returned."
+        currency:
+          type: string
+          enum: [NGN, USD]
+          description: Always present, always beside the amounts. Never sum across two of these.
+        total_minor:
+          type: integer
+          format: int64
+          description: Minor units of `currency`. 25000000 with NGN is 250,000.00 naira.
+        paid_minor: { type: integer, format: int64 }
+        issued_at: { type: [string, "null"], format: date-time }
+        due_on:
+          type: [string, "null"]
+          format: date
+          description: A calendar day. Never shift it through a timezone.
+
+    Client:
+      type: object
+      required: [id, kind]
+      properties:
+        id: { type: string, format: uuid }
+        name:
+          type: [string, "null"]
+          description: A person's full name or a company's name, whichever the record carries.
+        kind: { type: string, enum: [individual, business] }
+        email: { type: [string, "null"], format: email }
+        phone: { type: [string, "null"] }
+
+    Event:
+      type: object
+      required: [id, seq, type, occurred_at, data]
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Stable for ever, and the same id a pushed webhook carries. Deduplicate on it.
+        seq:
+          type: integer
+          format: int64
+          description: Monotonic and unique within a firm. This is the cursor.
+        type:
+          type: string
+          enum: [matter.opened, matter.stage_changed, matter.closed, invoice.issued, invoice.paid]
+        occurred_at: { type: string, format: date-time }
+        data:
+          type: object
+          description: The mapped shape as it was when the event happened.
+
+    Problem:
+      type: object
+      required: [error]
+      description: One shape for every refusal, so a partner can handle them without reading prose.
+      properties:
+        error:
+          type: object
+          required: [code, detail]
+          properties:
+            code: { type: string }
+            detail: { type: string }
+
+  responses:
+    BadRequest:
+      description: "`since` was not an ISO 8601 instant."
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          example: { error: { code: bad_request, detail: "`since` must be an ISO 8601 instant, for example 2026-09-01T00:00:00Z." } }
+    Unauthorized:
+      description: No bearer token was sent.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          example: { error: { code: unauthorized, detail: "Send your key as: Authorization: Bearer dk_live_…" } }
+    Forbidden:
+      description: |
+        Either the key does not work, or it does not carry this scope.
+
+        `unauthorized` is returned for a key that is unknown, revoked, expired, or whose firm is
+        suspended — **deliberately one message**, so a caller learns whether their key works and
+        never which part was wrong. `insufficient_scope` means the key is fine and does not carry
+        this route's scope, and it names the scope that was missing.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          examples:
+            insufficient_scope:
+              value: { error: { code: insufficient_scope, detail: "this key does not carry the clients:read scope" } }
+            unauthorized:
+              value: { error: { code: unauthorized, detail: "this key does not open anything" } }
+    MethodNotAllowed:
+      description: v1 is read only.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          example: { error: { code: method_not_allowed, detail: "v1 of this API is read only. Only GET is served." } }
+    TooManyRequests:
+      description: Over 600 calls a minute on this key.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          example: { error: { code: too_many_requests, detail: "Too many calls on this key. Try again shortly." } }
+    InternalError:
+      description: Ours. The detail is in the function's logs, not in the response.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Problem" }
+          example: { error: { code: internal_error, detail: "The request could not be served." } }

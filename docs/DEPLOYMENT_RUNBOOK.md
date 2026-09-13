@@ -10,8 +10,9 @@ You will need, before you start:
 - a Paystack account (the **platform's** account — each firm settles to its own subaccount under it)
 - a Daily account, a Resend account, a Termii account, and a Twilio account if you have clients on
   non-Nigerian numbers
-- somewhere with **npm registry access** — see step 0, which cannot be done from inside this
-  project's build environment
+- somewhere with **npm registry access**, if you intend to add or upgrade a dependency — the
+  lockfile is committed and `npm ci` needs nothing else, but this project's own build environment
+  cannot reach the registry, so a dependency change has to be made elsewhere
 
 Everything Docket reads from the environment is catalogued in `.env.example`, grouped by which of
 the three runtimes reads it. Read it before step 5; the most common deployment fault is a function
@@ -19,32 +20,25 @@ secret set on Vercel, or a Vercel variable set with `supabase secrets set`.
 
 ---
 
-## 0. Two things that cannot be done from here
+## 0. What cannot be done from here
 
-These are not optional and they are not reachable from the environment this repository was built
-in. Do them somewhere they can be done, and tick them off explicitly.
+### 0a. `package-lock.json` — **done, 11 September 2026** (`189e1dc`)
 
-### 0a. Generate `package-lock.json`
+Kept as a record rather than deleted, because the reason it was once a manual step still applies to
+anyone changing a dependency.
 
-There is no lockfile in this repository. It was built with the npm registry closed, and a lockfile
-cannot be written without resolving against the registry. Without one:
+The lockfile is committed (81 KB) and **CI installs with `npm ci` everywhere** — the `lockfile`,
+`typecheck`, `routes` and `e2e` jobs all use it, and `cache: npm` is keyed off it on every
+`actions/setup-node` step. So the same commit installs the same tree twice, and `npm audit`,
+Dependabot and any SCA tool have a pinned surface to read.
 
-- `npm ci` does not work anywhere, including in CI — `.github/workflows/ci.yml` runs `npm install`
-  instead and says so in a comment;
-- `actions/setup-node`'s npm cache cannot be keyed, so every CI run re-resolves;
-- two deploys of the same commit can install different transitive versions.
+There is nothing to do here on a fresh deployment: Vercel picks the lockfile up on its own.
 
-On a machine with registry access, from a clean checkout:
-
-```bash
-rm -rf node_modules
-npm install
-git add package-lock.json
-git commit -m "Add the lockfile: the same commit installs the same tree twice"
-```
-
-Then change `.github/workflows/ci.yml`: `npm install --no-audit --no-fund` becomes `npm ci`, and
-`cache: npm` goes back on the `actions/setup-node` step. Vercel picks the lockfile up on its own.
+What still needs a machine with registry access is **adding or upgrading a dependency**. This
+project's build environment cannot reach the registry — `npm ci` there fails with a 403 on the
+tarball fetch, not on the metadata — so run `npm install <pkg>` somewhere that can, and commit the
+changed `package.json` and `package-lock.json` together. The `lockfile` CI job fails if the lockfile
+is missing, so a dependency added without it cannot merge.
 
 ### 0b. Turn on leaked-password protection and auth rate limits
 

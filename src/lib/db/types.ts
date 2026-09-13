@@ -1526,6 +1526,27 @@ export interface FirmRegistryNoticeRow {
   listed_on_non_sitting_day: boolean;
 }
 
+/**
+ * One row per registry from registry_pilot_health(): what the platform may see of the pilot, which
+ * is counts and nothing else. No firm, no matter and no suit appears here, and a registry cannot
+ * call the function at all — how the firms decided is theirs.
+ */
+export interface RegistryPilotHealthRow {
+  registry_id: string;
+  registry_name: string;
+  court_name: string;
+  status: string;
+  notices_published: number;
+  notices_withdrawn: number;
+  drafts: number;
+  decisions_confirmed: number;
+  decisions_rejected: number;
+  /** Confirmed onto a sitting the diary already had — whether the registry is ahead of the firms or behind them. */
+  attached_to_existing: number;
+  first_published_at: string | null;
+  last_published_at: string | null;
+}
+
 /** What stage_registry_notices() returns: the batch, how many rows became drafts, and the rows that did not, with why. */
 export interface StageNoticesResult {
   batch_id: string;
