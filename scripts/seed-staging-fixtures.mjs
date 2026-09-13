@@ -312,9 +312,12 @@ async function main() {
     const existing = await svcSelect('matters', `firm_id=eq.${firm.id}&title=eq.${encodeURIComponent(title)}&select=id`);
     if (existing.length) return existing[0].id;
     const r = await rpcAs(staffToken, 'open_matter', { p_firm: firm.id, p_title: title, p_type: 'litigation' });
-    const id = r?.matter_id ?? r?.id ?? r?.matter?.id;
-    if (!id) throw new Error(`open_matter returned no id: ${JSON.stringify(r).slice(0, 200)}`);
-    return id;
+    // open_matter returns jsonb_build_object('matter_id', …, 'reference', …, 'tasks_created', …)
+    // — supabase/migrations/20260910000039_workflow_packs.sql. Read the one key it documents and
+    // fail loudly on anything else: a fallback chain would quietly pick up some other field the day
+    // that shape changed, and the fixture would build the wrong thing without saying so.
+    if (!r?.matter_id) throw new Error(`open_matter returned no matter_id: ${JSON.stringify(r).slice(0, 200)}`);
+    return r.matter_id;
   }
   const clientMatter = await matterFor('Staging client matter');
   const forbiddenMatter = await matterFor('Staging matter the client is not on');
@@ -326,6 +329,8 @@ async function main() {
     const inv = await rpcAs(staffToken, 'invite_matter_party', {
       p_matter: clientMatter, p_email: FIXTURES.client.email, p_role: 'client',
     });
+    // invite_matter_party returns 'token' among others — 20260910000018_staff_console.sql.
+    if (!inv?.token) throw new Error(`invite_matter_party returned no token: ${JSON.stringify(inv).slice(0, 200)}`);
     const clientToken = await signInClientByMagicLink(FIXTURES.client.email);
     await rpcAs(clientToken, 'accept_invite', { p_token: inv.token });
     console.log('  client joined the matter');
@@ -406,14 +411,15 @@ async function main() {
     const r = await rpcAs(otherToken, 'open_matter', {
       p_firm: firm2.id, p_title: 'Staging matter at the second firm', p_type: 'advisory',
     });
-    secondMatter = r?.matter_id ?? r?.id ?? r?.matter?.id;
-    if (!secondMatter) throw new Error('open_matter (second firm) returned no id');
+    if (!r?.matter_id) throw new Error(`open_matter (second firm) returned no matter_id: ${JSON.stringify(r).slice(0, 200)}`);
+    secondMatter = r.matter_id;
   }
   const p2 = await svcSelect('matter_parties', `matter_id=eq.${secondMatter}&user_id=eq.${out.client.id}&select=user_id`);
   if (p2.length === 0) {
     const inv2 = await rpcAs(otherToken, 'invite_matter_party', {
       p_matter: secondMatter, p_email: FIXTURES.client.email, p_role: 'client',
     });
+    if (!inv2?.token) throw new Error('invite_matter_party (second firm) returned no token');
     const ct = await signInClientByMagicLink(FIXTURES.client.email);
     await rpcAs(ct, 'accept_invite', { p_token: inv2.token });
   }
