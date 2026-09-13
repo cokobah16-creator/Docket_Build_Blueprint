@@ -39,8 +39,9 @@ import type {
 } from "@/lib/db/types";
 import type {
   DocumentRow, DocumentSignatureRow, DocumentTemplateRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
-  ServiceDirectoryRow, TaskRow,
+  ServiceDirectoryRow, TaskRow, CollaborationRow, CollaborationDocumentRow,
 } from "@/lib/db/types";
+import { CollaborationPanel } from "@/components/firm/collaboration-panel";
 import { CopyButton, MatterTabs, type TabSpec } from "./matter-tabs";
 import { StaffTimeline, type StaffUpdate } from "./staff-timeline";
 import { StaffDocuments, type StaffDocument } from "./staff-documents";
@@ -58,6 +59,7 @@ const TABS: TabSpec[] = [
   { key: "messages", label: "Messages" },
   { key: "invoices", label: "Invoices" },
   { key: "counsel", label: "Counsel" },
+  { key: "working", label: "Working with" },
   { key: "parties", label: "Parties" },
   { key: "tasks", label: "Tasks" },
   { key: "deadlines", label: "Deadlines" },
@@ -346,6 +348,7 @@ export default async function MatterWorkbench({
         {tab === "messages" && <MessagesSection ctx={ctx} matter={matter} names={names} />}
         {tab === "invoices" && <InvoicesSection ctx={ctx} matter={matter} basePath={basePath} extraQuery={extraQuery} />}
         {tab === "counsel" && <CounselSection ctx={ctx} matter={matter} />}
+        {tab === "working" && <WorkingWithSection ctx={ctx} matter={matter} />}
         {tab === "parties" && <PartiesSection ctx={ctx} matter={matter} parties={parties} profiles={profiles} names={names} />}
         {tab === "tasks" && <TasksSection ctx={ctx} matter={matter} staffOptions={staffOptions} />}
         {tab === "deadlines" && <DeadlinesSection ctx={ctx} matter={matter} names={names} />}
@@ -639,6 +642,62 @@ async function CounselSection({ ctx, matter }: { ctx: StaffContext; matter: Matt
       directory={((directoryRows ?? []) as ServiceDirectoryRow[]).filter((f) => f.id !== matter.firm_id)}
       documents={(docRows ?? []) as Array<{ id: string; name: string; current_version_id: string | null }>}
       timezone={ctx.timezone}
+    />
+  );
+}
+
+// ---------------------------------------------------------------- working with another firm
+// Referrals, joint counsel and agency (migration 45). The other firm never reads this matter: it
+// reads a snapshot through collaboration_inbox, and the named versions this screen hands over.
+async function WorkingWithSection({ ctx, matter }: { ctx: StaffContext; matter: MatterDetail }) {
+  const [{ data: collabRows }, { data: directoryRows }, { data: docRows }] = await Promise.all([
+    ctx.supabase
+      .from("matter_collaborations")
+      .select("*")
+      .eq("matter_id", matter.id)
+      .order("proposed_at", { ascending: false })
+      .limit(100),
+    ctx.supabase
+      .from("firm_service_directory")
+      .select("id, name")
+      .order("name", { ascending: true })
+      .limit(500),
+    // Only a version with a checksum can be shared: share_document_with_collaborator() refuses one
+    // without, because what was handed over must be nameable afterwards.
+    ctx.supabase
+      .from("documents")
+      .select("id, name, current_version_id, document_versions!documents_current_version_id_fkey(id, checksum)")
+      .eq("matter_id", matter.id)
+      .is("deleted_at", null)
+      .limit(300),
+  ]);
+  const collaborations = (collabRows ?? []) as CollaborationRow[];
+  const ids = collaborations.map((c) => c.id);
+  const { data: sharedRows } = ids.length
+    ? await ctx.supabase.from("collaboration_documents").select("*").in("collaboration_id", ids).limit(500)
+    : { data: [] };
+
+  const firms = ((directoryRows ?? []) as Array<{ id: string; name: string }>).filter((f) => f.id !== ctx.firmId);
+  const firmNames: Record<string, string> = {};
+  for (const f of (directoryRows ?? []) as Array<{ id: string; name: string }>) firmNames[f.id] = f.name;
+
+  const documents = ((docRows ?? []) as Array<{
+    id: string; name: string; current_version_id: string | null;
+    document_versions: { id: string; checksum: string | null } | Array<{ id: string; checksum: string | null }> | null;
+  }>).map((d) => {
+    const v = Array.isArray(d.document_versions) ? d.document_versions[0] : d.document_versions;
+    return { id: d.id, name: d.name, versionId: v?.id ?? d.current_version_id, checksum: v?.checksum ?? null };
+  });
+
+  return (
+    <CollaborationPanel
+      matterId={matter.id}
+      rows={collaborations}
+      shared={(sharedRows ?? []) as CollaborationDocumentRow[]}
+      firms={firms}
+      documents={documents}
+      firmNames={firmNames}
+      today={todayIn(ctx.timezone)}
     />
   );
 }

@@ -23,7 +23,9 @@ import { Alert } from "@/components/ui/alert";
 import { Badge, StatusPill, type Status } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
-import type { MatterStatus } from "@/lib/db/types";
+import type { MatterStatus, RepresentationRow } from "@/lib/db/types";
+import { RepresentationsPanel } from "@/components/firm/representations-panel";
+import { todayIn } from "@/lib/days";
 
 export const metadata = { title: "Client" };
 
@@ -191,7 +193,7 @@ export default async function FirmClientPage({
   const { supabase, firmId, timezone: tz } = ctx;
   const backHref = sp.firm ? `/firm/clients?firm=${sp.firm}` : "/firm/clients";
 
-  const [{ data: profileRow }, { data: apptRows }, { data: partyRows }, { data: invoiceRows }, { data: consentRows }, statuses, origin] =
+  const [{ data: profileRow }, { data: apptRows }, { data: partyRows }, { data: invoiceRows }, { data: consentRows }, statuses, origin, { data: repRows }] =
     await Promise.all([
       supabase
         .from("profiles")
@@ -227,6 +229,15 @@ export default async function FirmClientPage({
         .limit(50),
       matterStatuses(supabase, firmId),
       siteOrigin(),
+      // Who may act for this client. RLS decides: staff who may see the matter, the principal, and
+      // the representative. A revoked one is kept and shown, because the record is the point.
+      supabase
+        .from("representations")
+        .select("*")
+        .eq("firm_id", firmId)
+        .eq("principal_id", id)
+        .order("created_at", { ascending: false })
+        .limit(100),
     ]);
 
   const appointments = (apptRows ?? []) as AppointmentRow[];
@@ -272,6 +283,19 @@ export default async function FirmClientPage({
   const statusById = new Map(statuses.map((s) => [s.id, s]));
   const roleByMatter = new Map(parties.map((p) => [p.matter_id, p]));
 
+  const representations = (repRows ?? []) as RepresentationRow[];
+  // The names beside each authority — the verifying lawyer, and the representative once they have
+  // taken it up. Read under RLS like everything else: a name that cannot be read is simply absent.
+  const repNames: Record<string, string> = {};
+  const repPeople = Array.from(new Set(
+    representations.flatMap((r) => [r.verified_by, r.representative_id]).filter((x): x is string => Boolean(x)),
+  ));
+  if (repPeople.length > 0) {
+    const { data: peopleRows } = await supabase.from("profiles").select("id, full_name, email").in("id", repPeople);
+    for (const p of (peopleRows ?? []) as Array<{ id: string; full_name: string | null; email: string | null }>) {
+      repNames[p.id] = p.full_name?.trim() || p.email || "A person";
+    }
+  }
   const name = profile?.full_name?.trim() || profile?.company_name?.trim() || "This client";
   const nowMs = Date.now();
 
@@ -341,6 +365,17 @@ export default async function FirmClientPage({
           </div>
         )}
       </header>
+
+      <RepresentationsPanel
+        firmId={firmId}
+        principalId={id}
+        principalName={name}
+        matters={matters.map((m) => ({ id: m.id, reference: m.reference, title: m.title }))}
+        rows={representations}
+        names={repNames}
+        canWrite
+        today={todayIn(tz)}
+      />
 
       {!profile && (
         <Alert kind="warning" title="Profile not readable">
@@ -449,7 +484,6 @@ export default async function FirmClientPage({
                           {m.reference}
                           {party ? ` · ${PARTY_ROLE_LABELS[party.role] ?? party.role} on this file` : ""}
                           {party && !party.can_view_docs ? " · cannot see documents" : ""}
-                          {party && !party.can_pay ? " · cannot pay" : ""}
                           {` · opened ${dayLabel(m.opened_at)}`}
                         </p>
                         {(m.court_name || m.suit_number) && (

@@ -1255,3 +1255,159 @@ export interface SearchHit {
   occurred_at: string | null;
   rank: number;
 }
+
+/** representations (migration 44): who may act for a client, on what, until when. */
+export interface RepresentationRow {
+  id: string;
+  firm_id: string;
+  principal_id: string;
+  /** Null until somebody redeems the token — being named is not the same as being bound. */
+  representative_id: string | null;
+  capacity: string;
+  organisation_name: string | null;
+  scope: "matter" | "all_matters";
+  matter_id: string | null;
+  can_view_docs: boolean;
+  can_pay: boolean;
+  /** Calendar days. Never rendered through a timezone. */
+  starts_on: string;
+  expires_on: string | null;
+  authority_kind: string;
+  authority_ref: string | null;
+  verification_note: string | null;
+  verified_by: string;
+  verified_at: string;
+  invited_email: string | null;
+  invited_phone: string | null;
+  accepted_at: string | null;
+  /** Captured when the authority was taken up: the principal cannot read the representative's profile. */
+  representative_name: string | null;
+  revoked_at: string | null;
+  revoked_by: string | null;
+  revoke_reason: string | null;
+  created_at: string;
+}
+
+/** identity_events (migration 44): a client changed the number or address their firm reaches them on. */
+export interface IdentityEventRow {
+  id: string;
+  user_id: string;
+  field: "phone" | "email";
+  old_value: string | null;
+  new_value: string | null;
+  changed_at: string;
+}
+
+/** matter_collaborations (migration 45): a referral, joint retainer or agency between two firms. */
+export interface CollaborationRow {
+  id: string;
+  firm_id: string;
+  matter_id: string;
+  with_firm_id: string;
+  kind: string;
+  /** A snapshot taken at proposal. The other firm never reads the live matter. */
+  case_title: string | null;
+  suit_number: string | null;
+  court_name: string | null;
+  scope_note: string;
+  share_updates: boolean;
+  ends_on: string | null;
+  proposed_by: string | null;
+  proposed_at: string;
+  accepted_at: string | null;
+  declined_at: string | null;
+  decline_reason: string | null;
+  ended_at: string | null;
+  end_reason: string | null;
+}
+
+/** collaboration_inbox (migration 45): the collaborating firm's only read path. */
+export interface CollaborationInboxRow {
+  id: string;
+  kind: string;
+  case_title: string | null;
+  suit_number: string | null;
+  court_name: string | null;
+  scope_note: string;
+  share_updates: boolean;
+  ends_on: string | null;
+  proposed_at: string;
+  accepted_at: string | null;
+  declined_at: string | null;
+  ended_at: string | null;
+  from_firm_id: string;
+  from_firm_name: string;
+  with_firm_id: string;
+  shared_documents: number;
+}
+
+export interface CollaborationDocumentRow {
+  id: string;
+  collaboration_id: string;
+  document_id: string;
+  document_version_id: string;
+  checksum: string | null;
+  shared_at: string;
+  withdrawn_at: string | null;
+}
+
+export interface CollaborationNoteRow {
+  id: string;
+  collaboration_id: string;
+  firm_id: string;
+  author_id: string | null;
+  body: string;
+  created_at: string;
+}
+
+/** api_credentials (migration 46). The key itself is never here — only its hash, which is not selected. */
+export interface ApiCredentialRow {
+  id: string;
+  firm_id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  /** A calendar day. Never rendered through a timezone. */
+  expires_on: string | null;
+  last_used_at: string | null;
+  created_at: string;
+  revoked_at: string | null;
+  revoke_reason: string | null;
+}
+
+/** api_endpoint_list() (migration 46): everything about an endpoint except what signs it. */
+export interface ApiEndpointSummary {
+  id: string;
+  url: string;
+  types: string[];
+  active: boolean;
+  created_at: string;
+  pending: number;
+  failed: number;
+  delivered: number;
+}
+
+/**
+ * calendar_feed_status() (migration 47): that a subscribed calendar URL exists, never the URL.
+ * The token is shown once, at the moment it is minted, and only its hash is kept.
+ */
+export interface CalendarFeedStatus {
+  id: string;
+  include_client_names: boolean;
+  created_at: string;
+  last_used_at: string | null;
+}
+
+/**
+ * document_text_health() (migration 48). Counts of this firm's own current documents, by how far
+ * the reader got with each. Counts only: never a word of anybody's text.
+ */
+export interface DocumentTextHealth {
+  waiting: number;
+  extracted: number;
+  no_text_layer: number;
+  unsupported: number;
+  failed: number;
+  too_large: number;
+  last_extracted_at: string | null;
+}

@@ -134,9 +134,11 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
           </div>
           {/* Said here rather than discovered later. */}
           <p className="text-[11.5px] leading-[1.45] text-[#57534E]">
-            Docket searches what it holds as text — matters, updates, messages, notes and the
-            <em> names</em> of documents. It does not read inside an uploaded file, so a clause in a
-            scanned agreement is not findable yet.
+            Docket searches what it holds as text — matters, updates, messages, notes, the names of
+            documents, and the words <em>inside</em> a document where it could read them. It cannot
+            read a <strong>scan</strong>: a photographed or scanned page is a picture of words, not
+            words, and Docket does not yet recognise them. Administration &rarr; Documents says how
+            many of this firm&rsquo;s files are in that position.
           </p>
         </form>
       </Card>
@@ -182,7 +184,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
             {hits.length === 0 ? (
               <EmptyState
                 title="Nothing matched that"
-                hint="Try a shorter word, a suit number, or a client's surname. The contents of uploaded files are not searched."
+                hint="Try a shorter word, a suit number, or a client's surname. A scanned file has no words to find."
               />
             ) : (
               <ul>

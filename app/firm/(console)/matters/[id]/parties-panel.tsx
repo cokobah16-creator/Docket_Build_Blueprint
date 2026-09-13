@@ -159,7 +159,7 @@ export function PartiesPanel({
                     {p.email ? ` · ${p.email}` : ""}
                   </p>
                   <p className="mt-0.5 text-xs text-gray-500">
-                    {p.can_view_docs ? "Can read shared documents" : "No document access"} · {p.can_pay ? "Can pay invoices" : "Cannot pay invoices"}
+                    {p.can_view_docs ? "Can read shared documents" : "No document access"}
                   </p>
                 </div>
                 {confirming === p.user_id ? (
