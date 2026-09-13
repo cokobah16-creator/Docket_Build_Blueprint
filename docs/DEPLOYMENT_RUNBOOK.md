@@ -191,7 +191,7 @@ must enrol TOTP before `/admin` will let it do anything, because every platform 
 
 ## 3. The Edge Functions
 
-Eight functions, and **seven of them must be deployed with `--no-verify-jwt`**, because their callers
+Nine functions, and **eight of them must be deployed with `--no-verify-jwt`**, because their callers
 hold no Supabase session — a payment provider, `pg_cron`, a partner's server, a calendar app. There is no `supabase/config.toml` in this repository, so the flag has to
 be on the command line every time.
 
@@ -203,6 +203,7 @@ supabase functions deploy storage-manifest        --project-ref <ref> --no-verif
 supabase functions deploy partner-api             --project-ref <ref> --no-verify-jwt
 supabase functions deploy partner-webhooks        --project-ref <ref> --no-verify-jwt
 supabase functions deploy calendar-feed           --project-ref <ref> --no-verify-jwt
+supabase functions deploy extract-text            --project-ref <ref> --no-verify-jwt
 supabase functions deploy video-session           --project-ref <ref>
 ```
 
@@ -250,6 +251,11 @@ supabase functions deploy video-session           --project-ref <ref>
   user for this function to pass, and nothing here to get wrong. It answers `text/calendar` with
   `Cache-Control: private, no-store`, because a feed URL is a bearer credential no shared cache
   should ever hold.
+- **`extract-text`** is called by `pg_cron` every five minutes with the same `x-cron-secret`
+  (migration 48). It claims a bounded batch of current document versions, downloads each object,
+  reads the words out of it with `src/lib/extract.ts`, and hands the answer back. It needs
+  `vault.create_secret('https://<ref>.supabase.co/functions/v1/extract-text', 'extract_text_url')`
+  and is a no-op until that and `cron_secret` both exist.
 - **`video-session`** is called by signed-in people and reads the `Authorization` header itself, so
   it keeps JWT verification on.
 
@@ -427,7 +433,7 @@ verify.
 ## Redeploying, afterwards
 
 - **Schema:** add a migration; never edit one that has been applied. `supabase db push`.
-- **Functions:** `supabase functions deploy <name>` — and remember `--no-verify-jwt` on the seven
+- **Functions:** `supabase functions deploy <name>` — and remember `--no-verify-jwt` on the eight
   that need it, every time. `video-session` is the only one that keeps JWT verification on.
 - **App:** push to the branch Vercel builds.
 - **Before any of it:** CI runs the migrations, the seed and **every** suite in `supabase/tests/`
@@ -631,6 +637,57 @@ select proname, proacl from pg_proc where proname = 'calendar_feed_events';
 
 The service role's alone. A signed-in person who could call it directly could hand it somebody
 else's token, and the wall inside it is written against the token's owner rather than the caller.
+
+**47 and 48 both go before the app**, and 48 has one thing to know before it is applied rather than
+after.
+
+`document_versions` gains a `text_status` column defaulting to `'pending'`, so **every existing
+version is marked pending the moment this lands**. That is correct — none of them has been read —
+but it means the reader has a backlog on day one, and it is worth knowing how big:
+
+```sql
+select count(*) from documents d
+  join document_versions v on v.id = d.current_version_id
+ where d.deleted_at is null;
+```
+
+That number, divided by five, is how many five-minute runs it takes to work through — a few hundred
+files is an afternoon. Only a document's **current** version is ever read, so a firm with a long
+version history has far less to do than the raw row count suggests. Superseded versions stay
+`'pending'` for ever and are not a backlog: they are simply not in the queue, and
+`document_text_health()` does not count them.
+
+Then:
+
+```bash
+supabase functions deploy extract-text --project-ref <ref> --no-verify-jwt
+```
+
+```sql
+select vault.create_secret('https://<ref>.supabase.co/functions/v1/extract-text', 'extract_text_url');
+```
+
+**Proves it worked:** after a few minutes,
+
+```sql
+select text_status, count(*) from document_versions group by 1 order by 2 desc;
+```
+
+should show rows moving out of `pending`. Then open **Administration → Documents** in the console: it
+shows the same figures for one firm, in words. A `no_text_layer` count that is most of the corpus is
+not a fault — it means that firm's files are scans, which `docs/DOCUMENT_TEXT.md` explains and which
+is exactly what that screen exists to tell them.
+
+One thing to check rather than assume, for the third time and the same reason:
+
+```sql
+select proname, proacl from pg_proc
+ where proname in ('claim_document_text', 'record_document_text');
+```
+
+Neither may be executable by `anon` or `authenticated`. They are the only way text is ever written
+onto a document version, and the table beside them has had `update` revoked since migration 24 —
+`supabase/tests/99_document_text.sql` asserts both, from a signed-in lawyer's session.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

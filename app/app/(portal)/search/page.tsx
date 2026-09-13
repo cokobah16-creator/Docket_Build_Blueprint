@@ -113,8 +113,9 @@ export default async function PortalSearch({ searchParams }: { searchParams: Pro
             </button>
           </div>
           <p className="text-xs leading-relaxed text-gray-500">
-            This searches what your firm has written to you and the <em>names</em> of your documents.
-            It does not read inside a file you or your firm uploaded.
+            This searches what your firm has written to you, the names of your documents, and the
+            words inside the ones your firm has shared with you. A scanned or photographed page is
+            a picture of words rather than words, so Docket cannot look inside those.
           </p>
         </form>
       </Card>

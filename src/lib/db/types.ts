@@ -1397,3 +1397,17 @@ export interface CalendarFeedStatus {
   created_at: string;
   last_used_at: string | null;
 }
+
+/**
+ * document_text_health() (migration 48). Counts of this firm's own current documents, by how far
+ * the reader got with each. Counts only: never a word of anybody's text.
+ */
+export interface DocumentTextHealth {
+  waiting: number;
+  extracted: number;
+  no_text_layer: number;
+  unsupported: number;
+  failed: number;
+  too_large: number;
+  last_extracted_at: string | null;
+}
