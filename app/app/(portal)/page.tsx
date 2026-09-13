@@ -244,7 +244,7 @@ export default async function ClientDashboard() {
       </Card>
 
       <p className="pt-0.5 text-center text-[11.5px] text-gray-500">
-        <Link href="/app/search" className="underline underline-offset-2">Search</Link> · <Link href="/app/court-dates" className="underline underline-offset-2">Court dates</Link> · <Link href="/app/payments" className="underline underline-offset-2">Payments</Link> · <Link href="/app/profile" className="underline underline-offset-2">Profile</Link>
+        <Link href="/app/search" className="underline underline-offset-2">Search</Link> · <Link href="/app/authority" className="underline underline-offset-2">Who may act for me</Link> · <Link href="/app/court-dates" className="underline underline-offset-2">Court dates</Link> · <Link href="/app/payments" className="underline underline-offset-2">Payments</Link> · <Link href="/app/profile" className="underline underline-offset-2">Profile</Link>
       </p>
     </Screen>
   );

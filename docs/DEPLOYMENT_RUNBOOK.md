@@ -191,8 +191,8 @@ must enrol TOTP before `/admin` will let it do anything, because every platform 
 
 ## 3. The Edge Functions
 
-Five functions, and **four of them must be deployed with `--no-verify-jwt`**, because their callers
-hold no Supabase session. There is no `supabase/config.toml` in this repository, so the flag has to
+Nine functions, and **eight of them must be deployed with `--no-verify-jwt`**, because their callers
+hold no Supabase session — a payment provider, `pg_cron`, a partner's server, a calendar app. There is no `supabase/config.toml` in this repository, so the flag has to
 be on the command line every time.
 
 ```bash
@@ -200,6 +200,10 @@ supabase functions deploy paystack-webhook        --project-ref <ref> --no-verif
 supabase functions deploy dispatch-notifications  --project-ref <ref> --no-verify-jwt
 supabase functions deploy delivery-receipts       --project-ref <ref> --no-verify-jwt
 supabase functions deploy storage-manifest        --project-ref <ref> --no-verify-jwt
+supabase functions deploy partner-api             --project-ref <ref> --no-verify-jwt
+supabase functions deploy partner-webhooks        --project-ref <ref> --no-verify-jwt
+supabase functions deploy calendar-feed           --project-ref <ref> --no-verify-jwt
+supabase functions deploy extract-text            --project-ref <ref> --no-verify-jwt
 supabase functions deploy video-session           --project-ref <ref>
 ```
 
@@ -233,6 +237,25 @@ supabase functions deploy video-session           --project-ref <ref>
   Vault secrets — `cron_secret`, which the dispatcher already has, and
   `vault.create_secret('https://<ref>.supabase.co/functions/v1/storage-manifest', 'storage_manifest_url')`
   — and is a no-op until both exist.
+- **`partner-api`** is called by another firm's software with a Docket key rather than a Supabase
+  JWT (migration 46). It holds no rule at all: `api_authorize()` in the database decides whether a
+  key exists, is live, and carries the scope, and every `api_v1_*` function is the service role's
+  alone. See `docs/PARTNER_API.md`.
+- **`partner-webhooks`** is called by `pg_cron` with the same `x-cron-secret` and pushes each event
+  to whatever endpoints a firm registered, signed with that endpoint's own secret. It needs
+  `vault.create_secret('https://<ref>.supabase.co/functions/v1/partner-webhooks', 'partner_webhooks_url')`
+  and is a no-op until that exists.
+- **`calendar-feed`** is called by a lawyer's calendar app, which holds no session of any kind
+  (migration 47). The token in the path is the whole credential, and `calendar_feed_events()`
+  decides whose diary it is and applies that person's own matter walls — so there is no firm or
+  user for this function to pass, and nothing here to get wrong. It answers `text/calendar` with
+  `Cache-Control: private, no-store`, because a feed URL is a bearer credential no shared cache
+  should ever hold.
+- **`extract-text`** is called by `pg_cron` every five minutes with the same `x-cron-secret`
+  (migration 48). It claims a bounded batch of current document versions, downloads each object,
+  reads the words out of it with `src/lib/extract.ts`, and hands the answer back. It needs
+  `vault.create_secret('https://<ref>.supabase.co/functions/v1/extract-text', 'extract_text_url')`
+  and is a no-op until that and `cron_secret` both exist.
 - **`video-session`** is called by signed-in people and reads the `Authorization` header itself, so
   it keeps JWT verification on.
 
@@ -410,8 +433,8 @@ verify.
 ## Redeploying, afterwards
 
 - **Schema:** add a migration; never edit one that has been applied. `supabase db push`.
-- **Functions:** `supabase functions deploy <name>` — and remember `--no-verify-jwt` on the two that
-  need it, every time.
+- **Functions:** `supabase functions deploy <name>` — and remember `--no-verify-jwt` on the eight
+  that need it, every time. `video-session` is the only one that keeps JWT verification on.
 - **App:** push to the branch Vercel builds.
 - **Before any of it:** CI runs the migrations, the seed and **every** suite in `supabase/tests/`
   against a clean Postgres 16 — the job counts the files and refuses to pass unless each one
@@ -513,6 +536,158 @@ every table as the caller, so a walled matter is absent from a search because it
 `matters` for that reader. Were it ever changed to SECURITY DEFINER, it would become a firm-wide,
 wall-free read of everything in one word, and suite `99_search.sql` asserts `prosecdef` is false
 for exactly that reason.
+
+**44 goes before the app**, for the same reason: the client screen, the authority screens and the
+acceptance page call `grant_representation()`, `accept_representation()` and
+`revoke_representation()`, none of which exist before it. It also makes a switch real that the
+console has been printing since migration 1 and the database never asked — `matter_parties.can_view_docs`
+now decides whether a party reaches a document, its versions and its bytes. **Check before applying**
+that no firm has a party row with the switch off and an expectation that it meant nothing:
+
+```sql
+select count(*) from matter_parties where not can_view_docs;   -- expected: 0
+```
+
+Zero is the expected answer, because nothing in the app has ever written the column, so every row
+carries its default of `true` and no party loses a document the day this is applied. A non-zero
+answer means somebody set it by hand through the API, and those people are about to lose document
+access — which is what they asked for, but find out first rather than from them. `can_pay` is left
+alone for a party and gains meaning only for a representation; the two console lines that claimed
+otherwise are removed in the same commit.
+
+A review round on 44 tightened four things after it was first written, all inside the same
+migration: acceptance is measured against `auth.users` rather than the editable profile, an
+all-matters authority never reaches a walled matter, an authority must name its invitee, and
+`can_access_invoice()` and `invoice_settlement()` admit a representative trusted with money. That
+last edit also closes a wall gap that predates this wave — `can_access_invoice()` had stayed on
+`is_firm_member()` when migration 29 walled `invoices_select`, so a colleague outside a restricted
+matter's team could read that matter's invoice ITEMS. If you have already applied 44 from an earlier
+build of this branch, re-apply it: every statement in it is idempotent.
+
+**45 is additive and safe either side, with one caveat worth stating.** The collaboration screens
+call six new RPCs, so applying it after the app deploy leaves `/firm/collaborations` and the matter's
+*Working with* tab answering PGRST202 until it lands — nothing else breaks, and no existing call
+changes. The caveat is that 45 re-creates `can_access_document_version()` to add one arm for a
+collaborating firm. That function is the door to the object bytes through the storage policies, so
+after applying it, confirm it still carries every arm it had:
+
+```sql
+select pg_get_functiondef('public.can_access_document_version(uuid)'::regprocedure);
+```
+
+Four arms are expected: the firm's own members through `matter_row_r`, the client side (a party with
+`can_view_docs`, a live representation with the documents right, or an appointment's client), the
+served firm through `is_served_firm`, and now `is_collaborating_firm`. A version of this function
+with three arms means an edit dropped one, and somebody has quietly lost access to their own
+documents. Suite `96_document_reads.sql` and `99_collaboration.sql` both exercise it.
+
+**46 goes before the app**, because the Partner API screen calls four new RPCs. It also adds two
+Edge Functions and a cron job, none of which do anything until they are deployed and their address
+is stored:
+
+1. `supabase functions deploy partner-api` — served at
+   `https://<ref>.supabase.co/functions/v1/partner-api`. It needs `verify_jwt` OFF, because partners
+   authenticate with a Docket key rather than a Supabase JWT: `supabase functions deploy partner-api --no-verify-jwt`.
+2. `supabase functions deploy partner-webhooks --no-verify-jwt` — the pusher. It refuses anything
+   without the right `x-cron-secret`, which is the same secret the dispatcher uses.
+3. Store the pusher's address so the cron job stops being a no-op:
+   `select vault.create_secret('https://<ref>.supabase.co/functions/v1/partner-webhooks', 'partner_webhooks_url');`
+   Until that secret exists the job runs and posts nowhere, by design.
+
+**Proves it worked:** `curl https://<ref>.supabase.co/functions/v1/partner-api` returns the version
+document — `{"version":"v1","read_only":true,"sandbox":false,…}` — with no key at all, because that
+one path is the only unauthenticated thing it serves. `curl -H 'Authorization: Bearer nonsense'
+https://<ref>.supabase.co/functions/v1/partner-api/v1/matters` returns 403 `unauthorized`. And with
+a real key issued from `/firm/admin/api`, the same call returns that firm's matters and no other
+firm's.
+
+One thing to check rather than assume, because the whole design rests on it:
+
+```sql
+select proname, proacl from pg_proc where proname in ('api_authorize', 'api_v1_matters');
+```
+
+Neither may be executable by `anon` or `authenticated`. They are the service role's alone — the API
+function calls them, and a signed-in person must never be able to hand them a key directly.
+
+**47 goes before the app**, because the calendar panel on `/firm/me` calls `calendar_feed_status()`,
+`issue_calendar_feed()` and `revoke_calendar_feed()`. It adds one Edge Function and no cron job:
+
+```bash
+supabase functions deploy calendar-feed --project-ref <ref> --no-verify-jwt
+```
+
+`--no-verify-jwt` is not optional here and is not a relaxation: a calendar app subscribing to a URL
+sends no `Authorization` header and never will. The token in the path is the credential, and
+`calendar_feed_events()` — which `anon` and `authenticated` cannot execute at all — is what decides
+whose diary it is.
+
+**Proves it worked:** `curl -i https://<ref>.supabase.co/functions/v1/calendar-feed/nonsense`
+returns `404 not found` — the same answer an unknown, a revoked and a departed member's token all
+get, so a fetcher learns whether a URL works and never why it does not. With a real URL issued from
+**Me → My diary in my own calendar**, the same call returns `BEGIN:VCALENDAR` and
+`Content-Type: text/calendar`. Then subscribe to it in a calendar and check one thing by hand: a
+matter walled to a team the feed's owner is not on must not appear in it.
+
+One thing to check rather than assume, for the same reason as 46:
+
+```sql
+select proname, proacl from pg_proc where proname = 'calendar_feed_events';
+```
+
+The service role's alone. A signed-in person who could call it directly could hand it somebody
+else's token, and the wall inside it is written against the token's owner rather than the caller.
+
+**47 and 48 both go before the app**, and 48 has one thing to know before it is applied rather than
+after.
+
+`document_versions` gains a `text_status` column defaulting to `'pending'`, so **every existing
+version is marked pending the moment this lands**. That is correct — none of them has been read —
+but it means the reader has a backlog on day one, and it is worth knowing how big:
+
+```sql
+select count(*) from documents d
+  join document_versions v on v.id = d.current_version_id
+ where d.deleted_at is null;
+```
+
+That number, divided by five, is how many five-minute runs it takes to work through — a few hundred
+files is an afternoon. Only a document's **current** version is ever read, so a firm with a long
+version history has far less to do than the raw row count suggests. Superseded versions stay
+`'pending'` for ever and are not a backlog: they are simply not in the queue, and
+`document_text_health()` does not count them.
+
+Then:
+
+```bash
+supabase functions deploy extract-text --project-ref <ref> --no-verify-jwt
+```
+
+```sql
+select vault.create_secret('https://<ref>.supabase.co/functions/v1/extract-text', 'extract_text_url');
+```
+
+**Proves it worked:** after a few minutes,
+
+```sql
+select text_status, count(*) from document_versions group by 1 order by 2 desc;
+```
+
+should show rows moving out of `pending`. Then open **Administration → Documents** in the console: it
+shows the same figures for one firm, in words. A `no_text_layer` count that is most of the corpus is
+not a fault — it means that firm's files are scans, which `docs/DOCUMENT_TEXT.md` explains and which
+is exactly what that screen exists to tell them.
+
+One thing to check rather than assume, for the third time and the same reason:
+
+```sql
+select proname, proacl from pg_proc
+ where proname in ('claim_document_text', 'record_document_text');
+```
+
+Neither may be executable by `anon` or `authenticated`. They are the only way text is ever written
+onto a document version, and the table beside them has had `update` revoked since migration 24 —
+`supabase/tests/99_document_text.sql` asserts both, from a signed-in lawyer's session.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|
