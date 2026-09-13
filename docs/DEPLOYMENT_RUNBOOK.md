@@ -40,6 +40,33 @@ tarball fetch, not on the metadata — so run `npm install <pkg>` somewhere that
 changed `package.json` and `package-lock.json` together. The `lockfile` CI job fails if the lockfile
 is missing, so a dependency added without it cannot merge.
 
+### 0c. Arm the live schema-drift alarm
+
+One repository secret, and it is the cheapest insurance in this runbook:
+
+```
+LIVE_READONLY_DATABASE_URL   a READ-ONLY Postgres connection string to the production project
+```
+
+`.github/workflows/live-schema-drift.yml` runs daily at 06:00 UTC and asks production two
+questions: does the live database have every relation and function the code on `main` names, and
+has the migration ledger caught up with the repository?
+
+**It exists because both answers were once no and nothing noticed.** On 13 September production was
+serving a front end that named 25 relations and 56 functions the live database did not have —
+migrations 34–49 had never been applied and the app had deployed ahead of the schema across three
+merges. `scripts/check-deployed-reads.sh` would have found it in seconds, but CI only ever ran it
+against a schema built locally from the migration files, which by construction always has
+everything. The comparison that mattered was the one nobody made.
+
+Make the role genuinely read-only: the workflow issues only `SELECT`s against catalogue tables, and
+a credential in GitHub Actions that could write to a firm's matters is a credential in the wrong
+place. It also needs `USAGE` on the `supabase_migrations` schema for the ledger count.
+
+**Until the secret is set, the job fails rather than skips.** That is deliberate: a guard that
+reports success while unarmed is the defect it exists to catch. It runs on a schedule only, so it
+never blocks a pull request.
+
 ### 0b. Turn on leaked-password protection and auth rate limits
 
 Both live in the Supabase dashboard and neither has a migration, an API call in this repository, or
