@@ -67,10 +67,33 @@ export async function registryMembers(supabase: SupabaseClient, registryId: stri
   return members.map((m) => ({ ...m, full_name: byId.get(m.user_id)?.full_name ?? null, email: byId.get(m.user_id)?.email ?? null }));
 }
 
-export async function registryNotices(supabase: SupabaseClient, registryId: string, limit = 300): Promise<RegistryNoticeRow[]> {
+/**
+ * This registry's notices. A batch may hold 500 rows and a registry accumulates history, so this
+ * read is CAPPED and the caller must treat it as a page, not as the truth about how many there
+ * are. `registryDraftCounts()` below is what the Publish button counts, because a button that
+ * says "Publish 300" and publishes 500 is a button that lies.
+ */
+export async function registryNotices(supabase: SupabaseClient, registryId: string, limit = 600): Promise<RegistryNoticeRow[]> {
   const { data } = await supabase.from("registry_notices").select("*").eq("registry_id", registryId)
+    .order("status", { ascending: true })          // draft, published, withdrawn — drafts first, always
     .order("listed_on", { ascending: false }).order("created_at", { ascending: false }).limit(limit);
   return (data ?? []) as RegistryNoticeRow[];
+}
+
+/**
+ * How many drafts each of these batches actually holds, asked of the database rather than counted
+ * from a page that may be short. One `head` count per batch, and there are rarely more than a few
+ * unpublished batches.
+ */
+export async function registryDraftCounts(supabase: SupabaseClient, batchIds: string[]): Promise<Record<string, number>> {
+  if (batchIds.length === 0) return {};
+  const counts = await Promise.all(batchIds.map(async (id) => {
+    const { count } = await supabase.from("registry_notices")
+      .select("id", { count: "exact", head: true })
+      .eq("batch_id", id).eq("status", "draft");
+    return [id, count ?? 0] as const;
+  }));
+  return Object.fromEntries(counts);
 }
 
 export async function registryBatches(supabase: SupabaseClient, registryId: string, limit = 50): Promise<RegistryNoticeBatchRow[]> {

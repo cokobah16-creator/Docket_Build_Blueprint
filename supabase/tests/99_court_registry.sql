@@ -42,11 +42,13 @@ insert into auth.users (id, email) values
   (gen_random_uuid(), 'rg-platform@test'), (gen_random_uuid(), 'rg-registrar@test'), (gen_random_uuid(), 'rg-clerk@test'),
   (gen_random_uuid(), 'rg-registrar2@test'), (gen_random_uuid(), 'rg-a1@test'), (gen_random_uuid(), 'rg-a2@test'),
   (gen_random_uuid(), 'rg-b1@test'), (gen_random_uuid(), 'rg-c1@test'), (gen_random_uuid(), 'rg-d1@test'),
-  (gen_random_uuid(), 'rg-client@test'), (gen_random_uuid(), 'rg-nobody@test');
+  (gen_random_uuid(), 'rg-client@test'), (gen_random_uuid(), 'rg-nobody@test'),
+  (gen_random_uuid(), 'rg-clerk_a@test'), (gen_random_uuid(), 'rg-leaver@test');
 insert into fx select replace(split_part(email, '@', 1), 'rg-', ''), id from auth.users where email like 'rg-%@test';
 insert into platform_admins (user_id, note) values ((select v from fx where k='platform'), 'test');
 
 insert into firm_members (firm_id, user_id, role) values
+  ((select v from fx where k='firm_a'), (select v from fx where k='clerk_a'), 'staff'),
   ((select v from fx where k='firm_a'), (select v from fx where k='a1'), 'lawyer'),
   ((select v from fx where k='firm_a'), (select v from fx where k='a2'), 'lawyer'),
   ((select v from fx where k='firm_b'), (select v from fx where k='b1'), 'lawyer'),
@@ -267,6 +269,26 @@ begin
   perform t_reset();
 end $$;
 
+-- ---------------------------------------------------------------- 5b. the decision is a lawyer's
+do $$
+declare sa uuid := (select v from fx where k='clerk_a'); m uuid := (select v from fx where k='matter_a'); n77 uuid := (select v from fx where k='notice77');
+        f uuid := (select v from fx where k='firm_a');
+begin
+  perform t_reset();
+  -- The secretary is a member of the firm with a second factor, and can see the matter — so
+  -- matter_row_w() lets them through. The workflow's claim is that a LAWYER decides.
+  insert into matter_lawyers (matter_id, firm_id, user_id) values (m, f, sa) on conflict do nothing;
+  perform t_as(sa);
+  perform t_check('a member of staff can see the notice', (select count(*) from firm_registry_notices where notice_id = n77) = 1);
+  perform t_check('...but cannot confirm it into the diary',
+    t_fails_with(format('select confirm_registry_notice(%L, %L)', n77, m), 'confirmed by a lawyer'));
+  perform t_check('...and cannot dispose of it either',
+    t_fails_with(format('select reject_registry_notice(%L, %L, %L)', n77, m, 'not ours'), 'decided by a lawyer'));
+  perform t_check('...and nothing reached the diary', not exists (select 1 from court_events where registry_notice_id = n77));
+  perform t_reset();
+  delete from matter_lawyers where matter_id = m and user_id = sa;
+end $$;
+
 -- ---------------------------------------------------------------- 6. confirming, three ways
 do $$
 declare a1 uuid := (select v from fx where k='a1'); m uuid := (select v from fx where k='matter_a'); n77 uuid := (select v from fx where k='notice77');
@@ -287,6 +309,36 @@ begin
   perform t_check('...and the time the lawyer had is kept', (select scheduled_at = ((wed + time '10:00')::timestamp) at time zone 'Africa/Lagos' from court_events where id = old_ev));
   perform t_check('firm B has one open sitting, not two', (select count(*) from court_events where matter_id = mb and vacated_at is null) = 1);
   perform t_reset();
+
+  -- THE SAME DAY, BUT NOT THE EARLIEST. A matter with an earlier unrelated sitting must still
+  -- attach to the listed day rather than duplicate it — and must not vacate the earlier one.
+  declare mb2 uuid; early uuid; late uuid; ev3 uuid; n2 uuid; res2 jsonb;
+  begin
+    perform t_reset();
+    insert into matters (firm_id, reference, title, type, court_id, suit_number)
+      values ((select v from fx where k='firm_b'), 'RB-M-2026-000002', 'Second file', 'litigation', (select v from fx where k='court_x'), 'FHC/L/CS/99/2026')
+      returning id into mb2;
+    insert into matter_lawyers (matter_id, firm_id, user_id, is_lead) values (mb2, (select v from fx where k='firm_b'), b1, true);
+    insert into court_events (matter_id, firm_id, scheduled_at, court_id, purpose, source)
+      values (mb2, (select v from fx where k='firm_b'), ((wed - 7 + time '09:00')::timestamp) at time zone 'Africa/Lagos', (select v from fx where k='court_x'), 'Earlier mention', 'firm')
+      returning id into early;
+    insert into court_events (matter_id, firm_id, scheduled_at, court_id, purpose, source)
+      values (mb2, (select v from fx where k='firm_b'), ((wed + time '14:00')::timestamp) at time zone 'Africa/Lagos', (select v from fx where k='court_x'), 'The listed one', 'firm')
+      returning id into late;
+    perform t_as((select v from fx where k='registrar'));
+    res2 := stage_registry_notices((select v from fx where k='registry'), jsonb_build_array(
+      jsonb_build_object('suit_number', 'FHC/L/CS/99/2026', 'listed_on', wed::text, 'purpose_kind', 'hearing')));
+    perform publish_registry_batch((res2 ->> 'batch_id')::uuid);
+    perform t_reset();
+    select id into n2 from registry_notices where suit_number = 'FHC/L/CS/99/2026';
+    perform t_as(b1);
+    ev3 := confirm_registry_notice(n2, mb2);
+    perform t_check('the same-day sitting is attached even when an earlier one exists', ev3 = late);
+    perform t_check('...and the earlier, unrelated sitting is untouched',
+      (select vacated_at is null and source = 'firm' from court_events where id = early));
+    perform t_check('...and no third sitting was made', (select count(*) from court_events where matter_id = mb2 and vacated_at is null) = 2);
+    perform t_reset();
+  end;
 
   -- Firm A has nothing in the diary: confirming CREATES.
   perform t_as(a1);
@@ -359,6 +411,56 @@ begin
   perform t_check('...and nothing reached the diary', (select count(*) from court_events where matter_id = mc) = 0);
   perform t_reset();
   update matters set suit_number = 'FHC/L/CS/78/2026' where id = mc;
+end $$;
+
+-- ---------------------------------------------------------------- 6b. a value longer than its column is refused, not trimmed
+do $$
+declare rg uuid := (select v from fx where k='registrar'); res jsonb; wed date := current_setting('t.wed')::date;
+begin
+  perform t_reset();
+  perform t_as(rg);
+  res := stage_registry_notices((select v from fx where k='registry'), jsonb_build_array(
+    jsonb_build_object('suit_number', 'FHC/L/CS/91/2026', 'listed_on', wed::text, 'cause_title', repeat('A', 301)),
+    jsonb_build_object('suit_number', 'FHC/L/CS/92/2026', 'listed_on', wed::text, 'judge', repeat('B', 201)),
+    jsonb_build_object('suit_number', 'FHC/L/CS/93/2026', 'listed_on', wed::text, 'courtroom', repeat('C', 101)),
+    jsonb_build_object('suit_number', 'FHC/L/CS/94/2026', 'listed_on', wed::text, 'purpose', repeat('D', 301))), 'lengths');
+  perform t_check('nothing oversized is staged', (res ->> 'staged')::int = 0);
+  perform t_check('a cause title longer than its column is refused, with its length',
+    (res -> 'rejected' -> 0 ->> 'reason') like 'the cause title is 301 characters%');
+  perform t_check('...and the judge',    (res -> 'rejected' -> 1 ->> 'reason') like 'the judge is 201 characters%');
+  perform t_check('...and the courtroom',(res -> 'rejected' -> 2 ->> 'reason') like 'the courtroom is 101 characters%');
+  perform t_check('...and the purpose',  (res -> 'rejected' -> 3 ->> 'reason') like 'the purpose is 301 characters%');
+  perform t_check('and nothing was silently altered to fit',
+    not exists (select 1 from registry_notices where suit_number in ('FHC/L/CS/91/2026','FHC/L/CS/92/2026','FHC/L/CS/93/2026','FHC/L/CS/94/2026')));
+  perform t_reset();
+end $$;
+
+-- ---------------------------------------------------------------- 6c. a holiday declared for the court's own state
+do $$
+declare rg uuid := (select v from fx where k='registrar'); c1 uuid := (select v from fx where k='c1'); mc uuid := (select v from fx where k='matter_c');
+        res jsonb; nid uuid; hol date := current_setting('t.wed')::date + 35; st text;
+begin
+  perform t_reset();
+  select state_code into st from courts where id = (select v from fx where k='court_x');
+  st := coalesce(st, 'LA');
+  update courts set state_code = st where id = (select v from fx where k='court_x');
+  -- A holiday for this court's state only. is_public_holiday()'s third argument is what matches it.
+  insert into public_holidays (country, on_date, name, state_code) values ('NG', hol, 'A state holiday', st)
+    on conflict do nothing;
+  perform t_as(rg);
+  res := stage_registry_notices((select v from fx where k='registry'), jsonb_build_array(
+    jsonb_build_object('suit_number', 'FHC/L/CS/78/2026', 'listed_on', hol::text, 'purpose_kind', 'mention')));
+  perform publish_registry_batch((res ->> 'batch_id')::uuid);
+  perform t_reset();
+  select id into nid from registry_notices where suit_number = 'FHC/L/CS/78/2026' and listed_on = hol;
+  perform t_as(c1);
+  perform t_check('the Sittings view warns that the listed day is a holiday in the court''s state',
+    (select listed_on_non_sitting_day from firm_registry_notices where notice_id = nid));
+  perform t_check('...and confirming it is refused',
+    t_fails_with(format('select confirm_registry_notice(%L, %L)', nid, mc), 'public holiday'));
+  perform t_check('...with nothing in the diary', not exists (select 1 from court_events where registry_notice_id = nid));
+  perform t_reset();
+  delete from public_holidays where name = 'A state holiday';
 end $$;
 
 -- ---------------------------------------------------------------- 7. a vacation-day listing is allowed and said
@@ -544,6 +646,41 @@ begin
   perform t_as(a1);
   perform t_check('nor does a lawyer', (select count(*) from registry_pilot_health()) = 0);
   perform t_reset();
+end $$;
+
+-- ---------------------------------------------------------------- 11d. a leaver keeps no diary and is told nothing
+do $$
+declare lv uuid := (select v from fx where k='leaver'); f uuid := (select v from fx where k='firm_d'); md uuid := (select v from fx where k='matter_d');
+        d1 uuid := (select v from fx where k='d1'); res jsonb; wed date := current_setting('t.wed')::date;
+        r2 uuid := (select v from fx where k='registry2'); before_n int;
+begin
+  perform t_reset();
+  insert into firm_members (firm_id, user_id, role) values (f, lv, 'lawyer');
+  insert into matter_lawyers (matter_id, firm_id, user_id) values (md, f, lv);
+  insert into matter_lawyers (matter_id, firm_id, user_id, is_lead) values (md, f, d1, true) on conflict do nothing;
+  update firm_members set role = 'owner' where firm_id = f and user_id = d1;
+
+  perform t_as(d1);
+  perform remove_member(f, lv);
+  perform t_reset();
+  perform t_check('removing a member takes them off the firm''s matters too',
+    not exists (select 1 from matter_lawyers where matter_id = md and user_id = lv));
+  perform t_check('...and leaves the colleagues who are still there',
+    exists (select 1 from matter_lawyers where matter_id = md and user_id = d1));
+
+  -- Even with a stranded row — the shape of data written before this migration — nothing is sent.
+  insert into matter_lawyers (matter_id, firm_id, user_id) values (md, f, lv);
+  select count(*) into before_n from notifications where user_id = lv;
+  perform t_as((select v from fx where k='registrar2'));
+  res := stage_registry_notices(r2, jsonb_build_array(
+    jsonb_build_object('suit_number', 'FHC/L/CS/77/2026', 'listed_on', (wed + 42)::text, 'purpose_kind', 'mention')));
+  perform publish_registry_batch((res ->> 'batch_id')::uuid);
+  perform t_reset();
+  perform t_check('a former member is told nothing, even with a matter_lawyers row left behind',
+    (select count(*) from notifications where user_id = lv) = before_n);
+  perform t_check('...while the colleague who is still there is told',
+    exists (select 1 from notifications where user_id = d1 and event = 'registry_notice_received'));
+  delete from matter_lawyers where matter_id = md and user_id = lv;
 end $$;
 
 -- ---------------------------------------------------------------- 12. doors

@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
-import { registryBatches, registryContext, registryMembers, registryNotices } from "@/lib/registry-data";
+import { registryBatches, registryContext, registryDraftCounts, registryMembers, registryNotices } from "@/lib/registry-data";
 import { formatDay } from "@/lib/days";
 import { formatWhen } from "@/lib/time";
 import { NoticeControls, BatchControls } from "./notice-controls";
@@ -29,6 +29,9 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
   const batchById = new Map(batches.map((b) => [b.id, b]));
   const draftBatches = batches.filter((b) => !b.published_at && drafts.some((n) => n.batch_id === b.id));
   const isRegistrar = role === "registrar";
+  // What Publish will actually publish, asked of the database. The list above is a page and can be
+  // shorter than the batch; the button must never be.
+  const draftCounts = await registryDraftCounts(supabase, draftBatches.map((b) => b.id));
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -66,8 +69,14 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
                   <p className="text-[13px] font-semibold text-[#141414]">
                     {b.source_note ?? "Untitled batch"} <span className="font-normal text-[#57534E]">· staged {formatWhen(b.staged_at, timezone)}</span>
                   </p>
-                  {isRegistrar && <BatchControls batchId={b.id} count={drafts.filter((n) => n.batch_id === b.id).length} />}
+                  {isRegistrar && <BatchControls batchId={b.id} count={draftCounts[b.id] ?? drafts.filter((n) => n.batch_id === b.id).length} />}
                 </div>
+                {(draftCounts[b.id] ?? 0) > drafts.filter((n) => n.batch_id === b.id).length && (
+                  <p className="mt-1 text-[11.5px] font-medium text-amber-800">
+                    This batch holds {draftCounts[b.id]} drafts and only {drafts.filter((n) => n.batch_id === b.id).length} are
+                    listed here. Publishing publishes all {draftCounts[b.id]} — read the file you staged, or stage it in smaller batches.
+                  </p>
+                )}
                 <ul className="mt-2 divide-y divide-[#F0EEEA]">
                   {drafts.filter((n) => n.batch_id === b.id).map((n) => (
                     <li key={n.id} className="flex flex-wrap items-start justify-between gap-2 py-2">

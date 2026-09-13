@@ -974,10 +974,11 @@ inside; anybody else gets zero rows. Names no firm, matter or suit.
 ### `stage_registry_notices(p_registry uuid, p_rows jsonb, p_source_note text = null)`
 `registry_w`. Returns `{batch_id, staged, rejected: [{row, suit_number, reason}]}`. Each row is
 checked on its own; the good ones become drafts in one batch. A `purpose_kind` outside the fixed
-list is kept as the purpose, in the registry's own words, with the kind `other`. At most 500 rows;
-30 batches an hour per registry.
+list is kept as the purpose, in the registry's own words, with the kind `other`. A value longer
+than its column is refused with its length rather than trimmed. At most 500 rows; 30 batches an
+hour per registry.
 
-Refuses: `not permitted` *(42501)* · `nothing to stage` · `at most 500 rows in one batch` · `too many batches staged in the last hour` *(53400)*. Per row: `no suit number` · `the suit number is not between 3 and 60 characters` · `the day is not a date (YYYY-MM-DD)` · `the time is not a time (HH:MM)`
+Refuses: `not permitted` *(42501)* · `nothing to stage` · `at most 500 rows in one batch` · `too many batches staged in the last hour` *(53400)*. Per row: `no suit number` · `the suit number is not between 3 and 60 characters` · `the day is not a date (YYYY-MM-DD)` · `the time is not a time (HH:MM)` · `the cause title|purpose|judge|courtroom is <n> characters; the most Docket keeps is <m>`
 
 ### `publish_registry_batch(p_batch uuid)` / `publish_registry_notice(p_notice uuid)`
 `registrar_w`. Drafts become published; every lawyer on every matching matter at every firm is
@@ -1000,17 +1001,19 @@ Refuses: `not permitted` *(42501)* · `only a published notice can be withdrawn`
 ### The firm
 
 ### `confirm_registry_notice(p_notice uuid, p_matter uuid, p_time time = null, p_vacate_existing boolean = false, p_vacate_reason text = null)`
-Returns the court event id. `matter_row_w(firm, matter)`. The notice must be published; the matter
-must carry the suit at that court; no decision yet for this matter. A weekend or public holiday is
+Returns the court event id. `matter_row_w(firm, matter)` **and** the owner/admin/lawyer role, as
+`confirm_deadline()` asks — a listing reaches a diary only on a lawyer's word. The notice must be
+published; the matter must carry the suit at that court; no decision yet for this matter. A weekend or public holiday is
 refused; a court-vacation day is allowed and recorded (`in_vacation`). The instant is the listed
 day at `p_time`, else the notice's time, else 09:00, in Africa/Lagos. Same day already in the diary
 → **attached**; a different open date with `p_vacate_existing` → the old one vacated and refixed;
 otherwise a new sitting, and `matters.next_event_at` becomes the **nearest** open sitting.
 
-Refuses: `not permitted` *(42501)* · `notice not found` (also for a draft) · `the registry has withdrawn this notice; it cannot be confirmed` · `this matter does not carry suit <n> at that court` · `this notice has already been decided for this matter` · `the registry has listed <day> — a weekend|public holiday; ask the registry before diarising it` · `say why the earlier date is vacated — the client reads it`
+Refuses: `not permitted` *(42501)* · `notice not found` (also for a draft) · `the registry has withdrawn this notice; it cannot be confirmed` · `this matter does not carry suit <n> at that court` · `this notice has already been decided for this matter` · `a registry listing is confirmed by a lawyer of the firm` *(42501)* · `the registry has listed <day> — a weekend|public holiday; ask the registry before diarising it` (the holiday test passes the court's own state) · `say why the earlier date is vacated — the client reads it`
 
 ### `reject_registry_notice(p_notice uuid, p_matter uuid, p_reason text)`
-`matter_row_w`. Records `rejected` with the reason. The registry is not told.
+`matter_row_w` **and** the owner/admin/lawyer role. Records `rejected` with the reason. The registry
+is not told.
 
 Refuses: `not permitted` *(42501)* · `notice not found` · `say why — it is kept on the record` · `this notice has already been decided for this matter`
 

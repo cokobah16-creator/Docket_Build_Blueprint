@@ -107,15 +107,18 @@ export async function stageRegistryNotices(
   registryId: string, rows: NoticeRowInput[], sourceNote: string | null,
 ): Promise<{ error: string } | StageNoticesResult> {
   if (!uuid.safeParse(registryId).success) return { error: "Unknown registry." };
+  // The same lengths the columns hold. Longer is REFUSED here and refused again by the database,
+  // per row, with the length in the message — never trimmed to fit, because a trimmed cause title
+  // is altered court data reported as staged.
   const parsed = z.array(z.object({
-    suit_number: z.string().max(200),
-    cause_title: z.string().max(400).nullish(),
+    suit_number: z.string().max(60, "A suit number is at most 60 characters."),
+    cause_title: z.string().max(300, "A cause title is at most 300 characters.").nullish(),
     listed_on: z.string().max(40),
     listed_time: z.string().max(20).nullish(),
-    judge: z.string().max(300).nullish(),
-    courtroom: z.string().max(200).nullish(),
-    purpose_kind: z.string().max(200).nullish(),
-    purpose: z.string().max(400).nullish(),
+    judge: z.string().max(200, "A judge is at most 200 characters.").nullish(),
+    courtroom: z.string().max(100, "A courtroom is at most 100 characters.").nullish(),
+    purpose_kind: z.string().max(300).nullish(),
+    purpose: z.string().max(300, "A purpose is at most 300 characters.").nullish(),
   })).min(1, "Nothing to stage.").max(500, "At most 500 rows in one batch.").safeParse(rows);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the rows." };
   const supabase = await supabaseServer();

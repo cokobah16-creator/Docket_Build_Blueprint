@@ -26,12 +26,17 @@ and adds its members; a registrar can remove one.
 1. A clerk or registrar **stages** a cause list — a CSV with its columns mapped, or one listing at a
    time. Each row is checked on its own by the database: the good ones become *drafts* in one
    batch; the bad ones come back with the reason and are not stored. A purpose the fixed list does
-   not recognise is kept as the registry's own words rather than refused.
+   not recognise is kept as the registry's own words rather than refused. A value longer than the
+   column that holds it is **refused with its length**, never trimmed to fit: a shortened cause
+   title is altered court data, and reporting the row as staged would make the result a lie.
 2. A registrar **publishes** the batch. Nothing is visible to any firm before this.
 3. Each firm whose matter carries that suit number *at that court* sees the notice on **Sittings →
    From the court registry**, against its own matter, and its lawyers are told.
 4. A lawyer on the matter **decides**: *confirm* it into the diary, or *not ours / not to be
-   diarised*, with a reason. **Nothing reaches a diary until a lawyer confirms it.**
+   diarised*, with a reason. **Nothing reaches a diary until a lawyer confirms it** — and that is
+   the database's rule, not the screen's: both RPCs ask for the owner, admin or lawyer role, in the
+   same words `confirm_deadline()` has used since migration 38. A secretary who can see the matter
+   is not that person.
 5. A registry that published in error **withdraws** the notice with a reason. Every lawyer who
    confirmed it is told, the sitting is stamped as withdrawn-by-the-registry wherever it is shown,
    and an internal note goes on the file — and **the date is not vacated**, because a registry
@@ -74,7 +79,14 @@ would need.
 ## 2. The boundary, in both directions
 
 This is the part that lets a court registry join at all, and it is asserted rather than described:
-`supabase/tests/99_court_registry.sql`, 130 checks.
+`supabase/tests/99_court_registry.sql`, 154 checks.
+
+**Only people who are still at the firm are told.** `matter_lawyers` rows used to outlive a
+`firm_members` row — `remove_member()` cleared a leaver's availability and left their matter teams
+alone — so four fan-outs across the product could send a departed colleague a client's suit number,
+matter id and hearing dates. Migration 49 fixes the root (a person removed from a firm is removed
+from its matters, and the rows already stranded are cleared once) *and* guards the point of use:
+the registry fan-out joins current `firm_members` whatever else leaves rows behind.
 
 **What the registry learns about any firm: nothing.**
 

@@ -210,6 +210,65 @@ end $$;
 revoke execute on function public.remove_registry_member(uuid, uuid) from public, anon;
 grant  execute on function public.remove_registry_member(uuid, uuid) to authenticated;
 
+-- ---------------------------------------------------------------- a leaver leaves the matter too
+-- FOUND WHILE BUILDING THE FAN-OUT ABOVE, and older than this wave. remove_member() (migration 20)
+-- clears a departing member's availability rules and exceptions and deletes their firm_members
+-- row — and leaves every matter_lawyers row they had. Nothing about the WALL breaks (is_firm_member
+-- is false for them, so can_see_matter refuses), but four notification fan-outs read matter_lawyers
+-- without asking whether the person is still there: court-date reminders (migration 13), deadline
+-- reminders (38), document-signed (40) and this migration's own. A departed employee therefore
+-- keeps receiving a client's suit number, matter id and hearing dates by email and in-app.
+--
+-- The fan-out above guards itself, because a guard at the point of use is the one that holds. This
+-- is the root: a person removed from a firm is removed from its matters, and the rows already
+-- stranded are cleared once. They confer nothing today — the wall ignores them — so nothing is
+-- lost but the phantom notifications and a departed name shown as a matter's lead.
+create or replace function public.remove_member(p_firm uuid, p_user uuid)
+returns jsonb language plpgsql security definer set search_path = public as $$
+declare v_old firm_role; v_caller firm_role; v_future int; v_rules int; v_matters int;
+begin
+  if not admin_w(p_firm) then raise exception 'not permitted' using errcode = '42501'; end if;
+  select role into v_caller from firm_members where firm_id = p_firm and user_id = auth.uid();
+  select role into v_old    from firm_members where firm_id = p_firm and user_id = p_user for update;
+  if v_old is null then raise exception 'that person is not a member of this firm'; end if;
+  if p_user = auth.uid() then raise exception 'you cannot remove yourself — ask another owner to do it'; end if;
+  if v_old = 'owner' and v_caller <> 'owner' then
+    raise exception 'only an owner can remove another owner' using errcode = '42501';
+  end if;
+  if v_old = 'owner' and (select count(*) from firm_members where firm_id = p_firm and role = 'owner') <= 1 then
+    raise exception 'this is the firm''s last owner — appoint another owner first';
+  end if;
+
+  select count(*) into v_future from appointments
+   where firm_id = p_firm and lawyer_id = p_user
+     and status in ('pending','awaiting_payment','confirmed','rescheduled') and starts_at >= now();
+  if v_future > 0 then
+    raise exception 'that lawyer has % consultation(s) still to come — reassign or cancel them first', v_future;
+  end if;
+
+  delete from availability_rules where firm_id = p_firm and lawyer_id = p_user;
+  get diagnostics v_rules = row_count;
+  delete from availability_exceptions where firm_id = p_firm and lawyer_id = p_user;
+  -- New in 49: off the firm is off its matters. matters.handling_lawyer_id is left alone — it is
+  -- the record of who had conduct, and rewriting history is not this function's business; the
+  -- fan-out checks membership before it writes to anybody.
+  delete from matter_lawyers where firm_id = p_firm and user_id = p_user;
+  get diagnostics v_matters = row_count;
+  update lawyer_profiles set is_public = false where firm_id = p_firm and user_id = p_user;
+  delete from firm_members where firm_id = p_firm and user_id = p_user;
+
+  perform audit('firm_members.removed', 'firm_members', p_user, p_firm,
+                jsonb_build_object('role', v_old, 'availability_rules_cleared', v_rules, 'matter_teams_left', v_matters));
+  -- `was_role` is the key migration 20 returned and the app reads; only the new count is added.
+  return jsonb_build_object('removed', true, 'was_role', v_old, 'availability_rules_cleared', v_rules, 'matter_teams_left', v_matters);
+end $$;
+revoke execute on function public.remove_member(uuid,uuid) from public, anon;
+grant  execute on function public.remove_member(uuid,uuid) to authenticated;
+
+-- The rows already stranded by the old behaviour.
+delete from public.matter_lawyers ml
+ where not exists (select 1 from public.firm_members fm where fm.firm_id = ml.firm_id and fm.user_id = ml.user_id);
+
 -- ================================================================ 2. the cause list, as the registry writes it
 create table public.registry_notice_batches (
   id           uuid primary key default gen_random_uuid(),
@@ -313,6 +372,7 @@ create or replace function public.stage_registry_notices(p_registry uuid, p_rows
 returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_batch uuid; v_row jsonb; v_n int := 0; v_staged int := 0; v_rejected jsonb := '[]'::jsonb;
         v_suit text; v_day date; v_time time; v_kind text; v_purpose text; v_reason text; v_court uuid;
+        v_title text; v_judge text; v_room text;
 begin
   if not registry_w(p_registry) then raise exception 'not permitted' using errcode = '42501'; end if;
   if jsonb_typeof(p_rows) <> 'array' or jsonb_array_length(p_rows) = 0 then raise exception 'nothing to stage'; end if;
@@ -347,6 +407,19 @@ begin
       -- The registry's words are kept as the purpose, exactly as written; the kind is 'other'.
       v_purpose := coalesce(v_purpose, btrim(v_row ->> 'purpose_kind')); v_kind := 'other';
     end if;
+    -- A value longer than its column is REFUSED, never trimmed to fit. Trimming would publish
+    -- altered court data while reporting the row as staged — the per-row result would be a lie,
+    -- and the altered words would be the registry's own. The row comes back with its length.
+    v_title := nullif(btrim(coalesce(v_row ->> 'cause_title', '')), '');
+    v_judge := nullif(btrim(coalesce(v_row ->> 'judge', '')), '');
+    v_room  := nullif(btrim(coalesce(v_row ->> 'courtroom', '')), '');
+    if v_reason is null then
+      if length(v_title) > 300   then v_reason := format('the cause title is %s characters; the most Docket keeps is 300', length(v_title));
+      elsif length(v_purpose) > 300 then v_reason := format('the purpose is %s characters; the most Docket keeps is 300', length(v_purpose));
+      elsif length(v_judge) > 200   then v_reason := format('the judge is %s characters; the most Docket keeps is 200', length(v_judge));
+      elsif length(v_room) > 100    then v_reason := format('the courtroom is %s characters; the most Docket keeps is 100', length(v_room));
+      end if;
+    end if;
 
     if v_reason is not null then
       v_rejected := v_rejected || jsonb_build_object('row', v_n, 'suit_number', v_suit, 'reason', v_reason);
@@ -354,9 +427,7 @@ begin
     end if;
     insert into registry_notices (registry_id, court_id, batch_id, suit_number, cause_title, listed_on, listed_time,
                                   judge, courtroom, purpose_kind, purpose, created_by)
-    values (p_registry, v_court, v_batch, v_suit, left(nullif(btrim(coalesce(v_row ->> 'cause_title', '')), ''), 300), v_day, v_time,
-            left(nullif(btrim(coalesce(v_row ->> 'judge', '')), ''), 200), left(nullif(btrim(coalesce(v_row ->> 'courtroom', '')), ''), 100),
-            v_kind, left(v_purpose, 300), auth.uid());
+    values (p_registry, v_court, v_batch, v_suit, v_title, v_day, v_time, v_judge, v_room, v_kind, v_purpose, auth.uid());
     v_staged := v_staged + 1;
   end loop;
 
@@ -393,7 +464,13 @@ begin
          and upper(regexp_replace(cn.number, '\s', '', 'g')) = n.suit_number_norm) x
   loop
     v_told := 0;
-    for u in select ml.user_id from matter_lawyers ml where ml.matter_id = m.id loop
+    -- CURRENT members only. matter_lawyers rows outlive a firm_members row in data written before
+    -- migration 49 fixed remove_member() below, and a suit number, a date and a matter id are a
+    -- client's business — not a departed colleague's. The join is the guard, and it stays whatever
+    -- else leaves stale rows behind.
+    for u in select ml.user_id from matter_lawyers ml
+              join firm_members fm on fm.firm_id = m.firm_id and fm.user_id = ml.user_id
+             where ml.matter_id = m.id loop
       perform enqueue_notification(u.user_id, m.firm_id, p_event,
         jsonb_build_object('notice_id', n.id, 'matter_id', m.id, 'suit_number', n.suit_number, 'listed_on', n.listed_on,
                            'purpose', coalesce(n.purpose, n.purpose_kind), 'court_name', v_court));
@@ -402,7 +479,8 @@ begin
     -- A matter with nobody on its team: the handling lawyer, else the firm's owners and admins,
     -- so a listing never lands on a matter and tells no one.
     if v_told = 0 then
-      if m.handling_lawyer_id is not null then
+      if m.handling_lawyer_id is not null
+         and exists (select 1 from firm_members fm where fm.firm_id = m.firm_id and fm.user_id = m.handling_lawyer_id) then
         perform enqueue_notification(m.handling_lawyer_id, m.firm_id, p_event,
           jsonb_build_object('notice_id', n.id, 'matter_id', m.id, 'suit_number', n.suit_number, 'listed_on', n.listed_on,
                              'purpose', coalesce(n.purpose, n.purpose_kind), 'court_name', v_court));
@@ -483,7 +561,11 @@ begin
   update registry_notices set status = 'withdrawn', withdrawn_at = now(), withdrawn_by = auth.uid(),
          withdrawn_reason = left(btrim(p_reason), 500) where id = p_notice;
   select name into v_court from courts where id = n.court_id;
-  for d in select dc.decided_by, dc.firm_id, dc.matter_id, dc.court_event_id from registry_notice_decisions dc
+  -- The lawyer who confirmed it, if they are still at the firm. The internal note on the file is
+  -- written either way, so a firm whose confirming lawyer has left still learns of the withdrawal.
+  for d in select dc.decided_by, dc.firm_id, dc.matter_id, dc.court_event_id,
+                  exists (select 1 from firm_members fm where fm.firm_id = dc.firm_id and fm.user_id = dc.decided_by) as still_here
+             from registry_notice_decisions dc
             where dc.notice_id = p_notice and dc.decision = 'confirmed' loop
     if d.court_event_id is not null then
       update court_events set registry_withdrawn_at = now() where id = d.court_event_id and registry_notice_id = p_notice;
@@ -494,9 +576,11 @@ begin
               left(btrim(p_reason), 500) || ' — the date is still in the diary; check with the registry and vacate it if it no longer stands.',
               now(), null);
     end if;
-    perform enqueue_notification(d.decided_by, d.firm_id, 'registry_notice_withdrawn',
-      jsonb_build_object('notice_id', n.id, 'matter_id', d.matter_id, 'court_event_id', d.court_event_id,
-                         'suit_number', n.suit_number, 'listed_on', n.listed_on, 'court_name', v_court, 'reason', left(btrim(p_reason), 500)));
+    if d.still_here then
+      perform enqueue_notification(d.decided_by, d.firm_id, 'registry_notice_withdrawn',
+        jsonb_build_object('notice_id', n.id, 'matter_id', d.matter_id, 'court_event_id', d.court_event_id,
+                           'suit_number', n.suit_number, 'listed_on', n.listed_on, 'court_name', v_court, 'reason', left(btrim(p_reason), 500)));
+    end if;
   end loop;
   perform audit('registry.notice_withdrawn', 'registry_notice', p_notice, null,
                 jsonb_build_object('registry_id', n.registry_id, 'reason', left(btrim(p_reason), 500)));
@@ -665,11 +749,19 @@ returns uuid language plpgsql security definer set search_path = public as $$
 declare n registry_notices%rowtype; m matters%rowtype; c courts%rowtype; b registry_notice_batches%rowtype;
         v_at timestamptz; v_day date; v_existing court_events%rowtype; v_event uuid; v_in_vacation boolean;
         v_matches boolean; v_ref text; v_title text; v_body text; v_next court_events%rowtype; v_attached boolean := false;
+        v_same_day boolean := false; v_had_existing boolean := false;
 begin
   select * into n from registry_notices where id = p_notice;
   if not found then raise exception 'notice not found'; end if;
   select * into m from matters where id = p_matter and deleted_at is null for update;
   if not found or not matter_row_w(m.firm_id, m.id) then raise exception 'not permitted' using errcode = '42501'; end if;
+  -- A LAWYER'S DECISION, in the same words confirm_deadline() uses (migration 38). matter_row_w()
+  -- admits every role a firm has, and this workflow's whole claim — said on the screen and in the
+  -- doc — is that a court date reaches a diary only when a lawyer says it should. A secretary who
+  -- can see the matter is not that person.
+  if not exists (select 1 from firm_members fm where fm.firm_id = m.firm_id and fm.user_id = auth.uid() and fm.role in ('owner', 'admin', 'lawyer')) then
+    raise exception 'a registry listing is confirmed by a lawyer of the firm' using errcode = '42501';
+  end if;
   if n.status = 'draft' then raise exception 'notice not found'; end if;   -- a draft is the registry's alone
   if n.status = 'withdrawn' then raise exception 'the registry has withdrawn this notice; it cannot be confirmed'; end if;
 
@@ -689,7 +781,9 @@ begin
 
   select * into c from courts where id = n.court_id;
   v_day := n.listed_on;
-  if extract(isodow from v_day) >= 6 or is_public_holiday(v_day) then
+  -- is_public_holiday()'s third argument is the state (migration 12): without it a holiday
+  -- declared for one state matches nothing, and the court sits in a state.
+  if extract(isodow from v_day) >= 6 or is_public_holiday(v_day, 'NG', c.state_code) then
     raise exception 'the registry has listed % — a %; ask the registry before diarising it',
       to_char(v_day, 'FMDD Mon YYYY'), case when extract(isodow from v_day) >= 6 then 'weekend' else 'public holiday' end;
   end if;
@@ -699,13 +793,24 @@ begin
   select * into b from registry_notice_batches where id = n.batch_id;
   v_ref := 'Registry notice ' || left(n.id::text, 8) || coalesce(' · ' || b.source_note, '');
 
-  -- What the diary already holds for this matter.
+  -- What the diary already holds for this matter. The open sitting ON THE LISTED DAY comes first,
+  -- whatever its place in the order: taking merely the earliest would miss a later same-day
+  -- sitting and duplicate it, and — with p_vacate_existing — would vacate an unrelated earlier
+  -- date. Only when there is no same-day sitting does the earliest one become the candidate to
+  -- vacate.
   select * into v_existing from court_events ce
    where ce.matter_id = m.id and ce.vacated_at is null and ce.outcome_update_id is null
+     and (ce.scheduled_at at time zone 'Africa/Lagos')::date = v_day
+     and (ce.court_id is null or ce.court_id = n.court_id)
    order by ce.scheduled_at limit 1;
+  v_same_day := found;
+  if not v_same_day then
+    select * into v_existing from court_events ce
+     where ce.matter_id = m.id and ce.vacated_at is null and ce.outcome_update_id is null
+     order by ce.scheduled_at limit 1;
+  end if;
 
-  if found and (v_existing.scheduled_at at time zone 'Africa/Lagos')::date = v_day
-     and (v_existing.court_id is null or v_existing.court_id = n.court_id) then
+  if v_same_day then
     -- The court agrees with the diary. Attach, do not duplicate. The flag tells
     -- court_events_registry_guard() this one update is the confirm itself, and is cleared at once
     -- so nothing later in the same transaction inherits it.
@@ -724,7 +829,8 @@ begin
     v_body := format('%s confirms the sitting already in the diary%s.', coalesce(c.name, 'The court registry'),
                      case when n.purpose is not null then ' for ' || n.purpose when n.purpose_kind is not null then ' for ' || replace(n.purpose_kind, '_', ' ') else '' end);
   else
-    if found and p_vacate_existing then
+    v_had_existing := v_existing.id is not null;
+    if v_had_existing and p_vacate_existing then
       if length(btrim(coalesce(p_vacate_reason, ''))) < 3 then raise exception 'say why the earlier date is vacated — the client reads it'; end if;
     end if;
     insert into court_events (matter_id, firm_id, scheduled_at, court_id, court_name, courtroom, judge, purpose, purpose_kind,
@@ -732,7 +838,7 @@ begin
     values (m.id, m.firm_id, v_at, n.court_id, c.name, n.courtroom, n.judge, n.purpose, n.purpose_kind,
             'registry', n.id, v_ref, auth.uid(), now())
     returning id into v_event;
-    if found and p_vacate_existing then
+    if v_had_existing and p_vacate_existing then
       update court_events set vacated_at = now(), vacated_reason = left(btrim(p_vacate_reason), 500), refixed_to = v_event
        where id = v_existing.id;
       v_title := format('Date of %s vacated — the registry has listed %s',
@@ -765,7 +871,7 @@ begin
           now(), auth.uid());
   perform audit('registry_notice.confirmed', 'court_event', v_event, m.firm_id,
                 jsonb_build_object('notice_id', n.id, 'matter_id', m.id, 'in_vacation', v_in_vacation,
-                                   'vacated', case when p_vacate_existing and v_existing.id is not null and v_existing.id <> v_event then v_existing.id end));
+                                   'vacated', case when p_vacate_existing and v_had_existing and v_existing.id <> v_event then v_existing.id end));
   return v_event;
 end $$;
 revoke execute on function public.confirm_registry_notice(uuid, uuid, time, boolean, text) from public, anon;
@@ -780,6 +886,10 @@ begin
   if not found or n.status = 'draft' then raise exception 'notice not found'; end if;
   select * into m from matters where id = p_matter and deleted_at is null;
   if not found or not matter_row_w(m.firm_id, m.id) then raise exception 'not permitted' using errcode = '42501'; end if;
+  -- Disposing of the court's notice is the same decision as taking it, and belongs to the same people.
+  if not exists (select 1 from firm_members fm where fm.firm_id = m.firm_id and fm.user_id = auth.uid() and fm.role in ('owner', 'admin', 'lawyer')) then
+    raise exception 'a registry listing is decided by a lawyer of the firm' using errcode = '42501';
+  end if;
   if length(btrim(coalesce(p_reason, ''))) < 3 then raise exception 'say why — it is kept on the record'; end if;
   delete from registry_notice_decisions d where d.notice_id = p_notice and d.matter_id = p_matter and d.decision = 'confirmed' and d.court_event_id is null;
   if exists (select 1 from registry_notice_decisions d where d.notice_id = p_notice and d.matter_id = p_matter) then
@@ -855,7 +965,7 @@ create or replace view public.firm_registry_notices with (security_invoker = tru
          d.id as decision_id, d.decision, d.court_event_id, d.reason as decision_reason, d.in_vacation, d.decided_by, d.decided_at,
          ex.id as existing_event_id, ex.scheduled_at as existing_scheduled_at,
          is_court_vacation_day(n.listed_on, c.level, c.state_code) as listed_in_vacation,
-         (extract(isodow from n.listed_on) >= 6 or is_public_holiday(n.listed_on)) as listed_on_non_sitting_day
+         (extract(isodow from n.listed_on) >= 6 or is_public_holiday(n.listed_on, 'NG', c.state_code)) as listed_on_non_sitting_day
     from hits h
     join public.registry_notices n on n.id = h.notice_id
     join public.registries r on r.id = n.registry_id

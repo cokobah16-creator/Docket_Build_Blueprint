@@ -703,9 +703,21 @@ render, so:
 3. Deploy the app.
 
 Migration 49 re-creates `can_see_profile()` with two arms added (registry co-members, and the
-platform's sight of a registry member's name) and `attach_court_event_source()` with one refusal
-added, re-creates `firm_cause_list` with three columns added, and adds a trigger on `court_events`
-that downgrades a registry-sourced date's provenance when a lawyer moves it by hand. After
+platform's sight of a registry member's name), `attach_court_event_source()` with one refusal
+added, and **`remove_member()` with one deletion added** — a person removed from a firm is now
+removed from its matters, which four notification fan-outs depended on and none of them checked.
+It re-creates `firm_cause_list` with three columns added, and adds a trigger on `court_events`
+that downgrades a registry-sourced date's provenance when a lawyer moves it by hand.
+
+It also runs **one data change**: `delete from matter_lawyers` for every row whose person is no
+longer a member of that firm. Those rows confer nothing today (the wall asks `is_firm_member`,
+which is already false for them) and only caused phantom notifications and a departed name shown
+as a matter's lead. Count them first if you want the number for the record:
+
+```sql
+select count(*) from matter_lawyers ml
+ where not exists (select 1 from firm_members fm where fm.firm_id = ml.firm_id and fm.user_id = ml.user_id);
+``` After
 applying, confirm the helper still carries every arm it had:
 
 ```sql
