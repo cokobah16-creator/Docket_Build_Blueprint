@@ -8,8 +8,8 @@
 #              IS the authorization layer, so a broken policy is a broken product, and the suite
 #              exercises each read and write from both sides of every wall.
 #   typecheck  TypeScript, strict, over app/, src/, middleware.ts and the tests.
-#   deno       the three Edge Functions type-check, and the PDF writer is RUN against what a
-#              Nigerian invoice actually carries. They are Deno, not Node: tsconfig.json
+#   deno       the Edge Functions type-check, and the PDF and calendar writers are RUN against
+#              what a Nigerian invoice and a court diary actually carry. They are Deno, not Node: tsconfig.json
 #              excludes supabase/functions and the typecheck job never looks at them.
 #   routes     a real `next build`, checked against the content security policy: every route
 #              Next.js prerenders must be one the nonce policy accounts for, or the page ships
@@ -257,7 +257,7 @@ jobs:
 
   # ---------------------------------------------------------------- the Edge Functions
   deno:
-    name: Edge Functions typecheck, and the PDF writer run
+    name: Edge Functions typecheck, and the PDF and calendar writers run
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -295,6 +295,12 @@ jobs:
         # accepts. A new .ts file anywhere else in the tree lands in that compiler's include by
         # default — check before adding one.
         run: deno run --node-modules-dir=none scripts/check-pdf.ts
+
+      - name: The calendar writer holds
+        # src/lib/ics.ts is the other dependency-free writer between Docket and somebody's day, and
+        # every way it fails is silent: a calendar app meeting a bad line shows the wrong thing or
+        # nothing, and the thing not shown is a court date. Run, not merely compiled.
+        run: deno run --node-modules-dir=none scripts/check-ics.ts
 
   # ---------------------------------------------------------------- the policy vs the build
   #

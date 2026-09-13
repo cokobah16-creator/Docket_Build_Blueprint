@@ -16,6 +16,9 @@ import { Icon } from "@/components/ui/icon";
 import { PushOptIn } from "@/components/push/push-opt-in";
 import { staffSignOut } from "@/lib/actions/staff";
 import { ProfileEditor, type PractitionerProfile } from "./profile-editor";
+import { CalendarFeedPanel } from "./calendar-feed-panel";
+import { supabaseUrl } from "@/lib/env";
+import type { CalendarFeedStatus } from "@/lib/db/types";
 
 export const metadata = { title: "Me" };
 
@@ -32,8 +35,8 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
     );
   }
 
-  const { supabase, firmId, userId } = ctx;
-  const [overview, staff, { data: invoiceRows }, { data: profileRow }, { data: categoryRows }, { data: firmRow }] = await Promise.all([
+  const { supabase, firmId, userId, timezone } = ctx;
+  const [overview, staff, { data: invoiceRows }, { data: profileRow }, { data: categoryRows }, { data: firmRow }, { data: feedRows }] = await Promise.all([
     firmOverview(supabase, firmId),
     firmStaff(supabase, firmId),
     supabase.from("invoices").select("id").eq("firm_id", firmId).in("status", ["issued", "partially_paid", "overdue"]),
@@ -41,8 +44,14 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
     supabase.from("lawyer_profiles").select("title, bio, practice_areas, category, is_public, slug").eq("firm_id", firmId).eq("user_id", userId).maybeSingle(),
     supabase.from("services").select("lawyer_category").eq("firm_id", firmId).limit(200),
     supabase.from("firms").select("slug, status").eq("id", firmId).maybeSingle(),
+    // Their own subscribed calendar, if they have issued one. The function returns the fact, never
+    // the token: nothing on this page can show an address that already exists.
+    supabase.rpc("calendar_feed_status", { p_firm: firmId }),
   ]);
   const profile = (profileRow ?? null) as PractitionerProfile | null;
+  const feed = ((feedRows ?? []) as CalendarFeedStatus[])[0] ?? null;
+  const base = supabaseUrl();
+  const feedBase = base ? `${base.replace(/\/+$/, "")}/functions/v1/calendar-feed` : null;
   const categories = Array.from(new Set(((categoryRows ?? []) as Array<{ lawyer_category: string | null }>).map((r) => (r.lawyer_category ?? "").trim()).filter(Boolean))).sort();
   const firmSlug = (firmRow as { slug: string; status: "pending" | "active" | "suspended" } | null)?.slug ?? "";
   const firmStatus = (firmRow as { slug: string; status: "pending" | "active" | "suspended" } | null)?.status ?? "pending";
@@ -119,6 +128,8 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
           <ProfileEditor firmId={firmId} userId={userId} firmSlug={firmSlug} firmStatus={firmStatus} profile={profile} categories={categories} />
         </Card>
       )}
+
+      <CalendarFeedPanel firmId={firmId} feed={feed} feedBase={feedBase} timezone={timezone} />
 
       <Card>
         <ul>

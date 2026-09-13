@@ -1386,3 +1386,14 @@ export interface ApiEndpointSummary {
   failed: number;
   delivered: number;
 }
+
+/**
+ * calendar_feed_status() (migration 47): that a subscribed calendar URL exists, never the URL.
+ * The token is shown once, at the moment it is minted, and only its hash is kept.
+ */
+export interface CalendarFeedStatus {
+  id: string;
+  include_client_names: boolean;
+  created_at: string;
+  last_used_at: string | null;
+}

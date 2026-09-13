@@ -191,8 +191,8 @@ must enrol TOTP before `/admin` will let it do anything, because every platform 
 
 ## 3. The Edge Functions
 
-Five functions, and **four of them must be deployed with `--no-verify-jwt`**, because their callers
-hold no Supabase session. There is no `supabase/config.toml` in this repository, so the flag has to
+Eight functions, and **seven of them must be deployed with `--no-verify-jwt`**, because their callers
+hold no Supabase session — a payment provider, `pg_cron`, a partner's server, a calendar app. There is no `supabase/config.toml` in this repository, so the flag has to
 be on the command line every time.
 
 ```bash
@@ -200,6 +200,9 @@ supabase functions deploy paystack-webhook        --project-ref <ref> --no-verif
 supabase functions deploy dispatch-notifications  --project-ref <ref> --no-verify-jwt
 supabase functions deploy delivery-receipts       --project-ref <ref> --no-verify-jwt
 supabase functions deploy storage-manifest        --project-ref <ref> --no-verify-jwt
+supabase functions deploy partner-api             --project-ref <ref> --no-verify-jwt
+supabase functions deploy partner-webhooks        --project-ref <ref> --no-verify-jwt
+supabase functions deploy calendar-feed           --project-ref <ref> --no-verify-jwt
 supabase functions deploy video-session           --project-ref <ref>
 ```
 
@@ -233,6 +236,20 @@ supabase functions deploy video-session           --project-ref <ref>
   Vault secrets — `cron_secret`, which the dispatcher already has, and
   `vault.create_secret('https://<ref>.supabase.co/functions/v1/storage-manifest', 'storage_manifest_url')`
   — and is a no-op until both exist.
+- **`partner-api`** is called by another firm's software with a Docket key rather than a Supabase
+  JWT (migration 46). It holds no rule at all: `api_authorize()` in the database decides whether a
+  key exists, is live, and carries the scope, and every `api_v1_*` function is the service role's
+  alone. See `docs/PARTNER_API.md`.
+- **`partner-webhooks`** is called by `pg_cron` with the same `x-cron-secret` and pushes each event
+  to whatever endpoints a firm registered, signed with that endpoint's own secret. It needs
+  `vault.create_secret('https://<ref>.supabase.co/functions/v1/partner-webhooks', 'partner_webhooks_url')`
+  and is a no-op until that exists.
+- **`calendar-feed`** is called by a lawyer's calendar app, which holds no session of any kind
+  (migration 47). The token in the path is the whole credential, and `calendar_feed_events()`
+  decides whose diary it is and applies that person's own matter walls — so there is no firm or
+  user for this function to pass, and nothing here to get wrong. It answers `text/calendar` with
+  `Cache-Control: private, no-store`, because a feed URL is a bearer credential no shared cache
+  should ever hold.
 - **`video-session`** is called by signed-in people and reads the `Authorization` header itself, so
   it keeps JWT verification on.
 
@@ -410,8 +427,8 @@ verify.
 ## Redeploying, afterwards
 
 - **Schema:** add a migration; never edit one that has been applied. `supabase db push`.
-- **Functions:** `supabase functions deploy <name>` — and remember `--no-verify-jwt` on the two that
-  need it, every time.
+- **Functions:** `supabase functions deploy <name>` — and remember `--no-verify-jwt` on the seven
+  that need it, every time. `video-session` is the only one that keeps JWT verification on.
 - **App:** push to the branch Vercel builds.
 - **Before any of it:** CI runs the migrations, the seed and **every** suite in `supabase/tests/`
   against a clean Postgres 16 — the job counts the files and refuses to pass unless each one
@@ -586,6 +603,34 @@ select proname, proacl from pg_proc where proname in ('api_authorize', 'api_v1_m
 
 Neither may be executable by `anon` or `authenticated`. They are the service role's alone — the API
 function calls them, and a signed-in person must never be able to hand them a key directly.
+
+**47 goes before the app**, because the calendar panel on `/firm/me` calls `calendar_feed_status()`,
+`issue_calendar_feed()` and `revoke_calendar_feed()`. It adds one Edge Function and no cron job:
+
+```bash
+supabase functions deploy calendar-feed --project-ref <ref> --no-verify-jwt
+```
+
+`--no-verify-jwt` is not optional here and is not a relaxation: a calendar app subscribing to a URL
+sends no `Authorization` header and never will. The token in the path is the credential, and
+`calendar_feed_events()` — which `anon` and `authenticated` cannot execute at all — is what decides
+whose diary it is.
+
+**Proves it worked:** `curl -i https://<ref>.supabase.co/functions/v1/calendar-feed/nonsense`
+returns `404 not found` — the same answer an unknown, a revoked and a departed member's token all
+get, so a fetcher learns whether a URL works and never why it does not. With a real URL issued from
+**Me → My diary in my own calendar**, the same call returns `BEGIN:VCALENDAR` and
+`Content-Type: text/calendar`. Then subscribe to it in a calendar and check one thing by hand: a
+matter walled to a team the feed's owner is not on must not appear in it.
+
+One thing to check rather than assume, for the same reason as 46:
+
+```sql
+select proname, proacl from pg_proc where proname = 'calendar_feed_events';
+```
+
+The service role's alone. A signed-in person who could call it directly could hand it somebody
+else's token, and the wall inside it is written against the token's owner rather than the caller.
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|
