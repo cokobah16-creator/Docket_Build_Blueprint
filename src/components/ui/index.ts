@@ -9,4 +9,3 @@ export { Switch, SettingRow } from "./switch";
 export { Table, THead, TBody, TR, TH, TD } from "./table";
 export { Modal } from "./modal";
 export { ToastProvider, useToast } from "./toast";
-export { BottomNav } from "./bottom-nav";

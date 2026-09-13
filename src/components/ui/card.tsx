@@ -33,7 +33,15 @@ export function CardHeader({
   return (
     <header className="flex items-center justify-between gap-4 border-b border-gray-100 px-[17px] py-[13px]">
       <h2 className="font-heading text-[15.5px] font-semibold text-gray-900">{title}</h2>
-      {action}
+      {/* A card's action is a word or two — "All", "Pay". A word is a small
+          thing for a thumb to find, so the slot grows the hit area to 44px and
+          takes the extra back out in negative margin, leaving the header the
+          height it was drawn at. */}
+      {action && (
+        <div className="-my-2.5 -mr-2 flex shrink-0 items-center [&>a]:flex [&>a]:min-h-11 [&>a]:items-center [&>a]:min-w-11 [&>a]:justify-center [&>a]:px-2 [&>button]:flex [&>button]:min-h-11 [&>button]:items-center [&>button]:min-w-11 [&>button]:justify-center [&>button]:px-2">
+          {action}
+        </div>
+      )}
     </header>
   );
 }

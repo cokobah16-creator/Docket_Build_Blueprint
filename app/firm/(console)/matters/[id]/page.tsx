@@ -42,6 +42,7 @@ import type {
   ServiceDirectoryRow, TaskRow, CollaborationRow, CollaborationDocumentRow,
 } from "@/lib/db/types";
 import { CollaborationPanel } from "@/components/firm/collaboration-panel";
+import { CardGrid, WithAside } from "@/components/shell/layout";
 import { CopyButton, MatterTabs, type TabSpec } from "./matter-tabs";
 import { StaffTimeline, type StaffUpdate } from "./staff-timeline";
 import { StaffDocuments, type StaffDocument } from "./staff-documents";
@@ -217,6 +218,57 @@ export default async function MatterWorkbench({
   const handling = matter.handling_lawyer_id ? names[matter.handling_lawyer_id] ?? null : null;
   const originating = matter.originating_lawyer_id ? names[matter.originating_lawyer_id] ?? null : null;
 
+  /* At a glance. Each tile is the fact and the door to it. */
+  const glance = (
+    <section aria-label="At a glance">
+      <CardGrid min="150px">
+        {(() => {
+          const clients = parties.filter((p) => p.role === "client").map((p) => names[p.user_id] ?? "Client");
+          const contacts = parties.filter((p) => p.role !== "client").length;
+          const tiles: Array<{ label: string; value: string; hint: string; href: string; ink?: string }> = [
+            {
+              label: "For",
+              value: clients.length ? clients.join(", ") : "No client on the file",
+              hint: contacts ? `${contacts} other ${contacts === 1 ? "party" : "parties"} on the matter` : "Who may read it, and who may pay",
+              href: `${basePath}?tab=parties${extraQuery}`,
+              ink: clients.length ? undefined : "text-[#92400E]",
+            },
+            {
+              label: "Latest update",
+              value: latest ? latest.title : "Nothing posted yet",
+              hint: latest
+                ? `${relativeLabel(latest.occurred_at, nowMs)}${latest.action_required === true ? " · the client must act" : latest.action_required === false ? " · nothing needed from the client" : ""}`
+                : "The client's timeline is empty",
+              href: `${basePath}?tab=timeline${extraQuery}`,
+              ink: latest ? undefined : "text-[#92400E]",
+            },
+            {
+              label: "Messages",
+              value: thread ? (thread.unread_for_me > 0 ? `${thread.unread_for_me} unread by you` : "Nothing unread by you") : "No thread yet",
+              hint: thread ? (thread.last_from_firm ? `Last from the firm, ${relativeLabel(thread.last_message_at, nowMs)}` : `Awaiting the firm's reply since ${relativeLabel(thread.last_message_at, nowMs)}`) : "The client has not written",
+              href: `${basePath}?tab=messages${extraQuery}`,
+              ink: thread && (!thread.last_from_firm || thread.unread_for_me > 0) ? "text-[#92400E]" : undefined,
+            },
+            {
+              label: "Owed on this matter",
+              value: owed.size ? Array.from(owed.entries()).filter(([, minor]) => minor !== 0).map(([cur, minor]) => formatMoneyMinor(minor, cur)).join(" + ") || "Nothing" : "Nothing",
+              hint: owed.size ? "Issued, part-paid or overdue" : "No invoice is open",
+              href: `${basePath}?tab=invoices${extraQuery}`,
+              ink: owed.size ? "text-[#B42318]" : undefined,
+            },
+          ];
+          return tiles.map((t) => (
+            <Link key={t.label} href={t.href} className="rounded-[11px] border border-[#DDD9D2] bg-white p-3 hover:border-[#141414]">
+              <p className="text-[10.5px] uppercase leading-snug tracking-[0.06em] text-[#57534E]">{t.label}</p>
+              <p className={cn("mt-1 line-clamp-2 text-[13.5px] font-semibold leading-snug", t.ink ?? "text-[#141414]")}>{t.value}</p>
+              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-[#57534E]">{t.hint}</p>
+            </Link>
+          ));
+        })()}
+      </CardGrid>
+    </section>
+  );
+
   return (
     <div className="space-y-5">
       <p className="text-sm">
@@ -290,57 +342,13 @@ export default async function MatterWorkbench({
         </p>
       </header>
 
-      {/* At a glance. Each tile is the fact and the door to it. */}
-      <section aria-label="At a glance" className="grid grid-cols-2 gap-2.5">
-        {(() => {
-          const clients = parties.filter((p) => p.role === "client").map((p) => names[p.user_id] ?? "Client");
-          const contacts = parties.filter((p) => p.role !== "client").length;
-          const tiles: Array<{ label: string; value: string; hint: string; href: string; ink?: string }> = [
-            {
-              label: "For",
-              value: clients.length ? clients.join(", ") : "No client on the file",
-              hint: contacts ? `${contacts} other ${contacts === 1 ? "party" : "parties"} on the matter` : "Who may read it, and who may pay",
-              href: `${basePath}?tab=parties${extraQuery}`,
-              ink: clients.length ? undefined : "text-[#92400E]",
-            },
-            {
-              label: "Latest update",
-              value: latest ? latest.title : "Nothing posted yet",
-              hint: latest
-                ? `${relativeLabel(latest.occurred_at, nowMs)}${latest.action_required === true ? " · the client must act" : latest.action_required === false ? " · nothing needed from the client" : ""}`
-                : "The client's timeline is empty",
-              href: `${basePath}?tab=timeline${extraQuery}`,
-              ink: latest ? undefined : "text-[#92400E]",
-            },
-            {
-              label: "Messages",
-              value: thread ? (thread.unread_for_me > 0 ? `${thread.unread_for_me} unread by you` : "Nothing unread by you") : "No thread yet",
-              hint: thread ? (thread.last_from_firm ? `Last from the firm, ${relativeLabel(thread.last_message_at, nowMs)}` : `Awaiting the firm's reply since ${relativeLabel(thread.last_message_at, nowMs)}`) : "The client has not written",
-              href: `${basePath}?tab=messages${extraQuery}`,
-              ink: thread && (!thread.last_from_firm || thread.unread_for_me > 0) ? "text-[#92400E]" : undefined,
-            },
-            {
-              label: "Owed on this matter",
-              value: owed.size ? Array.from(owed.entries()).filter(([, minor]) => minor !== 0).map(([cur, minor]) => formatMoneyMinor(minor, cur)).join(" + ") || "Nothing" : "Nothing",
-              hint: owed.size ? "Issued, part-paid or overdue" : "No invoice is open",
-              href: `${basePath}?tab=invoices${extraQuery}`,
-              ink: owed.size ? "text-[#B42318]" : undefined,
-            },
-          ];
-          return tiles.map((t) => (
-            <Link key={t.label} href={t.href} className="rounded-[11px] border border-[#DDD9D2] bg-white p-3 hover:border-[#141414]">
-              <p className="text-[10.5px] uppercase leading-snug tracking-[0.06em] text-[#57534E]">{t.label}</p>
-              <p className={cn("mt-1 line-clamp-2 text-[13.5px] font-semibold leading-snug", t.ink ?? "text-[#141414]")}>{t.value}</p>
-              <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-[#57534E]">{t.hint}</p>
-            </Link>
-          ));
-        })()}
-      </section>
-
       {sp.error && <Alert kind="error" title="That was refused">{sp.error}</Alert>}
       {sp.issued === "1" && <Alert kind="success">Invoice issued. Your client can see it and pay from their app.</Alert>}
 
-      <MatterTabs tabs={TABS} active={tab} basePath={basePath} extraQuery={extraQuery} />
+      {/* The overview stays beside the tabs from 1280px and falls above them
+          below that, so the file's shape is on screen while its detail is read. */}
+      <WithAside from="xl" aside={glance}>
+        <MatterTabs tabs={TABS} active={tab} basePath={basePath} extraQuery={extraQuery} />
 
       <Card>
         {tab === "timeline" && <TimelineSection ctx={ctx} matter={matter} names={names} />}
@@ -355,7 +363,8 @@ export default async function MatterWorkbench({
         {tab === "edit" && (
           <EditSection ctx={ctx} matter={matter} statuses={statuses} staffOptions={staffOptions} leadLawyerId={leadLawyerId} alsoOn={lawyers.filter((l) => !l.is_lead).map((l) => l.user_id)} />
         )}
-      </Card>
+        </Card>
+      </WithAside>
     </div>
   );
 }

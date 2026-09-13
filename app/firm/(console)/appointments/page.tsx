@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { Card, EmptyState } from "@/components/ui/card";
+import { Card, CardHeader, EmptyState } from "@/components/ui/card";
+import { PageHeader } from "@/components/shell/layout";
 import { StatusPill, type Status } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import { zonedDayRange } from "@/lib/time";
@@ -42,10 +43,6 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
   }
 
   const time = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: tz }).format(new Date(iso));
-  const when = (iso: string) =>
-    view === "today"
-      ? `Today, ${time(iso)}`
-      : new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz }).format(new Date(iso));
 
   /**
    * The one line that says what this consultation needs from the firm. An
@@ -71,24 +68,33 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
 
   const tabs: Array<[View, string]> = [["today", "Today"], ["upcoming", "Upcoming"], ["past", "Past"]];
 
-  return (
-    <div className="flex flex-col gap-3.5">
-      <div>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Consultations</h1>
-        <p className="mt-0.5 text-[12.5px] text-[#57534E]">
-          {view === "today" ? "Today" : view === "upcoming" ? "Upcoming" : "Past"}
-          {ctx && ctx.memberships.length > 1 ? ` · ${ctx.firmName}` : ""} · times in {tz}
-        </p>
-      </div>
+  // Grouped by day so a week of "upcoming" reads as a diary rather than a list.
+  // Today's view is one day by definition, so it keeps a single heading.
+  const dayKey = (iso: string) => new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeZone: tz }).format(new Date(iso));
+  const days: Array<[string, Row[]]> = [];
+  for (const r of rows) {
+    const key = dayKey(r.starts_at);
+    const last = days[days.length - 1];
+    if (last && last[0] === key) last[1].push(r);
+    else days.push([key, [r]]);
+  }
 
-      <nav aria-label="Consultation views" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
+  return (
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        tone="neutral"
+        title="Consultations"
+        description={`${view === "today" ? "Today" : view === "upcoming" ? "Upcoming" : "Past"}${ctx && ctx.memberships.length > 1 ? ` · ${ctx.firmName}` : ""} · times in ${tz}`}
+      />
+
+      <nav aria-label="Consultation views" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8">
         {tabs.map(([key, label]) => (
           <Link
             key={key}
             href={`/firm/appointments?view=${key}`}
             aria-current={view === key ? "page" : undefined}
             className={cn(
-              "flex min-h-10 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
+              "flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
               view === key ? "border-[#141414] bg-[#141414] text-white" : "border-[#D6D3CE] bg-white text-[#57534E]",
             )}
           >
@@ -97,39 +103,55 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
         ))}
       </nav>
 
-      <Card>
-        {rows.length === 0 ? (
+      {/* A diary row is a time, a name and a status. Left to fill a 1400px
+          workspace it becomes a name at one edge and a pill at the other, so
+          the agenda keeps its own width and the rest of the desk stays empty. */}
+      <div className="flex flex-col gap-4 xl:max-w-4xl">
+      {rows.length === 0 ? (
+        <Card>
           <EmptyState
             title={view === "today" ? "Nothing booked for today" : view === "upcoming" ? "No upcoming consultations" : "No past consultations"}
             hint="Confirmed bookings from the public site appear here."
           />
-        ) : (
-          <ul>
-            {rows.map((a) => {
-              const n = note(a);
-              return (
-                <li key={a.id}>
-                  <Link
-                    href={`/firm/appointments/${a.id}`}
-                    className="flex items-start justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-gray-50"
-                  >
-                    <span className="min-w-0">
-                      <span className="block text-[13.5px] font-semibold text-[#141414]">
-                        {when(a.starts_at)} · {a.client?.full_name ?? "Client"}
+        </Card>
+      ) : (
+        days.map(([day, inDay]) => (
+          <Card key={day}>
+            <CardHeader title={day} />
+            <ul>
+              {inDay.map((a) => {
+                const n = note(a);
+                return (
+                  <li key={a.id}>
+                    <Link
+                      href={`/firm/appointments/${a.id}`}
+                      className="flex flex-col gap-1.5 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-gray-50 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
+                    >
+                      <span className="flex min-w-0 items-start gap-3">
+                        {/* The time is the column a diary is read down. */}
+                        <span className="w-[52px] shrink-0 font-mono text-[13px] font-bold text-[#141414]">
+                          {time(a.starts_at)}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-[13.5px] font-semibold text-[#141414]">
+                            {a.client?.full_name ?? "Client"}
+                          </span>
+                          <span className="mt-0.5 block truncate text-[11.5px] text-[#57534E]">
+                            <span className="font-mono">{a.reference}</span> · {a.service?.name ?? "Consultation"} · {a.mode.replace("_", " ")}
+                          </span>
+                          {n && <span className={cn("mt-0.5 block text-[11.5px]", n.ink)}>{n.text}</span>}
+                        </span>
                       </span>
-                      <span className="mt-0.5 block truncate text-[11.5px] text-[#57534E]">
-                        <span className="font-mono">{a.reference}</span> · {a.service?.name ?? "Consultation"} · {a.mode.replace("_", " ")}
-                      </span>
-                      {n && <span className={cn("mt-0.5 block text-[11.5px]", n.ink)}>{n.text}</span>}
-                    </span>
-                    <StatusPill status={a.status as Status} />
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
+                      <StatusPill status={a.status as Status} />
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </Card>
+        ))
+      )}
+      </div>
     </div>
   );
 }

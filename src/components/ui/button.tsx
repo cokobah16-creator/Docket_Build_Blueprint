@@ -24,7 +24,10 @@ const variants: Record<Variant, string> = {
 };
 
 const sizes: Record<Size, string> = {
-  sm: "min-h-10 rounded-[9px] px-[13px] text-[12.5px] font-semibold",
+  // `sm` is smaller type in a tighter box, not a smaller target: 44px is the
+  // floor for all three, because the thumb does not get more accurate when the
+  // button is secondary.
+  sm: "min-h-11 rounded-[9px] px-[13px] text-[12.5px] font-semibold",
   md: "min-h-11 rounded-[9px] px-5 text-sm font-semibold",
   lg: "min-h-[50px] rounded-[10px] px-6 text-[15px] font-semibold",
 };

@@ -1,0 +1,431 @@
+import { expect, test, type Page } from "@playwright/test";
+import { createHmac } from "node:crypto";
+
+// ---------------------------------------------------------------------------
+// Authenticated user journeys against a REAL Supabase project.
+//
+// STATUS: UNVERIFIED. Every test in this file has been written but never once
+// executed, because the environment it was written in has no project to run it
+// against — see tests/integration/README.md, "Why this is unverified". Treat a
+// first green run as the moment these become evidence, not before. Until then
+// they are a specification of the journeys, in executable form.
+//
+// Each block is guarded on the configuration it needs and SKIPS when that
+// configuration is absent. A skip is not a pass: `npx playwright test` printing
+// "7 skipped" means the journeys are still unverified.
+//
+// These tests sign in as real people and read real rows. Point them at a
+// project whose data you are willing to have read — never one a firm is using.
+// They write only what reading writes (a document_reads row, a message the
+// messaging journey posts and then leaves).
+// ---------------------------------------------------------------------------
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const FIRM_SLUG = process.env.E2E_FIRM_SLUG ?? "";
+
+// Client account: a person a firm acts for, with at least one matter.
+const CLIENT_PHONE = process.env.E2E_CLIENT_PHONE ?? "";
+const CLIENT_OTP = process.env.E2E_CLIENT_OTP ?? "";
+
+// Staff account: a firm_members row, with TOTP already enrolled.
+const STAFF_EMAIL = process.env.E2E_STAFF_EMAIL ?? "";
+const STAFF_PASSWORD = process.env.E2E_STAFF_PASSWORD ?? "";
+const STAFF_TOTP_SECRET = process.env.E2E_STAFF_TOTP_SECRET ?? "";
+
+// The second firm that also acts for the client, for the switching journey.
+const SECOND_FIRM_NAME = process.env.E2E_SECOND_FIRM_NAME ?? "";
+
+// A matter id belonging to a firm that does NOT act for the client account.
+// The denial journey asserts this stays unreachable. Getting this wrong — a
+// matter the client legitimately holds — turns the most important test in the
+// file into one that passes while proving the opposite.
+const FORBIDDEN_MATTER_ID = process.env.E2E_FORBIDDEN_MATTER_ID ?? "";
+
+const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && FIRM_SLUG);
+const clientConfigured = supabaseConfigured && Boolean(CLIENT_PHONE && CLIENT_OTP);
+const staffConfigured =
+  supabaseConfigured && Boolean(STAFF_EMAIL && STAFF_PASSWORD && STAFF_TOTP_SECRET);
+
+const missing = (names: Record<string, string>) =>
+  `set ${Object.keys(names)
+    .filter((k) => !names[k])
+    .join(", ")} — see tests/integration/README.md`;
+
+// ---------------------------------------------------------------------------
+// TOTP, RFC 6238, so staff MFA can be completed without a phone in the room.
+// Implemented here rather than pulled in, so this file adds no dependency.
+// ---------------------------------------------------------------------------
+
+function base32Decode(secret: string): Buffer {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  const clean = secret.replace(/=+$/, "").replace(/\s/g, "").toUpperCase();
+  let bits = 0;
+  let value = 0;
+  const out: number[] = [];
+  for (const char of clean) {
+    const idx = alphabet.indexOf(char);
+    if (idx === -1) throw new Error(`E2E_STAFF_TOTP_SECRET is not base32: bad char ${char}`);
+    value = (value << 5) | idx;
+    bits += 5;
+    if (bits >= 8) {
+      bits -= 8;
+      out.push((value >>> bits) & 0xff);
+    }
+  }
+  return Buffer.from(out);
+}
+
+function totp(secret: string, atMs = Date.now()): string {
+  const counter = Math.floor(atMs / 1000 / 30);
+  const buf = Buffer.alloc(8);
+  buf.writeUInt32BE(Math.floor(counter / 2 ** 32), 0);
+  buf.writeUInt32BE(counter >>> 0, 4);
+  const hmac = createHmac("sha1", base32Decode(secret)).update(buf).digest();
+  const offset = hmac[hmac.length - 1] & 0x0f;
+  const code =
+    ((hmac[offset] & 0x7f) << 24) |
+    ((hmac[offset + 1] & 0xff) << 16) |
+    ((hmac[offset + 2] & 0xff) << 8) |
+    (hmac[offset + 3] & 0xff);
+  return (code % 1_000_000).toString().padStart(6, "0");
+}
+
+// A code is valid for a 30s step. If we are near the boundary, wait for the
+// next step rather than submit one that expires in transit.
+async function freshTotp(secret: string): Promise<string> {
+  const msIntoStep = Date.now() % 30_000;
+  if (msIntoStep > 27_000) await new Promise((r) => setTimeout(r, 30_000 - msIntoStep + 500));
+  return totp(secret);
+}
+
+// ---------------------------------------------------------------------------
+// Sign-in helpers
+// ---------------------------------------------------------------------------
+
+async function signInClient(page: Page) {
+  await page.goto("/app/login");
+  await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
+
+  await page.getByRole("tab", { name: "Phone" }).click();
+  await page.getByLabel(/phone/i).fill(CLIENT_PHONE);
+  await page.getByRole("button", { name: /send|continue|code/i }).first().click();
+
+  // The verify stage only appears once GoTrue has accepted the number.
+  const codeField = page.getByLabel(/code/i);
+  await expect(codeField).toBeVisible({ timeout: 30_000 });
+  await codeField.fill(CLIENT_OTP);
+  await page.getByRole("button", { name: /verify|sign in|continue/i }).first().click();
+
+  await expect(page).toHaveURL(/\/app(\/|$)/, { timeout: 30_000 });
+  await expect(page).not.toHaveURL(/\/app\/login/);
+}
+
+async function signInStaff(page: Page) {
+  await page.goto("/firm/login");
+  await expect(page.getByRole("heading", { name: /staff console/i })).toBeVisible();
+
+  await page.getByLabel("Email").fill(STAFF_EMAIL);
+  await page.getByLabel("Password").fill(STAFF_PASSWORD);
+  await page.getByRole("button", { name: /sign in/i }).click();
+
+  // signInWithPassword lands an aal1 session. The console layout refuses it
+  // (`if (aal?.currentLevel !== "aal2") redirect("/firm/security/mfa")`) and
+  // sends the browser to the challenge; the database refuses staff writes below
+  // aal2 regardless of what the UI does.
+  //
+  // Wait for the challenge FIELD, not for a URL: /\/firm/ also matches the
+  // /firm/login page we are standing on, so it resolves on the first poll and
+  // waits for nothing — and `isVisible()` does not wait either. Together they
+  // would step past the MFA form before it had a chance to render, every time.
+  const challenge = page.getByLabel(/code|authentication/i);
+  await challenge.waitFor({ state: "visible", timeout: 30_000 }).catch(() => {
+    /* already aal2 from a previous factor verification — checked below */
+  });
+  if (await challenge.isVisible().catch(() => false)) {
+    await challenge.fill(await freshTotp(STAFF_TOTP_SECRET));
+    await page.getByRole("button", { name: /verify|continue|submit/i }).first().click();
+  }
+
+  // aal2 reached: the console renders rather than bouncing to the challenge, and
+  // we are no longer sitting on the sign-in form with an error.
+  await expect(page).not.toHaveURL(/\/firm\/login/, { timeout: 30_000 });
+  await expect(page).not.toHaveURL(/\/firm\/security\/mfa/, { timeout: 30_000 });
+}
+
+/**
+ * The access token the browser client has stored, so we can ask PostgREST directly.
+ *
+ * It is in a COOKIE, not localStorage. `src/lib/supabase/browser.ts` builds its
+ * client with `createBrowserClient` from `@supabase/ssr`, whose storage adapter
+ * is `document.cookie` — the session lands in `sb-<ref>-auth-token`, split into
+ * `.0`, `.1`, … when it is longer than a cookie may be, and prefixed `base64-`.
+ * Nothing is ever written to localStorage, so looking there finds an empty
+ * string and every assertion built on this helper fails before it starts.
+ * localStorage is still tried second, for a client built the plain
+ * supabase-js way.
+ */
+async function accessToken(page: Page): Promise<string> {
+  const token = await page.evaluate(() => {
+    const sessionFrom = (raw: string): string => {
+      let text = raw;
+      if (text.startsWith("base64-")) {
+        const b64 = text.slice("base64-".length).replace(/-/g, "+").replace(/_/g, "/");
+        const bytes = Uint8Array.from(
+          atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, "=")),
+          (ch) => ch.charCodeAt(0),
+        );
+        text = new TextDecoder().decode(bytes);
+      }
+      try {
+        const parsed = JSON.parse(text);
+        return typeof parsed?.access_token === "string" ? parsed.access_token : "";
+      } catch {
+        return "";
+      }
+    };
+
+    // The cookie the SSR client writes, reassembled from its chunks in order.
+    const chunks = new Map<string, string[]>();
+    for (const pair of document.cookie.split("; ")) {
+      const eq = pair.indexOf("=");
+      if (eq === -1) continue;
+      const name = pair.slice(0, eq);
+      const value = decodeURIComponent(pair.slice(eq + 1));
+      const parts = /^(sb-.*-auth-token)(?:\.(\d+))?$/.exec(name);
+      if (!parts) continue;
+      const list = chunks.get(parts[1]) ?? [];
+      list[parts[2] === undefined ? 0 : Number(parts[2])] = value;
+      chunks.set(parts[1], list);
+    }
+    for (const list of chunks.values()) {
+      const found = sessionFrom(list.join(""));
+      if (found) return found;
+    }
+
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const key = window.localStorage.key(i)!;
+      if (!key.startsWith("sb-") || !key.endsWith("-auth-token")) continue;
+      const raw = window.localStorage.getItem(key);
+      if (!raw) continue;
+      const found = sessionFrom(raw);
+      if (found) return found;
+    }
+    return "";
+  });
+  expect(
+    token,
+    "no Supabase session in the sb-*-auth-token cookie or localStorage — sign-in did not persist",
+  ).not.toBe("");
+  return token;
+}
+
+// ---------------------------------------------------------------------------
+// 1. Client sign-in
+// ---------------------------------------------------------------------------
+
+test("client signs in with a phone OTP and reaches the portal", async ({ page }) => {
+  test.skip(
+    !clientConfigured,
+    missing({ NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_ANON_KEY, E2E_FIRM_SLUG: FIRM_SLUG, E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }),
+  );
+
+  await signInClient(page);
+
+  // A session that exists is not the same as a session the database honours.
+  // Ask PostgREST as this user: firm_members is a table a client holds no row
+  // in, so the useful assertion is that the request is ACCEPTED (a real JWT)
+  // and returns the client's own firms.
+  const token = await accessToken(page);
+  const res = await page.request.get(`${SUPABASE_URL}/rest/v1/firm_public?select=slug&limit=1`, {
+    headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` },
+  });
+  expect(res.status(), "PostgREST rejected the signed-in client's token").toBe(200);
+});
+
+// ---------------------------------------------------------------------------
+// 2. Staff sign-in with MFA
+// ---------------------------------------------------------------------------
+
+test("staff signs in with password and TOTP and reaches the console at aal2", async ({ page }) => {
+  test.skip(
+    !staffConfigured,
+    missing({ NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_ANON_KEY, E2E_FIRM_SLUG: FIRM_SLUG, E2E_STAFF_EMAIL: STAFF_EMAIL, E2E_STAFF_PASSWORD: STAFF_PASSWORD, E2E_STAFF_TOTP_SECRET: STAFF_TOTP_SECRET }),
+  );
+
+  await signInStaff(page);
+
+  // The claim under test is aal2, not "a page rendered". Read it from the JWT
+  // the browser holds: the console layout and every staff-write policy key off
+  // exactly this claim.
+  const token = await accessToken(page);
+  const claims = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString());
+  expect(claims.aal, "staff session is not aal2 — MFA did not complete").toBe("aal2");
+});
+
+// ---------------------------------------------------------------------------
+// 3. Navigation
+// ---------------------------------------------------------------------------
+
+test("a signed-in client can reach every primary portal destination", async ({ page }) => {
+  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
+
+  await signInClient(page);
+
+  for (const path of [
+    "/app/matters",
+    "/app/messages",
+    "/app/appointments",
+    "/app/payments",
+    "/app/court-dates",
+    "/app/notifications",
+    "/app/profile",
+  ]) {
+    const res = await page.goto(path);
+    expect(res?.status(), `${path} did not render for a signed-in client`).toBeLessThan(400);
+    // Bounced back to sign-in is the failure this loop exists to catch.
+    await expect(page, `${path} bounced to sign-in`).not.toHaveURL(/\/app\/login/);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 4. Messaging
+// ---------------------------------------------------------------------------
+
+test("a client reads a thread and posts a message that persists", async ({ page }) => {
+  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
+
+  await signInClient(page);
+  await page.goto("/app/messages");
+
+  const thread = page.locator("a[href^='/app/messages/']").first();
+  test.skip(
+    !(await thread.isVisible().catch(() => false)),
+    "the client account has no message thread — seed one, or this proves nothing",
+  );
+  await thread.click();
+
+  const body = `e2e ${new Date().toISOString()}`;
+  const composer = page.getByRole("textbox").last();
+  await composer.fill(body);
+  await page.getByRole("button", { name: /send/i }).first().click();
+
+  // Present after a reload, so this is the database's copy and not optimistic
+  // UI that never reached a row.
+  await expect(page.getByText(body)).toBeVisible({ timeout: 30_000 });
+  await page.reload();
+  await expect(page.getByText(body)).toBeVisible({ timeout: 30_000 });
+});
+
+// ---------------------------------------------------------------------------
+// 5. Document access
+// ---------------------------------------------------------------------------
+
+test("a client opens a document on their own matter", async ({ page }) => {
+  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
+
+  await signInClient(page);
+  await page.goto("/app/matters");
+
+  const matter = page.locator("a[href^='/app/matters/']").first();
+  test.skip(
+    !(await matter.isVisible().catch(() => false)),
+    "the client account holds no matter — seed one, or this proves nothing",
+  );
+  await matter.click();
+
+  const doc = page.getByRole("link", { name: /download|open|view/i }).first();
+  test.skip(
+    !(await doc.isVisible().catch(() => false)),
+    "no document on the client's matter — seed one, or this proves nothing",
+  );
+
+  // open_document_version() must write a document_reads row before storage will
+  // part with the bytes, so a 2xx here is the whole policy chain working.
+  const [response] = await Promise.all([
+    page.waitForResponse((r) => /storage|documents/.test(r.url()), { timeout: 30_000 }),
+    doc.click(),
+  ]);
+  expect(response.status(), "the document did not open for its own client").toBeLessThan(400);
+});
+
+// ---------------------------------------------------------------------------
+// 6. Firm switching
+// ---------------------------------------------------------------------------
+
+test("a client acting through two firms switches between them", async ({ page }) => {
+  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
+  test.skip(!SECOND_FIRM_NAME, "set E2E_SECOND_FIRM_NAME to a second firm acting for this client");
+
+  await signInClient(page);
+  await page.goto("/app");
+
+  // Tapping the firm name on home opens the switcher sheet.
+  await page.getByRole("button", { name: /firm|switch/i }).first().click();
+  const target = page.getByRole("button", { name: new RegExp(SECOND_FIRM_NAME, "i") });
+  await expect(target, `${SECOND_FIRM_NAME} is not among this client's firms`).toBeVisible();
+  await target.click();
+
+  // selectFirm re-checks the firm against this client server-side before it
+  // sets anything; the whole app repaints to that firm.
+  await expect(page.getByText(new RegExp(SECOND_FIRM_NAME, "i")).first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.reload();
+  await expect(page.getByText(new RegExp(SECOND_FIRM_NAME, "i")).first()).toBeVisible();
+});
+
+// ---------------------------------------------------------------------------
+// 7. Denial of access to another firm's restricted records
+//
+// The most important test here, and the one most easily faked. A UI that hides
+// a row proves nothing about who may READ it — so this asserts at the database,
+// through PostgREST, with the client's own token. RLS is the thing under test.
+// ---------------------------------------------------------------------------
+
+test("a client cannot read another firm's matter, at the UI or the API", async ({ page }) => {
+  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
+  test.skip(
+    !FORBIDDEN_MATTER_ID,
+    "set E2E_FORBIDDEN_MATTER_ID to a matter of a firm that does NOT act for this client",
+  );
+
+  await signInClient(page);
+  const token = await accessToken(page);
+
+  // (a) The database. Zero rows is the pass; a row is a confidentiality breach.
+  const res = await page.request.get(
+    `${SUPABASE_URL}/rest/v1/matters?select=id,title,reference&id=eq.${FORBIDDEN_MATTER_ID}`,
+    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } },
+  );
+  expect([200, 401, 403]).toContain(res.status());
+  if (res.status() === 200) {
+    expect(await res.json(), "RLS let a client read another firm's matter").toEqual([]);
+  }
+
+  // (b) Related content, reached by the same foreign key. A policy can be right
+  // on matters and wrong on what hangs off them.
+  for (const table of ["messages", "documents", "updates", "invoices"]) {
+    const r = await page.request.get(
+      `${SUPABASE_URL}/rest/v1/${table}?select=id&matter_id=eq.${FORBIDDEN_MATTER_ID}`,
+      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } },
+    );
+    if (r.status() === 200) {
+      expect(await r.json(), `RLS let a client read another firm's ${table}`).toEqual([]);
+    } else {
+      // Anything else — 404 on a renamed table, 400 on a dropped column — means
+      // this row was never asked for. Silently continuing would let the most
+      // important test in the file report a pass having checked nothing, so it
+      // is held to the same statuses as the matters check above.
+      expect(
+        [401, 403],
+        `${table} answered ${r.status()} — this check asked nothing and proved nothing`,
+      ).toContain(r.status());
+    }
+  }
+
+  // (c) The UI, navigated to directly rather than clicked to.
+  await page.goto(`/app/matters/${FORBIDDEN_MATTER_ID}`);
+  await expect(page.getByText(/not found|no longer|don't have access|not available/i).first())
+    .toBeVisible({ timeout: 30_000 });
+});

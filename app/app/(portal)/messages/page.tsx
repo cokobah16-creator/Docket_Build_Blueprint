@@ -1,15 +1,14 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
-import { clientTimezone, firmNamesFor } from "@/lib/portal-data";
 import { selectedFirm } from "@/lib/portal-firm";
-import { Card, EmptyState } from "@/components/ui/card";
+import { clientThreads } from "@/lib/portal-threads";
+import { ThreadList } from "@/components/portal/thread-list";
+import { Card } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
 import { Screen, ScreenTitle } from "@/components/portal/screen";
-import type { MessageRow } from "@/lib/db/types";
+import { ListDetail } from "@/components/shell/layout";
 
 export const metadata = { title: "Messages" };
-
-interface Thread { key: string; href: string; title: string; subtitle: string; last: MessageRow | null; unread: number }
 
 export default async function MessagesPage() {
   const supabase = await supabaseServer();
@@ -17,73 +16,31 @@ export default async function MessagesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/app/login");
   const firm = await selectedFirm(supabase);
-
-  let matterQuery = supabase.from("matters").select("id, firm_id, reference, title").is("deleted_at", null);
-  let apptQuery = supabase.from("appointments").select("id, firm_id, reference, starts_at, status");
-  let msgQuery = supabase.from("messages").select("id, firm_id, matter_id, appointment_id, sender_id, body, attachments, read_at, created_at");
-  if (firm) {
-    matterQuery = matterQuery.eq("firm_id", firm.id);
-    apptQuery = apptQuery.eq("firm_id", firm.id);
-    msgQuery = msgQuery.eq("firm_id", firm.id);
-  }
-
-  const [{ data: matterRows }, { data: apptRows }, { data: msgRows }, tz] = await Promise.all([
-    matterQuery.order("opened_at", { ascending: false }).limit(50),
-    apptQuery.order("starts_at", { ascending: false }).limit(20),
-    msgQuery.order("created_at", { ascending: false }).limit(300),
-    clientTimezone(supabase, user.id),
-  ]);
-  const matters = (matterRows ?? []) as Array<{ id: string; firm_id: string; reference: string; title: string }>;
-  const appts = (apptRows ?? []) as Array<{ id: string; firm_id: string; reference: string; starts_at: string; status: string }>;
-  const messages = (msgRows ?? []) as MessageRow[];
-  const firmNames = await firmNamesFor([...matters.map((m) => m.firm_id), ...appts.map((a) => a.firm_id)]);
-  const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });
-
-  const threads: Thread[] = [
-    ...matters.map((m) => {
-      const mine = messages.filter((x) => x.matter_id === m.id);
-      return { key: `m-${m.id}`, href: `/app/matters/${m.id}?tab=messages`, title: m.title, subtitle: `${m.reference} · ${firmNames[m.firm_id] ?? "Your firm"}`, last: mine[0] ?? null, unread: mine.filter((x) => x.sender_id !== user.id && !x.read_at).length };
-    }),
-    ...appts.filter((a) => messages.some((x) => x.appointment_id === a.id) || ["confirmed", "rescheduled"].includes(a.status)).map((a) => {
-      const mine = messages.filter((x) => x.appointment_id === a.id);
-      return { key: `a-${a.id}`, href: `/app/messages/appointment/${a.id}`, title: `Consultation ${a.reference}`, subtitle: `${fmt.format(new Date(a.starts_at))} · ${firmNames[a.firm_id] ?? "Your firm"}`, last: mine[0] ?? null, unread: mine.filter((x) => x.sender_id !== user.id && !x.read_at).length };
-    }),
-  ].sort((a, b) => (b.last?.created_at ?? "").localeCompare(a.last?.created_at ?? ""));
+  const { threads, timezone } = await clientThreads(supabase, user.id, firm?.id);
 
   return (
     <Screen>
       <ScreenTitle>Messages</ScreenTitle>
-      <Card>
-        {threads.length === 0 ? (
-          <EmptyState title="No conversations yet" hint="Each matter and consultation has its own secure thread with your firm." />
-        ) : (
-          <ul>
-            {threads.map((t) => (
-              <li key={t.key}>
-                <Link href={t.href} className="flex items-start justify-between gap-3 border-t border-gray-100 px-4 py-3.5 first:border-t-0 hover:bg-gray-50">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold leading-snug text-gray-900">{t.title}</p>
-                    <p className="mt-0.5 truncate text-xs text-gray-500">{t.subtitle}</p>
-                    {t.last && (
-                      <p className="mt-1 truncate text-xs text-gray-600">
-                        {t.last.sender_id === user.id ? "You: " : ""}
-                        {t.last.body ?? "Attachment"} · {fmt.format(new Date(t.last.created_at))}
-                      </p>
-                    )}
-                  </div>
-                  {t.unread > 0 && (
-                    <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-brand-on">
-                      <span className="sr-only">Unread messages: </span>
-                      {t.unread}
-                    </span>
-                  )}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-      <p className="text-[11.5px] leading-relaxed text-gray-500">
+      {/* On a phone this is the whole screen; from 1024px the list keeps its
+          column and the right-hand side says what to do with it. */}
+      <ListDetail
+        listIsScreen
+        list={<ThreadList threads={threads} timezone={timezone} userId={user.id} />}
+        detail={
+          <Card className="grid min-h-[320px] place-items-center p-8 text-center">
+            <div className="max-w-xs">
+              <Icon name="mail" size={28} className="mx-auto text-gray-300" />
+              <p className="mt-3 text-sm font-semibold text-gray-900">
+                {threads.length > 0 ? "Choose a conversation" : "No conversations yet"}
+              </p>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-gray-500">
+                Each matter and consultation has its own secure thread with {firm?.name ?? "your firm"}.
+              </p>
+            </div>
+          </Card>
+        }
+      />
+      <p className="text-[11.5px] leading-relaxed text-gray-500 lg:hidden">
         Each matter and consultation has its own secure thread with {firm?.name ?? "your firm"}.
       </p>
     </Screen>

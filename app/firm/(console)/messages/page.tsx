@@ -9,7 +9,11 @@
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Card, EmptyState } from "@/components/ui/card";
+import { Card, CardHeader, EmptyState } from "@/components/ui/card";
+import { Icon } from "@/components/ui/icon";
+import { MessagesThread } from "@/components/portal/messages-thread";
+import { ListDetail, PageHeader } from "@/components/shell/layout";
+import type { MessageRow } from "@/lib/db/types";
 import { cn } from "@/lib/cn";
 import { firmStaff, requestedFirmId, staffContext, staffLabel } from "@/lib/firm-data";
 import { relativeLabel } from "@/lib/relative";
@@ -24,7 +28,7 @@ interface MatterLabel { id: string; title: string; reference: string }
 interface ApptLabel { id: string; reference: string; client: { full_name: string | null } | null }
 interface LastMessage { id: string; body: string | null; sender_id: string | null }
 
-export default async function FirmMessages({ searchParams }: { searchParams: Promise<{ firm?: string; view?: string }> }) {
+export default async function FirmMessages({ searchParams }: { searchParams: Promise<{ firm?: string; view?: string; thread?: string }> }) {
   const sp = await searchParams;
   const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
@@ -93,16 +97,150 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
     return a ? `Consultation ${a.reference}${a.client?.full_name ? ` · ${a.client.full_name}` : ""}` : "A consultation";
   };
 
-  return (
-    <div className="flex flex-col gap-3.5">
-      <div>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Messages</h1>
-        <p className="mt-0.5 text-[12.5px] text-[#57534E]">
-          {ctx.firmName} · {awaiting === 0 ? "nothing awaiting a reply" : `${awaiting} awaiting a reply`} · {unread === 0 ? "nothing unread by you" : `${unread} unread by you`}
+  /** Which thread ?thread= names. A thread is its matter, or its consultation. */
+  const threadKey = (t: FirmThread) => (t.matter_id ? `m-${t.matter_id}` : `a-${t.appointment_id}`);
+  /** Back to the list, keeping the firm and the filter that were in force. */
+  const backHref = href(view);
+
+  // ── the thread on the right ───────────────────────────────────────────────
+  // ?thread=m-<matterId> or a-<appointmentId>. It stays on this route rather
+  // than navigating to the matter, so the list keeps its place beside it; the
+  // pane still links through to the file itself for everything else.
+  const open = threads.find((t) => threadKey(t) === sp.thread) ?? null;
+  const openMessages = open
+    ? (((await supabase
+        .from("messages")
+        .select("id, firm_id, matter_id, appointment_id, sender_id, body, attachments, read_at, created_at")
+        .eq(open.matter_id ? "matter_id" : "appointment_id", (open.matter_id ?? open.appointment_id) as string)
+        .order("created_at", { ascending: true })
+        .limit(200)).data ?? []) as MessageRow[])
+    : [];
+  const names = Object.fromEntries(staff.map((m) => [m.user_id, staffLabel(m)]));
+
+  const threadHref = (t: FirmThread) => {
+    const p = new URLSearchParams();
+    if (sp.firm) p.set("firm", sp.firm);
+    if (view !== "all") p.set("view", view);
+    p.set("thread", threadKey(t));
+    return `/firm/messages?${p.toString()}`;
+  };
+
+  const list = (
+    <Card>
+      {threads.length === 0 ? (
+        <EmptyState
+          title={view === "awaiting" ? "Nothing is waiting on the firm" : view === "unread" ? "You have read everything" : "No messages yet"}
+          hint={view === "all" ? "Threads live on matters and consultations; they appear here as they start." : "The other views may have more."}
+        />
+      ) : (
+        <ul>
+          {threads.map((t) => {
+            const last = lastById.get(t.last_message_id);
+            const preview = last?.body ? last.body.replace(/\s+/g, " ").slice(0, 110) : "Attachment";
+            const isOpen = threadKey(t) === sp.thread;
+            return (
+              <li key={t.last_message_id}>
+                <Link
+                  href={threadHref(t)}
+                  aria-current={isOpen ? "page" : undefined}
+                  className={cn(
+                    "flex items-start justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0",
+                    isOpen ? "bg-[#F0EEEA]" : "hover:bg-gray-50",
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-[13.5px] font-semibold text-[#141414]">{title(t)}</span>
+                    <span className="mt-0.5 block truncate text-[12.5px] text-[#57534E]">
+                      <span className="font-medium text-[#141414]">{senderName(last?.sender_id ?? null)}:</span> {preview}
+                    </span>
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#57534E]">
+                      {relativeLabel(t.last_message_at, nowMs)}
+                      {!t.last_from_firm && <Badge tone="waiting" icon="clock">Awaiting reply</Badge>}
+                    </span>
+                  </span>
+                  {t.unread_for_me > 0 && (
+                    <span aria-label={`${t.unread_for_me} unread`} className="grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded-full bg-[#141414] px-1.5 text-[11px] font-bold text-white">
+                      {t.unread_for_me}
+                    </span>
+                  )}
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {all.length === LIMIT && (
+        <p className="border-t border-[#F0EEEA] px-[15px] py-3 text-[12px] text-[#57534E]">
+          Showing the {LIMIT} threads with the most recent activity.
+        </p>
+      )}
+    </Card>
+  );
+
+  const detail = open ? (
+    <Card>
+      <CardHeader
+        title={title(open)}
+        action={
+          <Link href={target(open)} className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">
+            Open the {open.matter_id ? "matter" : "consultation"}
+          </Link>
+        }
+      />
+      <MessagesThread
+        firmId={ctx.firmId}
+        matterId={open.matter_id}
+        appointmentId={open.appointment_id}
+        userId={ctx.userId}
+        initial={openMessages}
+        timezone={ctx.timezone}
+        senderNames={names}
+        firmName={ctx.firmName}
+      />
+    </Card>
+  ) : (
+    <Card className="grid min-h-[320px] place-items-center p-8 text-center">
+      <div className="max-w-xs">
+        <Icon name="mail" size={28} className="mx-auto text-gray-300" />
+        <p className="mt-3 text-sm font-semibold text-[#141414]">
+          {threads.length > 0 ? "Choose a conversation" : "No conversations yet"}
+        </p>
+        <p className="mt-1 text-[12.5px] leading-relaxed text-[#57534E]">
+          Every thread belongs to a matter or a consultation, and opens beside this list.
         </p>
       </div>
+    </Card>
+  );
 
-      <nav aria-label="Which threads" className="-mx-4 flex gap-2 overflow-x-auto px-4">
+  return (
+    <div className="flex flex-col gap-4">
+      {/* On a phone an open thread is the whole screen, with a way back to the
+          list. From 1024px the list is already beside it, so the bar is gone. */}
+      {open ? (
+        <div className="lg:hidden">
+          <PageHeader
+            tone="neutral"
+            title={title(open)}
+            back={backHref}
+            backLabel="All messages"
+            actions={
+              <Link href={target(open)} className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">
+                Open the {open.matter_id ? "matter" : "consultation"}
+              </Link>
+            }
+          />
+        </div>
+      ) : null}
+
+      <div className={cn(open && "hidden lg:block")}>
+        <PageHeader
+          tone="neutral"
+          title="Messages"
+          description={`${ctx.firmName} · ${awaiting === 0 ? "nothing awaiting a reply" : `${awaiting} awaiting a reply`} · ${unread === 0 ? "nothing unread by you" : `${unread} unread by you`}`}
+        />
+      </div>
+
+      <nav aria-label="Which threads" className={cn("-mx-4 flex gap-2 overflow-x-auto px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8", open && "hidden lg:flex")}>
         <Link href={href("all")} className={chip(view === "all")} aria-current={view === "all" ? "page" : undefined}>All</Link>
         <Link href={href("awaiting")} className={chip(view === "awaiting")} aria-current={view === "awaiting" ? "page" : undefined}>Awaiting reply{awaiting > 0 && <span className="opacity-70">· {awaiting}</span>}</Link>
         <Link href={href("unread")} className={chip(view === "unread")} aria-current={view === "unread" ? "page" : undefined}>Unread by me{unread > 0 && <span className="opacity-70">· {unread}</span>}</Link>
@@ -110,45 +248,15 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
 
       {error && <Alert kind="error" title="This screen could not read the threads">{error.message}</Alert>}
 
-      <Card>
-        {threads.length === 0 ? (
-          <EmptyState
-            title={view === "awaiting" ? "Nothing is waiting on the firm" : view === "unread" ? "You have read everything" : "No messages yet"}
-            hint={view === "all" ? "Threads live on matters and consultations; they appear here as they start." : "The other views may have more."}
-          />
-        ) : (
-          <ul>
-            {threads.map((t) => {
-              const last = lastById.get(t.last_message_id);
-              const preview = last?.body ? last.body.replace(/\s+/g, " ").slice(0, 110) : "Attachment";
-              return (
-                <li key={t.last_message_id}>
-                  <Link href={target(t)} className="flex items-start justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0 hover:bg-gray-50">
-                    <span className="min-w-0">
-                      <span className="block truncate text-[13.5px] font-semibold text-[#141414]">{title(t)}</span>
-                      <span className="mt-0.5 block truncate text-[12.5px] text-[#57534E]">
-                        <span className="font-medium text-[#141414]">{senderName(last?.sender_id ?? null)}:</span> {preview}
-                      </span>
-                      <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#57534E]">
-                        {relativeLabel(t.last_message_at, nowMs)}
-                        {!t.last_from_firm && <Badge tone="waiting" icon="clock">Awaiting reply</Badge>}
-                      </span>
-                    </span>
-                    {t.unread_for_me > 0 && (
-                      <span aria-label={`${t.unread_for_me} unread`} className="grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded-full bg-[#141414] px-1.5 text-[11px] font-bold text-white">
-                        {t.unread_for_me}
-                      </span>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
-      {all.length === LIMIT && (
-        <p className="text-[12px] text-[#57534E]">Showing the {LIMIT} threads with the most recent activity.</p>
-      )}
+      <ListDetail listIsScreen={!open} list={list} detail={detail} />
+
+      {/* Said plainly, because the two are not the same thing and must not be
+          read as one: process served on the firm is a record with its own
+          acknowledgement, not a conversation anyone replies to. */}
+      <p className={cn("text-[11.5px] leading-relaxed text-[#57534E]", open && "hidden lg:block")}>
+        These are client conversations. Process served on this firm is kept apart, in the{" "}
+        <Link href="/firm/inbox" className="font-medium text-[#141414] underline underline-offset-2">service inbox</Link>.
+      </p>
     </div>
   );
 }

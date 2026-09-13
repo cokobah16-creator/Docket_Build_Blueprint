@@ -6,13 +6,14 @@ import { clientTimezone } from "@/lib/portal-data";
 import { formatDay } from "@/lib/days";
 import { formatMoneyMinor } from "@/lib/money";
 import { startInvoicePayment } from "@/lib/actions/portal";
-import { Card } from "@/components/ui/card";
+import { Card, CardBody } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Timeline } from "@/components/portal/timeline";
 import { DocumentsTab, type DocumentWithVersion } from "@/components/portal/documents-tab";
 import { MessagesThread } from "@/components/portal/messages-thread";
 import { Screen, ScreenHeader } from "@/components/portal/screen";
+import { WithAside } from "@/components/shell/layout";
 import { cn } from "@/lib/cn";
 import type { DocumentRow, DocumentSignatureRow, DocumentVersionRow, MatterRow, MatterStatus, MessageRow, UpdateRow, DocumentRequestRow } from "@/lib/db/types";
 
@@ -51,43 +52,67 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
   const senderNames = Object.fromEntries(lawyers.map((l) => [l.id, l.full_name ?? l.title ?? firm?.name ?? "Your lawyer"]));
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });
 
+  /* What this matter is: its state, its court, and what happens next. */
+  const overview = (
+    <Card>
+      <CardBody className="space-y-2.5">
+        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+          {status && <span className="rounded-full border px-2.5 py-0.5 font-semibold" style={status.colour ? { borderColor: status.colour, color: status.colour } : undefined}>{status.label}</span>}
+          <span className="font-mono">{matter.reference}</span>
+        </div>
+        {matter.court_name && (
+          <p className="text-[12.5px] leading-relaxed text-gray-600">
+            {matter.court_name}
+            {matter.suit_number ? <> · <span className="font-mono">{matter.suit_number}</span></> : null}
+          </p>
+        )}
+        {matter.next_event_at && (
+          <p className="text-[13px] text-gray-800">
+            Next court date: <strong>{fmt.format(new Date(matter.next_event_at))}</strong>
+            {matter.next_event_note ? ` · ${matter.next_event_note}` : ""}
+          </p>
+        )}
+        {matter.next_action && (
+          <p className="text-[13px] font-semibold text-brand">
+            Next action: {matter.next_action}
+            {matter.next_action_due && <span className="font-normal text-gray-600"> · by {formatDay(matter.next_action_due)}</span>}
+          </p>
+        )}
+      </CardBody>
+    </Card>
+  );
+
   return (
     <>
       <ScreenHeader back="/app/matters" backLabel="Back to matters" title={matter.reference} titleAs="mono" />
       <Screen>
         <header>
-          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">{matter.title}</h1>
+          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand md:text-[26px]">{matter.title}</h1>
           <p className="mt-1 text-[13px] text-gray-600">{firm?.name ?? "Your firm"}{lawyers.length ? ` · ${lawyers.map((l) => l.full_name ?? l.title).join(", ")}` : ""}</p>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-gray-600">
-            {status && <span className="rounded-full border px-2.5 py-0.5 font-semibold" style={status.colour ? { borderColor: status.colour, color: status.colour } : undefined}>{status.label}</span>}
-            {matter.court_name && <span>{matter.court_name}{matter.suit_number ? <> · <span className="font-mono">{matter.suit_number}</span></> : null}</span>}
-          </div>
-          {matter.next_event_at && <p className="mt-2 text-[13px] text-gray-800">Next court date: <strong>{fmt.format(new Date(matter.next_event_at))}</strong>{matter.next_event_note ? ` · ${matter.next_event_note}` : ""}</p>}
-          {matter.next_action && (
-            <p className="mt-1 text-[13px] font-semibold text-brand">
-              Next action: {matter.next_action}
-              {matter.next_action_due && <span className="font-normal text-gray-600"> · by {formatDay(matter.next_action_due)}</span>}
-            </p>
-          )}
         </header>
 
         {actionError && <Alert kind="error">{actionError}</Alert>}
 
-        <nav aria-label="Matter sections" className="-mx-4 flex gap-2 overflow-x-auto px-4">
-          {TABS.map(([key, label]) => (
-            <Link key={key} href={`/app/matters/${matter.id}?tab=${key}`} aria-current={tab === key ? "page" : undefined}
-              className={cn("flex min-h-10 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium", tab === key ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700")}>
-              {label}
-            </Link>
-          ))}
-        </nav>
+        {/* The summary and the next action are above the tabs on a phone, and
+            stay beside them from 1280px — so what the matter is never scrolls
+            away while its detail is read. */}
+        <WithAside from="xl" aside={overview}>
+          <nav aria-label="Matter sections" className="-mx-4 flex gap-2 overflow-x-auto px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8 xl:mx-0 xl:px-0">
+            {TABS.map(([key, label]) => (
+              <Link key={key} href={`/app/matters/${matter.id}?tab=${key}`} aria-current={tab === key ? "page" : undefined}
+                className={cn("flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium", tab === key ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700")}>
+                {label}
+              </Link>
+            ))}
+          </nav>
 
-        <Card>
-          {tab === "timeline" && <TimelineTab supabase={supabase} matterId={matter.id} tz={tz} />}
-          {tab === "documents" && <DocumentsSection supabase={supabase} matter={matter} tz={tz} userId={user.id} />}
-          {tab === "messages" && <MessagesSection supabase={supabase} matter={matter} userId={user.id} tz={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />}
-          {tab === "invoices" && <InvoicesSection supabase={supabase} matterId={matter.id} tz={tz} />}
-        </Card>
+          <Card>
+            {tab === "timeline" && <TimelineTab supabase={supabase} matterId={matter.id} tz={tz} />}
+            {tab === "documents" && <DocumentsSection supabase={supabase} matter={matter} tz={tz} userId={user.id} />}
+            {tab === "messages" && <MessagesSection supabase={supabase} matter={matter} userId={user.id} tz={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />}
+            {tab === "invoices" && <InvoicesSection supabase={supabase} matterId={matter.id} tz={tz} />}
+          </Card>
+        </WithAside>
       </Screen>
     </>
   );

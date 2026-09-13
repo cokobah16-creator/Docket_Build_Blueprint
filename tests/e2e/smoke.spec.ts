@@ -30,8 +30,39 @@ test("tenant public home renders with the firm's branding", async ({ page }) => 
 
 test("firm registration is reachable from the landing", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: /register your firm/i }).click();
-  await expect(page).toHaveURL(/\/firm\/start/);
+
+  // The landing repeats this call to action on purpose — the header, the hero,
+  // the "for firms" card, the closing panel and the footer each carry one. So
+  // the test's job is not to pick one of them and hope: it is to hold the
+  // invariant that makes repeating them safe, which is that every one of them
+  // leads to firm registration. A CTA that drifts to some other href is the
+  // bug actually worth catching here, and it is exactly the bug .first() would
+  // sail past. The count is deliberately not pinned — adding or removing a CTA
+  // is a design decision, pointing one somewhere else is a regression.
+  const registerLinks = page.getByRole("link", { name: /register your firm/i });
+  await expect(registerLinks).not.toHaveCount(0);
+  const hrefs = await registerLinks.evaluateAll((links) =>
+    links.map((link) => link.getAttribute("href")),
+  );
+  expect([...new Set(hrefs)]).toEqual(["/firm/start"]);
+
+  // Then navigate through one named, scoped instance rather than an arbitrary
+  // one: the primary CTA in the page banner. It is the topmost of the five and
+  // the first thing a firm sees, and on the phone viewport this suite runs at
+  // (Pixel 7, the only project in playwright.config.ts) it renders inside the
+  // header's wrapped row — so this also holds the header CTA to surviving the
+  // responsive header wrap.
+  const headerCta = page
+    .getByRole("banner")
+    .getByRole("link", { name: /register your firm/i });
+  await expect(headerCta).toBeVisible();
+  await headerCta.click();
+
+  // Longer than the 5s default expect timeout, and well inside the 30s test
+  // timeout: a dev server that is compiling a route, or busy, can take several
+  // seconds to serve /firm/start, and that is a slow machine rather than a
+  // broken link. A CTA that genuinely goes nowhere still fails here.
+  await expect(page).toHaveURL(/\/firm\/start/, { timeout: 15_000 });
   if (configured) {
     await expect(page.getByRole("heading", { name: /register your firm/i })).toBeVisible();
   }

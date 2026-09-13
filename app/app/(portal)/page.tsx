@@ -21,6 +21,7 @@ import { IosInstallHint } from "@/components/portal/pwa-hints";
 import { OfflineBanner } from "@/components/portal/offline-banner";
 import { FirmSwitcher, type FirmChoice } from "@/components/portal/firm-switcher";
 import { Screen } from "@/components/portal/screen";
+import { WithAside } from "@/components/shell/layout";
 import { DEFAULT_TOKENS } from "@/lib/brand";
 import type { DocumentRow, NotificationRow } from "@/lib/db/types";
 
@@ -132,7 +133,7 @@ export default async function ClientDashboard() {
         ) : (
           <div className="min-w-0 flex-1">
             {firmLine ?? (
-              <h1 className="font-heading text-[23px] font-semibold leading-tight tracking-[-0.015em] text-brand">
+              <h1 className="font-heading text-[23px] font-semibold leading-tight tracking-[-0.015em] text-brand md:text-[26px]">
                 Welcome, {displayName}
               </h1>
             )}
@@ -141,7 +142,7 @@ export default async function ClientDashboard() {
         <Link
           href="/app/notifications"
           aria-label={`Notifications${unread ? `, ${unread} unread` : ""}`}
-          className="relative grid size-[42px] shrink-0 place-items-center rounded-full border border-gray-200 bg-white text-brand"
+          className="relative grid size-[44px] shrink-0 place-items-center rounded-full border border-gray-200 bg-white text-brand"
         >
           <Icon name="bell" size={20} strokeWidth={1.6} />
           {unread > 0 && (
@@ -152,96 +153,110 @@ export default async function ClientDashboard() {
         </Link>
       </header>
 
-      <nav aria-label="Quick actions" className="grid grid-cols-5 gap-[7px]">
+      {/* Five actions share the width on a phone and grow into buttons with
+          room to breathe on a laptop — the same five, never a different set. */}
+      <nav aria-label="Quick actions" className="grid grid-cols-5 gap-[7px] md:gap-3">
         {quickActions.map((a) => (
           <Link
             key={a.label}
             href={a.href}
-            className="flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[9px] border border-gray-200 bg-white px-0.5 py-2.5 text-center text-[11px] font-semibold leading-tight text-brand hover:bg-black/5"
+            className="flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[9px] border border-gray-200 bg-white px-0.5 py-2.5 text-center text-[11px] font-semibold leading-tight text-brand hover:bg-black/5 md:min-h-[72px] md:rounded-xl md:text-[13px]"
           >
-            <Icon name={a.icon} size={21} strokeWidth={1.6} />
+            <Icon name={a.icon} size={21} strokeWidth={1.6} className="md:size-6" />
             {a.label}
           </Link>
         ))}
       </nav>
 
-      <Card>
-        <CardHeader title="Next appointment" action={<Link href="/app/appointments" className="text-[12.5px] font-medium text-brand underline underline-offset-2">All</Link>} />
-        {nextAppointment ? (
-          <CardBody className="space-y-2.5">
-            <p className="text-[14.5px] font-semibold leading-snug text-gray-900">{new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(nextAppointment.starts_at))}</p>
-            <p className="text-[13px] text-gray-600"><span className="font-mono">{nextAppointment.reference}</span> · {nextAppointment.mode.replace("_", " ")}</p>
-            <div className="flex flex-wrap items-center gap-3">
-              <StatusPill status={nextAppointment.status as Status} />
-              {liveNow ? (
-                <Link href={`/app/appointments/${nextAppointment.id}/waiting-room`} className={buttonClasses("primary", "md")}>Join now</Link>
+      <WithAside
+        from="xl"
+        aside={
+          <>
+            {owing.length > 0 && (
+              <Card>
+                <CardHeader title="Outstanding balance" action={<Link href="/app/payments" className="text-[12.5px] font-medium text-brand underline underline-offset-2">Pay</Link>} />
+                <CardBody>
+                  {owing.map(([cur, minor]) => <p key={cur} className="font-heading text-2xl font-semibold text-brand">{formatMoneyMinor(minor, cur)}</p>)}
+                </CardBody>
+              </Card>
+            )}
+
+            <Card>
+              <CardHeader title="Recent documents" />
+              {documents.length === 0 ? (
+                <EmptyState title="No documents have been shared yet" hint="Documents you upload or your lawyer shares will show here." />
               ) : (
-                <Link href={`/app/appointments/${nextAppointment.id}`} className="text-[12.5px] font-medium text-brand underline underline-offset-2">Details</Link>
+                <ul>
+                  {documents.map((d) => (
+                    <li key={d.id}>
+                      <Link href={d.matter_id ? `/app/matters/${d.matter_id}?tab=documents` : `/app/appointments/${d.appointment_id}`} className="flex items-center justify-between gap-3 border-t border-gray-100 px-[17px] py-3 hover:bg-gray-50">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <Icon name="file" size={17} strokeWidth={1.6} className="shrink-0 text-gray-400" />
+                          <span className="truncate text-[13.5px] text-gray-900">{d.name}</span>
+                        </span>
+                        <span className="shrink-0 text-[11.5px] text-gray-500">{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: tz }).format(new Date(d.created_at))}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
               )}
-            </div>
-          </CardBody>
-        ) : (
-          <EmptyState title="No upcoming consultations" hint="Book one and meet your lawyer face to face." action={firm && <Link href={`/${firm.slug}/book`} className={buttonClasses("primary", "md")}>Book a Consultation</Link>} />
-        )}
-      </Card>
+            </Card>
 
-      {owing.length > 0 && (
+            <Card>
+              <CardHeader title="Recent notifications" action={<Link href="/app/notifications" className="text-[12.5px] font-medium text-brand underline underline-offset-2">All</Link>} />
+              <NotificationsList rows={notifications} firmNames={firmNames} timezone={tz} compact />
+            </Card>
+          </>
+        }
+      >
         <Card>
-          <CardHeader title="Outstanding balance" action={<Link href="/app/payments" className="text-[12.5px] font-medium text-brand underline underline-offset-2">Pay</Link>} />
-          <CardBody>
-            {owing.map(([cur, minor]) => <p key={cur} className="font-heading text-2xl font-semibold text-brand">{formatMoneyMinor(minor, cur)}</p>)}
-          </CardBody>
+          <CardHeader title="Next appointment" action={<Link href="/app/appointments" className="text-[12.5px] font-medium text-brand underline underline-offset-2">All</Link>} />
+          {nextAppointment ? (
+            <CardBody className="space-y-2.5">
+              <p className="text-[14.5px] font-semibold leading-snug text-gray-900 md:text-base">{new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(nextAppointment.starts_at))}</p>
+              <p className="text-[13px] text-gray-600"><span className="font-mono">{nextAppointment.reference}</span> · {nextAppointment.mode.replace("_", " ")}</p>
+              <div className="flex flex-wrap items-center gap-3">
+                <StatusPill status={nextAppointment.status as Status} />
+                {liveNow ? (
+                  <Link href={`/app/appointments/${nextAppointment.id}/waiting-room`} className={buttonClasses("primary", "md")}>Join now</Link>
+                ) : (
+                  <Link
+                    href={`/app/appointments/${nextAppointment.id}`}
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-[12.5px] font-medium text-brand underline underline-offset-2"
+                  >
+                    Details
+                  </Link>
+                )}
+              </div>
+            </CardBody>
+          ) : (
+            <EmptyState title="No upcoming consultations" hint="Book one and meet your lawyer face to face." action={firm && <Link href={`/${firm.slug}/book`} className={buttonClasses("primary", "md")}>Book a Consultation</Link>} />
+          )}
         </Card>
-      )}
 
-      <Card>
-        <CardHeader title="My matters" action={matters.length > 0 ? <Link href="/app/matters" className="text-[12.5px] font-medium text-brand underline underline-offset-2">All</Link> : undefined} />
-        {matters.length === 0 ? (
-          <EmptyState title="No matters yet" hint="When your firm opens a matter for you, it appears here with its full timeline." />
-        ) : (
-          <ul>
-            {matters.map((m) => (
-              <li key={m.id}>
-                <Link href={`/app/matters/${m.id}`} className="block border-t border-gray-100 px-[17px] py-[13px] hover:bg-gray-50">
-                  <div className="flex items-start justify-between gap-2.5">
-                    <p className="text-sm font-semibold leading-snug text-gray-900">{m.title}</p>
-                    {m.status && <span className="shrink-0 whitespace-nowrap rounded-full border border-brand-accent px-2.5 py-0.5 text-[11.5px] font-semibold text-brand-accent" style={m.status.colour ? { borderColor: m.status.colour, color: m.status.colour } : undefined}>{m.status.label}</span>}
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500"><span className="font-mono">{m.reference}</span>{m.lawyer_names.length ? ` · ${m.lawyer_names[0]}` : ""}</p>
-                  {m.last_update && <p className="mt-0.5 truncate text-xs text-gray-600">{m.last_update.title} · {fmt.format(new Date(m.last_update.occurred_at))}</p>}
-                  {m.next_action && <p className="mt-1 text-xs font-semibold text-brand">Next: {m.next_action}</p>}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card>
-        <CardHeader title="Recent documents" />
-        {documents.length === 0 ? (
-          <EmptyState title="No documents have been shared yet" hint="Documents you upload or your lawyer shares will show here." />
-        ) : (
-          <ul>
-            {documents.map((d) => (
-              <li key={d.id}>
-                <Link href={d.matter_id ? `/app/matters/${d.matter_id}?tab=documents` : `/app/appointments/${d.appointment_id}`} className="flex items-center justify-between gap-3 border-t border-gray-100 px-[17px] py-3 hover:bg-gray-50">
-                  <span className="flex min-w-0 items-center gap-2.5">
-                    <Icon name="file" size={17} strokeWidth={1.6} className="shrink-0 text-gray-400" />
-                    <span className="truncate text-[13.5px] text-gray-900">{d.name}</span>
-                  </span>
-                  <span className="shrink-0 text-[11.5px] text-gray-500">{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: tz }).format(new Date(d.created_at))}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-
-      <Card>
-        <CardHeader title="Recent notifications" action={<Link href="/app/notifications" className="text-[12.5px] font-medium text-brand underline underline-offset-2">All</Link>} />
-        <NotificationsList rows={notifications} firmNames={firmNames} timezone={tz} compact />
-      </Card>
+        <Card>
+          <CardHeader title="My matters" action={matters.length > 0 ? <Link href="/app/matters" className="text-[12.5px] font-medium text-brand underline underline-offset-2">All</Link> : undefined} />
+          {matters.length === 0 ? (
+            <EmptyState title="No matters yet" hint="When your firm opens a matter for you, it appears here with its full timeline." />
+          ) : (
+            <ul>
+              {matters.map((m) => (
+                <li key={m.id}>
+                  <Link href={`/app/matters/${m.id}`} className="block border-t border-gray-100 px-[17px] py-[13px] hover:bg-gray-50">
+                    <div className="flex items-start justify-between gap-2.5">
+                      <p className="text-sm font-semibold leading-snug text-gray-900">{m.title}</p>
+                      {m.status && <span className="shrink-0 whitespace-nowrap rounded-full border border-brand-accent px-2.5 py-0.5 text-[11.5px] font-semibold text-brand-accent" style={m.status.colour ? { borderColor: m.status.colour, color: m.status.colour } : undefined}>{m.status.label}</span>}
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500"><span className="font-mono">{m.reference}</span>{m.lawyer_names.length ? ` · ${m.lawyer_names[0]}` : ""}</p>
+                    {m.last_update && <p className="mt-0.5 truncate text-xs text-gray-600">{m.last_update.title} · {fmt.format(new Date(m.last_update.occurred_at))}</p>}
+                    {m.next_action && <p className="mt-1 text-xs font-semibold text-brand">Next: {m.next_action}</p>}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </WithAside>
 
       <p className="pt-0.5 text-center text-[11.5px] text-gray-500">
         <Link href="/app/search" className="underline underline-offset-2">Search</Link> · <Link href="/app/authority" className="underline underline-offset-2">Who may act for me</Link> · <Link href="/app/court-dates" className="underline underline-offset-2">Court dates</Link> · <Link href="/app/payments" className="underline underline-offset-2">Payments</Link> · <Link href="/app/profile" className="underline underline-offset-2">Profile</Link>
