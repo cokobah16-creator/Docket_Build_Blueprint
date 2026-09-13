@@ -76,8 +76,8 @@ SUPABASE_SERVICE_ROLE_KEY=... SUPABASE_ANON_KEY=... \
 **It has never been run.** Its signatures were read out of `supabase/migrations/` and
 `docs/RPC_REFERENCE.md` rather than remembered, but nothing has executed it end to end. Until it
 has, the list below is still what somebody does by hand, and a first clean run is what turns the
-script into the answer. Two things it does not do either way: journey 6's second firm, and the
-Supabase SMS test number, which is provider configuration rather than data.
+script into the answer. One thing it does not do either way: the Supabase SMS test number, which is
+provider configuration rather than data.
 
 ## What a person must supply
 

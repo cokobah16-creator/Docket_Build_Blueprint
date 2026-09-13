@@ -374,6 +374,51 @@ async function main() {
     console.log('  the matter already has a document');
   }
 
+  // 10. a SECOND firm acting for the same client, for the firm-switching journey. Built exactly as
+  //     the first was — its own owner, its own second factor, opened and activated through the same
+  //     RPCs — because "a client several firms act for" is only a real fixture if the second firm is
+  //     as real as the first. This is also the shape that catches tenant bleed: the same person
+  //     holds matters at two firms and must see each firm's only when they are in it.
+  let firm2 = (await svcSelect('firms', `slug=eq.${FIXTURES.secondFirm.slug}&select=id,status`))[0];
+  const { token: otherToken, secret: otherSecret } = await enrolTotp(FIXTURES.otherStaff.email);
+  if (!firm2) {
+    await rpcAs(otherToken, 'create_firm', {
+      p_name: FIXTURES.secondFirm.name, p_slug: FIXTURES.secondFirm.slug, p_state_code: 'LA',
+    });
+    firm2 = (await svcSelect('firms', `slug=eq.${FIXTURES.secondFirm.slug}&select=id,status`))[0];
+  }
+  if (firm2.status !== 'active') {
+    const { token: paToken2 } = await enrolTotp(FIXTURES.platform.email);
+    await rpcAs(paToken2, 'set_firm_status', { p_firm: firm2.id, p_status: 'active' });
+    firm2 = (await svcSelect('firms', `slug=eq.${FIXTURES.secondFirm.slug}&select=id,status`))[0];
+  }
+  await api(`/rest/v1/firms?id=eq.${firm2.id}`, {
+    method: 'PATCH', token: otherToken, headers: { Prefer: 'return=minimal' },
+    body: { policies: {
+      terms:   { version: '2026-09', text: 'Staging terms, second firm.' },
+      privacy: { version: '2026-09', text: 'Staging privacy notice, second firm.' },
+    } },
+  });
+
+  const second = await svcSelect('matters', `firm_id=eq.${firm2.id}&select=id&limit=1`);
+  let secondMatter = second[0]?.id;
+  if (!secondMatter) {
+    const r = await rpcAs(otherToken, 'open_matter', {
+      p_firm: firm2.id, p_title: 'Staging matter at the second firm', p_type: 'advisory',
+    });
+    secondMatter = r?.matter_id ?? r?.id ?? r?.matter?.id;
+    if (!secondMatter) throw new Error('open_matter (second firm) returned no id');
+  }
+  const p2 = await svcSelect('matter_parties', `matter_id=eq.${secondMatter}&user_id=eq.${out.client.id}&select=user_id`);
+  if (p2.length === 0) {
+    const inv2 = await rpcAs(otherToken, 'invite_matter_party', {
+      p_matter: secondMatter, p_email: FIXTURES.client.email, p_role: 'client',
+    });
+    const ct = await signInClientByMagicLink(FIXTURES.client.email);
+    await rpcAs(ct, 'accept_invite', { p_token: inv2.token });
+  }
+  console.log(`  second firm ${FIXTURES.secondFirm.slug} (${firm2.status}), same client on a matter there`);
+
   console.log('\n' + '='.repeat(72));
   console.log('# environment for tests/integration — set these as GitHub repository secrets');
   console.log('='.repeat(72));
@@ -392,9 +437,7 @@ async function main() {
   console.log(`E2E_CLIENT_PHONE=${FIXTURES.client.phone}`);
   console.log('E2E_CLIENT_OTP=<the fixed code you mapped to that number>');
   console.log('');
-  console.log('# Journey 6 (a client acting through two firms) still needs a second firm acting for');
-  console.log('# this same client. Not created here yet.');
-  console.log('# E2E_SECOND_FIRM_NAME=');
+  console.log(`E2E_SECOND_FIRM_NAME=${FIXTURES.secondFirm.name}`);
 }
 
 main().catch((e) => die(`failed: ${e.message}`));
