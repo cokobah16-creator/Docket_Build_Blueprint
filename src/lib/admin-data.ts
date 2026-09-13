@@ -21,7 +21,7 @@ export interface Read<T> {
   error: string | null;
 }
 import type {
-  DomainRequestRow, FailedNotificationRow, FirmAdminRow, NotificationHealthRow, SettlementHealthRow, StorageIntegrity, WebhookEventRow, NotificationCostRow, FirmActiveMattersRow, ProviderRateRow, RegistryPilotHealthRow,
+  DomainRequestRow, FailedNotificationRow, FirmAdminRow, NotificationHealthRow, SettlementHealthRow, StorageIntegrity, WebhookEventRow, NotificationCostRow, FirmActiveMattersRow, ProviderRateRow, RegistryPilotHealthRow, StorageReplicationHealth,
 } from "@/lib/db/types";
 
 export interface PlatformContext {
@@ -178,6 +178,16 @@ export async function deploymentHost(): Promise<string> {
 export async function storageIntegrity(supabase: SupabaseClient): Promise<{ summary: StorageIntegrity | null; error: string | null }> {
   const { data, error } = await supabase.rpc("storage_integrity");
   return { summary: (data ?? null) as StorageIntegrity | null, error: error?.message ?? null };
+}
+
+/**
+ * The second copy, measured: storage_replication_health() (migration 50). Same rule as the two
+ * above — a failed read is a failure, not zeros. Zeros here would read as "nothing needs copying",
+ * which is the most dangerous sentence on this screen.
+ */
+export async function storageReplicationHealth(supabase: SupabaseClient): Promise<{ summary: StorageReplicationHealth | null; error: string | null }> {
+  const { data, error } = await supabase.rpc("storage_replication_health");
+  return { summary: (data ?? null) as StorageReplicationHealth | null, error: error?.message ?? null };
 }
 
 /**

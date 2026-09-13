@@ -34,7 +34,7 @@ import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import {
   failedNotifications, firmActiveMatters, notificationCost, notificationHealth, platformContext, providerRates,
-  settlementHealth, storageIntegrity, webhookEvents,
+  settlementHealth, storageIntegrity, storageReplicationHealth, webhookEvents,
 } from "@/lib/admin-data";
 import { formatMoneyByCurrency, formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
@@ -136,17 +136,19 @@ export default async function AdminHealthPage({
   // Each reader says whether its QUERY worked. A failed read is rendered as a failure in its own
   // section — an empty list means "nothing there" and a failed one means "we do not know", and
   // the second must never be dressed as the first on a screen an operator acts on.
-  const [queueRead, settlementRead, webhooksRead, failedRead, storageRead, costRead, mattersRead, ratesRead] = await Promise.all([
+  const [queueRead, settlementRead, webhooksRead, failedRead, storageRead, replicaRead, costRead, mattersRead, ratesRead] = await Promise.all([
     notificationHealth(ctx.supabase),
     settlementHealth(ctx.supabase, SETTLEMENT_LIMIT),
     webhookEvents(ctx.supabase, { limit: WEBHOOK_LIMIT }),
     failedNotifications(ctx.supabase),
     storageIntegrity(ctx.supabase),
+    storageReplicationHealth(ctx.supabase),
     notificationCost(ctx.supabase),
     firmActiveMatters(ctx.supabase),
     providerRates(ctx.supabase),
   ]);
   const storage = storageRead.summary;
+  const replica = replicaRead.summary;
   // ---------------------------------------------------------------- cost, per firm and month, by currency
   const activeMatters = new Map(mattersRead.rows.map((r) => [r.firm_id, Number(r.active_matters ?? 0)]));
   const costByFirm = new Map<string, { label: string; rows: NotificationCostRow[] }>();
@@ -289,6 +291,71 @@ export default async function AdminHealthPage({
                     This database has no storage schema, so the object count and the row-only check are unavailable here.
                   </p>
                 )}
+              </CardBody>
+            </Card>
+          </>
+        )}
+      </section>
+
+      {/* ---------------------------------------------------------------- the documents: is there a second copy? */}
+      <section id="replication" className="space-y-4">
+        <h2 className="font-heading text-lg font-semibold text-gray-900">Is there a copy anywhere else?</h2>
+        <p className="text-sm text-gray-600">
+          The section above says the bytes exist <em>here</em>. This says whether they exist anywhere a
+          compromise of this Supabase project could not reach. The storage-replicate function copies every
+          object the manifest has verified to Cloudflare R2 and asks the destination to recompute the
+          hash (migration 50). <strong>Only a copy the destination confirmed counts.</strong>
+        </p>
+        {replicaRead.error && (
+          <Alert kind="error" title="This screen could not read the replication record">
+            {replicaRead.error} — until it can, nothing here says a second copy exists.
+          </Alert>
+        )}
+        {replica && !replicaRead.error && (
+          <>
+            {replica.unreplicated > 0 && (
+              <Alert kind="error" title="Documents with no confirmed second copy">
+                {replica.unreplicated} {replica.unreplicated === 1 ? "object has" : "objects have"} been verified to
+                exist here and {replica.unreplicated === 1 ? "has" : "have"} no confirmed copy elsewhere. If this
+                project were lost today, those are the files that would go with it — and
+                docs/RESTORE_RUNBOOK.md §1.2 is plain that to a lawyer that reads as &ldquo;the document is gone&rdquo;.
+              </Alert>
+            )}
+            {replica.stale > 0 && (
+              <Alert kind="warning" title="Copies of bytes that have since changed">
+                {replica.stale} {replica.stale === 1 ? "copy is" : "copies are"} of an earlier version of the object.
+                The copy is real; it is not of what the document says now.
+              </Alert>
+            )}
+            {!replica.last_run_at && (
+              <Alert kind="warning" title="Nothing has been copied">
+                The storage-replicate function has never run. It is a no-op until the R2 credentials and the
+                Vault URL exist — see docs/DEPLOYMENT_RUNBOOK.md. Until then there is no second copy of
+                anything, which is not the same as nothing needing one.
+              </Alert>
+            )}
+            <Card>
+              <CardBody>
+                <dl className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    ["Confirmed copies", String(replica.ok)],
+                    ["No confirmed copy", String(replica.unreplicated)],
+                    ["Stored but unconfirmed", String(replica.unconfirmed)],
+                    ["Copy of older bytes", String(replica.stale)],
+                    ["Destination disagreed", String(replica.mismatch)],
+                    ["Copy errors", String(replica.error)],
+                    ["Last run", replica.last_run_at ? when(replica.last_run_at) : "never"],
+                  ].map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-xs uppercase tracking-[0.06em] text-gray-500">{label}</dt>
+                      <dd className="mt-0.5 text-lg font-semibold text-gray-900">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className="mt-3 text-xs text-gray-500">
+                  &ldquo;Stored but unconfirmed&rdquo; is a 2xx from the destination that did not echo the digest
+                  back. The bytes are probably there; nothing proved it, so it is not counted as covered.
+                </p>
               </CardBody>
             </Card>
           </>

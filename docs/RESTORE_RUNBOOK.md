@@ -90,6 +90,16 @@ Do this, in writing, before you need it:
 A restore that brings back rows without bytes is worse than one that brings back neither, because
 the system will look intact.
 
+**And why the second copy now exists too.** Migration 50 adds `storage_replicas` and the
+`storage-replicate` Edge Function: on a rolling schedule it takes objects the manifest has already
+verified, downloads them, and PUTs them to Cloudflare R2 (region `enam`) — a different provider, so
+a compromise of the Supabase project cannot reach the copy, which is what step 2 above actually
+asks for. A copy counts as coverage **only** when the destination recomputed the SHA-256 and said
+it matched; a 2xx that confirms nothing is recorded `unconfirmed` and counted as uncovered.
+`/admin/health` reads it through `storage_replication_health()`, and the number to look at is
+**"No confirmed copy"**. Note what is still true: it is a NO-OP until the R2 credentials and the
+Vault URL exist, and **nothing has been restored from it yet** — see §4.
+
 **Which is why the manifest exists.** The `storage-manifest` Edge Function (migration 28) downloads
 every object in `documents` and `intake-uploads` on a rolling schedule — fifty at a time, every ten
 minutes, each one again after a week — hashes it, and compares the hash to

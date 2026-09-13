@@ -43,5 +43,6 @@ tests/99_partner_api.sql	56
 tests/99_pre_consultation.sql	54
 tests/99_retries.sql	16
 tests/99_search.sql	40
+tests/99_storage_replication.sql	14
 tests/99_templates_execution.sql	56
 tests/99_workflow_packs.sql	39

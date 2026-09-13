@@ -281,6 +281,15 @@ supabase functions deploy video-session           --project-ref <ref>
   reads the words out of it with the `extract.ts` beside it, and hands the answer back. It needs
   `vault.create_secret('https://<ref>.supabase.co/functions/v1/extract-text', 'extract_text_url')`
   and is a no-op until that and `cron_secret` both exist.
+- **`storage-replicate`** is called by `pg_cron` every fifteen minutes with the same
+  `x-cron-secret` (migration 50). It copies objects the manifest has verified to Cloudflare R2 and
+  records one row per object. It needs
+  `vault.create_secret('https://<ref>.supabase.co/functions/v1/storage-replicate', 'storage_replicate_url')`
+  and four function secrets — `R2_ACCOUNT_ID`, `R2_BUCKET`, `R2_ACCESS_KEY_ID`,
+  `R2_SECRET_ACCESS_KEY`. Without them it answers `{"configured": false}` and writes nothing, which
+  is why migration 50 is safe to apply before the bucket exists. Give the R2 token **write access to
+  that one bucket and nothing else**: this is a credential that can overwrite the only other copy of
+  a firm's documents.
 - **`video-session`** is called by signed-in people and reads the `Authorization` header itself, so
   it keeps JWT verification on.
 

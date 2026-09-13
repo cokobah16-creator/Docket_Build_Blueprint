@@ -51,7 +51,6 @@ while IFS=$'\t' read -r suite want; do
     echo "          If that was deliberate, lower the number in $EXPECTED in the same commit."
     status=1
   fi
-  total=$((total + got))
 done < "$EXPECTED"
 
 # A suite present in the run and absent from the floors is a new suite with no floor. Say so — a
@@ -60,6 +59,10 @@ while IFS=$'\t' read -r suite got; do
   grep -qF "$suite	" "$EXPECTED" || { echo "::error::$suite ran ($got assertions) and has no floor in $EXPECTED — add one"; status=1; }
 done <<< "$actual"
 
+# Counted over what RAN, not over what is listed in the floors file: reporting the suite count
+# from one and the assertion count from the other made the summary line disagree with itself the
+# first time a new suite appeared.
+total=$(printf '%s\n' "$actual" | awk -F'\t' '{s+=$2} END{print s+0}')
 suites=$(printf '%s\n' "$actual" | wc -l | tr -d ' ')
 migrations=$(ls supabase/migrations/*.sql | wc -l | tr -d ' ')
 echo "database: $suites suites, $total assertions, $migrations migrations"

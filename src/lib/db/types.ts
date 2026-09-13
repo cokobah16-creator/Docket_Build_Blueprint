@@ -1527,6 +1527,25 @@ export interface FirmRegistryNoticeRow {
 }
 
 /**
+ * storage_replication_health() (migration 50): the second copy, counted. `unreplicated` is the
+ * number that matters — objects the manifest has verified for which no CONFIRMED copy exists, so
+ * an errored copy and one the destination stored without confirming a digest both count as
+ * uncovered. `stale` is a real copy of bytes the source has since replaced.
+ */
+export interface StorageReplicationHealth {
+  storage_present: boolean;
+  objects: number;
+  replica_rows: number;
+  ok: number;
+  unconfirmed: number;
+  mismatch: number;
+  error: number;
+  unreplicated: number;
+  stale: number;
+  last_run_at: string | null;
+}
+
+/**
  * One row per registry from registry_pilot_health(): what the platform may see of the pilot, which
  * is counts and nothing else. No firm, no matter and no suit appears here, and a registry cannot
  * call the function at all — how the firms decided is theirs.
