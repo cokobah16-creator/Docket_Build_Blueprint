@@ -56,7 +56,11 @@ test("tenant public home renders with the firm's branding", async ({ page }) => 
 
 test("firm registration is reachable from the landing", async ({ page }) => {
   await page.goto("/");
-  await page.getByRole("link", { name: /register your firm/i }).click();
+  // .first() is required, not defensive: the landing page offers this route in the nav, in the hero
+  // and again in the footer (app/page.tsx:134, :181, :212, :439), so the bare locator matches
+  // several elements and Playwright's strict mode throws before it ever clicks. The test has never
+  // run — the CI job that would run it has been gated off — so this had never once been executed.
+  await page.getByRole("link", { name: /register your firm/i }).first().click();
   await expect(page).toHaveURL(/\/firm\/start/);
   await expect(page.getByRole("heading", { name: /register your firm/i })).toBeVisible();
 });
