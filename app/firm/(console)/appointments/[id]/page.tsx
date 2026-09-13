@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { firmById } from "@/lib/tenant";
 import { formatWhen } from "@/lib/time";
@@ -31,7 +32,7 @@ export default async function FirmAppointmentPage({
   const supabase = await supabaseServer();
   if (!supabase) redirect("/firm/login");
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/firm/login");
+  if (!user) redirect(await loginPath("staff"));
 
   const { data } = await supabase
     .from("appointments")

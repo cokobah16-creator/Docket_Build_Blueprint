@@ -1,6 +1,6 @@
 // Host → firm resolution (blueprint §4 tenancy) and the per-request security policy.
 //
-// Three jobs, in this order:
+// Five jobs, in this order:
 //
 //  1. THROW AWAY WHAT THE CALLER CLAIMED. x-firm-id and x-firm-slug are how every server
 //     component learns which tenant it is serving (src/lib/firm.ts, src/lib/firm-data.ts).
@@ -9,14 +9,26 @@
 //     host did not resolve, be read as that firm. So they are deleted before anything else
 //     and only ever re-set from the host we resolved ourselves.
 //
-//  2. BUILD THE CONTENT-SECURITY-POLICY, with a fresh nonce (src/lib/csp.ts). The policy has
+//  2. REFRESH THE SESSION (src/lib/supabase/middleware.ts), on the app surfaces only. A server
+//     component cannot write a cookie — the response has already begun streaming by the time it
+//     runs — so the rotated token a server-side getUser() receives was being thrown away, and
+//     the session died about an hour into a working day. Middleware is the only place that runs
+//     before the render and still owns the response. It goes before jobs 3 and 5 because it
+//     rewrites the forwarded cookie header, and they only append to it.
+//
+//  3. STAMP THE PATH being served as x-pathname, so a page that turns an anonymous caller away
+//     can say where they were going: src/lib/auth-redirect.ts hangs it off the sign-in URL as
+//     ?next=. It is a header, so it is spoofable, so it is deleted inbound with the rest above
+//     and set only from the URL resolved here.
+//
+//  4. BUILD THE CONTENT-SECURITY-POLICY, with a fresh nonce (src/lib/csp.ts). The policy has
 //     to be built here rather than in next.config.mjs because the App Router streams inline
 //     bootstrap scripts and a nonce is the only way to allow them without 'unsafe-inline'.
 //     Next.js finds the nonce for its own script tags by reading the CSP back off the REQUEST
 //     headers, so the policy is set on the request as well as the response, on BOTH branches
 //     below. The nonce also travels as x-nonce so a page can put it on its own script tag.
 //
-//  3. MINT THE VISITOR COOKIE. The funnel in src/lib/observability counts a visitor from the
+//  5. MINT THE VISITOR COOKIE. The funnel in src/lib/observability counts a visitor from the
 //     moment they land on a firm's site, long before they sign in, and identify() later stitches
 //     that anonymous id to the account. Without a cookie minted here the first two steps of the
 //     funnel have no distinct id at all.
@@ -35,6 +47,8 @@ import {
 } from "@/lib/csp";
 import { VISITOR_COOKIE } from "@/lib/observability";
 import { STAFF_FIRM_COOKIE, STAFF_FIRM_MAX_AGE } from "@/lib/staff-firm";
+import { PATHNAME_HEADER } from "@/lib/auth-redirect";
+import { refreshSession } from "@/lib/supabase/middleware";
 
 const APP_PREFIXES = ["/app", "/firm", "/admin", "/registry", "/auth", "/api"];
 
@@ -42,6 +56,7 @@ const APP_PREFIXES = ["/app", "/firm", "/admin", "/registry", "/auth", "/api"];
 const CLIENT_SPOOFABLE = [
   "x-firm-id",
   "x-firm-slug",
+  PATHNAME_HEADER,
   CSP_NONCE_HEADER,
   "content-security-policy",
   "content-security-policy-report-only",
@@ -64,6 +79,19 @@ export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   for (const header of CLIENT_SPOOFABLE) requestHeaders.delete(header);
 
+  const isAppSurface = APP_PREFIXES.some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+
+  // Before the firm lookup and before the cookie splices below, because it rewrites the
+  // forwarded cookie header wholesale and they only append to it.
+  const sessionCookies = isAppSurface ? await refreshSession(request, requestHeaders) : [];
+
+  // The path a gate sends people back to after signing in. The query goes with it: ?tab=invoices
+  // and ?firm= are part of where someone was, and a return that drops them returns them somewhere
+  // else. request.nextUrl, not the rewritten path — this is a destination, not an implementation.
+  requestHeaders.set(PATHNAME_HEADER, `${pathname}${request.nextUrl.search}`);
+
   const firm = await resolveFirm(
     request.headers.get("host"),
     searchParams.get("firm"),
@@ -72,10 +100,6 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set("x-firm-id", firm.id);
     requestHeaders.set("x-firm-slug", firm.slug);
   }
-
-  const isAppSurface = APP_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(`${p}/`),
-  );
   // Public site: serve the tenant's pages from app/(public)/[firm]/… The decision is made here
   // rather than below because the policy depends on it: a firm host's "/" is a tenant page,
   // rendered per request, while the platform's own "/" is prerendered at build time.
@@ -109,6 +133,12 @@ export async function middleware(request: NextRequest) {
   const response = tenantPath
     ? NextResponse.rewrite(withPathname(request, tenantPath), { request: { headers: requestHeaders } })
     : NextResponse.next({ request: { headers: requestHeaders } });
+
+  // The rotated session, back to the browser. Supabase's own options come with it (httpOnly,
+  // sameSite, path, the expiry it chose) — nothing here second-guesses them.
+  for (const cookie of sessionCookies) {
+    response.cookies.set(cookie.name, cookie.value, cookie.options);
+  }
 
   response.headers.set(cspHeaderName(), policy);
   response.headers.set(CSP_NONCE_HEADER, nonce);

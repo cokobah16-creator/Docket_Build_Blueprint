@@ -2,6 +2,7 @@
 // record_payment() are the only things that confirm an appointment.
 
 import { notFound, redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { selectedFirm } from "@/lib/portal-firm";
 import { formatMoneyMinor } from "@/lib/money";
@@ -15,7 +16,7 @@ export default async function PaymentResultPage({ params }: { params: Promise<{ 
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/app/login");
+  if (!user) redirect(await loginPath("client"));
 
   const { data } = await supabase
     .from("appointments")

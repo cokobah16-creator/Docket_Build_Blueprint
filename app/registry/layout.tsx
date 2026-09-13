@@ -18,6 +18,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { loginPath, mfaPath } from "@/lib/auth-redirect-server";
 import type { CSSProperties, ReactNode } from "react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Alert } from "@/components/ui/alert";
@@ -49,9 +50,9 @@ export default async function RegistryLayout({ children }: { children: ReactNode
     );
   }
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/firm/login");
+  if (!user) redirect(await loginPath("staff"));
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.currentLevel !== "aal2") redirect("/firm/security/mfa");
+  if (aal?.currentLevel !== "aal2") redirect(await mfaPath());
 
   const ctx = await registryContext();
   if (!ctx) {

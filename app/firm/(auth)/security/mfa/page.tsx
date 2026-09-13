@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import { safeNext } from "@/lib/auth-redirect";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { MfaSetup } from "./mfa-setup";
 
@@ -14,17 +16,24 @@ export const dynamic = "force-dynamic";
 
 export const metadata = { title: "Two-factor authentication" };
 
-export default async function MfaPage() {
+export default async function MfaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  // Validated again here: it arrives as a query parameter now, which is to say from whatever
+  // the browser was handed. mfaHref() put it there, but nothing proves that on the way back.
+  const next = safeNext((await searchParams).next);
   const supabase = await supabaseServer();
   if (!supabase) redirect("/firm/login");
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/firm/login");
+  if (!user) redirect(await loginPath("staff"));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
-      <MfaSetup />
+      <MfaSetup next={next} />
     </main>
   );
 }

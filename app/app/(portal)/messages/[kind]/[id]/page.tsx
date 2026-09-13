@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { firmById } from "@/lib/tenant";
 import { selectedFirm } from "@/lib/portal-firm";
@@ -20,7 +21,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ kind: s
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/app/login");
+  if (!user) redirect(await loginPath("client"));
 
   const { data: apptRow } = await supabase.from("appointments").select("id, firm_id, reference, lawyer_id, starts_at").eq("id", id).maybeSingle();
   const appt = apptRow as { id: string; firm_id: string; reference: string; lawyer_id: string | null; starts_at: string } | null;

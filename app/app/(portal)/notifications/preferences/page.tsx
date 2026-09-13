@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PushOptIn } from "@/components/push/push-opt-in";
@@ -13,7 +14,7 @@ export default async function PreferencesPage() {
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/app/login");
+  if (!user) redirect(await loginPath("client"));
   const [{ data: prefs }, { data: profile }] = await Promise.all([
     supabase.from("notification_preferences").select("event, channel, enabled"),
     supabase.from("profiles").select("quiet_hours_start, quiet_hours_end, preferred_channel").eq("id", user.id).maybeSingle(),

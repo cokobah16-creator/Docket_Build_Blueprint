@@ -10,13 +10,17 @@
 import { NextResponse, after } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
+import { safeNext } from "@/lib/auth-redirect";
 import { VISITOR_COOKIE, identify } from "@/lib/observability";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
-  const nextParam = url.searchParams.get("next") ?? "/app";
-  const next = nextParam.startsWith("/") ? nextParam : "/app";
+  // The destination the sign-in link was asked to return to — the invoice, the matter, the
+  // message someone was sent. safeNext() rather than a startsWith("/") test: "//evil.example"
+  // starts with a slash and is a protocol-relative URL a browser follows straight off Docket,
+  // and this value arrives on a link that has been out in someone's email.
+  const next = safeNext(url.searchParams.get("next")) ?? "/app";
 
   const supabase = await supabaseServer();
   if (supabase && code) {

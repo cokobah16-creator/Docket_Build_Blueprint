@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { selectedFirm } from "@/lib/portal-firm";
 import { clientThreads } from "@/lib/portal-threads";
@@ -14,7 +15,7 @@ export default async function MessagesPage() {
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/app/login");
+  if (!user) redirect(await loginPath("client"));
   const firm = await selectedFirm(supabase);
   const { threads, timezone } = await clientThreads(supabase, user.id, firm?.id);
 

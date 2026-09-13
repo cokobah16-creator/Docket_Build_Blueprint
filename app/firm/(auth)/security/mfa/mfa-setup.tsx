@@ -15,8 +15,10 @@ import { Alert } from "@/components/ui/alert";
 
 type Stage = "loading" | "enrol" | "challenge" | "error";
 
-export function MfaSetup() {
+export function MfaSetup({ next }: { next?: string | null }) {
   const router = useRouter();
+  /** Where this session was headed before two-factor stood in the way. */
+  const destination = next ?? "/firm";
   const supabase = supabaseBrowser();
 
   const [stage, setStage] = useState<Stage>("loading");
@@ -35,7 +37,7 @@ export function MfaSetup() {
       const { data: aal } = await supabase!.auth.mfa.getAuthenticatorAssuranceLevel();
       if (cancelled) return;
       if (aal?.currentLevel === "aal2") {
-        router.replace("/firm");
+        router.replace(destination);
         return;
       }
 
@@ -106,7 +108,7 @@ export function MfaSetup() {
       setError(verifyError.message);
       return;
     }
-    router.replace("/firm");
+    router.replace(destination);
     router.refresh();
   }
 

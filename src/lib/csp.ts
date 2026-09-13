@@ -30,19 +30,21 @@ export const CSP_NONCE_HEADER = "x-nonce";
  * A nonce is minted per request. A page Next.js prerenders at BUILD time has no request, so the
  * inline flight-data scripts baked into its HTML (self.__next_f.push(...)) carry no nonce
  * attribute — and a nonce policy would block them, which stops React hydrating and leaves the
- * page as dead HTML. On the two sign-in pages that means nobody can sign in.
+ * page as dead HTML — every control on it inert.
  *
- * These three routes are prerendered because they read no cookies, no headers, no search
- * params and no uncached data:
+ * One route is prerendered, because it reads no cookies, no headers, no search params and no
+ * uncached data:
  *   /            app/page.tsx                      — the platform landing page
- *   /app/login   app/app/(auth)/login/page.tsx     — client sign-in ("use client", no data)
- *   /firm/login  app/firm/(auth)/login/page.tsx    — staff sign-in ("use client", no data)
  *
- * They are also the only three routes in Docket that render nothing a person supplied — no
- * firm, no matter, no query string, no database row — so relaxing script-src to 'unsafe-inline'
- * on exactly these three costs nothing that could be injected. Every other route reaches the
- * database through cookies() or an uncached fetch, is therefore rendered per request, and gets
- * the nonce.
+ * The two sign-in pages used to be here with it. They now read ?next= — the destination someone
+ * was sent to before the session check turned them away (src/lib/auth-redirect.ts) — so they are
+ * rendered per request like everything else, and get the nonce rather than the relaxation below.
+ *
+ * It is also the only route in Docket that renders nothing a person supplied — no firm, no
+ * matter, no query string, no database row — so relaxing script-src to 'unsafe-inline' on
+ * exactly this one costs nothing that could be injected. Every other route reaches the database
+ * through cookies() or an uncached fetch, or reads a search param, is therefore rendered per
+ * request, and gets the nonce.
  *
  * THIS LIST IS ONLY RIGHT IF THE BUILD AGREES WITH IT, and the build is the authority. Run
  * `npm run build` and read the route table: every row marked ○ (Static) must either be in this
@@ -65,7 +67,7 @@ export const CSP_NONCE_HEADER = "x-nonce";
  * policy unless it opts out. An entry added here without the "renders nothing a person
  * supplied" reason above is a hole in the policy, not a fix.
  */
-const PRERENDERED_SHELLS = new Set(["/", "/app/login", "/firm/login"]);
+const PRERENDERED_SHELLS = new Set(["/"]);
 
 /**
  * Is this the platform-side path of one of those shells? `rewritten` is true when the middleware

@@ -24,8 +24,10 @@ export async function supabaseServer() {
             cookieStore.set(name, value, options),
           );
         } catch {
-          // Called from a Server Component with no response to write to —
-          // middleware/session refresh handles it there.
+          // Called from a Server Component, which cannot set a cookie: the response has
+          // already begun streaming. The write is dropped, so a token rotated here would be
+          // lost — which is why the refresh happens in middleware instead, before any of this
+          // runs. See src/lib/supabase/middleware.ts.
         }
       },
     },

@@ -19,6 +19,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { loginPath, mfaPath } from "@/lib/auth-redirect-server";
 import type { ReactNode } from "react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Alert } from "@/components/ui/alert";
@@ -58,10 +59,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/firm/login");
+  if (!user) redirect(await loginPath("staff"));
 
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.currentLevel !== "aal2") redirect("/firm/security/mfa");
+  if (aal?.currentLevel !== "aal2") redirect(await mfaPath());
 
   // platform_admins_self restricts this table to `user_id = auth.uid()`, so this query can only
   // ever return the caller's own row — asking about anybody else returns nothing.
