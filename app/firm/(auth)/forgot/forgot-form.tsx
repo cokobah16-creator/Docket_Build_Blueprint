@@ -13,6 +13,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { isNetworkFailure } from "@/lib/drafts";
+import { arm, lastDeadline, remaining, type Cooldowns } from "@/lib/cooldown";
 import {
   DEFAULT_RESEND_SECONDS,
   RESET_REQUESTED,
@@ -33,24 +34,29 @@ export function ForgotPasswordForm() {
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [until, setUntil] = useState(0);
+  // Keyed by address for the same reason the sign-in form's is (src/lib/cooldown.ts): the limit
+  // GoTrue enforces belongs to the address, so correcting a typo and trying the real one must not
+  // inherit the wrong one's wait — and going back to the mistyped one must not escape it.
+  const [cooldowns, setCooldowns] = useState<Cooldowns>({});
   const [now, setNow] = useState(() => Date.now());
   const inFlight = useRef(false);
 
-  // Same deadline-and-interval shape as the sign-in form: derived from a deadline so a late or
-  // coalesced tick cannot make the countdown wrong, and torn down with the cooldown it belongs to.
+  // Same shape as the sign-in form, from the same module: derived from a deadline so a late or
+  // coalesced tick cannot make the countdown wrong, keyed on the furthest deadline so the interval
+  // is torn down with the last thing it was counting.
+  const furthest = lastDeadline(cooldowns);
   useEffect(() => {
-    if (!until) return;
+    if (!furthest) return;
     setNow(Date.now());
     const tick = setInterval(() => setNow(Date.now()), 1000);
-    const done = setTimeout(() => setUntil(0), Math.max(0, until - Date.now()) + 250);
+    const done = setTimeout(() => setCooldowns({}), Math.max(0, furthest - Date.now()) + 250);
     return () => {
       clearInterval(tick);
       clearTimeout(done);
     };
-  }, [until]);
+  }, [furthest]);
 
-  const wait = until ? Math.max(0, Math.ceil((until - now) / 1000)) : 0;
+  const wait = remaining(cooldowns, email.trim(), now);
 
   if (!supabase) {
     return (
@@ -81,11 +87,11 @@ export function ForgotPasswordForm() {
       const shape = failureShape(err);
       if (shape.status === 429 || /only request this after/i.test(shape.message ?? "")) {
         setError(TOO_MANY_TRIES);
-        setUntil(Date.now() + cooldownFrom(shape.message) * 1000);
+        setCooldowns((previous) => arm(previous, address, Date.now() + cooldownFrom(shape.message) * 1000));
         setSent(true);
         return;
       }
-      setUntil(Date.now() + DEFAULT_RESEND_SECONDS * 1000);
+      setCooldowns((previous) => arm(previous, address, Date.now() + DEFAULT_RESEND_SECONDS * 1000));
       setSent(true);
     } catch (caught) {
       setError(isNetworkFailure(caught) ? SIGN_IN_NOT_SENT : SIGN_IN_TROUBLE);

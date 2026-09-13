@@ -86,6 +86,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { normalizeNigerianPhone, isE164 } from "@/lib/nigeria";
 import { isNetworkFailure } from "@/lib/drafts";
+import { arm, lastDeadline, remaining, type Cooldowns } from "@/lib/cooldown";
 import { useConnectionState } from "@/components/ui/connection";
 import {
   failureShape,
@@ -237,8 +238,8 @@ export function SignInForms({
   const [emailCodeError, setEmailCodeError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  /** A deadline plus the identifier it belongs to: the server's limit is per number, not per browser. */
-  const [cooldown, setCooldown] = useState<{ until: number; target: string } | null>(null);
+  /** One deadline per identifier. The shape is the fix — see src/lib/cooldown.ts. */
+  const [cooldowns, setCooldowns] = useState<Cooldowns>({});
   const [now, setNow] = useState(() => Date.now());
 
   // Refs, not state, for the three guards that must hold across an await. A state read inside an
@@ -260,20 +261,26 @@ export function SignInForms({
   }, []);
 
   // Derived from a deadline, never decremented inside the interval — a tick that is late or
-  // coalesced must not make the countdown wrong. The timeout retires the cooldown when it elapses,
-  // which changes the dependency and tears the interval down with it: no timer outlives the thing
-  // it was counting.
-  const cooldownUntil = cooldown?.until ?? 0;
+  // coalesced must not make the countdown wrong. One interval serves every live cooldown, because
+  // they all need the same thing from it: a fresh `now` once a second.
+  //
+  // The dependency is the LAST deadline in the map, so the timer is torn down and rebuilt only
+  // when the far edge moves. Arming a second, earlier cooldown while one is already running does
+  // not disturb the interval already ticking for it; arming a later one extends the run. When that
+  // last deadline passes, every entry is expired by definition, so the map is emptied in one go —
+  // which drops the dependency to zero and tears the interval down with it. No timer outlives the
+  // thing it was counting, and an entry that expires early simply reads as zero until then.
+  const furthest = lastDeadline(cooldowns);
   useEffect(() => {
-    if (!cooldownUntil) return;
+    if (!furthest) return;
     setNow(Date.now());
     const tick = setInterval(() => setNow(Date.now()), 1000);
-    const done = setTimeout(() => setCooldown(null), Math.max(0, cooldownUntil - Date.now()) + 250);
+    const done = setTimeout(() => setCooldowns({}), Math.max(0, furthest - Date.now()) + 250);
     return () => {
       clearInterval(tick);
       clearTimeout(done);
     };
-  }, [cooldownUntil]);
+  }, [furthest]);
 
   // One tap saved, every time. Keyed on the stage alone, deliberately: a resend leaves the stage
   // where it is, so this can never steal focus from someone mid-typing.
@@ -304,13 +311,22 @@ export function SignInForms({
   }
 
   function secondsLeft(target: string | null): number {
-    if (!cooldown || !target || cooldown.target !== target) return 0;
-    return Math.max(0, Math.ceil((cooldown.until - now) / 1000));
+    return remaining(cooldowns, target, now);
   }
 
+  /**
+   * Functional update, not a spread of the value this render closed over: two sends can be answered
+   * within one render — a code and a link, or a failure that arms a server-dictated wait on top of
+   * the default one already set — and the second must not be written on top of a stale copy of the
+   * map, which is how the single slot lost countdowns in the first place.
+   */
   function armCooldown(target: string, seconds: number) {
+    const until = Date.now() + seconds * 1000;
     setNow(Date.now());
-    setCooldown({ target, until: Date.now() + seconds * 1000 });
+    // Functional update, not a spread of the map this render closed over: two sends can be
+    // answered within one render, and the second must not be written on top of a stale copy —
+    // which is a smaller version of exactly how the single slot lost countdowns.
+    setCooldowns((previous) => arm(previous, target, until));
   }
 
   function switchMode(next: Mode) {
