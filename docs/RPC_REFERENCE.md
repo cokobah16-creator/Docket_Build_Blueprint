@@ -928,6 +928,99 @@ not by its id — an upsert must target that, not the primary key.
 
 ---
 
+## 6b. The court-registry pilot (migration 49)
+
+A registry is a principal that is **not a firm**. Two gates of its own, composed like the firm's:
+
+| Gate | True when |
+|---|---|
+| `registry_w(r)` | the caller has a `registry_members` row in registry `r` **and** `mfa_ok()` **and** the registry is `active` |
+| `registrar_w(r)` | as above, with role `registrar` |
+
+No firm policy consults either. `notice_concerns_caller(court, suit_norm)` is the one definer helper
+the firm side uses: true iff the caller may see (`can_see_matter`) a live matter carrying that suit
+at that court, on the matter or in `matter_court_numbers`.
+
+### The platform
+
+### `create_registry(p_court uuid, p_name text, p_contact_name text = null, p_contact_email text = null, p_note text = null)`
+Returns the registry id. `is_platform_admin() and mfa_ok()`. The court must be platform-wide
+(`courts.firm_id is null`) and active; one registry per court.
+
+Refuses: `not permitted` *(42501)* · `a registry must be attached to an active platform-wide court` · a second registry for the same court *(23505)*
+
+### `set_registry_status(p_registry uuid, p_status text, p_note text = null)`
+`active` or `suspended`. Suspended: members read what was published and write nothing.
+
+Refuses: `not permitted` *(42501)* · `a registry is active or suspended` · `registry not found`
+
+### `add_registry_member(p_registry uuid, p_email text, p_role registry_role)`
+**Platform only** — a registrar cannot, because looking a person up by email is an account-existence
+oracle and a registry is an outside body. The person must already hold a Docket account.
+
+Refuses: `not permitted` *(42501)* · `no Docket account uses that email — the person signs up first, then is added`
+
+### `remove_registry_member(p_registry uuid, p_user uuid)`
+The platform, or a registrar of that registry. No last-registrar guard, on purpose: a registry with
+no registrar cannot publish, which is safe, and the platform repairs it.
+
+### `registry_pilot_health()`
+Returns one row per registry, counts only — published, withdrawn, drafts, decisions confirmed and
+rejected, how many confirmations attached to a sitting the diary already had. `is_platform_admin()`
+inside; anybody else gets zero rows. Names no firm, matter or suit.
+
+### The registry
+
+### `stage_registry_notices(p_registry uuid, p_rows jsonb, p_source_note text = null)`
+`registry_w`. Returns `{batch_id, staged, rejected: [{row, suit_number, reason}]}`. Each row is
+checked on its own; the good ones become drafts in one batch. A `purpose_kind` outside the fixed
+list is kept as the purpose, in the registry's own words, with the kind `other`. A value longer
+than its column is refused with its length rather than trimmed. At most 500 rows; 30 batches an
+hour per registry.
+
+Refuses: `not permitted` *(42501)* · `nothing to stage` · `at most 500 rows in one batch` · `too many batches staged in the last hour` *(53400)*. Per row: `no suit number` · `the suit number is not between 3 and 60 characters` · `the day is not a date (YYYY-MM-DD)` · `the time is not a time (HH:MM)` · `the cause title|purpose|judge|courtroom is <n> characters; the most Docket keeps is <m>`
+
+### `publish_registry_batch(p_batch uuid)` / `publish_registry_notice(p_notice uuid)`
+`registrar_w`. Drafts become published; every lawyer on every matching matter at every firm is
+told (`registry_notice_received`), or the handling lawyer, or the firm's owners and admins — a
+listing never lands on a matter and tells no one. The return value is the count of drafts flipped,
+which says nothing about who matched.
+
+Refuses: `not permitted` *(42501)* · `only a draft can be published`
+
+### `discard_registry_draft(p_notice uuid)`
+`registry_w`. A draft only. Refuses: `only a draft can be discarded — a published notice is withdrawn`
+
+### `withdraw_registry_notice(p_notice uuid, p_reason text)`
+`registrar_w`. Status becomes `withdrawn`; every sitting confirmed from it is stamped
+`registry_withdrawn_at`, an internal note goes on each file, and the confirming lawyers are told
+(`registry_notice_withdrawn`). **Nothing is vacated.**
+
+Refuses: `not permitted` *(42501)* · `only a published notice can be withdrawn` · `say why the notice is withdrawn`
+
+### The firm
+
+### `confirm_registry_notice(p_notice uuid, p_matter uuid, p_time time = null, p_vacate_existing boolean = false, p_vacate_reason text = null)`
+Returns the court event id. `matter_row_w(firm, matter)` **and** the owner/admin/lawyer role, as
+`confirm_deadline()` asks — a listing reaches a diary only on a lawyer's word. The notice must be
+published; the matter must carry the suit at that court; no decision yet for this matter. A weekend or public holiday is
+refused; a court-vacation day is allowed and recorded (`in_vacation`). The instant is the listed
+day at `p_time`, else the notice's time, else 09:00, in Africa/Lagos. Same day already in the diary
+→ **attached**; a different open date with `p_vacate_existing` → the old one vacated and refixed;
+otherwise a new sitting, and `matters.next_event_at` becomes the **nearest** open sitting.
+
+Refuses: `not permitted` *(42501)* · `notice not found` (also for a draft) · `the registry has withdrawn this notice; it cannot be confirmed` · `this matter does not carry suit <n> at that court` · `this notice has already been decided for this matter` · `a registry listing is confirmed by a lawyer of the firm` *(42501)* · `the registry has listed <day> — a weekend|public holiday; ask the registry before diarising it` (the holiday test passes the court's own state) · `say why the earlier date is vacated — the client reads it`
+
+### `reject_registry_notice(p_notice uuid, p_matter uuid, p_reason text)`
+`matter_row_w` **and** the owner/admin/lawyer role. Records `rejected` with the reason. The registry
+is not told.
+
+Refuses: `not permitted` *(42501)* · `notice not found` · `say why — it is kept on the record` · `this notice has already been decided for this matter`
+
+> `attach_court_event_source()` (§ staff) is re-created here with one refusal added: a registry-sourced
+> date may gain a document or a reference but its provenance is not relabelled by hand —
+> `this date came from the court registry; its provenance is the registry's and is not relabelled by hand`.
+
 ## 7. Internal — no grant to anybody
 
 These run inside other functions and triggers. `EXECUTE` is revoked from `public`, `anon` **and**
