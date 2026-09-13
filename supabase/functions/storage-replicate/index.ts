@@ -91,17 +91,22 @@ async function signedPut(opts: {
   const path = `/${opts.bucket}/${encodeKey(opts.key)}`;
   const { stamp, date } = amzDate(new Date());
 
-  // The destination recomputes this and refuses the write if the bytes differ. It is what makes a
-  // 2xx mean something.
-  const headers: Record<string, string> = {
-    host,
+  // Headers we actually put on the wire. x-amz-checksum-sha256 is the one that matters: the
+  // destination recomputes it and refuses the write if the bytes differ, which is what makes a 2xx
+  // mean something.
+  const wire: Record<string, string> = {
     'content-type': opts.contentType,
     'x-amz-checksum-sha256': opts.sha256B64,
     'x-amz-content-sha256': opts.sha256Hex,
     'x-amz-date': stamp,
   };
-  const signedHeaders = Object.keys(headers).sort().join(';');
-  const canonicalHeaders = Object.keys(headers).sort().map((h) => `${h}:${headers[h]}\n`).join('');
+  // What gets SIGNED is those plus host. The two lists differ on purpose: SigV4 requires host in the
+  // signature, but Host is a forbidden header name under the Fetch spec — the runtime sets it from
+  // the URL and ignores (or rejects) an explicit one. Passing it would at best be discarded and at
+  // worst throw, while omitting it from the signature would make every request fail as unsigned.
+  const signed: Record<string, string> = { host, ...wire };
+  const signedHeaders = Object.keys(signed).sort().join(';');
+  const canonicalHeaders = Object.keys(signed).sort().map((h) => `${h}:${signed[h]}\n`).join('');
   const canonicalRequest = ['PUT', path, '', canonicalHeaders, signedHeaders, opts.sha256Hex].join('\n');
 
   const scope = `${date}/${R2_REGION}/${R2_SERVICE}/aws4_request`;
@@ -116,7 +121,7 @@ async function signedPut(opts: {
   return await fetch(`https://${host}${path}`, {
     method: 'PUT',
     headers: {
-      ...headers,
+      ...wire,
       Authorization: `AWS4-HMAC-SHA256 Credential=${opts.accessKeyId}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,
     },
     body: opts.body as BodyInit,
