@@ -16,13 +16,21 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  // The notch and the home indicator: surfaces paint under them, and the
+  // safe-area insets keep controls out from under them.
   viewportFit: "cover",
+  // The on-screen keyboard shrinks the layout viewport rather than covering it,
+  // so `dvh` and the fixed bottom bar both know it is there — otherwise the
+  // message composer ends up under the keys with no way to scroll it up.
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
-      <body className="min-h-screen text-gray-900 antialiased">{children}</body>
+      {/* dvh rather than vh: on a phone vh is the tall viewport the URL bar is
+          hiding behind, so a "full height" screen is taller than the glass. */}
+      <body className="min-h-[100dvh] text-gray-900 antialiased">{children}</body>
     </html>
   );
 }

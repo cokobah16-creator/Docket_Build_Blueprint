@@ -8,7 +8,13 @@
     "start": "next start",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "db:test:local": "bash scripts/db-test-local.sh",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:layout": "node tests/fixtures/shots.mjs",
+    "test:ergonomics": "node tests/fixtures/ergonomics.mjs",
+    "test:composer": "node tests/fixtures/composer.mjs",
+    "test:navigation": "node tests/fixtures/navigation.mjs",
+    "test:fixtures": "npm run test:layout && npm run test:ergonomics && npm run test:composer && npm run test:navigation",
+    "test:integration": "playwright test --config tests/integration/playwright.config.ts"
   },
   "dependencies": {
     "@daily-co/daily-js": ">=0.75.0 <1.0.0",

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
+import { useDialogBehaviour } from "@/components/ui/dialog";
 
 export function Modal({
   open,
@@ -13,14 +14,12 @@ export function Modal({
   title: string;
   children: ReactNode;
 }) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const surface = useRef<HTMLDivElement>(null);
+  // Escape, a focus trap, an inert page behind it, and focus handed back to
+  // whatever opened it. This used to be Escape alone, which meant a document
+  // preview could be dismissed by keyboard but not read by one: Tab walked
+  // straight out of the dialog and into the page it was covering.
+  useDialogBehaviour({ open, onClose, surface });
 
   if (!open) return null;
 
@@ -30,10 +29,12 @@ export function Modal({
       onClick={onClose}
     >
       <div
+        ref={surface}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="w-full max-w-lg rounded-card bg-white shadow-xl"
+        tabIndex={-1}
+        className="w-full max-w-lg rounded-card bg-white shadow-xl focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between border-b border-gray-100 px-5 py-4">

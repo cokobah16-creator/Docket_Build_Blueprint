@@ -29,6 +29,10 @@ export type IconName =
   | "file"
   | "folder"
   | "home"
+  | "chart"
+  | "inbox"
+  | "menu"
+  | "scale"
   | "mail"
   | "mic"
   | "offline"
@@ -117,6 +121,21 @@ const paths: Record<IconName, ReactElement> = {
     <path d="M3.2 7.2a2 2 0 0 1 2-2h3.4l2 2.6h8.2a2 2 0 0 1 2 2v7.4a2 2 0 0 1-2 2H5.2a2 2 0 0 1-2-2z" />
   ),
   home: <path d="M3 10.8 12 3.5l9 7.3M5.6 9.6V20.5h12.8V9.6" />,
+  chart: <path d="M4 20.4V4M4 20.4h16M8 17V11M12.4 17V7.4M16.8 17v-4.2" />,
+  inbox: (
+    <>
+      <path d="M3.4 13.2 5.8 5.4a2 2 0 0 1 1.9-1.4h8.6a2 2 0 0 1 1.9 1.4l2.4 7.8" />
+      <path d="M3.4 13.2h4.2l1.2 2.6h6.4l1.2-2.6h4.2v5.2a2 2 0 0 1-2 2H5.4a2 2 0 0 1-2-2z" />
+    </>
+  ),
+  menu: <path d="M4 7.2h16M4 12h16M4 16.8h16" />,
+  // Scales of justice: the beam, the pans, the stand.
+  scale: (
+    <>
+      <path d="M12 4.2v16.2M6.4 20.4h11.2M4.4 6.6h15.2" />
+      <path d="M4.4 6.6 1.8 13h5.2zM19.6 6.6 17 13h5.2" />
+    </>
+  ),
   mail: (
     <>
       <rect x="2.8" y="5.2" width="18.4" height="13.6" rx="2.2" />

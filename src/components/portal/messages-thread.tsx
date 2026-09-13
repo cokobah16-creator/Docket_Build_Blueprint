@@ -8,6 +8,7 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { createDocument, finalizeDocumentVersion, markThreadRead, sendMessage } from "@/lib/actions/portal";
 import { Button } from "@/components/ui/button";
 import { Alert } from "@/components/ui/alert";
+import { Icon } from "@/components/ui/icon";
 import type { MessageAttachment, MessageRow } from "@/lib/db/types";
 import { sha256Hex } from "@/lib/checksum";
 import { NOT_SENT, draftKey, isNetworkFailure, useDeviceDraft } from "@/lib/drafts";
@@ -20,12 +21,35 @@ export function MessagesThread({
   initial: MessageRow[]; timezone: string; senderNames: Record<string, string>; firmName: string;
 }) {
   const [messages, setMessages] = useState<MessageRow[]>(initial);
+  const boxRef = useRef<HTMLTextAreaElement | null>(null);
+  // One id per message, minted once. Minting it inside the render would hand `clear()` a
+  // different id every render, and the id is what stops a retry landing twice.
+  const freshId = useRef<string>(crypto.randomUUID());
+  const blank = useRef({ body: "", attachments: [] as MessageAttachment[], id: freshId.current });
+
   // The draft — the words, the attachments already uploaded, and the id this message will carry
   // — kept on this device until the send returns. A retry after a lost reply lands once.
+  //
+  // This screen is server-rendered, so the composer is on the glass and takes keystrokes
+  // roughly a second before React attaches to it. `reconcile` is where those keystrokes are
+  // rescued: it reads what is already in the box and folds it into the draft being restored.
+  // A draft saved earlier keeps its place at the front and the new words follow it, which is
+  // the order they would have been in had the JavaScript arrived at once. Neither is dropped.
   const draft = useDeviceDraft<{ body: string; attachments: MessageAttachment[]; id: string }>(
     draftKey(userId, `message:${matterId ?? appointmentId}`),
-    { body: "", attachments: [], id: crypto.randomUUID() },
+    blank.current,
     (v) => !v.body.trim() && v.attachments.length === 0,
+    (saved) => {
+      const early = boxRef.current?.value ?? "";
+      if (!early) return saved;
+      const base = saved?.body ?? "";
+      return {
+        body: base && !early.startsWith(base) ? `${base}${early}` : early,
+        attachments: saved?.attachments ?? [],
+        // The saved id is kept so duplicate-send protection still recognises a retry.
+        id: saved?.id ?? freshId.current,
+      };
+    },
   );
   const body = draft.value.body;
   const attachments = draft.value.attachments;
@@ -72,6 +96,15 @@ export function MessagesThread({
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
+  // The composer is uncontrolled, so that React's first render cannot write an empty string
+  // over words that were typed before it attached. The price is that changes the person did
+  // not make — a restored draft, the clearing after a send — have to be put into the box by
+  // hand. Only on a genuine difference, so this never fights someone mid-word.
+  useEffect(() => {
+    const el = boxRef.current;
+    if (el && el.value !== draft.value.body) el.value = draft.value.body;
+  }, [draft.value.body]);
+
   const attach = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -106,7 +139,10 @@ export function MessagesThread({
       if (r?.error) { setError(r.error); return; }
       draft.clear();
       setAttemptLost(false);
-      draft.set({ body: "", attachments: [], id: crypto.randomUUID() });
+      // A new id for whatever is written next, so the sent message's id is never reused.
+      freshId.current = crypto.randomUUID();
+      draft.set({ body: "", attachments: [], id: freshId.current });
+      if (boxRef.current) boxRef.current.value = "";
     } catch (e) {
       setAttemptLost(true);
       setError(isNetworkFailure(e) ? NOT_SENT : (e instanceof Error ? e.message : NOT_SENT));
@@ -120,7 +156,10 @@ export function MessagesThread({
 
   return (
     <div className="flex flex-col">
-      <div className="max-h-[55vh] space-y-3 overflow-y-auto px-5 py-4">
+      {/* dvh, not vh: the on-screen keyboard shrinks the viewport, and vh does
+          not notice — the transcript would keep a height the phone no longer
+          has and push the composer under the keyboard. */}
+      <div className="max-h-[50dvh] space-y-3 overflow-y-auto px-4 py-4 sm:px-5 lg:max-h-[55dvh]">
         {messages.length === 0 && <p className="py-6 text-center text-sm text-gray-500">No messages yet. Say hello — your lawyer is notified.</p>}
         {messages.map((m) => {
           const mine = m.sender_id === userId;
@@ -133,7 +172,7 @@ export function MessagesThread({
                 {m.attachments?.length > 0 && (
                   <ul className="mt-1 space-y-0.5 text-xs">
                     {m.attachments.map((a) => (
-                      <li key={a.document_id}><a href={docsHref} className="underline">📎 {a.name}</a></li>
+                      <li key={a.document_id}><a href={docsHref} className="inline-flex items-center gap-1 underline"><Icon name="paperclip" size={12} />{a.name}</a></li>
                     ))}
                   </ul>
                 )}
@@ -146,28 +185,45 @@ export function MessagesThread({
         })}
         <div ref={endRef} />
       </div>
-      <form onSubmit={submit} className="space-y-2 border-t border-gray-100 px-5 py-3">
+      {/* Sticky, so Send stays on screen when the keyboard opens over the page
+          and the bottom bar sits above it. */}
+      <form onSubmit={submit} className="sticky bottom-0 space-y-2 border-t border-gray-100 bg-white px-4 py-3 sm:px-5">
         {error && <Alert kind="error">{error}</Alert>}
         {attachments.length > 0 && (
           <ul className="flex flex-wrap gap-2 text-xs">
             {attachments.map((a) => (
-              <li key={a.document_id} className="rounded-full bg-gray-100 px-2.5 py-1 text-gray-700">
-                📎 {a.name}{" "}
-                <button type="button" aria-label={`Remove ${a.name}`} onClick={() => setAttachments((c) => c.filter((x) => x.document_id !== a.document_id))}>✕</button>
+              <li key={a.document_id} className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 py-1 pl-2.5 pr-1 text-gray-700">
+                <Icon name="paperclip" size={12} />
+                {a.name}
+                <button
+                  type="button"
+                  aria-label={`Remove ${a.name}`}
+                  onClick={() => setAttachments((c) => c.filter((x) => x.document_id !== a.document_id))}
+                  className="grid size-6 place-items-center rounded-full hover:bg-gray-200"
+                >
+                  <Icon name="close" size={12} strokeWidth={2.4} />
+                </button>
               </li>
             ))}
           </ul>
         )}
         <textarea
-          value={body}
+          ref={boxRef}
+          // Uncontrolled on purpose: a `value` prop would have React render its own empty
+          // state over anything typed into the server-rendered box before it hydrated, and
+          // the words would be gone. The state is kept in step through onChange, and the
+          // effect above writes back the changes the person did not make.
+          defaultValue=""
           onChange={(e) => setBody(e.target.value)}
           rows={2}
           maxLength={4000}
           placeholder="Write a message…"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none"
+          // 16px: below that iOS Safari zooms the page the moment this takes
+          // focus, and the person is left pinching back out to read the reply.
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
         />
         <div className="flex items-center justify-between gap-2">
-          <label className="cursor-pointer text-sm text-brand underline">
+          <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 text-sm text-brand underline focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand">
             {busy?.startsWith("Attaching") ? busy : "Attach a document"}
             <input type="file" className="sr-only" onChange={attach} disabled={Boolean(busy)} />
           </label>

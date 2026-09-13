@@ -20,6 +20,7 @@ import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 import { PushOptIn } from "@/components/push/push-opt-in";
 import { MatterSearch } from "@/components/firm/matter-search";
+import { CardGrid, PageHeader, WithAside } from "@/components/shell/layout";
 import type { SittingDue } from "@/lib/db/types";
 
 export const metadata = { title: "Today" };
@@ -106,159 +107,177 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
       ]
     : [];
 
+
+  // The day's work first, the firm's numbers beside it. On a phone the aside
+  // falls below, so the chase list and the diary are what a thumb reaches
+  // before anything that is merely a total.
+  const counterCards = overview && (
+    <>
+      <section aria-label="Firm counters">
+        <CardGrid min="150px">
+          {counters.map((c) => (
+            <Link
+              key={c.label}
+              href={c.href}
+              className="rounded-[11px] border border-[#DDD9D2] bg-white p-3.5 hover:border-[#141414]"
+            >
+              <p className="text-[10.5px] uppercase leading-snug tracking-[0.06em] text-[#57534E]">{c.label}</p>
+              {/* Red and amber are the only colour here, and only for a number
+                  that means something is late or waiting on this firm. */}
+              <p className={cn("mt-1.5 font-heading text-2xl font-bold leading-none", c.ink)}>{c.value}</p>
+              <p className="mt-1 text-[11px] leading-snug text-[#57534E]">{c.hint}</p>
+            </Link>
+          ))}
+        </CardGrid>
+      </section>
+      <Link
+        href="/firm/invoices"
+        className="flex items-center justify-between gap-3 rounded-[11px] border border-[#DDD9D2] bg-white px-[15px] py-3.5 hover:border-[#141414]"
+      >
+        <span className="min-w-0">
+          <span className="block text-[10.5px] uppercase tracking-[0.06em] text-[#57534E]">Outstanding</span>
+          <span className="mt-1 block font-heading text-[22px] font-bold text-[#141414]">
+            {formatMoneyByCurrency(overview.outstanding_by_currency, currency)}
+          </span>
+        </span>
+        <span className={buttonClasses("ghost", "sm", "shrink-0 border-[#D6D3CE] text-[#141414]")}>Invoices</span>
+      </Link>
+    </>
+  );
+
   return (
-    <div className="flex flex-col gap-3.5">
-      <header className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Today</h1>
-          <p className="mt-0.5 text-[12.5px] text-[#57534E]">
-            {ctx.firmName} · {todayLabel}
-          </p>
-        </div>
-        <PushOptIn compact />
-      </header>
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title="Today"
+        description={`${ctx.firmName} · ${todayLabel}`}
+        tone="neutral"
+        actions={<PushOptIn compact />}
+      />
 
       {/* Search sits at the top of the feed: a lawyer arrives knowing the cause
           title or the suit number, not which screen it lives on. */}
       <MatterSearch />
 
-      {/* The chase list first: a sitting nobody reported is the firm's biggest exposure. */}
-      <Card className={cn(sittings.length > 0 && "border-[#E7B84B]")}>
-        {sittings.length === 0 ? (
-          <>
-            <CardHeader
-              title="Sittings without an update (0)"
-              action={<Link href="/firm/sittings" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">All</Link>}
-            />
-            <EmptyState
-              title="Nothing to chase"
-              hint="Every past sitting has an update against it. Post the next one as soon as the court rises."
-              action={<Link href="/firm/sittings" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Post a court update</Link>}
-            />
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-2 border-b border-[#F3E2B3] bg-[#FFFBEB] px-[15px] py-3">
-              <Icon name="warning" size={16} strokeWidth={1.8} className="shrink-0 text-[#92400E]" />
-              <p className="min-w-0 text-[13.5px] font-bold text-[#7A3E0A]">
-                Sittings without an update ({sittingsTotal})
-              </p>
-            </div>
-            <ul>
-              {sittings.map((s: SittingDue) => (
-                <li key={s.court_event_id} className="flex items-start justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[13.5px] font-semibold leading-snug text-[#141414]">{s.cause_title}</p>
-                    <p className="mt-0.5 text-[11.5px] leading-[1.45] text-[#57534E]">
-                      <span className="font-mono">{s.suit_number ?? s.reference}</span>
-                      {s.court ? ` · ${s.court}` : ""}
-                    </p>
-                    {(s.purpose || s.purpose_kind || (s.lawyer_id && staffById.has(s.lawyer_id))) && (
-                      <p className="mt-0.5 text-[11.5px] leading-[1.45] text-[#57534E]">
-                        {s.purpose ?? (s.purpose_kind ?? "").replace("_", " ")}
-                        {s.lawyer_id && staffById.has(s.lawyer_id) ? ` · ${staffById.get(s.lawyer_id)}` : ""}
-                      </p>
-                    )}
-                    <p className="mt-1 text-[11.5px] font-semibold text-[#92400E]">
-                      Sat {formatWhen(s.scheduled_at, tz, { dateStyle: "medium", timeStyle: "short" })} · {sinceLabel(s.scheduled_at, nowMs)}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/firm/matters/${s.matter_id}?tab=timeline#post-update`}
-                    className={buttonClasses("neutral", "sm", "shrink-0 whitespace-nowrap")}
+      <WithAside
+        from="xl"
+        aside={
+          counterCards || (
+            <Alert kind="warning" title="Counters unavailable">
+              The firm summary could not be read for {ctx.firmName}. Your matters, inbox and invoices
+              are still reachable from the navigation.
+            </Alert>
+          )
+        }
+      >
+        {/* The chase list first: a sitting nobody reported is the firm's biggest exposure. */}
+        <Card className={cn(sittings.length > 0 && "border-[#E7B84B]")}>
+          {sittings.length === 0 ? (
+            <>
+              <CardHeader
+                title="Sittings without an update (0)"
+                action={<Link href="/firm/sittings" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">All</Link>}
+              />
+              <EmptyState
+                title="Nothing to chase"
+                hint="Every past sitting has an update against it. Post the next one as soon as the court rises."
+                action={<Link href="/firm/sittings" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Post a court update</Link>}
+              />
+            </>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 border-b border-[#F3E2B3] bg-[#FFFBEB] px-[15px] py-3">
+                <Icon name="warning" size={16} strokeWidth={1.8} className="shrink-0 text-[#92400E]" />
+                <p className="min-w-0 text-[13.5px] font-bold text-[#7A3E0A]">
+                  Sittings without an update ({sittingsTotal})
+                </p>
+              </div>
+              <ul>
+                {sittings.map((s: SittingDue) => (
+                  <li
+                    key={s.court_event_id}
+                    className="flex flex-col gap-2.5 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
                   >
-                    Post update
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-        {sittingsTotal > sittings.length && (
-          <p className="border-t border-[#F0EEEA] px-[15px] py-3 text-[11.5px] text-[#57534E]">
-            Showing the {sittings.length} that have waited longest.{" "}
-            <Link href="/firm/sittings" className="underline underline-offset-2">See all {sittingsTotal}</Link>.
-          </p>
-        )}
-      </Card>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[13.5px] font-semibold leading-snug text-[#141414]">{s.cause_title}</p>
+                      <p className="mt-0.5 text-[11.5px] leading-[1.45] text-[#57534E]">
+                        <span className="font-mono">{s.suit_number ?? s.reference}</span>
+                        {s.court ? ` · ${s.court}` : ""}
+                      </p>
+                      {(s.purpose || s.purpose_kind || (s.lawyer_id && staffById.has(s.lawyer_id))) && (
+                        <p className="mt-0.5 text-[11.5px] leading-[1.45] text-[#57534E]">
+                          {s.purpose ?? (s.purpose_kind ?? "").replace("_", " ")}
+                          {s.lawyer_id && staffById.has(s.lawyer_id) ? ` · ${staffById.get(s.lawyer_id)}` : ""}
+                        </p>
+                      )}
+                      <p className="mt-1 text-[11.5px] font-semibold text-[#92400E]">
+                        Sat {formatWhen(s.scheduled_at, tz, { dateStyle: "medium", timeStyle: "short" })} · {sinceLabel(s.scheduled_at, nowMs)}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/firm/matters/${s.matter_id}?tab=timeline#post-update`}
+                      className={buttonClasses("neutral", "sm", "w-full shrink-0 whitespace-nowrap sm:w-auto")}
+                    >
+                      Post update
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+          {sittingsTotal > sittings.length && (
+            <p className="border-t border-[#F0EEEA] px-[15px] py-3 text-[11.5px] text-[#57534E]">
+              Showing the {sittings.length} that have waited longest.{" "}
+              <Link href="/firm/sittings" className="underline underline-offset-2">See all {sittingsTotal}</Link>.
+            </p>
+          )}
+        </Card>
 
-      <Card>
-        <CardHeader
-          title={`Today's consultations (${appointments.length})`}
-          action={<Link href="/firm/appointments?view=upcoming" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">All</Link>}
-        />
-        {appointments.length === 0 ? (
-          <EmptyState
-            title="Nothing booked for today"
-            hint="Confirmed bookings appear here with a link to the consultation room."
-            action={<Link href="/firm/appointments?view=upcoming" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">See upcoming consultations</Link>}
+        <Card>
+          <CardHeader
+            title={`Today's consultations (${appointments.length})`}
+            action={<Link href="/firm/appointments?view=upcoming" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">All</Link>}
           />
-        ) : (
-          <ul>
-            {appointments.map((a) => {
-              const live = roomOpen(a);
-              return (
-                <li key={a.id} className="flex items-start justify-between gap-2.5 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0">
-                  <Link href={`/firm/appointments/${a.id}`} className="flex min-w-0 flex-1 items-start gap-2.5">
-                    <span className="shrink-0 pt-px font-mono text-[13px] font-bold text-[#141414]">
-                      {formatWhen(a.starts_at, tz, { timeStyle: "short" })}
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[13.5px] font-semibold text-[#141414]">{a.client?.full_name ?? "Client"}</span>
-                      <span className="mt-0.5 block truncate text-[11.5px] text-[#57534E]">
-                        <span className="font-mono">{a.reference}</span> · {a.service?.name ?? "Consultation"} · {a.mode.replace("_", " ")}
+          {appointments.length === 0 ? (
+            <EmptyState
+              title="Nothing booked for today"
+              hint="Confirmed bookings appear here with a link to the consultation room."
+              action={<Link href="/firm/appointments?view=upcoming" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">See upcoming consultations</Link>}
+            />
+          ) : (
+            <ul>
+              {appointments.map((a) => {
+                const live = roomOpen(a);
+                return (
+                  <li
+                    key={a.id}
+                    className="flex flex-col gap-2 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 sm:flex-row sm:items-start sm:justify-between sm:gap-2.5"
+                  >
+                    <Link href={`/firm/appointments/${a.id}`} className="flex min-h-11 min-w-0 flex-1 items-start gap-2.5">
+                      <span className="shrink-0 pt-px font-mono text-[13px] font-bold text-[#141414]">
+                        {formatWhen(a.starts_at, tz, { timeStyle: "short" })}
                       </span>
-                    </span>
-                  </Link>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <StatusPill status={a.status as Status} />
-                    {live && (
-                      <Link href={`/firm/appointments/${a.id}`} className={buttonClasses("neutral", "sm", "whitespace-nowrap")}>
-                        Open room
-                      </Link>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Card>
-
-      {overview ? (
-        <>
-          <section aria-label="Firm counters" className="grid grid-cols-2 gap-2.5">
-            {counters.map((c) => (
-              <Link
-                key={c.label}
-                href={c.href}
-                className="rounded-[11px] border border-[#DDD9D2] bg-white p-3.5 hover:border-[#141414]"
-              >
-                <p className="text-[10.5px] uppercase leading-snug tracking-[0.06em] text-[#57534E]">{c.label}</p>
-                <p className={cn("mt-1.5 font-heading text-2xl font-bold leading-none", c.ink)}>{c.value}</p>
-                <p className="mt-1 text-[11px] leading-snug text-[#57534E]">{c.hint}</p>
-              </Link>
-            ))}
-          </section>
-          <Link
-            href="/firm/invoices"
-            className="flex items-center justify-between gap-3 rounded-[11px] border border-[#DDD9D2] bg-white px-[15px] py-3.5"
-          >
-            <span className="min-w-0">
-              <span className="block text-[10.5px] uppercase tracking-[0.06em] text-[#57534E]">Outstanding</span>
-              <span className="mt-1 block font-heading text-[22px] font-bold text-[#141414]">
-                {formatMoneyByCurrency(overview.outstanding_by_currency, currency)}
-              </span>
-            </span>
-            <span className={buttonClasses("ghost", "sm", "shrink-0 border-[#D6D3CE] text-[#141414]")}>Invoices</span>
-          </Link>
-        </>
-      ) : (
-        <Alert kind="warning" title="Counters unavailable">
-          The firm summary could not be read for {ctx.firmName}. Your matters, inbox and invoices are still
-          reachable from Me.
-        </Alert>
-      )}
+                      <span className="min-w-0">
+                        <span className="block text-[13.5px] font-semibold text-[#141414]">{a.client?.full_name ?? "Client"}</span>
+                        <span className="mt-0.5 block truncate text-[11.5px] text-[#57534E]">
+                          <span className="font-mono">{a.reference}</span> · {a.service?.name ?? "Consultation"} · {a.mode.replace("_", " ")}
+                        </span>
+                      </span>
+                    </Link>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <StatusPill status={a.status as Status} />
+                      {live && (
+                        <Link href={`/firm/appointments/${a.id}`} className={buttonClasses("neutral", "sm", "whitespace-nowrap")}>
+                          Open room
+                        </Link>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </Card>
+      </WithAside>
     </div>
   );
 }
