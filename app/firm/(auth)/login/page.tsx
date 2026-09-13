@@ -1,81 +1,27 @@
-"use client";
+// Staff sign-in. The form is a client component (staff-login-form.tsx); this page's job is to
+// read where the caller was going before the console's gate turned them away.
+//
+// RENDERED PER REQUEST, because of that parameter — it used to be one of the three prerendered
+// shells in src/lib/csp.ts, and reading a search param takes it out of that set. It is now
+// served the strict nonce policy like every other console screen.
 
-// Staff sign-in: email + password. The console layout then enforces an
-// MFA-verified (aal2) session — the database refuses staff writes below it.
+import { safeNext } from "@/lib/auth-redirect";
+import { StaffLoginForm } from "./staff-login-form";
 
-import { useState, type FormEvent } from "react";
-import { DraftSweeper } from "@/components/ui/connection";
-import { useRouter } from "next/navigation";
-import { supabaseBrowser } from "@/lib/supabase/browser";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardBody } from "@/components/ui/card";
-import { Alert } from "@/components/ui/alert";
+export const metadata = { title: "Staff sign-in" };
 
-export default function StaffLoginPage() {
-  const router = useRouter();
-  const supabase = supabaseBrowser();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  if (!supabase) {
-    return (
-      <main className="mx-auto max-w-md px-4 py-16">
-        <Alert kind="warning" title="Not configured">
-          Supabase environment variables are not set. See <code>.env.example</code>.
-        </Alert>
-      </main>
-    );
-  }
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setError(null);
-    const { error: err } = await supabase!.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
-    setBusy(false);
-    if (err) setError(err.message);
-    else router.replace("/firm");
-  }
+export default async function StaffLoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  // Checked here as well as where it was written: a redirect target read back off a URL is
+  // exactly the shape an open redirect takes.
+  const next = safeNext((await searchParams).next);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
-      <DraftSweeper />
-      <h1 className="font-heading text-2xl font-semibold text-brand">Staff console</h1>
-      <p className="mt-1 text-sm text-gray-600">
-        Sign in with your firm email. Two-factor authentication is required.
-      </p>
-      <Card className="mt-4">
-        <CardBody>
-          <form onSubmit={submit} className="space-y-4">
-            {error && <Alert kind="error">{error}</Alert>}
-            <Input
-              label="Email"
-              type="email"
-              autoComplete="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <Input
-              label="Password"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <Button type="submit" size="lg" className="w-full" disabled={busy}>
-              {busy ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-        </CardBody>
-      </Card>
+      <StaffLoginForm next={next} />
     </main>
   );
 }

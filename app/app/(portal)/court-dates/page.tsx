@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { clientTimezone, firmNamesFor } from "@/lib/portal-data";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
@@ -12,7 +13,7 @@ export default async function CourtDatesPage() {
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/app/login");
+  if (!user) redirect(await loginPath("client"));
 
   const [{ data: rows }, tz] = await Promise.all([
     // A vacated date is not a date: the registry took it off. It stays on the timeline as history.

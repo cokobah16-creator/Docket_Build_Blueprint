@@ -4,6 +4,7 @@
 // is the authorization. Nothing here uses a service key or marks anything paid.
 
 import { redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
@@ -26,7 +27,7 @@ async function userClient() {
 export async function startInvoicePayment(invoiceId: string, channel?: PaymentChannel | null): Promise<Err> {
   const { supabase, user } = await userClient();
   if (!supabase) return { error: "Payments are not configured yet." };
-  if (!user) redirect("/app/login");
+  if (!user) redirect(await loginPath("client"));
 
   const { data: row } = await supabase
     .from("invoices")
@@ -267,7 +268,7 @@ export async function updateProfile(formData: FormData): Promise<void> {
   });
   if (!parsed.success) redirect(`/app/profile?error=${encodeURIComponent("Check the form: " + parsed.error.issues[0]?.message)}`);
   const { supabase, user } = await userClient();
-  if (!supabase || !user) redirect("/app/login");
+  if (!supabase || !user) redirect(await loginPath("client"));
   try {
     new Intl.DateTimeFormat("en-GB", { timeZone: parsed.data.timezone });
   } catch {

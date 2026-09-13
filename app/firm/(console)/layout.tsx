@@ -16,6 +16,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { loginPath, mfaPath } from "@/lib/auth-redirect-server";
 import type { CSSProperties, ReactNode } from "react";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Alert } from "@/components/ui/alert";
@@ -55,10 +56,10 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/firm/login");
+  if (!user) redirect(await loginPath("staff"));
 
   const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  if (aal?.currentLevel !== "aal2") redirect("/firm/security/mfa");
+  if (aal?.currentLevel !== "aal2") redirect(await mfaPath());
 
   // The same resolution every console page makes: the firm named by ?firm=, else the one this
   // member last chose, else their first membership. The header used to name memberships[0]

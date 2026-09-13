@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { selectedFirm } from "@/lib/portal-firm";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
@@ -38,7 +39,7 @@ export default async function AppointmentsPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/app/login");
+  if (!user) redirect(await loginPath("client"));
   const firm = await selectedFirm(supabase);
 
   let query = supabase

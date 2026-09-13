@@ -7,6 +7,7 @@
 
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { clientFirms, selectedFirm } from "@/lib/portal-firm";
 import { clientMatters, firmNamesFor, outstandingByCurrency } from "@/lib/portal-data";
@@ -39,7 +40,7 @@ export default async function ClientDashboard() {
     );
   }
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/app/login");
+  if (!user) redirect(await loginPath("client"));
   const firms = await clientFirms(supabase);
   const firm = await selectedFirm(supabase, firms);
 

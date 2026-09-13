@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { firmById } from "@/lib/tenant";
 import { ConsultationRoom } from "@/components/video/consultation-room";
@@ -17,7 +18,7 @@ export default async function WaitingRoomPage({ params }: { params: Promise<{ id
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect(`/app/login?next=/app/appointments/${id}/waiting-room`);
+  if (!user) redirect(await loginPath("client"));
 
   const { data } = await supabase
     .from("appointments")

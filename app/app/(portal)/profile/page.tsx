@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { firmNamesFor } from "@/lib/portal-data";
 import { clientFirms, selectedFirm } from "@/lib/portal-firm";
@@ -24,7 +25,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) redirect("/app/login");
+  if (!user) redirect(await loginPath("client"));
 
   const firms = await clientFirms(supabase);
   const [{ data }, { data: consentRows }, { data: matterRows }, firm] = await Promise.all([
