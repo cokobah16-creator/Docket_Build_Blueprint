@@ -98,6 +98,35 @@ PY
 )
 
 curl -fsS -X PATCH "${MGMT}/config/auth" "${AUTH_HDR[@]}" -d "$BODY" >/dev/null
+
+# HOW LONG A SIGN-IN EMAIL STAYS GOOD FOR, sent on its own and allowed to fail on its own.
+#
+# One setting governs both halves of that email — GoTrue keeps the link and the {{ .Token }} code
+# as one credential — so this is the lifetime of anything in that message. sms_otp_exp above is
+# pinned to 600; the email side was never pinned at all, which left a credential that signs
+# somebody straight into a firm's client portal living for however long the platform's default
+# happens to be, and defaults move. Supabase disallows more than 86400 and its own security
+# advisor warns above 3600.
+#
+# 900 is the deliberate number: longer than the SMS code because an email arrives more slowly and
+# is read when the person gets to it, short enough that a message sitting in an inbox overnight is
+# not a key to a law firm. Fifteen minutes is generous for the actual flow, which is "tap the
+# button, read the email that has just arrived" — and if it does lapse, the screen it lapses on now
+# has a resend with a countdown and a code field beside it, which is what makes a short expiry
+# affordable. It was not affordable before those existed.
+#
+# SENT SEPARATELY, AND ON PURPOSE. The field name is not something this repository can verify from
+# here: GOTRUE_MAILER_OTP_EXP is the documented variable and sms_otp_exp proves the Management API
+# mirrors these names, but "proves by analogy" is not proof, and curl -fsS under `set -e` would
+# take the whole run down with it — losing site_url, the redirect allow-list and the email template
+# over one unrecognised key. So it goes last, in its own request, and says so if it is refused.
+if curl -fsS -X PATCH "${MGMT}/config/auth" "${AUTH_HDR[@]}" -d '{"mailer_otp_exp": 900}' >/dev/null 2>&1; then
+  :
+else
+  echo "   NOTE: mailer_otp_exp was not accepted by the Management API. Everything else above was."
+  echo "         Set it by hand: Auth > Providers > Email > Email OTP Expiration = 900 seconds."
+fi
+
 curl -fsS "${MGMT}/config/auth" "${AUTH_HDR[@]}" | python3 -c '
 import json, sys
 c = json.load(sys.stdin)
@@ -106,6 +135,10 @@ print("   uri_allow_list      :", c.get("uri_allow_list"))
 print("   email sign-in       :", c.get("external_email_enabled"))
 tpl = c.get("mailer_templates_magic_link_content") or ""
 print("   sign-in email       : link", "+ code" if "{{ .Token }}" in tpl else "ONLY — the code field in the app cannot work")
+exp = c.get("mailer_otp_exp")
+too_long = isinstance(exp, int) and exp > 3600
+print("   sign-in email lasts :", f"{exp}s" if isinstance(exp, int) else "(not reported by this API)",
+      "  <- longer than an hour; Supabase advises against it" if too_long else "")
 print("   phone sign-in       :", c.get("external_phone_enabled"), "provider:", c.get("sms_provider"))
 '
 if [ -z "$PHONE_JSON" ]; then
