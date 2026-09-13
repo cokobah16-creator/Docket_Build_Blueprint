@@ -261,7 +261,11 @@ components:
           description: v1 changes nothing. Any method other than GET is refused with 405.
         sandbox:
           type: boolean
-          description: Whether this deployment is a sandbox rather than a firm's real data.
+          description: |
+            Whether this deployment is a sandbox rather than a firm's real data. Read it before you
+            write anything into your own system: it is false unless the deployment positively says
+            otherwise, so a deployment that answers false may simply have forgotten to say — treat
+            false as "assume real".
         resources:
           type: array
           items: { type: string }

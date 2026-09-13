@@ -9,13 +9,21 @@
 // It runs here rather than in the Next app because serving it needs the service role, and the
 // service role belongs in supabase/functions and nowhere else in this codebase.
 //
-// WHAT IT IS NOT. There is no sandbox: a sandbox is a second environment with its own data, Docket
-// has no staging project yet, and something called a sandbox that is really production with a
-// different key would be worse than none. There are no writes in v1. Both are said as DATA in the
-// discovery response — `read_only` and `sandbox` — so a partner's own code can read them rather
-// than a person reading prose, and both are in docs/partner-api.v1.yaml, the OpenAPI document.
-// scripts/check-openapi-routes.sh asserts that document and the ROUTES table below describe the
-// same four routes, so neither can quietly fall behind the other.
+// WHAT IT IS NOT. There are no writes in v1. Whether a deployment is a SANDBOX is now a fact about
+// that deployment rather than a constant: Docket_Staging exists as of 13 Sep 2026 and is a second
+// environment with its own data, which is what a sandbox has to be — something called a sandbox
+// that is really production with a different key would be worse than none.
+//
+// The flag DEFAULTS TO FALSE and must be positively asserted with DOCKET_SANDBOX=true. That
+// direction is deliberate and is the only safe one: a deployment that forgets to set it claims to
+// hold real data, which is the conservative mistake. Defaulting the other way would have a
+// forgotten variable tell a partner that a firm's real matters are disposable test data.
+//
+// Both facts are said as DATA in the discovery response — `read_only` and `sandbox` — so a
+// partner's own code can read them rather than a person reading prose, and both are in
+// docs/partner-api.v1.yaml, the OpenAPI document. scripts/check-openapi-routes.sh asserts that
+// document and the ROUTES table below describe the same four routes, so neither can quietly fall
+// behind the other.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -27,6 +35,9 @@ const supabase = createClient(
 
 /** The contract's version, in the path. A breaking change becomes /v2 beside /v1, never a change to it. */
 const VERSION = 'v1';
+
+/** See the header: false unless a deployment positively says otherwise. */
+const IS_SANDBOX = (Deno.env.get('DOCKET_SANDBOX') ?? '').toLowerCase() === 'true';
 
 interface Route {
   /** The path after /v1, exactly. */
@@ -83,7 +94,7 @@ Deno.serve(async (req: Request) => {
     return json({
       version: VERSION,
       read_only: true,
-      sandbox: false,
+      sandbox: IS_SANDBOX,
       resources: ROUTES.map((r) => `/${VERSION}/${r.path}`),
       documentation: 'https://github.com/cokobah16-creator/Docket_Build_Blueprint/blob/main/docs/PARTNER_API.md',
     });

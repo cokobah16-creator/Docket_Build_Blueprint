@@ -14,8 +14,8 @@ so nobody reads the table below as a description of a finished thing:
 | | Done |
 |---|---|
 | Project created (`wtfxbmrrpwdbyrspeeka`, `us-east-2`) | yes |
-| Migrations applied | **in progress** — the full set of 51, in order, verified afterwards by the eight-fingerprint comparison described below |
-| `supabase/seed.sql` loaded | not yet |
+| Migrations applied | **yes — all 52**, in order. Verified: all eight fingerprints match a local reference built from the same files, `functions` included, which hashes every function body. Migration 50 rehearsed here before production, which is what this project is for |
+| `supabase/seed.sql` loaded | **yes** — 1 firm, 14 services, 1 intake form, 15 matter statuses, matching production's counts exactly |
 | Edge Functions deployed | not yet |
 | Auth configured (site URL, redirect allow-list) | not yet — needs `scripts/configure-providers.sh` and a `SUPABASE_ACCESS_TOKEN` |
 | Test accounts seeded | not yet — see `tests/integration/README.md` for what the journeys need |
@@ -80,6 +80,20 @@ a drill. `tests/integration/journeys.spec.ts` posts a message and writes a `docu
 merely by running; `shots.mjs` walks every screen. Both are harmless against staging and neither
 belongs anywhere near a firm's matters. If a run needs `NEXT_PUBLIC_SUPABASE_URL`, it gets
 staging's.
+
+### One expected data difference, so nobody chases it
+
+Staging's `firms.brand` and `firms.policies` differ from production's even though both came from the
+same `supabase/seed.sql`, and neither is wrong. `validate_brand()` (migration 13) is an allow-list
+normaliser: it lowercases hex colours and drops a `contact` whose values are all null, and the
+`firms_brand` trigger applies it on insert. Staging was seeded *after* all 52 migrations, so its row
+is normalised — `#0f2a44`, no `contact` key. Production's firm row was inserted before migration 13
+existed, so it kept `#0F2A44` and an all-null `contact`, and `firms_policies` (migration 20) did not
+touch it either.
+
+Both represent the same thing. The consequence worth knowing is that **the first update of
+production's `brand` column will silently normalise it** — the values are equivalent, but a diff
+taken before and after will show a change nobody made deliberately.
 
 ## Keeping the two in step
 

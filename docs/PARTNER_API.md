@@ -21,7 +21,7 @@ different routes.
 | | |
 |---|---|
 | **Read only** | v1 answers questions and emits events. It changes nothing. A write API over matters and money needs decisions nobody has taken — whose reference wins, what a partial write means, how a conflicting update is resolved — and inventing them to look complete would be the wrong kind of finished. |
-| **No sandbox** | The assessment asks for one and is right to. A sandbox is a second environment with its own data, and Docket has no staging project yet. Something called a sandbox that is really production with a different key would be worse than none, so there isn't one. |
+| **Sandbox: ask the deployment** | The assessment asks for one and is right to. A sandbox is a second environment with its own data, and as of 13 Sep 2026 one exists — `Docket_Staging`. So `sandbox` is no longer a constant: the discovery response reports it per deployment, and it is **false unless a deployment positively asserts `DOCKET_SANDBOX=true`**. That direction is the only safe one — a forgotten variable then claims real data, rather than telling you a firm's real matters are disposable. **No partner key has been issued against the sandbox yet and nothing has been exercised through it**, so read this as the door being built rather than opened. |
 | **A mapping, not a window** | The field names below are the contract. The tables underneath are not, and are renamed and reshaped as the product changes. Where the *contract* must change it becomes `/v2` **beside** `/v1`, never a change under a running integration. |
 | **Not a standard** | Docket's schema is Docket's own. It is not proposed as a Nigerian legal interchange format, and a partner should map it to their own concepts rather than adopt it. |
 
