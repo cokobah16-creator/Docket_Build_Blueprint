@@ -36,7 +36,7 @@ import {
 import { VISITOR_COOKIE } from "@/lib/observability";
 import { STAFF_FIRM_COOKIE, STAFF_FIRM_MAX_AGE } from "@/lib/staff-firm";
 
-const APP_PREFIXES = ["/app", "/firm", "/admin", "/auth", "/api"];
+const APP_PREFIXES = ["/app", "/firm", "/admin", "/registry", "/auth", "/api"];
 
 /** Headers a caller must never be able to assert. Deleted inbound, set by us or not at all. */
 const CLIENT_SPOOFABLE = [

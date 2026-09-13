@@ -212,7 +212,8 @@ supabase functions deploy video-session           --project-ref <ref>
   time, and re-verifies the charge against Paystack's own `/transaction/verify` before any figure
   reaches `record_payment()`.
 - **`dispatch-notifications`** is called by `pg_cron`, which sends `x-cron-secret` and nothing else.
-  That secret is its only credential and is compared as a digest, not as a string. From v9
+  That secret is its only credential and is compared as a digest, not as a string. From v10
+  (migration 49) it renders the two court-registry events. From v9
   (migration 37) it claims rows through `claim_notifications()` and finishes them through
   `finish_notification()` with the provider's own message id, the SMS segment count and the cost
   at the rate the platform entered; a 5xx or a timeout comes back with a growing delay, five
@@ -688,6 +689,48 @@ select proname, proacl from pg_proc
 Neither may be executable by `anon` or `authenticated`. They are the only way text is ever written
 onto a document version, and the table beside them has had `update` revoked since migration 24 —
 `supabase/tests/99_document_text.sql` asserts both, from a signed-in lawyer's session.
+
+**49 goes before the app, and the dispatcher goes before 49.** The Sittings screen, the platform's
+Registries screen and the new `/registry` console all call functions that do not exist before it;
+and the migration's publish and withdraw paths enqueue two new notification events
+(`registry_notice_received`, `registry_notice_withdrawn`) that the dispatcher must know how to
+render, so:
+
+1. `supabase functions deploy dispatch-notifications --project-ref <ref> --no-verify-jwt` — v10,
+   carrying the two events. An older dispatcher meeting one of them skips the row as unknown, so
+   the order is a courtesy to the first firm told rather than a hazard; but it is the order.
+2. Apply 49. It adds no cron job and no Edge Function.
+3. Deploy the app.
+
+Migration 49 re-creates `can_see_profile()` with two arms added (registry co-members, and the
+platform's sight of a registry member's name) and `attach_court_event_source()` with one refusal
+added, re-creates `firm_cause_list` with three columns added, and adds a trigger on `court_events`
+that downgrades a registry-sourced date's provenance when a lawyer moves it by hand. After
+applying, confirm the helper still carries every arm it had:
+
+```sql
+select pg_get_functiondef('public.can_see_profile(uuid)'::regprocedure);
+```
+
+Six arms are expected: self, firm colleagues, a firm's appointment clients, a firm's matter
+parties, registry co-members, and the platform for registry members only. A five-arm version means
+an edit dropped one.
+
+**Then create no registry.** `/admin/registries` creates one only when a real court registry has
+agreed to the pilot — `docs/COURT_REGISTRY_PILOT.md` §4 has the questions to ask first. Until a
+registry exists nothing on any firm's screen changes: the "From the court registry" card appears
+on Sittings only when a published notice matches one of that firm's suits.
+
+**Proves it worked:** as a platform admin, `select * from registry_pilot_health();` returns zero
+rows (no registry yet) rather than an error. As a lawyer, `/firm/sittings` renders without the
+registry card. The two functions the design rests on are the service role's and the platform's:
+
+```sql
+select proname, proacl from pg_proc where proname in ('registry_notice_fanout', 'registry_pilot_health');
+```
+
+`registry_notice_fanout` may be executable by nobody but the definer; `registry_pilot_health` by
+`authenticated` (it refuses inside, by `is_platform_admin()`).
 
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|

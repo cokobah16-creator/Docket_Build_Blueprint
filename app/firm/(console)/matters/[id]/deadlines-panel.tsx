@@ -206,7 +206,7 @@ export function DeadlinesPanel({
                   <p className="text-sm font-medium text-gray-900">{formatWhen(ev.scheduled_at, timezone, { dateStyle: "full", timeStyle: "short" })}{ev.purpose ? ` · ${ev.purpose}` : ""}</p>
                   <p className="text-xs text-gray-600">
                     {ev.court ?? "Court not recorded"}
-                    {prov === "court" ? " · from the court — notice or reference on file" : prov === "claimed" ? " · marked as from a hearing notice, with nothing attached" : " · as recorded by the firm"}
+                    {prov === "registry" ? " · listed by the court registry, confirmed here" : prov === "court" ? " · from the court — notice or reference on file" : prov === "claimed" ? " · marked as from a hearing notice, with nothing attached" : " · as recorded by the firm"}
                     {ev.source_ref ? ` · ${ev.source_ref}` : ""}
                     {ev.created_by ? ` · entered by ${names[ev.created_by] ?? "a colleague"}` : ""}
                     {ev.confirmed_by ? ` · confirmed by ${names[ev.confirmed_by] ?? "a colleague"}` : ""}

@@ -395,15 +395,26 @@ export interface CourtEventRow {
   court_name: string | null;
   purpose: string | null;
   outcome_update_id: string | null;
-  /** Migration 13/38: where the date came from, and whether that is evidenced. */
+  /** Migration 13/38/49: where the date came from, and whether that is evidenced. */
   vacated_at?: string | null;
-  source?: "firm" | "hearing_notice" | "cause_list";
+  source?: "firm" | "hearing_notice" | "cause_list" | "registry";
   source_document_id?: string | null;
   source_ref?: string | null;
+  /** Migration 49: the registry notice a lawyer confirmed this date from. */
+  registry_notice_id?: string | null;
+  /** Migration 49: when the registry withdrew that notice. The date is not vacated by that; the lawyer decides. */
+  registry_withdrawn_at?: string | null;
 }
 
-/** A court-originated date is evidenced by a document or a reference; a chip alone is a claim. */
-export function courtDateProvenance(e: { source?: string | null; source_document_id?: string | null; source_ref?: string | null }): "court" | "firm" | "claimed" {
+/**
+ * Where a court date came from, in four words the screens can use:
+ *   registry — confirmed by a lawyer from the court registry's own published notice (migration 49);
+ *   court    — from a hearing notice or cause list, with a document or reference on file;
+ *   claimed  — marked as from the court, with nothing attached;
+ *   firm     — the firm's own diary entry.
+ */
+export function courtDateProvenance(e: { source?: string | null; source_document_id?: string | null; source_ref?: string | null; registry_notice_id?: string | null }): "registry" | "court" | "firm" | "claimed" {
+  if (e.source === "registry" || e.registry_notice_id) return "registry";
   if (!e.source || e.source === "firm") return "firm";
   return e.source_document_id || e.source_ref ? "court" : "claimed";
 }
@@ -898,6 +909,9 @@ export interface CauseListRow {
   created_at?: string | null;
   confirmed_by?: string | null;
   confirmed_at?: string | null;
+  /** Migration 49 */
+  registry_notice_id?: string | null;
+  registry_withdrawn?: boolean | null;
   evidenced?: boolean;
 }
 
@@ -1410,4 +1424,111 @@ export interface DocumentTextHealth {
   failed: number;
   too_large: number;
   last_extracted_at: string | null;
+}
+
+// ---------------------------------------------------------------- the court-registry pilot (migration 49)
+export type RegistryRole = "registrar" | "clerk";
+
+/** registries: a court registry as a principal that is not a firm. */
+export interface RegistryRow {
+  id: string;
+  court_id: string;
+  name: string;
+  status: "active" | "suspended";
+  contact_name: string | null;
+  contact_email: string | null;
+  note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface RegistryMemberRow {
+  registry_id: string;
+  user_id: string;
+  role: RegistryRole;
+  added_by: string | null;
+  created_at: string;
+}
+
+export interface RegistryNoticeBatchRow {
+  id: string;
+  registry_id: string;
+  source_note: string | null;
+  rows_staged: number;
+  staged_by: string | null;
+  staged_at: string;
+  published_by: string | null;
+  published_at: string | null;
+}
+
+export type RegistryNoticeStatus = "draft" | "published" | "withdrawn";
+
+/** registry_notices: one cause-list listing as the registry wrote it. Carries no firm and no matter. */
+export interface RegistryNoticeRow {
+  id: string;
+  registry_id: string;
+  court_id: string;
+  batch_id: string | null;
+  suit_number: string;
+  suit_number_norm: string;
+  cause_title: string | null;
+  /** A calendar day. Never rendered through a timezone. */
+  listed_on: string;
+  /** The court's own wall-clock time, HH:MM:SS, or null. */
+  listed_time: string | null;
+  judge: string | null;
+  courtroom: string | null;
+  purpose_kind: string | null;
+  purpose: string | null;
+  status: RegistryNoticeStatus;
+  published_at: string | null;
+  published_by: string | null;
+  withdrawn_at: string | null;
+  withdrawn_by: string | null;
+  withdrawn_reason: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** firm_registry_notices: one row per (notice, matter the caller may see), with the firm's decision. */
+export interface FirmRegistryNoticeRow {
+  notice_id: string;
+  matter_id: string;
+  firm_id: string;
+  reference: string;
+  cause_title: string;
+  registry_id: string;
+  registry_name: string;
+  court_id: string;
+  court_name: string;
+  suit_number: string;
+  registry_cause_title: string | null;
+  listed_on: string;
+  listed_time: string | null;
+  judge: string | null;
+  courtroom: string | null;
+  purpose_kind: string | null;
+  purpose: string | null;
+  status: RegistryNoticeStatus;
+  published_at: string | null;
+  withdrawn_at: string | null;
+  withdrawn_reason: string | null;
+  decision_id: string | null;
+  decision: "confirmed" | "rejected" | null;
+  court_event_id: string | null;
+  decision_reason: string | null;
+  in_vacation: boolean | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  existing_event_id: string | null;
+  existing_scheduled_at: string | null;
+  listed_in_vacation: boolean;
+  listed_on_non_sitting_day: boolean;
+}
+
+/** What stage_registry_notices() returns: the batch, how many rows became drafts, and the rows that did not, with why. */
+export interface StageNoticesResult {
+  batch_id: string;
+  staged: number;
+  rejected: Array<{ row: number; suit_number: string | null; reason: string }>;
 }

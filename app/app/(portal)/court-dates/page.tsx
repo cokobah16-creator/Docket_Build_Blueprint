@@ -16,7 +16,7 @@ export default async function CourtDatesPage() {
 
   const [{ data: rows }, tz] = await Promise.all([
     // A vacated date is not a date: the registry took it off. It stays on the timeline as history.
-    supabase.from("court_events").select("id, matter_id, firm_id, scheduled_at, court_name, purpose, outcome_update_id, vacated_at, source, source_document_id, source_ref").is("vacated_at", null).order("scheduled_at", { ascending: true }).limit(200),
+    supabase.from("court_events").select("id, matter_id, firm_id, scheduled_at, court_name, purpose, outcome_update_id, vacated_at, source, source_document_id, source_ref, registry_notice_id, registry_withdrawn_at").is("vacated_at", null).order("scheduled_at", { ascending: true }).limit(200),
     clientTimezone(supabase, user.id),
   ]);
   const events = (rows ?? []) as CourtEventRow[];
@@ -41,8 +41,11 @@ export default async function CourtDatesPage() {
             <p className="text-sm text-gray-700">{m ? <Link href={`/app/matters/${m.id}`} className="underline">{m.title}</Link> : "Matter"}{e.purpose ? ` · ${e.purpose}` : ""}</p>
             <p className="text-xs text-gray-500">
               {e.court_name ?? "Court to be confirmed"} · {firmNames[e.firm_id] ?? "Your firm"}{e.outcome_update_id ? " · update posted" : ""}
-              {courtDateProvenance(e) === "court" ? " · fixed by the court, notice on file" : " · as recorded by your firm"}
+              {courtDateProvenance(e) === "registry" ? " · listed by the court registry, confirmed by your lawyer" : courtDateProvenance(e) === "court" ? " · fixed by the court, notice on file" : " · as recorded by your firm"}
             </p>
+            {e.registry_withdrawn_at && (
+              <p className="text-xs font-medium text-amber-800">The registry has since withdrawn its notice for this date. Your lawyer will confirm whether it still stands.</p>
+            )}
           </li>
         );
       })}

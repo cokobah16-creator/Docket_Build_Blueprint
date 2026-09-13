@@ -20,7 +20,8 @@ import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { CourtUpdateForm } from "@/components/firm/court-update-form";
 import { cn } from "@/lib/cn";
 import { formatDay, todayIn } from "@/lib/days";
-import { courtDateProvenance, type CauseListRow, type FirmDeadlineRow, type SittingDue } from "@/lib/db/types";
+import { courtDateProvenance, type CauseListRow, type FirmDeadlineRow, type FirmRegistryNoticeRow, type SittingDue } from "@/lib/db/types";
+import { RegistryNoticesCard } from "@/components/firm/registry-notices-card";
 
 export const metadata = { title: "Sittings" };
 
@@ -124,7 +125,7 @@ export default async function SittingsPage({
   const { supabase, firmId, timezone: tz } = ctx;
   const nowIso = new Date().toISOString();
 
-  const [due, courts, { data: causeRows }, staff, { data: deadlineRows }] = await Promise.all([
+  const [due, courts, { data: causeRows }, staff, { data: deadlineRows }, { data: noticeRows }] = await Promise.all([
     sittingsDue(supabase, firmId, 50),
     courtsFor(supabase, firmId),
     supabase
@@ -142,7 +143,18 @@ export default async function SittingsPage({
       .in("status", ["proposed", "confirmed"])
       .order("due_on", { ascending: true })
       .limit(100),
+    // The court registry's own notices about this firm's suits (migration 49): the view is
+    // security_invoker over tables that carry their own RLS, so the wall and the firm boundary
+    // are the database's, and the screen only lists what came back.
+    supabase
+      .from("firm_registry_notices")
+      .select("*")
+      .eq("firm_id", firmId)
+      .order("listed_on", { ascending: true })
+      .limit(100),
   ]);
+  const notices = (noticeRows ?? []) as FirmRegistryNoticeRow[];
+  const noticesToDecide = notices.filter((n) => n.decision === null && n.status === "published");
 
   const upcoming = (causeRows ?? []) as CauseListRow[];
   const deadlines = (deadlineRows ?? []) as FirmDeadlineRow[];
@@ -189,6 +201,10 @@ export default async function SittingsPage({
         <Alert kind="success" title="Date vacated and refixed">
           The replacement sitting is in the diary below and the client has been told.
         </Alert>
+      )}
+
+      {(noticesToDecide.length > 0 || notices.length > 0) && (
+        <RegistryNoticesCard firmId={firmId} firmParam={sp.firm ?? ""} timezone={tz} notices={notices} />
       )}
 
       <Card className={cn(due.length > 0 && "border-amber-300")}>
@@ -301,8 +317,13 @@ export default async function SittingsPage({
                         {row.courtroom ? ` · ${row.courtroom}` : ""}
                         {row.judge ? ` · ${row.judge}` : ""}
                         {row.purpose || row.purpose_kind ? ` · ${row.purpose ?? (row.purpose_kind ?? "").replace(/_/g, " ")}` : ""}
-                        {courtDateProvenance(row) === "court" ? " · from the court, notice on file" : courtDateProvenance(row) === "claimed" ? " · marked as from a hearing notice, nothing attached" : ""}
+                        {courtDateProvenance(row) === "registry" ? " · listed by the court registry" : courtDateProvenance(row) === "court" ? " · from the court, notice on file" : courtDateProvenance(row) === "claimed" ? " · marked as from a hearing notice, nothing attached" : ""}
                       </p>
+                      {row.registry_withdrawn && (
+                        <p className="mt-1 text-xs font-medium text-[#B42318]">
+                          The registry has withdrawn the notice this date came from. It is still in the diary because a registry withdrawing a notice is not a court vacating a sitting — check with the registry, and vacate it below if it no longer stands.
+                        </p>
+                      )}
                       <div className="mt-1 flex flex-wrap items-center gap-3">
                         <Link href={`/firm/matters/${row.matter_id}`} className="text-xs text-brand underline">Open the matter →</Link>
                       </div>
