@@ -16,9 +16,10 @@
 //    cannot read a row inserted by the same statement.
 //  · Timestamps are UTC in the database and rendered in the viewer's zone.
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { NOT_SENT, draftKey, isNetworkFailure, useDeviceDraft } from "@/lib/drafts";
+import { earlyFieldValue, useFieldSync } from "@/lib/pre-hydration";
 import { OfflineNote, useConnectionState } from "@/components/ui/connection";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { CourtUpdateForm } from "@/components/firm/court-update-form";
@@ -81,11 +82,53 @@ export function StaffTimeline({
   // The note's id is part of the draft, not minted at submit: a form whose reply was lost is
   // sent again with the same id, the database refuses the duplicate primary key, and the client
   // is not told about the same note twice. The id is replaced once a note is actually posted.
+  // One id per note, minted once. Minting it inside the render would hand the draft a different
+  // id every render, and the id is what makes a retry land at most once.
+  const noteId = useRef<string>(crypto.randomUUID());
+  const blankNote = useRef({ title: "", body: "", visibility: "client" as const, shape: EMPTY_SHAPE, id: noteId.current });
+
   const draft = useDeviceDraft<{ title: string; body: string; visibility: "client" | "internal"; shape: ClientUpdateShape; id: string }>(
     draftKey(userId, `note:${matterId}`),
-    { title: "", body: "", visibility: "client", shape: EMPTY_SHAPE, id: crypto.randomUUID() },
+    blankNote.current,
     (v) => !v.title.trim() && !v.body.trim() && !v.shape.meaning && !v.shape.nextStep && !v.shape.clientAction && !v.shape.nextUpdateBy,
+    // This form is inside a <details>, which opens without JavaScript, so a lawyer can have it
+    // open and be typing a court update well before the page has hydrated. Those words are in
+    // the DOM while this hook's state is still empty; without this they were written over by
+    // React's first render and lost. Anything saved earlier keeps its place at the front.
+    (saved) => {
+      const early = {
+        title: earlyFieldValue("note-title"),
+        body: earlyFieldValue("note-body"),
+        meaning: earlyFieldValue("note-meaning"),
+        nextStep: earlyFieldValue("note-next"),
+        clientAction: earlyFieldValue("note-action"),
+        nextUpdateBy: earlyFieldValue("note-next-by"),
+      };
+      if (!Object.values(early).some(Boolean)) return saved;
+      const join = (base: string, typed: string) =>
+        typed && base && !typed.startsWith(base) ? `${base}${typed}` : typed || base;
+      const shape = saved?.shape ?? EMPTY_SHAPE;
+      return {
+        title: join(saved?.title ?? "", early.title),
+        body: join(saved?.body ?? "", early.body),
+        visibility: saved?.visibility ?? "client",
+        shape: {
+          ...shape,
+          meaning: join(shape.meaning, early.meaning),
+          nextStep: join(shape.nextStep, early.nextStep),
+          clientAction: join(shape.clientAction, early.clientAction),
+          nextUpdateBy: early.nextUpdateBy || shape.nextUpdateBy,
+        },
+        // The saved id is kept so a retry after a lost reply is still refused as a duplicate.
+        id: saved?.id ?? noteId.current,
+      };
+    },
   );
+
+  // The two fields this form owns are uncontrolled for the same reason; put back the changes
+  // the lawyer did not make, such as a restored draft or the emptying after a note is posted.
+  useFieldSync("note-title", draft.value.title);
+  useFieldSync("note-body", draft.value.body);
   const { title, body, visibility, shape } = draft.value;
   const setTitle = (t: string) => draft.set((v) => ({ ...v, title: t }));
   const setBody = (b: string) => draft.set((v) => ({ ...v, body: b }));
@@ -159,7 +202,8 @@ export function StaffTimeline({
 
     setItems((cur) => (cur.some((u) => u.id === row.id) ? cur : [{ ...row, payload: {}, created_at: row.occurred_at } as StaffUpdate, ...cur]));
     draft.clear();
-    draft.set((v) => ({ ...v, id: crypto.randomUUID() }));
+    noteId.current = crypto.randomUUID();
+    draft.set((v) => ({ ...v, id: noteId.current }));
     setNoted(visibility);
     router.refresh();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -201,7 +245,7 @@ export function StaffTimeline({
               <label htmlFor="note-title" className="text-sm font-medium text-gray-900">Heading <span className="text-red-700">*</span></label>
               <input
                 id="note-title"
-                value={title}
+                defaultValue=""
                 onChange={(e) => setTitle(e.target.value)}
                 maxLength={200}
                 required
@@ -211,7 +255,7 @@ export function StaffTimeline({
             </div>
             <div>
               <label htmlFor="note-body" className="text-sm font-medium text-gray-900">Detail</label>
-              <textarea id="note-body" rows={3} maxLength={4000} value={body} onChange={(e) => setBody(e.target.value)} className={field} />
+              <textarea id="note-body" rows={3} maxLength={4000} defaultValue="" onChange={(e) => setBody(e.target.value)} className={field} />
             </div>
             {visibility === "client" && <ClientUpdateFields idPrefix="note" value={shape} onChange={setShape} />}
             <fieldset className="space-y-2">

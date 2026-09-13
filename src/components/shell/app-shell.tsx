@@ -25,6 +25,8 @@ export function AppShell({
   banner,
   /** How wide the content may grow. Reading screens stay narrower. */
   width = "wide",
+  /** Query every destination carries, from the server. See PrimaryNav. */
+  navContext,
   children,
 }: {
   nav: NavModel;
@@ -35,6 +37,7 @@ export function AppShell({
   header?: ReactNode;
   banner?: ReactNode;
   width?: "wide" | "reading";
+  navContext?: Record<string, string>;
   children: ReactNode;
 }) {
   return (
@@ -52,6 +55,7 @@ export function AppShell({
         label={navLabel}
         masthead={masthead}
         footer={navFooter}
+        context={navContext}
       />
 
       <div className="md:pl-[68px] lg:pl-[248px]">

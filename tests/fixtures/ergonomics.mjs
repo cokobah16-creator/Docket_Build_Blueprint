@@ -151,13 +151,16 @@ if (roomy.bottom > roomy.vh) {
 
 // The draft, across a rotation and a resize to desktop.
 //
-// Typed with real key events rather than fill(): fill() sets the DOM value and
-// never reaches React's onChange, so a controlled composer would appear to
-// lose the text on the next render and the check would report a defect that is
-// only in the test. The wait before typing is for the thread's read-receipt
-// action to settle — see the known issue noted at the end of this file.
+// Nothing waits for the page to settle first. It used to, and the wait was
+// hiding a real defect: the composer was a controlled input on a screen the
+// server renders, so keystrokes that arrived before React attached were thrown
+// away by its first render. Waiting for hydration made the harness green and
+// the application no better. What the composer does in that window is covered
+// properly in tests/fixtures/composer.mjs; here it only needs to not be waited
+// around. (For the record, Playwright's fill() does dispatch a real input
+// event. It failed for the same reason a person's typing failed — there was no
+// listener on the element yet — not because it bypasses React.)
 const DRAFT = "Half a sentence that must survive the";
-await page.waitForTimeout(2500);
 await box.click();
 await box.pressSequentially(DRAFT, { delay: 12 });
 await page.waitForTimeout(600);
@@ -180,12 +183,12 @@ for (const vp of [
 }
 notes.push(`draft survived phone → landscape → tablet → desktop → phone with one composer throughout`);
 
-// Known issue, older than this change and not caused by it: for roughly the
-// first second after a thread opens, characters typed into the composer are
-// dropped. The read-receipt server action fired on mount refreshes the tree and
-// the composer's state goes back to empty, so "KEEP" arrives as "P". It
-// reproduces identically on main. It is a messaging bug rather than a layout
-// one, so it is recorded here and left alone.
+// An earlier version of this file recorded, as a known issue left alone, that
+// characters typed in the first second after a thread opened were dropped, and
+// blamed the read-receipt server action for refreshing the tree. That was a
+// guess and it was wrong: blocking the action changes nothing, because the
+// action does not revalidate anything. The cause was hydration, the bug is
+// fixed, and tests/fixtures/composer.mjs now holds it down.
 
 await browser.close();
 console.log(notes.map((n) => `note: ${n}`).join("\n"));

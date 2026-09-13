@@ -9,6 +9,7 @@
 // lawyer makes, and it is then said out loud on the client's screen.
 
 import type { ReactNode } from "react";
+import { useFieldSync } from "@/lib/pre-hydration";
 
 export type ActionRequired = "unstated" | "none" | "required";
 
@@ -34,6 +35,16 @@ export function ClientUpdateFields({
   intro?: ReactNode;
 }) {
   const set = (patch: Partial<ClientUpdateShape>) => onChange({ ...value, ...patch });
+
+  // The free-text fields are uncontrolled, so that words typed into this form
+  // before React attached to it are not written over by its first render. See
+  // src/lib/pre-hydration.ts. The radios are left controlled: they have a
+  // default that matches what the server rendered, so there is nothing to lose.
+  useFieldSync(`${idPrefix}-meaning`, value.meaning);
+  useFieldSync(`${idPrefix}-next`, value.nextStep);
+  useFieldSync(`${idPrefix}-action`, value.clientAction);
+  useFieldSync(`${idPrefix}-next-by`, value.nextUpdateBy);
+
   return (
     <fieldset className="rounded-lg border border-gray-200 p-3">
       <legend className="px-1 text-sm font-medium text-gray-900">So the client knows where they stand</legend>
@@ -45,11 +56,11 @@ export function ClientUpdateFields({
       <div className="mt-3 space-y-3">
         <div>
           <label htmlFor={`${idPrefix}-meaning`} className="text-sm font-medium text-gray-900">What it means for them</label>
-          <textarea id={`${idPrefix}-meaning`} rows={2} maxLength={2000} value={value.meaning} onChange={(e) => set({ meaning: e.target.value })} className={field} />
+          <textarea id={`${idPrefix}-meaning`} rows={2} maxLength={2000} defaultValue="" onChange={(e) => set({ meaning: e.target.value })} className={field} />
         </div>
         <div>
           <label htmlFor={`${idPrefix}-next`} className="text-sm font-medium text-gray-900">What happens next</label>
-          <textarea id={`${idPrefix}-next`} rows={2} maxLength={2000} value={value.nextStep} onChange={(e) => set({ nextStep: e.target.value })} className={field} />
+          <textarea id={`${idPrefix}-next`} rows={2} maxLength={2000} defaultValue="" onChange={(e) => set({ nextStep: e.target.value })} className={field} />
         </div>
         <div>
           <p className="text-sm font-medium text-gray-900">Action from the client</p>
@@ -64,13 +75,13 @@ export function ClientUpdateFields({
           {value.actionRequired === "required" && (
             <div className="mt-2">
               <label htmlFor={`${idPrefix}-action`} className="text-sm font-medium text-gray-900">What they must do <span className="text-red-700">*</span></label>
-              <textarea id={`${idPrefix}-action`} rows={2} maxLength={2000} required value={value.clientAction} onChange={(e) => set({ clientAction: e.target.value })} className={field} placeholder="Be at court by 8:30 that morning with your ID." />
+              <textarea id={`${idPrefix}-action`} rows={2} maxLength={2000} required defaultValue={value.clientAction} onChange={(e) => set({ clientAction: e.target.value })} className={field} placeholder="Be at court by 8:30 that morning with your ID." />
             </div>
           )}
         </div>
         <div>
           <label htmlFor={`${idPrefix}-next-by`} className="text-sm font-medium text-gray-900">When to expect the next update</label>
-          <input id={`${idPrefix}-next-by`} type="date" value={value.nextUpdateBy} onChange={(e) => set({ nextUpdateBy: e.target.value })} className={field} />
+          <input id={`${idPrefix}-next-by`} type="date" defaultValue="" onChange={(e) => set({ nextUpdateBy: e.target.value })} className={field} />
         </div>
       </div>
     </fieldset>

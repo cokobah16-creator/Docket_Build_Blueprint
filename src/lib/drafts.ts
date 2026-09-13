@@ -58,8 +58,22 @@ export function clearAllDrafts(): number {
  * State that survives the connection: a draft restored on mount (restored=true until the
  * person changes it or it is cleared), written a moment after each change, cleared by the
  * caller once the write returned. `empty` decides whether there is anything worth keeping.
+ *
+ * `reconcile` is how a form that was server-rendered rescues what was typed into it before
+ * React attached. A page is on the glass and accepts keystrokes about a second before its
+ * JavaScript arrives, and those keystrokes are in the DOM while this hook's state is still
+ * the initial value — so restoring a saved draft over the top of them, or letting React's
+ * first render win, throws away words the person watched themselves type. The hook calls
+ * `reconcile` once, inside the same effect that reads storage, and whatever it returns is
+ * what the form starts from. Doing it here rather than in a second effect is the point:
+ * two effects would race, and the loser's words would be the ones lost.
  */
-export function useDeviceDraft<T>(key: string | null, initial: T, empty: (v: T) => boolean): {
+export function useDeviceDraft<T>(
+  key: string | null,
+  initial: T,
+  empty: (v: T) => boolean,
+  reconcile?: (saved: T | null) => T | null,
+): {
   value: T; set: (next: T | ((cur: T) => T)) => void; restored: boolean; clear: () => void;
 } {
   const [value, setValue] = useState<T>(initial);
@@ -67,12 +81,31 @@ export function useDeviceDraft<T>(key: string | null, initial: T, empty: (v: T) 
   const hydrated = useRef(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // These three arrive as fresh closures on every render. Held in refs, they stop the
+  // restore effect re-running on each one and stop `set` and `clear` changing identity
+  // for reasons that have nothing to do with the draft.
+  const emptyRef = useRef(empty);
+  const initialRef = useRef(initial);
+  const reconcileRef = useRef(reconcile);
+  emptyRef.current = empty;
+  initialRef.current = initial;
+  reconcileRef.current = reconcile;
+
   useEffect(() => {
     if (!key || hydrated.current) return;
     hydrated.current = true;
-    const saved = readDraft<T>(key);
-    if (saved !== null && !empty(saved)) { setValue(saved); setRestored(true); }
-  }, [key, empty]);
+    const found = readDraft<T>(key);
+    const saved = found !== null && !emptyRef.current(found) ? found : null;
+    const start = reconcileRef.current ? reconcileRef.current(saved) : saved;
+    if (start === null || emptyRef.current(start)) return;
+    setValue(start);
+    // "Restored" means these words came back from storage, which is worth saying. Words
+    // the person typed a second ago need no announcement, so early input alone is silent.
+    setRestored(saved !== null);
+    // Write immediately rather than waiting for the next keystroke: if the tab is closed
+    // now, anything rescued from the pre-hydration DOM would otherwise never be kept.
+    writeDraft(key, start);
+  }, [key]);
 
   const set = useCallback((next: T | ((cur: T) => T)) => {
     setRestored(false);
@@ -80,18 +113,18 @@ export function useDeviceDraft<T>(key: string | null, initial: T, empty: (v: T) 
       const v = typeof next === "function" ? (next as (c: T) => T)(cur) : next;
       if (key) {
         if (timer.current) clearTimeout(timer.current);
-        timer.current = setTimeout(() => { if (empty(v)) clearDraft(key); else writeDraft(key, v); }, 400);
+        timer.current = setTimeout(() => { if (emptyRef.current(v)) clearDraft(key); else writeDraft(key, v); }, 400);
       }
       return v;
     });
-  }, [key, empty]);
+  }, [key]);
 
   const clear = useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     if (key) clearDraft(key);
     setRestored(false);
-    setValue(initial);
-  }, [key, initial]);
+    setValue(initialRef.current);
+  }, [key]);
 
   return { value, set, restored, clear };
 }

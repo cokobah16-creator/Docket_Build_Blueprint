@@ -114,18 +114,28 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
     </>
   );
 
-  /** A member of several firms changes which one they are in, from anywhere. */
+  /**
+   * A member of several firms changes which one they are in, from anywhere.
+   *
+   * A plain anchor, deliberately, where the rest of the console uses <Link>.
+   * Changing firm changes what this layout itself says — the name at the top,
+   * the role badge, the firm every destination belongs to — and Next.js reuses
+   * a layout across a client-side navigation that stays inside it. A soft
+   * switch therefore left the sidebar describing the firm the member had just
+   * left while the page beneath it showed the new one. This is the one journey
+   * in the console where the whole document has to be built again, so it is.
+   */
   const switcher = others.length > 0 && (
     <nav aria-label="Switch firm" className="text-[12px] leading-relaxed text-[#57534E]">
       <span className="block">Switch to</span>
       {others.map((f) => (
-        <Link
+        <a
           key={f.id}
           href={`/firm?firm=${encodeURIComponent(f.id)}`}
           className="mt-1 flex min-h-9 items-center rounded-lg px-2 -mx-2 font-medium text-[#141414] hover:bg-black/[0.04]"
         >
           <span className="truncate">{f.name}</span>
-        </Link>
+        </a>
       ))}
     </nav>
   );
@@ -140,6 +150,12 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
         nav={CONSOLE_NAV}
         tone="neutral"
         navLabel="Console"
+        // A member of one firm needs no `?firm=` on anything: there is nothing
+        // to be ambiguous about, and the cookie the middleware set carries the
+        // answer anyway. A member of several gets it named on every link, from
+        // this render, so the sidebar always points at the firm on screen even
+        // if another tab has since moved the cookie somewhere else.
+        navContext={others.length > 0 ? { firm: ctx.firmId } : undefined}
         masthead={
           <div className="min-w-0">
             {identity}
@@ -196,9 +212,10 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
                 {others.map((f, i) => (
                   <span key={f.id}>
                     {i > 0 && ", "}
-                    <Link href={`/firm?firm=${encodeURIComponent(f.id)}`} className="font-medium text-[#141414] underline underline-offset-2">
+                    {/* An anchor for the same reason as the sidebar's switcher above. */}
+                    <a href={`/firm?firm=${encodeURIComponent(f.id)}`} className="font-medium text-[#141414] underline underline-offset-2">
                       {f.name}
-                    </Link>
+                    </a>
                   </span>
                 ))}
               </nav>

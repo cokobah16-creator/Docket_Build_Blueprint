@@ -17,6 +17,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { Icon } from "@/components/ui/icon";
+import { useDialogBehaviour, useWhenMatches } from "@/components/ui/dialog";
 import {
   activeHref,
   overflowSections,
@@ -26,25 +27,23 @@ import {
 } from "@/components/shell/nav";
 
 /**
- * Preserve the query the current screen is standing in, where it names context
- * rather than a position inside one screen.
+ * Query carried on every destination, naming which firm a multi-firm member is
+ * working in, so the sidebar cannot move them to another firm's diary.
  *
- * `?firm=` is which firm a multi-firm member is working in: carrying it means
- * the sidebar does not silently move them to another firm's diary. A tab or a
- * filter belongs to the screen it was set on, so it is left behind.
+ * It arrives as a prop from the server, which is the only place that knows: the
+ * firm is resolved per request from `?firm=` or from the cookie the middleware
+ * set out of it (src/lib/firm-data.ts, middleware.ts). It used to be read from
+ * `window.location.search` in an effect keyed on the pathname. Changing only
+ * `?firm=` leaves the pathname alone, so that effect never ran again and every
+ * link went on naming the firm the member had just left. Worse than cosmetic:
+ * `requestedFirmId()` prefers the query over the cookie, so the stale value in
+ * the link won, and the next click undid the switch.
  */
-const CARRIED = ["firm"];
-
-function withContext(href: string, search: string): string {
-  if (!search) return href;
-  const from = new URLSearchParams(search);
-  const keep = new URLSearchParams();
-  for (const key of CARRIED) {
-    const value = from.get(key);
-    if (value) keep.set(key, value);
-  }
-  const qs = keep.toString();
-  return qs ? `${href}?${qs}` : href;
+function withContext(href: string, context?: Record<string, string>): string {
+  const entries = Object.entries(context ?? {}).filter(([, v]) => Boolean(v));
+  if (entries.length === 0) return href;
+  const qs = new URLSearchParams(entries).toString();
+  return href.includes("?") ? `${href}&${qs}` : `${href}?${qs}`;
 }
 
 export function PrimaryNav({
@@ -56,44 +55,42 @@ export function PrimaryNav({
   masthead,
   /** Rendered at the foot of the sidebar: sign out, a version, a switcher. */
   footer,
+  /** Query carried on every destination, from the server. See withContext. */
+  context,
 }: {
   model: NavModel;
   tone?: "brand" | "neutral";
   label?: string;
   masthead?: React.ReactNode;
   footer?: React.ReactNode;
+  context?: Record<string, string>;
 }) {
   const pathname = usePathname();
-  const [search, setSearch] = useState("");
   const [moreOpen, setMoreOpen] = useState(false);
   const sheetId = useId();
+  const sheetRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
-
-  // The query string is read after mount rather than through useSearchParams,
-  // which would opt every page using this nav into client-side rendering.
-  useEffect(() => {
-    setSearch(window.location.search);
-  }, [pathname]);
 
   // A destination chosen in the sheet has been navigated to; close it.
   useEffect(() => {
     setMoreOpen(false);
   }, [pathname]);
 
-  useEffect(() => {
-    if (!moreOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMoreOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    closeRef.current?.focus();
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previous;
-    };
-  }, [moreOpen]);
+  // Escape, a focus trap, an inert page behind it, and focus back to whatever
+  // opened it when it goes.
+  useDialogBehaviour({
+    open: moreOpen,
+    onClose: () => setMoreOpen(false),
+    surface: sheetRef,
+    initialFocus: closeRef,
+  });
+
+  // From 768px the sheet is `md:hidden`. A rotation into tablet width would
+  // otherwise leave it display:none but still mounted: the page behind it still
+  // inert and unscrollable, and the keyboard still trapped inside something
+  // nobody can see. Crossing the breakpoint closes it, which runs the cleanup
+  // above and hands the page back.
+  useWhenMatches("(min-width: 768px)", () => setMoreOpen(false));
 
   const active = activeHref(model, pathname);
   const primary = primaryItems(model);
@@ -103,7 +100,7 @@ export function PrimaryNav({
   const edge = tone === "neutral" ? "border-[#DDD9D2]" : "border-gray-200";
   const inMore = overflow.some((s) => s.items.some((i) => i.href === active));
 
-  const href = (item: NavItem) => withContext(item.href, search);
+  const href = (item: NavItem) => withContext(item.href, context);
 
   return (
     <>
@@ -129,6 +126,7 @@ export function PrimaryNav({
                   <li key={item.href}>
                     <Link
                       href={href(item)}
+                      data-dk-nav="destination"
                       aria-current={active === item.href ? "page" : undefined}
                       className={cn(
                         "flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] transition-colors",
@@ -162,6 +160,7 @@ export function PrimaryNav({
             <li key={item.href}>
               <Link
                 href={href(item)}
+                data-dk-nav="destination"
                 aria-current={active === item.href ? "page" : undefined}
                 // The label is the accessible name and is shown under the icon
                 // at this size too — a rail of unexplained glyphs is a guess.
@@ -194,6 +193,7 @@ export function PrimaryNav({
             <li key={item.href}>
               <Link
                 href={href(item)}
+                data-dk-nav="destination"
                 aria-current={active === item.href ? "page" : undefined}
                 className={cn(
                   "flex min-h-14 flex-col items-center justify-center gap-[3px] px-1 py-2 text-center text-[11.5px] leading-tight",
@@ -228,18 +228,19 @@ export function PrimaryNav({
       {/* ── the More sheet ─────────────────────────────────────────────── */}
       {moreOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <button
-            type="button"
-            aria-label="Close"
-            onClick={() => setMoreOpen(false)}
-            className="absolute inset-0 bg-gray-900/40"
-          />
+          {/* A backdrop is a place to tap, not a control: it carries no label
+              and takes no focus, because Escape and the Close button are what
+              dismiss this from a keyboard, and a nameless button in the tab
+              order would only be a stop with nothing to say. */}
+          <div aria-hidden="true" onClick={() => setMoreOpen(false)} className="absolute inset-0 bg-gray-900/40" />
           <div
+            ref={sheetRef}
             id={sheetId}
             role="dialog"
             aria-modal="true"
             aria-label="More destinations"
-            className="absolute inset-x-0 bottom-0 mx-auto max-h-[80dvh] max-w-lg animate-[dkRise_.22s_ease-out] overflow-y-auto rounded-t-[18px] bg-white pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(0,0,0,0.18)]"
+            tabIndex={-1}
+            className="absolute inset-x-0 bottom-0 mx-auto max-h-[80dvh] max-w-lg animate-[dkRise_.22s_ease-out] overflow-y-auto rounded-t-[18px] bg-white pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(0,0,0,0.18)] focus:outline-none"
           >
             <div aria-hidden="true" className="mx-auto mb-2 mt-2.5 h-1 w-[38px] rounded-full bg-gray-200" />
             {overflow.map((section) => (
@@ -254,6 +255,7 @@ export function PrimaryNav({
                     <li key={item.href}>
                       <Link
                         href={href(item)}
+                        data-dk-nav="destination"
                         aria-current={active === item.href ? "page" : undefined}
                         className={cn(
                           "flex min-h-[52px] items-center gap-3 rounded-xl px-3 text-[15px]",

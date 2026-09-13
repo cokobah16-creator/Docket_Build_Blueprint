@@ -21,12 +21,35 @@ export function MessagesThread({
   initial: MessageRow[]; timezone: string; senderNames: Record<string, string>; firmName: string;
 }) {
   const [messages, setMessages] = useState<MessageRow[]>(initial);
+  const boxRef = useRef<HTMLTextAreaElement | null>(null);
+  // One id per message, minted once. Minting it inside the render would hand `clear()` a
+  // different id every render, and the id is what stops a retry landing twice.
+  const freshId = useRef<string>(crypto.randomUUID());
+  const blank = useRef({ body: "", attachments: [] as MessageAttachment[], id: freshId.current });
+
   // The draft — the words, the attachments already uploaded, and the id this message will carry
   // — kept on this device until the send returns. A retry after a lost reply lands once.
+  //
+  // This screen is server-rendered, so the composer is on the glass and takes keystrokes
+  // roughly a second before React attaches to it. `reconcile` is where those keystrokes are
+  // rescued: it reads what is already in the box and folds it into the draft being restored.
+  // A draft saved earlier keeps its place at the front and the new words follow it, which is
+  // the order they would have been in had the JavaScript arrived at once. Neither is dropped.
   const draft = useDeviceDraft<{ body: string; attachments: MessageAttachment[]; id: string }>(
     draftKey(userId, `message:${matterId ?? appointmentId}`),
-    { body: "", attachments: [], id: crypto.randomUUID() },
+    blank.current,
     (v) => !v.body.trim() && v.attachments.length === 0,
+    (saved) => {
+      const early = boxRef.current?.value ?? "";
+      if (!early) return saved;
+      const base = saved?.body ?? "";
+      return {
+        body: base && !early.startsWith(base) ? `${base}${early}` : early,
+        attachments: saved?.attachments ?? [],
+        // The saved id is kept so duplicate-send protection still recognises a retry.
+        id: saved?.id ?? freshId.current,
+      };
+    },
   );
   const body = draft.value.body;
   const attachments = draft.value.attachments;
@@ -73,6 +96,15 @@ export function MessagesThread({
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages.length]);
 
+  // The composer is uncontrolled, so that React's first render cannot write an empty string
+  // over words that were typed before it attached. The price is that changes the person did
+  // not make — a restored draft, the clearing after a send — have to be put into the box by
+  // hand. Only on a genuine difference, so this never fights someone mid-word.
+  useEffect(() => {
+    const el = boxRef.current;
+    if (el && el.value !== draft.value.body) el.value = draft.value.body;
+  }, [draft.value.body]);
+
   const attach = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -107,7 +139,10 @@ export function MessagesThread({
       if (r?.error) { setError(r.error); return; }
       draft.clear();
       setAttemptLost(false);
-      draft.set({ body: "", attachments: [], id: crypto.randomUUID() });
+      // A new id for whatever is written next, so the sent message's id is never reused.
+      freshId.current = crypto.randomUUID();
+      draft.set({ body: "", attachments: [], id: freshId.current });
+      if (boxRef.current) boxRef.current.value = "";
     } catch (e) {
       setAttemptLost(true);
       setError(isNetworkFailure(e) ? NOT_SENT : (e instanceof Error ? e.message : NOT_SENT));
@@ -173,7 +208,12 @@ export function MessagesThread({
           </ul>
         )}
         <textarea
-          value={body}
+          ref={boxRef}
+          // Uncontrolled on purpose: a `value` prop would have React render its own empty
+          // state over anything typed into the server-rendered box before it hydrated, and
+          // the words would be gone. The state is kept in step through onChange, and the
+          // effect above writes back the changes the person did not make.
+          defaultValue=""
           onChange={(e) => setBody(e.target.value)}
           rows={2}
           maxLength={4000}

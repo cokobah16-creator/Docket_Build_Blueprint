@@ -149,7 +149,11 @@ const TABLES = {
   firm_members: [{ firm_id: FIRM_ID, user_id: USER_ID, role: "lawyer" }, { firm_id: FIRM_ID_2, user_id: USER_ID, role: "lawyer" }],
   firms: [FIRM, FIRM_2],
   firm_public: [FIRM, FIRM_2],
-  firm_overview: [{ firm_id: FIRM_ID, name: FIRM.name, status: "active", open_matters: 18, upcoming_appointments: 6, court_dates_30d: 7, sittings_due: 2, outstanding_by_currency: { NGN: 57_500_000 }, collected_this_month_by_currency: { NGN: 21_000_000 }, unread_messages: 4, overdue_tasks: 2, client_uploads: 3, service_to_acknowledge: 1 }],
+  firm_overview: [{ firm_id: FIRM_ID, name: FIRM.name, status: "active", open_matters: 18, upcoming_appointments: 6, court_dates_30d: 7, sittings_due: 2, outstanding_by_currency: { NGN: 57_500_000 }, collected_this_month_by_currency: { NGN: 21_000_000 }, unread_messages: 4, overdue_tasks: 2, client_uploads: 3, service_to_acknowledge: 1 },
+    // The second firm the staff member belongs to. Without this row the console
+    // falls back to calling it "Your firm", and every multi-firm check reads as
+    // a failure of the console rather than a gap in the stand-in.
+    { firm_id: FIRM_ID_2, name: FIRM_2.name, status: "active", open_matters: 3, upcoming_appointments: 1, court_dates_30d: 1, sittings_due: 0, outstanding_by_currency: {}, collected_this_month_by_currency: {}, unread_messages: 0, overdue_tasks: 0, client_uploads: 0, service_to_acknowledge: 0 }],
   firm_sittings_due: [
     { court_event_id: "ce1", firm_id: FIRM_ID, matter_id: MATTER_ID, reference: MATTER.reference, cause_title: MATTER.title, suit_number: MATTER.suit_number, court: MATTER.court_name, purpose: "Continuation of hearing", purpose_kind: "hearing", scheduled_at: past, lawyer_id: USER_ID },
     { court_event_id: "ce2", firm_id: FIRM_ID, matter_id: MATTER_ID, reference: "AK-M-2026-000021", cause_title: "Nwosu & 2 Ors v. Zenith Freight Ltd", suit_number: "FHC/L/CS/882/2026", court: "Federal High Court, Lagos Judicial Division", purpose: "Mention", purpose_kind: "mention", scheduled_at: new Date(Date.now() - 9 * 86_400_000).toISOString(), lawyer_id: USER_ID },
