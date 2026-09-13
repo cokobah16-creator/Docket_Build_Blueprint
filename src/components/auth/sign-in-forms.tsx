@@ -107,6 +107,7 @@ type Mode = "phone" | "email";
 /** scripts/configure-providers.sh sets sms_otp_length 6 and sms_otp_exp 600. Both are said out loud. */
 const CODE_LENGTH = 6;
 const CODE_FIELD_ID = "sign-in-code";
+const EMAIL_CODE_FIELD_ID = "sign-in-email-code";
 
 /**
  * A per-device preference, alongside docket:low-data and docket:ios-hint-dismissed. Never under
@@ -216,6 +217,9 @@ export function SignInForms({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
+  /** The email channel's own six digits. Separate from `code` for the same reason the stages are
+   *  separate: tapping between tabs must not show one channel the other's half-typed number. */
+  const [emailCode, setEmailCode] = useState("");
 
   /** The resolved E.164 a code was actually sent to. The only string verify and resend may use. */
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -230,6 +234,7 @@ export function SignInForms({
   const [formError, setFormError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [emailCodeError, setEmailCodeError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   /** A deadline plus the identifier it belongs to: the server's limit is per number, not per browser. */
@@ -242,6 +247,7 @@ export function SignInForms({
   const inFlight = useRef(false);
   const verified = useRef(false);
   const lastTried = useRef<string | null>(null);
+  const lastTriedEmail = useRef<string | null>(null);
 
   const { online, known: onlineKnown } = useConnectionState();
 
@@ -293,6 +299,7 @@ export function SignInForms({
     setFormError(null);
     setPhoneError(null);
     setCodeError(null);
+    setEmailCodeError(null);
     setNotice(null);
   }
 
@@ -403,6 +410,34 @@ export function SignInForms({
   }
 
   /**
+   * The one success path, shared by both codes.
+   *
+   * Reached whenever a session is established IN THIS BROWSER — the phone code, and now the code
+   * from the email. Not the magic link: that one lands on /auth/callback, which has a whole
+   * server-side route to itself and never renders this component.
+   *
+   * /app/login uses onSignedIn to reach the ?next= destination and /app/join to re-run its server
+   * page; the booking wizard passes nothing, which is why this component never navigates, reloads
+   * or clears storage on its own — the wizard's held slot and its ?resume=1 state depend on it
+   * staying still, and it learns about the session from supabase.auth.onAuthStateChange instead.
+   *
+   * The caller's own try/catch, because a caller throwing on the way out must not be reported as a
+   * sign-in that failed: the session is real and written to the cookie by this point, and "the
+   * connection dropped" over a working session is the most misleading sentence this screen could
+   * produce. The success panel's Continue button is the way out if a caller's navigation never
+   * happens.
+   */
+  function completeSignIn() {
+    verified.current = true;
+    setSignedIn(true);
+    try {
+      onSignedIn?.();
+    } catch {
+      /* the session stands whatever the caller did with it */
+    }
+  }
+
+  /**
    * The token is passed in rather than read back from state, which has not been set yet at the
    * point in the event where the sixth digit arrives — the stale-closure bug this would otherwise
    * have. Verification goes through the shared browser client, always: the booking wizard is passed
@@ -432,24 +467,7 @@ export function SignInForms({
         setCodeError(problem.text || CODE_DID_NOT_WORK);
         return;
       }
-      verified.current = true;
-      setSignedIn(true);
-      // Only here, only on success, and only on the phone path — the email flow returns through
-      // /auth/callback instead. /app/login uses this to reach the ?next= destination and /app/join
-      // to re-run its server page; the booking wizard passes nothing, which is why this component
-      // never navigates, reloads or clears storage on its own: the wizard's held slot and its
-      // ?resume=1 state depend on it staying still.
-      //
-      // Its own try/catch, because a caller throwing on the way out must not be reported as a
-      // sign-in that failed: the session is real and written to the cookie by this point, and "the
-      // connection dropped" over a working session is the most misleading sentence this screen
-      // could produce. The success panel's Continue button is the way out if a caller's navigation
-      // never happens.
-      try {
-        onSignedIn?.();
-      } catch {
-        /* the session stands whatever the caller did with it */
-      }
+      completeSignIn();
     } catch (caught) {
       setFormError(isNetworkFailure(caught) ? SIGN_IN_NOT_SENT : SIGN_IN_TROUBLE);
     } finally {
@@ -529,13 +547,77 @@ export function SignInForms({
       }
       setSentToEmail(address);
       setEmailSent(true);
+      setEmailCode("");
+      lastTriedEmail.current = null;
       armCooldown(address, DEFAULT_RESEND_SECONDS);
-      if (again) setNotice("Another link is on the way. Open the newest one.");
+      if (again) setNotice("A new link and code are on the way. The newest ones are the only ones that work.");
     } catch (caught) {
       setFormError(isNetworkFailure(caught) ? SIGN_IN_NOT_SENT : SIGN_IN_TROUBLE);
     } finally {
       inFlight.current = false;
       setBusy(false);
+    }
+  }
+
+  /**
+   * The email's OTHER half.
+   *
+   * The same email carries a link and a code, and this is the code. It exists because the link
+   * cannot always work: it carries a PKCE code whose verifier was written to the browser that
+   * ASKED for it, so opening it in Gmail's in-app browser, or on a laptop when the phone asked,
+   * fails on a link that is otherwise perfectly good. That was the single largest silent failure
+   * on this screen, and the honest old copy — "Open it on this device to continue" — described the
+   * limitation rather than removing it. verifyOtp with type "email" has no verifier to lose and
+   * works from any browser, on any device, so a client who cannot use the link types six digits
+   * instead.
+   *
+   * type: "email" and not "magiclink". They are not interchangeable and the names invite the wrong
+   * guess: "email" is the type for the numeric code, "magiclink" for the token_hash carried by the
+   * link itself. Verifying six typed digits as "magiclink" answers "Email link is invalid or has
+   * expired" on a code that is perfectly good — and magiclink is deprecated for email sign-in
+   * besides, where the live set is email, recovery, invite and email_change.
+   */
+  async function submitEmailCode(token: string) {
+    const digits = token.replace(/\D/g, "").slice(0, CODE_LENGTH);
+    const target = sentToEmail;
+    if (!target || inFlight.current || verified.current) return;
+    if (digits.length !== CODE_LENGTH) {
+      clearMessages();
+      setEmailCodeError(`Enter the ${CODE_LENGTH} digits from the email.`);
+      return;
+    }
+    inFlight.current = true;
+    lastTriedEmail.current = digits;
+    setBusy(true);
+    clearMessages();
+    try {
+      const { error: err } = await client.auth.verifyOtp({ email: target, token: digits, type: "email" });
+      if (err) {
+        const problem = signInProblem("verify_email", failureShape(err));
+        setEmailCodeError(problem.text || CODE_DID_NOT_WORK);
+        return;
+      }
+      completeSignIn();
+    } catch (caught) {
+      setFormError(isNetworkFailure(caught) ? SIGN_IN_NOT_SENT : SIGN_IN_TROUBLE);
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }
+
+  /** Digits only, six at most, and the sixth one submits — onCodeChange's rule, for the other channel. */
+  function onEmailCodeChange(value: string) {
+    const digits = value.replace(/\D/g, "").slice(0, CODE_LENGTH);
+    setEmailCode(digits);
+    if (emailCodeError) setEmailCodeError(null);
+    if (
+      digits.length === CODE_LENGTH &&
+      !inFlight.current &&
+      !verified.current &&
+      lastTriedEmail.current !== digits
+    ) {
+      void submitEmailCode(digits);
     }
   }
 
@@ -755,13 +837,47 @@ export function SignInForms({
       )}
 
       {mode === "email" && !signedIn && emailSent && sentToEmail && (
-        <div className="space-y-3">
+        <form onSubmit={(e) => { e.preventDefault(); void submitEmailCode(emailCode); }} className="space-y-3">
+          {/* It no longer says "open it on this device". That sentence was true and that was the
+              problem: the link carries a PKCE code whose verifier lives in the browser that asked
+              for it, so the commonest way an email is read — tapping the link inside Gmail, or
+              opening it on the laptop when the phone asked — failed on a good link with nothing
+              said. The code below has no verifier to lose and works from anywhere, so the panel
+              offers both and names the link first, because tapping it is still one action. */}
           <Alert kind="success" title="Check your email">
-            We sent a sign-in link to {sentToEmail}. Open it on this device to continue.
+            We sent a sign-in link and a {CODE_LENGTH}-digit code to {sentToEmail}. Tap the link, or type
+            the code here if you are reading the email somewhere else.
           </Alert>
+          <Input
+            id={EMAIL_CODE_FIELD_ID}
+            label="Code from the email"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            autoComplete="one-time-code"
+            enterKeyHint="go"
+            placeholder="123456"
+            className="text-center font-mono tracking-[0.3em] indent-[0.3em]"
+            value={emailCode}
+            onChange={(e) => onEmailCodeChange(e.target.value)}
+            error={emailCodeError ?? undefined}
+            hint={`${CODE_LENGTH} digits, from the same email as the link.`}
+          />
+          {/* Never disabled, for the reason the phone one is not: auto-submit means the request is
+              normally already in flight when this is tapped, and the in-flight ref makes the extra
+              press a no-op. Its name matches neither resend button below it. */}
+          <Button
+            type="submit"
+            size="lg"
+            className={busy ? "w-full opacity-70" : "w-full"}
+            aria-busy={busy}
+          >
+            {busy ? "Verifying…" : "Verify and continue"}
+          </Button>
           {/* The email path had no way back at all: a link sent to an address with a typo in it was
               unrecoverable without switching tabs twice. The frequency limit is per address and the
-              same shape as the SMS one, so it gets the same countdown. */}
+              same shape as the SMS one, so it gets the same countdown. One send produces both the
+              link and the code, so this asks for both and the label says so. */}
           <Button
             variant="ghost"
             size="md"
@@ -771,7 +887,7 @@ export function SignInForms({
               if (sentToEmail) void sendLink(sentToEmail, true);
             }}
           >
-            {emailWait > 0 ? `Send the link again in ${emailWait}s` : "Send the link again"}
+            {emailWait > 0 ? `Send them again in ${emailWait}s` : "Send them again"}
           </Button>
           <Button
             variant="ghost"
@@ -780,13 +896,15 @@ export function SignInForms({
             onClick={() => {
               setEmailSent(false);
               setSentToEmail(null);
+              setEmailCode("");
+              lastTriedEmail.current = null;
               clearMessages();
             }}
           >
             Change the address
           </Button>
           {offlineNote}
-        </div>
+        </form>
       )}
     </div>
   );

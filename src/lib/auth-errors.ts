@@ -51,7 +51,7 @@ export interface AuthFailureShape {
 }
 
 /** Which call failed. The same GoTrue code means different things at different steps. */
-export type SignInStep = "send_sms" | "verify_sms" | "send_email";
+export type SignInStep = "send_sms" | "verify_sms" | "send_email" | "verify_email";
 
 export interface SignInProblem {
   /** The sentence to show. Always ours, never the provider's. */
@@ -85,6 +85,21 @@ export const TOO_MANY_TRIES = "Too many attempts from this device. Wait a few mi
  * timer of our own, say — would rebuild the oracle GoTrue deliberately closed.
  */
 export const CODE_DID_NOT_WORK = "That code did not work. Check the six digits, or ask for a new code.";
+
+/**
+ * The link half of the email failing, said without guessing which half of the cause it was.
+ *
+ * Three different things bring somebody here and Docket cannot tell them apart, so it names all
+ * three. Expired and already-used are GoTrue's to know and it will not say. The third is the one
+ * nobody expects: the sign-in link carries a PKCE code, and the verifier it needs was written to
+ * the browser that ASKED for the link. Open it in Gmail's in-app browser, or on the laptop when
+ * the phone asked, and the exchange fails on a link that is otherwise perfectly good — which is
+ * exactly why the same email now carries a code, and why this sentence points at it.
+ */
+export const LINK_DID_NOT_WORK =
+  "That sign-in link did not work. It may have expired, been used already, or been opened in a " +
+  "different browser from the one that asked for it. Ask for a new one — or type the code from " +
+  "the same email, which works anywhere.";
 
 /** The send failed at the SMS provider, or the send hook timed out. Same move either way. */
 export const CODE_NOT_SENT = "We could not send a code to that number. Check it, or sign in by email instead.";
@@ -189,10 +204,13 @@ export function signInProblem(step: SignInStep, failure: AuthFailureShape): Sign
     return { text: TOO_MANY_TRIES };
   }
 
-  if (step === "verify_sms") {
+  if (step === "verify_sms" || step === "verify_email") {
     // otp_expired covers wrong, expired and never-issued. validation_failed is a malformed token,
     // which the field's own constraints should already have caught. otp_disabled joins them rather
-    // than becoming an answer about whose number this is.
+    // than becoming an answer about whose number — or whose address — this is. The email channel
+    // answers with the same codes and gets the same sentence for the same reason: a client who
+    // mistypes a digit and a stranger guessing at an address must not be able to tell each other's
+    // outcome apart.
     if (
       code === "otp_expired" ||
       code === "validation_failed" ||
@@ -246,4 +264,63 @@ export function signInProblem(step: SignInStep, failure: AuthFailureShape): Sign
     return { text: EMAIL_NO_ENTRY };
   }
   return { text: SIGN_IN_TROUBLE };
+}
+
+// ---------------------------------------------------------------------------------------------
+// The sign-in link coming back
+// ---------------------------------------------------------------------------------------------
+
+/**
+ * Why /auth/callback turned somebody away, as one short key.
+ *
+ * A key rather than a sentence, because it travels on a URL: ?reason=link on the sign-in page. The
+ * sentence is looked up at the other end, so the copy can change without invalidating links that
+ * are already sitting in inboxes, and nothing GoTrue said is ever carried in a query string a
+ * browser will log, put in a Referer header or keep in history.
+ */
+export type CallbackReason = "link" | "trouble";
+
+/** The sentence for a ?reason= on the sign-in page. An unknown key says nothing rather than guessing. */
+export function callbackMessage(reason: string | null | undefined): string | null {
+  if (reason === "link") return LINK_DID_NOT_WORK;
+  if (reason === "trouble") return SIGN_IN_TROUBLE;
+  return null;
+}
+
+/**
+ * What the callback should do with the parameters it was handed.
+ *
+ * TWO WAYS A SIGN-IN LINK FAILS, and only one of them used to be visible at all.
+ *
+ * GoTrue can refuse before Docket is reached: it redirects to the allow-listed URL with
+ * ?error=access_denied&error_code=otp_expired rather than with a code, and the route used to read
+ * only `code`, find none, and redirect to `next` as though nothing had happened. The page there
+ * then bounced the caller to sign in with no explanation — the link looked like it did nothing.
+ *
+ * Or the exchange itself fails, which is the cross-browser case: the PKCE verifier lives in the
+ * browser that asked for the link, so a link opened somewhere else arrives with a perfectly good
+ * code that cannot be spent. That error was being discarded — `const { data } = await
+ * exchangeCodeForSession(code)` — with the same silent bounce afterwards.
+ *
+ * Both are the same thing to the person holding the phone, and both get the same key.
+ */
+export function callbackReason(params: {
+  error: string | null;
+  errorCode: string | null;
+  hasCode: boolean;
+  exchangeFailed: boolean;
+}): CallbackReason | null {
+  const { error, errorCode, hasCode, exchangeFailed } = params;
+  const said = `${error ?? ""} ${errorCode ?? ""}`.toLowerCase();
+
+  // GoTrue refused before we were reached. otp_expired is the common one; access_denied covers a
+  // link that has already been spent.
+  if (error || errorCode) {
+    return /otp_expired|access_denied|invalid_request|unauthorized_client/.test(said) ? "link" : "trouble";
+  }
+  if (exchangeFailed) return "link";
+  // No code, no error, nothing to exchange: somebody typed the callback URL, or a scanner followed
+  // it and stripped the query. There is nothing to report and nothing to sign in.
+  if (!hasCode) return null;
+  return null;
 }

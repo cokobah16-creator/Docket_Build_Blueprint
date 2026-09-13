@@ -12,6 +12,7 @@
 // is now served the strict nonce policy like everything else.
 
 import { safeNext } from "@/lib/auth-redirect";
+import { callbackMessage } from "@/lib/auth-errors";
 import { ClientLoginPanel } from "./client-login";
 
 export const metadata = { title: "Sign in" };
@@ -19,16 +20,21 @@ export const metadata = { title: "Sign in" };
 export default async function ClientLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; reason?: string }>;
 }) {
+  const params = await searchParams;
   // Validated on arrival as well as on the way out: by the time it is here it is a query
   // parameter, which is to say it is whatever the browser sent, and an unchecked redirect
   // target is an open redirect.
-  const next = safeNext((await searchParams).next);
+  const next = safeNext(params.next);
+  // Why the last attempt did not work, when it was a sign-in link that brought them back here.
+  // A key, never a sentence: app/auth/callback/route.ts puts it on the URL and this looks it up,
+  // so nothing GoTrue said ends up in browser history or a Referer header.
+  const problem = callbackMessage(params.reason);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
-      <ClientLoginPanel next={next} />
+      <ClientLoginPanel next={next} problem={problem} />
     </main>
   );
 }
