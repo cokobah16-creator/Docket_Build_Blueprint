@@ -383,7 +383,7 @@ test("a client acting through two firms switches between them", async ({ page })
 // through PostgREST, with the client's own token. RLS is the thing under test.
 // ---------------------------------------------------------------------------
 
-test("a client cannot read another firm's matter, at the UI or the API", async ({ page }) => {
+test("a client cannot read another firm's matter, at the UI or the API", async ({ page, browser }) => {
   test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
   test.skip(
     !FORBIDDEN_MATTER_ID,
@@ -392,11 +392,76 @@ test("a client cannot read another firm's matter, at the UI or the API", async (
 
   await signInClient(page);
   const token = await accessToken(page);
+  const asClient = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` };
+
+  // -------------------------------------------------------------------------
+  // POSITIVE CONTROLS. Everything below this point passes by reading ZERO rows,
+  // and there are three uninteresting ways to read zero rows: a malformed
+  // request, a token that is not being sent or has expired, and an id that
+  // names nothing at all. Each would let the most important test in this file
+  // report a pass having proved nothing. The README warns about the third in
+  // prose; these are the checks that stop all three.
+  // -------------------------------------------------------------------------
+
+  // (i) The request shape works and the session is live: the same call, against
+  // the same table, with the same headers, returns the client's OWN matters.
+  const mine = await page.request.get(
+    `${SUPABASE_URL}/rest/v1/matters?select=id`,
+    { headers: asClient },
+  );
+  expect(mine.status(), "the client could not read their own matters — the token or the request is wrong, so a zero below would mean nothing").toBe(200);
+  const myIds = ((await mine.json()) as Array<{ id: string }>).map((m) => m.id);
+  expect(
+    myIds.length,
+    "this client holds no matters at all, so 'cannot read another firm's matter' is not a claim this account can test",
+  ).toBeGreaterThan(0);
+
+  // (ii) The id under test is not one of theirs. Getting this wrong is the
+  // misconfiguration the README warns about, and it inverts the test.
+  expect(
+    myIds,
+    "E2E_FORBIDDEN_MATTER_ID is a matter this client legitimately holds — the test would assert the opposite of what it claims",
+  ).not.toContain(FORBIDDEN_MATTER_ID);
+
+  // (iii) The id names a real row. A typo, or a matter deleted since it was
+  // chosen, behaves EXACTLY like a wall: zero rows, "not found" in the UI, green
+  // all the way. Somebody who can legitimately see it has to say it is there.
+  // The staff account is the only other identity these tests hold.
+  if (staffConfigured) {
+    const staffContext = await browser.newContext();
+    try {
+      const staffPage = await staffContext.newPage();
+      await signInStaff(staffPage);
+      const staffToken = await accessToken(staffPage);
+      const seen = await staffPage.request.get(
+        `${SUPABASE_URL}/rest/v1/matters?select=id&id=eq.${FORBIDDEN_MATTER_ID}`,
+        { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${staffToken}` } },
+      );
+      const rows = seen.status() === 200 ? ((await seen.json()) as unknown[]) : [];
+      expect(
+        rows.length,
+        "the staff account cannot see E2E_FORBIDDEN_MATTER_ID either, so nothing here can tell a wall apart from a matter that does not exist. " +
+          "Point it at a matter at the STAFF member's own firm that this client is not a party to: the staff token then proves the row is real, " +
+          "and the client's zero proves the wall. That is also the stronger test — cross-firm isolation is already asserted 66 times in " +
+          "supabase/tests/10_rls_isolation.sql, whereas the within-firm party wall is only ever exercised here.",
+      ).toBe(1);
+    } finally {
+      await staffContext.close();
+    }
+  } else {
+    // Not fatal, but it must not pass quietly as though it had been checked.
+    test.info().annotations.push({
+      type: "unproven",
+      description:
+        "E2E_FORBIDDEN_MATTER_ID was never shown to exist: no staff account is configured to vouch for it. " +
+        "The refusals below are consistent with a wall AND with an id that names nothing.",
+    });
+  }
 
   // (a) The database. Zero rows is the pass; a row is a confidentiality breach.
   const res = await page.request.get(
     `${SUPABASE_URL}/rest/v1/matters?select=id,title,reference&id=eq.${FORBIDDEN_MATTER_ID}`,
-    { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } },
+    { headers: asClient },
   );
   expect([200, 401, 403]).toContain(res.status());
   if (res.status() === 200) {
@@ -408,7 +473,7 @@ test("a client cannot read another firm's matter, at the UI or the API", async (
   for (const table of ["messages", "documents", "updates", "invoices"]) {
     const r = await page.request.get(
       `${SUPABASE_URL}/rest/v1/${table}?select=id&matter_id=eq.${FORBIDDEN_MATTER_ID}`,
-      { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${token}` } },
+      { headers: asClient },
     );
     if (r.status() === 200) {
       expect(await r.json(), `RLS let a client read another firm's ${table}`).toEqual([]);

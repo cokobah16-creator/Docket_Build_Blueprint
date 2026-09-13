@@ -49,6 +49,17 @@ Why it could not be verified here, established by running the commands:
    can be right on the parent and wrong on what hangs off it. The UI check is
    the last of the three, not the only one.
 
+   **It now runs three positive controls first**, because every assertion in it
+   passes by reading zero rows and there are three uninteresting ways to read
+   zero rows. (i) The same query, same table, same headers, returns the client's
+   *own* matters — so the request shape and the session are known good. (ii) The
+   id under test is not one of the client's own, which would invert the test.
+   (iii) The id names a row that really exists: the staff account is asked to
+   read it, and if it cannot, the test **fails** rather than passing on a typo.
+   A deleted or mistyped matter id behaves exactly like a wall — zero rows,
+   "not found" in the UI, green all the way — and that is the failure this file
+   exists to make impossible.
+
 ## What a person must supply
 
 Nothing in this list can be inferred, and none of it exists in the repository.
@@ -68,10 +79,18 @@ post a message.
 - **A firm member** (a `firm_members` row) with **TOTP already enrolled**, and the
   base32 secret kept from enrolment. The secret cannot be recovered afterwards —
   if it was not kept, enrol again at `/firm/security/mfa` and keep it this time.
-- **A matter belonging to a third firm that does not act for the client**, for
-  journey 7. Its id must be a matter the client genuinely has no claim on; point
-  this at one of the client's own and the most important test in the file passes
-  while proving the reverse.
+- **A matter for journey 7 that the client has no claim on but the STAFF account
+  can see** — that is, a matter at the staff member's own firm to which the
+  client is not a party. Both halves matter: the client's zero rows prove the
+  wall, and the staff account being able to read the same row proves there was a
+  row to be refused. The test enforces both, so a mistyped or since-deleted id
+  now fails loudly instead of passing green.
+
+  A matter at some unrelated third firm also works as far as the client is
+  concerned, but nothing can then vouch that it exists, and the test says so.
+  It is also the weaker choice: cross-firm isolation is already asserted 66
+  times in `supabase/tests/10_rls_isolation.sql`, whereas the within-firm party
+  wall is only ever exercised here.
 
 ### A way to sign in without a human
 
@@ -103,7 +122,7 @@ export E2E_STAFF_PASSWORD=<their password>
 export E2E_STAFF_TOTP_SECRET=<base32 secret from enrolment>
 
 export E2E_SECOND_FIRM_NAME="<name of a second firm acting for the client>"
-export E2E_FORBIDDEN_MATTER_ID=<uuid of a matter at a firm that does NOT act for them>
+export E2E_FORBIDDEN_MATTER_ID=<uuid of a matter the client is not a party to but the staff account can read>
 ```
 
 ## Commands
