@@ -10,7 +10,7 @@
 // supabase/functions rather than in the Next app.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { buildCalendar, type IcsEvent } from '../../../src/lib/ics.ts';
+import { buildCalendar, type IcsEvent } from './ics.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',

@@ -1,0 +1,100 @@
+# Does the LIVE database still have everything the DEPLOYED front end names?
+#
+# WHY THIS EXISTS. On 13 September 2026 production was serving a front end that named 25 relations
+# and 56 functions the live database did not have. Migrations 34–49 had never been applied, and the
+# app had been deploying ahead of the schema for three merges. Nothing noticed. It was found by
+# hand, days later.
+#
+# scripts/check-deployed-reads.sh would have found it in seconds — it reads every .from("…"),
+# .rpc("…") and rest/v1/… name out of the code at a ref and asks a database whether each exists.
+# But CI only ever runs it in the `compat` job against a schema built LOCALLY from the migration
+# files, which by construction always has everything. The one comparison that mattered — deployed
+# code against the deployed database — was the one nobody made.
+#
+# This is that comparison, on a schedule, against production. It is the standing alarm for the
+# failure that actually happened.
+#
+# TO ARM IT, set one repository secret:
+#   LIVE_READONLY_DATABASE_URL   a READ-ONLY Postgres connection string to the production project
+#
+# Make it read-only and mean it: this workflow only ever runs SELECTs against catalogue tables, and
+# a credential in GitHub Actions that can write to a firm's matters is a credential in the wrong
+# place. The role also needs USAGE on the supabase_migrations schema for the ledger check below.
+#
+# Until the secret is set this workflow FAILS rather than skips. That is deliberate and it is the
+# whole point: a guard that reports success while unarmed is the defect it exists to catch. It runs
+# on a schedule only, so it never blocks a pull request — a red run here means the alarm is not
+# wired up, or production has drifted. Both are things somebody should know.
+
+name: Live schema drift
+
+on:
+  schedule:
+    # 06:00 UTC daily — 07:00 in Lagos, before the working day.
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: The live database has what the deployed front end names
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # check-deployed-reads.sh reads the code at a ref with `git grep`, so it needs history,
+          # not just the tip commit this workflow was dispatched on.
+          fetch-depth: 0
+
+      - name: Is the alarm armed?
+        env:
+          URL: ${{ secrets.LIVE_READONLY_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${URL:-}" ]; then
+            echo "::error::LIVE_READONLY_DATABASE_URL is not set, so nothing was checked against production."
+            echo "Set it to a READ-ONLY connection string for the production Supabase project."
+            echo "This job fails rather than skips on purpose: a guard that reports success while"
+            echo "unarmed is the same defect it exists to catch."
+            exit 1
+          fi
+
+      - name: Install the PostgreSQL 16 client
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-16
+
+      - name: Every relation and function main names must exist in the live database
+        # origin/main, not this workflow's ref: production deploys from main, so main's code is what
+        # is actually running and the only thing worth comparing the live schema against.
+        env:
+          URL: ${{ secrets.LIVE_READONLY_DATABASE_URL }}
+        run: bash scripts/check-deployed-reads.sh origin/main "$URL"
+
+      - name: And the migration ledger must have caught up with the repository
+        # The other half of what went wrong. The relation check above catches a screen reading
+        # something that is not there; this catches the more general case — migrations sitting in
+        # the repository that were never applied — including ones that add no new relation at all
+        # (a policy change, a trigger, a corrected function body), which the check above cannot see.
+        env:
+          URL: ${{ secrets.LIVE_READONLY_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+          files=$(ls supabase/migrations/*.sql | wc -l | tr -d '[:space:]')
+          applied=$(psql "$URL" -Atq -c "select count(*) from supabase_migrations.schema_migrations")
+          applied=$(printf '%s' "$applied" | tr -d '[:space:]')
+          echo "migration files in the repository: $files — entries in the live ledger: $applied"
+          if [ "$applied" -lt "$files" ]; then
+            echo "::error::$files migrations exist and only $applied have been applied. Production is"
+            echo "          running behind its own repository. Apply the rest before the next deploy —"
+            echo "          docs/DEPLOYMENT_RUNBOOK.md says schema first, then app, and this is why."
+            exit 1
+          fi

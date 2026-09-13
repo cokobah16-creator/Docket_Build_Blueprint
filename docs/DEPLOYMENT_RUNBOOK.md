@@ -40,6 +40,33 @@ tarball fetch, not on the metadata — so run `npm install <pkg>` somewhere that
 changed `package.json` and `package-lock.json` together. The `lockfile` CI job fails if the lockfile
 is missing, so a dependency added without it cannot merge.
 
+### 0c. Arm the live schema-drift alarm
+
+One repository secret, and it is the cheapest insurance in this runbook:
+
+```
+LIVE_READONLY_DATABASE_URL   a READ-ONLY Postgres connection string to the production project
+```
+
+`.github/workflows/live-schema-drift.yml` runs daily at 06:00 UTC and asks production two
+questions: does the live database have every relation and function the code on `main` names, and
+has the migration ledger caught up with the repository?
+
+**It exists because both answers were once no and nothing noticed.** On 13 September production was
+serving a front end that named 25 relations and 56 functions the live database did not have —
+migrations 34–49 had never been applied and the app had deployed ahead of the schema across three
+merges. `scripts/check-deployed-reads.sh` would have found it in seconds, but CI only ever ran it
+against a schema built locally from the migration files, which by construction always has
+everything. The comparison that mattered was the one nobody made.
+
+Make the role genuinely read-only: the workflow issues only `SELECT`s against catalogue tables, and
+a credential in GitHub Actions that could write to a firm's matters is a credential in the wrong
+place. It also needs `USAGE` on the `supabase_migrations` schema for the ledger count.
+
+**Until the secret is set, the job fails rather than skips.** That is deliberate: a guard that
+reports success while unarmed is the defect it exists to catch. It runs on a schedule only, so it
+never blocks a pull request.
+
 ### 0b. Turn on leaked-password protection and auth rate limits
 
 Both live in the Supabase dashboard and neither has a migration, an API call in this repository, or
@@ -248,7 +275,7 @@ supabase functions deploy video-session           --project-ref <ref>
   should ever hold.
 - **`extract-text`** is called by `pg_cron` every five minutes with the same `x-cron-secret`
   (migration 48). It claims a bounded batch of current document versions, downloads each object,
-  reads the words out of it with `src/lib/extract.ts`, and hands the answer back. It needs
+  reads the words out of it with the `extract.ts` beside it, and hands the answer back. It needs
   `vault.create_secret('https://<ref>.supabase.co/functions/v1/extract-text', 'extract_text_url')`
   and is a no-op until that and `cron_secret` both exist.
 - **`video-session`** is called by signed-in people and reads the `Authorization` header itself, so
@@ -757,12 +784,16 @@ applied in order and the gap closed to zero, checked by the same query
   `validate_notification_templates`, `set_member_role`, `set_firm_domain`, `create_invoice`,
   `invite_matter_party`) carry no SQL comments live. Comment-stripped, all seven are identical
   character for character; their signatures match; nothing behavioural differs.
-- **Two deployed functions import their shared module from beside them**, not from `src/lib/`:
+- **Two deployed functions imported their shared module from beside them**, not from `src/lib/`:
   `calendar-feed` carries `ics.ts` and `extract-text` carries `extract.ts` in the function folder,
   because the deploy used the Supabase MCP (which bundles only what is inside the function) rather
-  than the CLI (which follows the repo path). The module contents are byte-identical to
-  `src/lib/ics.ts` and `src/lib/extract.ts`; only the one import line differs. A later
-  `supabase functions deploy calendar-feed` from a checkout restores the repo's own spelling.
+  than the CLI (which follows the repo path). The contents were byte-identical; only the one import
+  line differed. **Closed on 13 Sep by moving the two modules into their function folders**, where
+  what is deployed is now what is reviewed. That mattered more than it looked: CI type-checks the
+  repo's copy, so while the two differed, an edit to `src/lib/extract.ts` would compile, pass every
+  job, merge, and change nothing whatever about what actually runs — a third check that could not
+  fail. Neither module was ever imported by `app/` or `src/`; only the two functions and their
+  `scripts/check-*.ts` used them, so the move cost nothing and removed the split at its root.
 
 `extract_text_url` and `partner_webhooks_url` were added to Vault so `docket-extract-text` and
 `docket-partner-webhooks` stop being no-ops; `cron_secret` is unchanged and is still the only
