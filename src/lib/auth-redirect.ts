@@ -56,6 +56,21 @@ export function safeNext(raw: string | null | undefined): string | null {
   return raw;
 }
 
+/**
+ * Which sign-in screen a path belongs behind.
+ *
+ * /auth/callback is shared — the client's magic link and, now, a staff password-recovery link both
+ * land on it — so when it has to send somebody back to sign in, "back" is not one fixed place. It
+ * was, briefly: the failure redirect was written as loginHref("client", next), which would have
+ * dropped a lawyer whose recovery link expired onto the client portal's sign-in screen, asking for
+ * the phone number of a person who does not have one here.
+ */
+export function surfaceFor(path: string | null | undefined): Surface {
+  const p = path ?? "";
+  const staff = ["/firm", "/admin", "/registry"];
+  return staff.some((prefix) => p === prefix || p.startsWith(`${prefix}/`)) ? "staff" : "client";
+}
+
 /** The sign-in URL for a surface, carrying `next` when there is one worth carrying. */
 export function loginHref(surface: Surface, next?: string | null): string {
   const target = safeNext(next);

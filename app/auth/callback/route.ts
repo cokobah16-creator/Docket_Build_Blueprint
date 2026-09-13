@@ -20,7 +20,7 @@
 import { NextResponse, after } from "next/server";
 import { cookies } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
-import { loginHref, safeNext } from "@/lib/auth-redirect";
+import { loginHref, safeNext, surfaceFor } from "@/lib/auth-redirect";
 import { callbackReason } from "@/lib/auth-errors";
 import { VISITOR_COOKIE, identify } from "@/lib/observability";
 
@@ -57,8 +57,10 @@ export async function GET(request: Request) {
 
   if (reason) {
     // Back to sign-in with the destination still attached, so a second attempt — by link or by the
-    // code in the same email — still ends up where the first one was going.
-    const back = new URL(loginHref("client", next), url.origin);
+    // code in the same email — still ends up where the first one was going. Which sign-in screen
+    // depends on where the link was heading: this route carries a client's magic link and a
+    // member of staff's password-recovery link alike.
+    const back = new URL(loginHref(surfaceFor(next), next), url.origin);
     back.searchParams.set("reason", reason);
     return NextResponse.redirect(back);
   }

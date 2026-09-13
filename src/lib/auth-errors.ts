@@ -324,3 +324,78 @@ export function callbackReason(params: {
   if (!hasCode) return null;
   return null;
 }
+
+// ---------------------------------------------------------------------------------------------
+// Staff password recovery
+// ---------------------------------------------------------------------------------------------
+
+/** The shortest new password the console will set. Staff hold other people's confidences. */
+export const MIN_PASSWORD_LENGTH = 12;
+
+/**
+ * Said after a reset request WHATEVER HAPPENED, including when the address belongs to nobody.
+ *
+ * The same refusal the rest of this file makes, and the one place it is most tempting to break:
+ * "no account with that email" is the single most useful sentence an attacker can be given, and
+ * on this screen it would confirm which addresses are staff of which firm. GoTrue already answers
+ * a reset request the same way either way; this sentence is written so the UI cannot accidentally
+ * be more helpful than the server.
+ */
+export const RESET_REQUESTED =
+  "If that address belongs to a Docket staff account, a sign-in link is on its way. " +
+  "It is good for one use. Check the spam folder if it is slow.";
+
+/** The new password is not long enough, or the project's own policy refused it. */
+export const PASSWORD_TOO_WEAK =
+  `Choose a longer password — at least ${MIN_PASSWORD_LENGTH} characters, and not one you use anywhere else.`;
+
+/** The two fields disagree. Said by the form, never by the server. */
+export const PASSWORD_MISMATCH = "Those two passwords are not the same.";
+
+/** The recovery link did not leave a session behind, so there is nothing to change the password of. */
+export const RESET_LINK_DEAD =
+  "This password link is no longer valid. Ask for a new one — a link works once, and only in the " +
+  "browser that asked for it.";
+
+/** GoTrue wants proof of life beyond the recovery session before it will take a new password. */
+export const REAUTH_SENT =
+  "For safety, confirm the 6-digit code we have just emailed you, then the new password will be set.";
+
+/**
+ * What went wrong setting a new password.
+ *
+ * `needsNonce` is the one the caller must act on rather than print. GoTrue can require a fresh
+ * proof of identity before a password change even inside a recovery session — the project sets
+ * security_update_password_require_reauthentication, and whether a recovery session counts as
+ * "recently logged in" is a question the server answers, not one this code can decide. So the
+ * caller asks for the nonce and tries again rather than telling a locked-out lawyer to give up.
+ */
+export function passwordProblem(failure: AuthFailureShape): { text: string; needsNonce?: boolean } {
+  const code = (failure.code ?? "").trim().toLowerCase();
+  const message = failure.message ?? "";
+  const says = (pattern: RegExp) => pattern.test(message);
+
+  if (code === "reauthentication_needed" || says(/requires reauthentication|reauthentication needed/i)) {
+    return { text: REAUTH_SENT, needsNonce: true };
+  }
+  if (code === "reauthentication_not_valid" || says(/nonce.*(invalid|expired)|invalid nonce/i)) {
+    return { text: "That code did not work. Check the six digits, or ask for a new link." };
+  }
+  // BEFORE the weak-password rule, and the regex below is narrow for the same reason: GoTrue says
+  // "New password should be different from the old password", which the obvious /password should
+  // be/ pattern swallows whole — telling somebody who reused their password to make it longer,
+  // which they can do without ever fixing what was actually wrong.
+  if (code === "same_password" || says(/different from the old password/i)) {
+    return { text: "That is the password you already have. Choose a different one." };
+  }
+  if (code === "weak_password" || says(/password should be at least|weak password|at least \d+ characters/i)) {
+    return { text: PASSWORD_TOO_WEAK };
+  }
+  if (code === "session_not_found" || code === "session_expired" || failure.status === 401) {
+    return { text: RESET_LINK_DEAD };
+  }
+  if (code === "over_request_rate_limit" || failure.status === 429) {
+    return { text: TOO_MANY_TRIES };
+  }
+  return { text: SIGN_IN_TROUBLE };
+}
