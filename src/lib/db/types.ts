@@ -1359,3 +1359,30 @@ export interface CollaborationNoteRow {
   body: string;
   created_at: string;
 }
+
+/** api_credentials (migration 46). The key itself is never here — only its hash, which is not selected. */
+export interface ApiCredentialRow {
+  id: string;
+  firm_id: string;
+  name: string;
+  key_prefix: string;
+  scopes: string[];
+  /** A calendar day. Never rendered through a timezone. */
+  expires_on: string | null;
+  last_used_at: string | null;
+  created_at: string;
+  revoked_at: string | null;
+  revoke_reason: string | null;
+}
+
+/** api_endpoint_list() (migration 46): everything about an endpoint except what signs it. */
+export interface ApiEndpointSummary {
+  id: string;
+  url: string;
+  types: string[];
+  active: boolean;
+  created_at: string;
+  pending: number;
+  failed: number;
+  delivered: number;
+}

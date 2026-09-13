@@ -558,6 +558,35 @@ served firm through `is_served_firm`, and now `is_collaborating_firm`. A version
 with three arms means an edit dropped one, and somebody has quietly lost access to their own
 documents. Suite `96_document_reads.sql` and `99_collaboration.sql` both exercise it.
 
+**46 goes before the app**, because the Partner API screen calls four new RPCs. It also adds two
+Edge Functions and a cron job, none of which do anything until they are deployed and their address
+is stored:
+
+1. `supabase functions deploy partner-api` — served at
+   `https://<ref>.supabase.co/functions/v1/partner-api`. It needs `verify_jwt` OFF, because partners
+   authenticate with a Docket key rather than a Supabase JWT: `supabase functions deploy partner-api --no-verify-jwt`.
+2. `supabase functions deploy partner-webhooks --no-verify-jwt` — the pusher. It refuses anything
+   without the right `x-cron-secret`, which is the same secret the dispatcher uses.
+3. Store the pusher's address so the cron job stops being a no-op:
+   `select vault.create_secret('https://<ref>.supabase.co/functions/v1/partner-webhooks', 'partner_webhooks_url');`
+   Until that secret exists the job runs and posts nowhere, by design.
+
+**Proves it worked:** `curl https://<ref>.supabase.co/functions/v1/partner-api` returns the version
+document — `{"version":"v1","read_only":true,"sandbox":false,…}` — with no key at all, because that
+one path is the only unauthenticated thing it serves. `curl -H 'Authorization: Bearer nonsense'
+https://<ref>.supabase.co/functions/v1/partner-api/v1/matters` returns 403 `unauthorized`. And with
+a real key issued from `/firm/admin/api`, the same call returns that firm's matters and no other
+firm's.
+
+One thing to check rather than assume, because the whole design rests on it:
+
+```sql
+select proname, proacl from pg_proc where proname in ('api_authorize', 'api_v1_matters');
+```
+
+Neither may be executable by `anon` or `authenticated`. They are the service role's alone — the API
+function calls them, and a signed-in person must never be able to hand them a key directly.
+
 | | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
 |---|---|---|
 | **App** | `bcc1dc8` (the merge of PR #20), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
