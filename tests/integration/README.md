@@ -60,6 +60,25 @@ Why it could not be verified here, established by running the commands:
    "not found" in the UI, green all the way — and that is the failure this file
    exists to make impossible.
 
+## Provisioning it
+
+`scripts/seed-staging-fixtures.mjs` makes everything in the next section from an empty project,
+through the product's own doors — `create_firm()`, `set_firm_status()`, `staff_invites` +
+`accept_staff_invite()`, `invite_matter_party()` + `accept_invite()`, `open_matter()` — and prints
+the environment block at the end, including the TOTP secret that cannot be recovered afterwards.
+
+```sh
+SUPABASE_URL=https://<staging-ref>.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=... SUPABASE_ANON_KEY=... \
+  node scripts/seed-staging-fixtures.mjs
+```
+
+**It has never been run.** Its signatures were read out of `supabase/migrations/` and
+`docs/RPC_REFERENCE.md` rather than remembered, but nothing has executed it end to end. Until it
+has, the list below is still what somebody does by hand, and a first clean run is what turns the
+script into the answer. Two things it does not do either way: journey 6's second firm, and the
+Supabase SMS test number, which is provider configuration rather than data.
+
 ## What a person must supply
 
 Nothing in this list can be inferred, and none of it exists in the repository.
