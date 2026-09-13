@@ -67,10 +67,20 @@ echo "database: $suites suites, $total assertions, $migrations migrations"
 # README states all three. A number in prose nobody checks is a number that drifts: this one said
 # "forty-nine migrations" while fifty-one were applying.
 # Commas are stripped first, so "1,416" in prose matches 1416 here.
+#
+# THE HERE-STRING IS LORE, NOT STYLE. This was `printf '%s' "$readme" | grep -qE ...` and it failed
+# CI at random, reporting the exact opposite of what it found: "README.md does not state 51
+# migrations" on a README whose seventh line says "all 51 migrations". grep -q exits the instant it
+# matches, and every one of these numbers matches early — so grep closed the read end while printf
+# still had 30-odd KB of README to push, printf died of EPIPE, and `set -o pipefail` took that as
+# the pipeline's verdict and ran the || branch. The check was reporting printf's death as a missing
+# number. Whether it happened at all came down to whether printf's write landed in the pipe buffer
+# before grep gave up on it, which is why the same commit could be red on push and green on the
+# pull request. A here-string is not a pipe: nothing can die upstream of the grep.
 readme=$(tr -d ',' < README.md)
 for pair in "$migrations:migrations" "$suites:suites" "$total:assertions"; do
   n="${pair%%:*}"; what="${pair#*:}"
-  printf '%s' "$readme" | grep -qE "(^|[^0-9])$n([^0-9]|$)" || {
+  grep -qE "(^|[^0-9])$n([^0-9]|$)" <<< "$readme" || {
     echo "::error::README.md does not state $n $what. Update it — the counts in prose must be the counts that ran."
     status=1
   }
