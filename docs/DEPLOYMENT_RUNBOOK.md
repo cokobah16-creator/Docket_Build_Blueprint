@@ -22,6 +22,9 @@ secret set on Vercel, or a Vercel variable set with `supabase secrets set`.
 
 ## 0. What cannot be done from here
 
+*Which project is which — production, staging, and what may point at each — is
+`docs/ENVIRONMENTS.md`. Read it before pointing anything anywhere.*
+
 ### 0a. `package-lock.json` — **done, 11 September 2026** (`189e1dc`)
 
 Kept as a record rather than deleted, because the reason it was once a manual step still applies to
