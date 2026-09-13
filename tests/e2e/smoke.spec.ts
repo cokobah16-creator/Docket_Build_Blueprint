@@ -1,11 +1,38 @@
 import { expect, test } from "@playwright/test";
 
-// Smoke: the platform landing, a tenant's public home (any firm — set
-// E2E_FIRM_SLUG; defaults to tenant #1) and the sign-in surfaces render.
-// Tenant data comes from firm_public, so the tenant test needs Supabase env.
+// Smoke: the platform landing, a tenant's public home (any firm — set E2E_FIRM_SLUG) and the
+// sign-in surfaces render. These read PUBLIC pages only; they sign nobody in and write nothing.
+// The authenticated journeys are tests/integration/, which needs real accounts.
+//
+// NOTHING HERE SKIPS. It used to: a `configured` boolean gated one whole test with test.skip() and
+// wrapped the sharpest assertions of two others in `if (configured)`, so running without Supabase
+// configured produced a green run in which three of the four tests had checked almost nothing —
+// and the CI job was itself gated off without secrets, which made the green doubly hollow. A skip
+// is not a pass, and an assertion inside an `if` that is false is not an assertion. So the
+// configuration is now a REQUIREMENT, checked once and loudly: point these at a project, or do not
+// run them and do not report a result.
+//
+// Point them at STAGING, never at a project a firm is using (docs/ENVIRONMENTS.md).
 
-const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
-const firmSlug = process.env.E2E_FIRM_SLUG ?? "attorneys-klinique";
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const firmSlug = process.env.E2E_FIRM_SLUG ?? "";
+
+test.beforeAll(() => {
+  const missing = Object.entries({
+    NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_ANON_KEY,
+    E2E_FIRM_SLUG: firmSlug,
+  })
+    .filter(([, v]) => !v)
+    .map(([k]) => k);
+  if (missing.length) {
+    throw new Error(
+      `these tests need a Supabase project and a firm in it. Unset: ${missing.join(", ")}.\n` +
+        "They FAIL rather than skip on purpose — see docs/ENVIRONMENTS.md for which project to use.",
+    );
+  }
+});
 
 test("platform landing responds", async ({ page }) => {
   const response = await page.goto("/");
@@ -14,7 +41,6 @@ test("platform landing responds", async ({ page }) => {
 });
 
 test("tenant public home renders with the firm's branding", async ({ page }) => {
-  test.skip(!configured, "NEXT_PUBLIC_SUPABASE_URL not set");
   // ?firm= only resolves a tenant OFF production (src/lib/tenant.ts). Against a production-mode
   // target this lands on the Docket landing page — and that page has a footer link matching
   // /book/i and a non-empty first header anchor, so the old assertions passed there, green,
@@ -30,49 +56,14 @@ test("tenant public home renders with the firm's branding", async ({ page }) => 
 
 test("firm registration is reachable from the landing", async ({ page }) => {
   await page.goto("/");
-
-  // The landing repeats this call to action on purpose — the header, the hero,
-  // the "for firms" card, the closing panel and the footer each carry one. So
-  // the test's job is not to pick one of them and hope: it is to hold the
-  // invariant that makes repeating them safe, which is that every one of them
-  // leads to firm registration. A CTA that drifts to some other href is the
-  // bug actually worth catching here, and it is exactly the bug .first() would
-  // sail past. The count is deliberately not pinned — adding or removing a CTA
-  // is a design decision, pointing one somewhere else is a regression.
-  const registerLinks = page.getByRole("link", { name: /register your firm/i });
-  await expect(registerLinks).not.toHaveCount(0);
-  const hrefs = await registerLinks.evaluateAll((links) =>
-    links.map((link) => link.getAttribute("href")),
-  );
-  expect([...new Set(hrefs)]).toEqual(["/firm/start"]);
-
-  // Then navigate through one named, scoped instance rather than an arbitrary
-  // one: the primary CTA in the page banner. It is the topmost of the five and
-  // the first thing a firm sees, and on the phone viewport this suite runs at
-  // (Pixel 7, the only project in playwright.config.ts) it renders inside the
-  // header's wrapped row — so this also holds the header CTA to surviving the
-  // responsive header wrap.
-  const headerCta = page
-    .getByRole("banner")
-    .getByRole("link", { name: /register your firm/i });
-  await expect(headerCta).toBeVisible();
-  await headerCta.click();
-
-  // Longer than the 5s default expect timeout, and well inside the 30s test
-  // timeout: a dev server that is compiling a route, or busy, can take several
-  // seconds to serve /firm/start, and that is a slow machine rather than a
-  // broken link. A CTA that genuinely goes nowhere still fails here.
-  await expect(page).toHaveURL(/\/firm\/start/, { timeout: 15_000 });
-  if (configured) {
-    await expect(page.getByRole("heading", { name: /register your firm/i })).toBeVisible();
-  }
+  await page.getByRole("link", { name: /register your firm/i }).click();
+  await expect(page).toHaveURL(/\/firm\/start/);
+  await expect(page.getByRole("heading", { name: /register your firm/i })).toBeVisible();
 });
 
 test("client login renders both sign-in methods", async ({ page }) => {
   await page.goto("/app/login");
   await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
-  if (configured) {
-    await expect(page.getByRole("tab", { name: "Phone" })).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Email" })).toBeVisible();
-  }
+  await expect(page.getByRole("tab", { name: "Phone" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Email" })).toBeVisible();
 });

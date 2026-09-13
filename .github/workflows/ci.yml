@@ -402,9 +402,10 @@ jobs:
   # TO TURN IT ON, set three repository secrets:
   #   NEXT_PUBLIC_SUPABASE_URL       the project URL
   #   NEXT_PUBLIC_SUPABASE_ANON_KEY  its anon / publishable key
-  #   E2E_FIRM_SLUG                  the slug of a firm that is ACTIVE in that project — the
-  #                                  fallback in the spec file names one particular firm, which
-  #                                  will not exist in your project
+  #   E2E_FIRM_SLUG                  the slug of a firm that is ACTIVE in that project. There is
+  #                                  no fallback: the spec REFUSES to run without it, because a
+  #                                  default naming one particular firm silently tested the wrong
+  #                                  thing in anybody else's project
   #
   # These tests only read public pages. They sign nobody in and write nothing. Even so, point
   # them at a staging project rather than the one your firms are using.
