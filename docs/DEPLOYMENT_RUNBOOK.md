@@ -10,8 +10,9 @@ You will need, before you start:
 - a Paystack account (the **platform's** account — each firm settles to its own subaccount under it)
 - a Daily account, a Resend account, a Termii account, and a Twilio account if you have clients on
   non-Nigerian numbers
-- somewhere with **npm registry access** — see step 0, which cannot be done from inside this
-  project's build environment
+- somewhere with **npm registry access**, if you intend to add or upgrade a dependency — the
+  lockfile is committed and `npm ci` needs nothing else, but this project's own build environment
+  cannot reach the registry, so a dependency change has to be made elsewhere
 
 Everything Docket reads from the environment is catalogued in `.env.example`, grouped by which of
 the three runtimes reads it. Read it before step 5; the most common deployment fault is a function
@@ -19,32 +20,25 @@ secret set on Vercel, or a Vercel variable set with `supabase secrets set`.
 
 ---
 
-## 0. Two things that cannot be done from here
+## 0. What cannot be done from here
 
-These are not optional and they are not reachable from the environment this repository was built
-in. Do them somewhere they can be done, and tick them off explicitly.
+### 0a. `package-lock.json` — **done, 11 September 2026** (`189e1dc`)
 
-### 0a. Generate `package-lock.json`
+Kept as a record rather than deleted, because the reason it was once a manual step still applies to
+anyone changing a dependency.
 
-There is no lockfile in this repository. It was built with the npm registry closed, and a lockfile
-cannot be written without resolving against the registry. Without one:
+The lockfile is committed (81 KB) and **CI installs with `npm ci` everywhere** — the `lockfile`,
+`typecheck`, `routes` and `e2e` jobs all use it, and `cache: npm` is keyed off it on every
+`actions/setup-node` step. So the same commit installs the same tree twice, and `npm audit`,
+Dependabot and any SCA tool have a pinned surface to read.
 
-- `npm ci` does not work anywhere, including in CI — `.github/workflows/ci.yml` runs `npm install`
-  instead and says so in a comment;
-- `actions/setup-node`'s npm cache cannot be keyed, so every CI run re-resolves;
-- two deploys of the same commit can install different transitive versions.
+There is nothing to do here on a fresh deployment: Vercel picks the lockfile up on its own.
 
-On a machine with registry access, from a clean checkout:
-
-```bash
-rm -rf node_modules
-npm install
-git add package-lock.json
-git commit -m "Add the lockfile: the same commit installs the same tree twice"
-```
-
-Then change `.github/workflows/ci.yml`: `npm install --no-audit --no-fund` becomes `npm ci`, and
-`cache: npm` goes back on the `actions/setup-node` step. Vercel picks the lockfile up on its own.
+What still needs a machine with registry access is **adding or upgrading a dependency**. This
+project's build environment cannot reach the registry — `npm ci` there fails with a 403 on the
+tarball fetch, not on the metadata — so run `npm install <pkg>` somewhere that can, and commit the
+changed `package.json` and `package-lock.json` together. The `lockfile` CI job fails if the lockfile
+is missing, so a dependency added without it cannot merge.
 
 ### 0b. Turn on leaked-password protection and auth rate limits
 
@@ -744,16 +738,48 @@ select proname, proacl from pg_proc where proname in ('registry_notice_fanout', 
 `registry_notice_fanout` may be executable by nobody but the definer; `registry_pilot_health` by
 `authenticated` (it refuses inside, by `is_platform_admin()`).
 
-| | As of 11 Sep 2026, 16:40 UTC | Reconciled against |
+| | As of 13 Sep 2026, 16:05 UTC | Reconciled against |
 |---|---|---|
-| **App** | `bcc1dc8` (the merge of PR #20), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
-| **Schema** | Migrations **1–33**, all applied: 35 ledger entries (`20260909000001_schema` … `wave_two_review`, plus the two unnumbered `consultations` and `client_portal`). 30 (`document_reads`) was applied last, after this deploy was READY, per the ordering rule above; 29, 31, 32 and 33 had gone live ahead of their front end, each default-off or additive | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
-| **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v8** (renders `document_requested` / `document_received`) · `video-session` **v2** · `storage-manifest` **v1** (`storage_manifest_url` in Vault; `docket-storage-manifest` runs `*/10 * * * *`) | MCP `list_edge_functions`; `cron.job`; `cron.job_run_details` |
+| **App** | `68439d9` (the merge of PR #23), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
+| **Schema** | Migrations **1–49**, all applied: 51 ledger entries (`20260909000001_schema` … `court_registry`, plus the two unnumbered `consultations` and `client_portal`). 34–49 were applied together on 13 Sep after the app had already deployed — the wrong order, recorded below rather than smoothed over | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
+| **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v9** (renders every event through Wave 4f, `registry_notice_received` / `registry_notice_withdrawn` included) · `video-session` **v2** · `storage-manifest` **v1** · `calendar-feed` **v1** · `delivery-receipts` **v1** · `extract-text` **v1** · `partner-api` **v1** · `partner-webhooks` **v1**. Nine functions, eight `--no-verify-jwt`; `video-session` is the only one that keeps JWT verification on | MCP `list_edge_functions`; `cron.job`; `cron.job_run_details` |
+
+**How this release was reconciled, and the two things it found.** The app had been deploying ahead
+of the schema since Wave 3a: on 13 Sep the front end on `main` named **25 relations and 56
+functions the live database did not have**, every one of them created by 34–49. The migrations were
+applied in order and the gap closed to zero, checked by the same query
+`scripts/check-deployed-reads.sh` makes. Two findings worth keeping:
+
+- **Live and the repo now agree, with one cosmetic exception.** A full structural diff of the live
+  schema against a locally built 49-migration reference — relations, columns, policies, triggers,
+  indexes, constraints, API-role grants, and the md5 of every function body — matches exactly, save
+  that seven functions first applied by migrations 18–21 (`rate_limit_hit`, `validate_policies`,
+  `validate_notification_templates`, `set_member_role`, `set_firm_domain`, `create_invoice`,
+  `invite_matter_party`) carry no SQL comments live. Comment-stripped, all seven are identical
+  character for character; their signatures match; nothing behavioural differs.
+- **Two deployed functions import their shared module from beside them**, not from `src/lib/`:
+  `calendar-feed` carries `ics.ts` and `extract-text` carries `extract.ts` in the function folder,
+  because the deploy used the Supabase MCP (which bundles only what is inside the function) rather
+  than the CLI (which follows the repo path). The module contents are byte-identical to
+  `src/lib/ics.ts` and `src/lib/extract.ts`; only the one import line differs. A later
+  `supabase functions deploy calendar-feed` from a checkout restores the repo's own spelling.
+
+`extract_text_url` and `partner_webhooks_url` were added to Vault so `docket-extract-text` and
+`docket-partner-webhooks` stop being no-ops; `cron_secret` is unchanged and is still the only
+credential those two functions accept.
 
 Migration ledger names are the file names for 1–21 and short names after: `wave_two_review` is
 `20260910000033_wave_two_review.sql`, `conflict_checks` 32, `document_requests` 31, `matter_walls` 29, `storage_manifest` 28, `structured_client_update` 27,
 `next_action_work_item` 26, `message_reads` 25, `wave_zero_doors` 24, `booking_limit_in_the_rpc` 23,
-`member_and_message_invariants` 22.
+`member_and_message_invariants` 22. The same convention continues through 49:
+`onboarding_and_import` 34, `pre_consultation_checkin` 35, `drafts_and_retries` 36,
+`notifications_reliability` 37, `legal_diary` 38, `workflow_packs` 39,
+`document_templates_and_execution` 40, `pilot_baseline` 41, `invoice_doors` 42, `search` 43,
+`verified_delegation` 44, `collaboration` 45, `partner_api` 46, `calendar_feed` 47,
+`document_text` 48, `court_registry` 49.
+
+Previous: app `bcc1dc8` against 1–33 (11 Sep, 16:40 UTC) — and then three merges (#21, #22, #23) shipped
+app code for Waves 3a–4f while the schema stayed at 33, which is the drift the entry above closes.
 
 Previous: app `2adae58` against 1–29 and 31–33 (16:28 UTC — the record as first written said 16:50, ahead of its own commit); app `2adae58` against 1–28 (13:35 UTC).
 

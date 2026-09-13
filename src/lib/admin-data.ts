@@ -21,7 +21,7 @@ export interface Read<T> {
   error: string | null;
 }
 import type {
-  DomainRequestRow, FailedNotificationRow, FirmAdminRow, NotificationHealthRow, SettlementHealthRow, StorageIntegrity, WebhookEventRow, NotificationCostRow, FirmActiveMattersRow, ProviderRateRow,
+  DomainRequestRow, FailedNotificationRow, FirmAdminRow, NotificationHealthRow, SettlementHealthRow, StorageIntegrity, WebhookEventRow, NotificationCostRow, FirmActiveMattersRow, ProviderRateRow, RegistryPilotHealthRow,
 } from "@/lib/db/types";
 
 export interface PlatformContext {
@@ -178,4 +178,18 @@ export async function deploymentHost(): Promise<string> {
 export async function storageIntegrity(supabase: SupabaseClient): Promise<{ summary: StorageIntegrity | null; error: string | null }> {
   const { data, error } = await supabase.rpc("storage_integrity");
   return { summary: (data ?? null) as StorageIntegrity | null, error: error?.message ?? null };
+}
+
+/**
+ * The court-registry pilot, measured: registry_pilot_health() (migration 49). The counts
+ * docs/COURT_REGISTRY_PILOT.md §4 says the pilot is judged by, asked of the rows rather than
+ * gathered by hand. Same rule as above — a failed read is a failure, not zeros, because zeros here
+ * would read as "the registry has published nothing" when the truth is that nobody could look.
+ *
+ * The function is `security definer` and filters on is_platform_admin() internally, so a caller
+ * who is not one gets no rows rather than an error. That is the intended answer, not a fault.
+ */
+export async function registryPilotHealth(supabase: SupabaseClient): Promise<{ rows: RegistryPilotHealthRow[]; error: string | null }> {
+  const { data, error } = await supabase.rpc("registry_pilot_health");
+  return { rows: (data ?? []) as RegistryPilotHealthRow[], error: error?.message ?? null };
 }

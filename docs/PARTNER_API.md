@@ -9,6 +9,11 @@ complete event feed, behind a scoped key the firm issues and can revoke.
 nothing here has been exercised against a real integration. Read that as the current state, not as
 modesty.
 
+**For a generator** there is an OpenAPI 3.1 document at `docs/partner-api.v1.yaml`, transcribed
+from the function and the migration rather than written beside them. This page is the same
+contract for a person. `scripts/check-openapi-routes.sh` fails CI if the two ever describe
+different routes.
+
 ---
 
 ## What this is, and what it is not
@@ -191,6 +196,7 @@ because an API key is a credential somebody will eventually paste into a script 
 ## Related
 
 - `supabase/migrations/20260910000046_partner_api.sql` — the credentials, the scopes, the feed and the gate
+- `docs/partner-api.v1.yaml` — the same contract as OpenAPI 3.1, for a client generator
 - `supabase/functions/partner-api/index.ts` — the pipe
 - `supabase/functions/partner-webhooks/index.ts` — the signed push
 - `supabase/tests/99_partner_api.sql` — what is asserted about all of it

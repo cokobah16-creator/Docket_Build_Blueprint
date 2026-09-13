@@ -11,8 +11,11 @@
 //
 // WHAT IT IS NOT. There is no sandbox: a sandbox is a second environment with its own data, Docket
 // has no staging project yet, and something called a sandbox that is really production with a
-// different key would be worse than none. There are no writes in v1. Both are said in the OpenAPI
-// document too, so a partner reads it before building rather than after.
+// different key would be worse than none. There are no writes in v1. Both are said as DATA in the
+// discovery response — `read_only` and `sandbox` — so a partner's own code can read them rather
+// than a person reading prose, and both are in docs/partner-api.v1.yaml, the OpenAPI document.
+// scripts/check-openapi-routes.sh asserts that document and the ROUTES table below describe the
+// same four routes, so neither can quietly fall behind the other.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
