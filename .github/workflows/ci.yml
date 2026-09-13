@@ -327,13 +327,14 @@ jobs:
         run: deno run --node-modules-dir=none scripts/check-pdf.ts
 
       - name: The calendar writer holds
-        # src/lib/ics.ts is the other dependency-free writer between Docket and somebody's day, and
+        # calendar-feed/ics.ts is the other dependency-free writer between Docket and somebody's day,
+        # and
         # every way it fails is silent: a calendar app meeting a bad line shows the wrong thing or
         # nothing, and the thing not shown is a court date. Run, not merely compiled.
         run: deno run --node-modules-dir=none scripts/check-ics.ts
 
       - name: The extractor holds
-        # src/lib/extract.ts decides what a firm can find inside its own files, and it fails
+        # extract-text/extract.ts decides what a firm can find inside its own files, and it fails
         # quietly in both directions: mojibake indexed as text, or a readable document recorded as
         # unreadable. The sharpest assertion in it is a ROUND TRIP — pdf.ts writes a PDF and
         # extract.ts reads the words back out — so the two modules check each other against a real

@@ -5,13 +5,13 @@
 // concludes the search box does not work. A DOCX whose runs are joined without their spaces gives
 // "thepartiesagree", which is worse than no text at all because it looks like a hit.
 //
-// The sharpest check here is the ROUND TRIP: src/lib/pdf.ts writes a PDF, src/lib/extract.ts reads
+// The sharpest check here is the ROUND TRIP: src/lib/pdf.ts writes a PDF, the extractor reads
 // it back, and the words that went in must come out. Two modules Docket owns, checking each other
 // against a real file rather than against a fixture somebody hand-wrote to pass.
 
 import {
   contentStreamText, decodeText, docxText, extractText, familyOf, looksLikeProse, normalise, pdfText, zipMember,
-} from "../src/lib/extract.ts";
+} from "../supabase/functions/extract-text/extract.ts";
 import { textPdf } from "../src/lib/pdf.ts";
 
 let failures = 0;

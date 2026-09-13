@@ -3,7 +3,7 @@
 // Called by pg_cron with the same x-cron-secret the dispatcher and the storage manifest use. It
 // holds no rule: claim_document_text() decides which versions are next and record_document_text()
 // decides what may be written, and both refuse any caller that has an auth.uid() at all. This
-// function's whole job is to fetch the object and hand src/lib/extract.ts's answer back.
+// function's whole job is to fetch the object and hand extract.ts's answer back.
 //
 // WHY IT DOES NOT WRITE A DOCUMENT READ. Migration 30 requires a document_reads row before any
 // bytes reach a PERSON. A machine hashing or reading a file for the firm's own index is not a
@@ -12,7 +12,7 @@
 // this way for the same reason.
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
-import { extractText } from '../../../src/lib/extract.ts';
+import { extractText } from './extract.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',

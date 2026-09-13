@@ -164,6 +164,6 @@ the truth lives.
 
 - `supabase/migrations/20260910000047_calendar_feed.sql` — the built connector
 - `supabase/functions/calendar-feed/index.ts` — what serves it
-- `src/lib/ics.ts`, `scripts/check-ics.ts` — the writer, and what is asserted about it
+- `supabase/functions/calendar-feed/ics.ts`, `scripts/check-ics.ts` — the writer, and what is asserted about it
 - `supabase/tests/99_calendar_feed.sql` — the wall, the rotation, the leaver, the client's name
 - `docs/CLIENT_MONEY_DESIGN.md` — the same shape of document, for the same reason

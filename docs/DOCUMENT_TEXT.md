@@ -8,7 +8,7 @@ software; section 4 is a decision with a price on it and is nobody's to take qui
 ## 1. What is built
 
 Migration 43 built search and said in its own header what it did not do: *"a document matches on its
-name and nothing else."* It no longer does. `src/lib/extract.ts` reads the words out of an uploaded
+name and nothing else."* It no longer does. `supabase/functions/extract-text/extract.ts` reads the words out of an uploaded
 file, and `search_docket()` matches on them.
 
 | Kind of file | What happens | How good it is |
@@ -26,7 +26,7 @@ of plausible-looking characters that are not words. `looksLikeProse()` throws th
 gibberish and stops trusting the search box.
 
 **A round trip proves it, not a fixture.** `scripts/check-extract.ts` has `src/lib/pdf.ts` write a
-PDF and `src/lib/extract.ts` read the words back out — an em dash, a euro sign, `café`, escaped
+PDF and the extractor read the words back out — an em dash, a euro sign, `café`, escaped
 parentheses, a comma inside a number, a suit number. Seventy-four assertions, run by CI rather than
 compiled.
 
@@ -123,7 +123,7 @@ as *no words to find*, on a screen that explains what that means.
 ## Related
 
 - `supabase/migrations/20260910000048_document_text.sql` — the columns, the two doors, the schedule, the changed search arm
-- `src/lib/extract.ts` · `scripts/check-extract.ts` — the reader, and the 74 assertions about it
+- `supabase/functions/extract-text/extract.ts` · `scripts/check-extract.ts` — the reader, and the 74 assertions about it
 - `supabase/functions/extract-text/index.ts` — what runs it
 - `supabase/tests/99_document_text.sql` — the wall, from both sides
 - `docs/CONNECTORS_DESIGN.md` — the same shape of document, for the same reason

@@ -1,5 +1,5 @@
 // What the calendar writer must keep true, asserted by running it. `deno run scripts/check-ics.ts`
-// (the `deno` CI job). src/lib/ics.ts is dependency-free TypeScript, so deno is the whole oracle.
+// (the `deno` CI job). The writer is dependency-free TypeScript, so deno is the whole oracle.
 //
 // Every one of these is a way an iCalendar feed fails SILENTLY: a client meeting a bad line does
 // not raise an error, it shows the wrong thing or nothing at all — and the thing not shown is a
@@ -7,7 +7,7 @@
 
 import {
   buildCalendar, escapeText, foldLine, icsDay, icsDayAfter, icsInstant,
-} from "../src/lib/ics.ts";
+} from "../supabase/functions/calendar-feed/ics.ts";
 
 let failures = 0;
 function check(name: string, ok: boolean, detail = "") {
