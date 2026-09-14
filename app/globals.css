@@ -2,9 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Default design tokens — overridden per tenant from firms.brand
-   (src/lib/brand.ts). Nothing firm-specific lives in code. */
+/* ---------------------------------------------------------------------------
+   Design tokens.
+
+   Two separate systems live here, and the separation is deliberate:
+
+   1. --dk-*    the TENANT's colours, overridden per firm from firms.brand
+                (src/lib/brand.ts). Nothing firm-specific lives in code.
+   2. --t-*     the THEME's own neutrals and status tints. A firm cannot
+                reach these, and they are what flips between light and dark.
+
+   Neutrals are named for their ROLE, not their lightness, because the role is
+   what stays constant across themes: `ink` is the text colour in both, it is
+   simply near-black on paper and near-white on a dark ground. That is what
+   lets a single `text-ink` utility be theme-aware with no `dark:` prefix —
+   which matters when the sweep touches ~2,000 of them.
+
+   Values are space-separated RGB channels rather than hex so Tailwind's
+   opacity modifiers still work: rgb(var(--t-ink) / <alpha-value>) makes
+   `text-ink/70` resolve correctly.
+
+   Every pair below was checked against WCAG 2.2 AA on all three grounds
+   (paper, raised, sunken) in both themes before being written down.
+   --------------------------------------------------------------------------- */
+
 :root {
+  /* Tenant tokens — defaults until a firm's brand overrides them. */
   --dk-primary: #1c2b3a;
   --dk-accent: #8a6d3b;
   --dk-surface: #f6f5f2;
@@ -12,7 +35,211 @@
   --dk-on-accent: #ffffff;
   --dk-font-heading: Georgia;
   --dk-font-body: system-ui;
+
+  /* Grounds. Warm, never white — see design/home/README.md. */
+  --t-paper: 246 245 242;        /* the page */
+  --t-raised: 250 249 247;       /* a card sitting on the page */
+  --t-sunken: 240 238 234;       /* a well inside a card */
+
+  /* Lines. `hairline` is decorative; `edge` bounds a control and so must
+     clear 3:1 (WCAG 1.4.11). The old border-gray-300 sat at 1.35:1. */
+  --t-hairline: 221 217 210;
+  --t-edge: 125 122 122;
+
+  /* Text. ink 15.2:1, ink-strong 16.9:1, ink-muted 5.2:1 on paper.
+     ink-muted replaces text-gray-500, which failed AA at 4.43:1.
+     ink-disabled is for disabled controls only — WCAG 1.4.3 exempts those,
+     and it must never be used for placeholder or secondary text. */
+  --t-ink: 32 30 29;
+  --t-ink-strong: 20 20 20;
+  --t-ink-muted: 107 102 95;
+  --t-ink-disabled: 138 133 125;
+
+  /* Status. One set, consumed by both badge.tsx and alert.tsx, which used to
+     carry separate hardcoded copies. Colour never carries meaning alone —
+     every pill and alert also has an icon and a label. */
+  --t-settled-bg: 236 253 243;   --t-settled-line: 167 216 190;  --t-settled-ink: 5 96 58;
+  --t-waiting-bg: 255 250 235;   --t-waiting-line: 243 221 164;  --t-waiting-ink: 146 64 14;
+  --t-wrong-bg: 254 243 242;     --t-wrong-line: 229 196 196;    --t-wrong-ink: 145 32 24;
+  --t-over-bg: 245 244 241;      --t-over-line: 221 217 210;     --t-over-ink: 81 77 71;
+  --t-quiet-bg: 240 238 234;     --t-quiet-line: 221 217 210;    --t-quiet-ink: 107 102 95;
+  --t-informing-bg: 240 249 255; --t-informing-line: 186 224 245; --t-informing-ink: 6 89 134;
+
+  /* Danger, for a destructive control rather than a status. */
+  --t-danger: 180 35 24;
+  --t-on-danger: 255 255 255;
+
+  /* Elevation. In dark mode a shadow is invisible, so each level also steps
+     the surface lightness — which is why elevation is a token, not a shadow. */
+  --t-shadow-e1: 0 1px 2px rgb(16 24 40 / 0.04);
+  --t-shadow-e2: 0 1px 3px rgb(16 24 40 / 0.08);
+  --t-shadow-e3: 0 -8px 32px rgb(0 0 0 / 0.18);
+
+  /* --- The gray bridge -----------------------------------------------------
+     Tailwind's own gray-* redefined warm, so all 1,959 existing `text-gray-500`
+     style utilities across 159 files pick up the new palette without a single
+     screen being edited — and, because these are variables rather than hex,
+     they flip for dark mode too.
+
+     Each step keeps its relative position so the existing hierarchy survives,
+     but three WCAG failures are corrected in the process:
+       gray-300 (the field border, 150 uses)  1.35:1 -> 3.36:1  (SC 1.4.11)
+       gray-400 (the placeholder colour)      2.33:1 -> 5.22:1
+       gray-500 (secondary text, 459 uses)    4.43:1 -> 6.57:1
+
+     This is a BRIDGE, not a destination: `gray-500` still cannot say whether it
+     means muted prose or a placeholder. A later pass rewrites these to the
+     semantic names above and then deletes the bridge, so any straggler becomes
+     a dead class the linter can catch. */
+  --t-g50: 240 238 234;
+  --t-g100: 232 229 223;
+  --t-g200: 221 217 210;
+  --t-g300: 138 133 125;
+  --t-g400: 107 102 95;
+  --t-g500: 92 87 79;
+  --t-g600: 74 69 63;
+  --t-g700: 55 52 47;
+  --t-g800: 42 39 36;
+  --t-g900: 32 30 29;
+
+  /* --- Dark values, defined once ------------------------------------------
+     These are inert on their own. The two selectors below alias --t-* onto
+     them, so a dark colour is changed in exactly one place and the OS
+     preference and the explicit toggle can never drift apart. */
+  --d-paper: 26 25 24;
+  --d-raised: 36 34 31;
+  --d-sunken: 19 18 17;
+  --d-hairline: 58 53 46;
+  --d-edge: 139 133 124;
+  --d-ink: 242 240 236;
+  --d-ink-strong: 255 255 255;
+  --d-ink-muted: 168 162 153;
+  --d-ink-disabled: 131 125 116;
+
+  --d-settled-bg: 16 40 28;    --d-settled-line: 42 90 61;    --d-settled-ink: 134 217 173;
+  --d-waiting-bg: 43 31 10;    --d-waiting-line: 85 64 26;    --d-waiting-ink: 242 199 111;
+  --d-wrong-bg: 45 21 18;      --d-wrong-line: 90 42 36;      --d-wrong-ink: 243 156 146;
+  --d-over-bg: 35 33 32;       --d-over-line: 69 64 57;       --d-over-ink: 180 175 166;
+  --d-quiet-bg: 31 30 28;      --d-quiet-line: 58 53 46;      --d-quiet-ink: 168 162 153;
+  --d-informing-bg: 13 36 48;  --d-informing-line: 29 77 102; --d-informing-ink: 130 200 234;
+
+  --d-danger: 240 130 120;
+  --d-on-danger: 26 25 24;
+
+  --d-shadow-e1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --d-shadow-e2: 0 1px 3px rgb(0 0 0 / 0.5);
+  --d-shadow-e3: 0 -8px 32px rgb(0 0 0 / 0.6);
+
+  --d-g50: 19 18 17;
+  --d-g100: 31 30 28;
+  --d-g200: 58 53 46;
+  --d-g300: 139 133 124;
+  --d-g400: 168 162 153;
+  --d-g500: 181 175 165;
+  --d-g600: 200 194 184;
+  --d-g700: 219 214 205;
+  --d-g800: 234 230 224;
+  --d-g900: 242 240 236;
 }
+
+/* The viewer's OS asks for dark and they have not explicitly chosen light. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --t-paper: var(--d-paper);
+    --t-raised: var(--d-raised);
+    --t-sunken: var(--d-sunken);
+    --t-hairline: var(--d-hairline);
+    --t-edge: var(--d-edge);
+    --t-ink: var(--d-ink);
+    --t-ink-strong: var(--d-ink-strong);
+    --t-ink-muted: var(--d-ink-muted);
+    --t-ink-disabled: var(--d-ink-disabled);
+    --t-settled-bg: var(--d-settled-bg);
+    --t-settled-line: var(--d-settled-line);
+    --t-settled-ink: var(--d-settled-ink);
+    --t-waiting-bg: var(--d-waiting-bg);
+    --t-waiting-line: var(--d-waiting-line);
+    --t-waiting-ink: var(--d-waiting-ink);
+    --t-wrong-bg: var(--d-wrong-bg);
+    --t-wrong-line: var(--d-wrong-line);
+    --t-wrong-ink: var(--d-wrong-ink);
+    --t-over-bg: var(--d-over-bg);
+    --t-over-line: var(--d-over-line);
+    --t-over-ink: var(--d-over-ink);
+    --t-quiet-bg: var(--d-quiet-bg);
+    --t-quiet-line: var(--d-quiet-line);
+    --t-quiet-ink: var(--d-quiet-ink);
+    --t-informing-bg: var(--d-informing-bg);
+    --t-informing-line: var(--d-informing-line);
+    --t-informing-ink: var(--d-informing-ink);
+    --t-danger: var(--d-danger);
+    --t-on-danger: var(--d-on-danger);
+    --t-shadow-e1: var(--d-shadow-e1);
+    --t-shadow-e2: var(--d-shadow-e2);
+    --t-shadow-e3: var(--d-shadow-e3);
+    --t-g50: var(--d-g50);
+    --t-g100: var(--d-g100);
+    --t-g200: var(--d-g200);
+    --t-g300: var(--d-g300);
+    --t-g400: var(--d-g400);
+    --t-g500: var(--d-g500);
+    --t-g600: var(--d-g600);
+    --t-g700: var(--d-g700);
+    --t-g800: var(--d-g800);
+    --t-g900: var(--d-g900);
+  }
+}
+
+/* The viewer explicitly chose dark. */
+:root[data-theme="dark"] {
+  --t-paper: var(--d-paper);
+  --t-raised: var(--d-raised);
+  --t-sunken: var(--d-sunken);
+  --t-hairline: var(--d-hairline);
+  --t-edge: var(--d-edge);
+  --t-ink: var(--d-ink);
+  --t-ink-strong: var(--d-ink-strong);
+  --t-ink-muted: var(--d-ink-muted);
+  --t-ink-disabled: var(--d-ink-disabled);
+  --t-settled-bg: var(--d-settled-bg);
+  --t-settled-line: var(--d-settled-line);
+  --t-settled-ink: var(--d-settled-ink);
+  --t-waiting-bg: var(--d-waiting-bg);
+  --t-waiting-line: var(--d-waiting-line);
+  --t-waiting-ink: var(--d-waiting-ink);
+  --t-wrong-bg: var(--d-wrong-bg);
+  --t-wrong-line: var(--d-wrong-line);
+  --t-wrong-ink: var(--d-wrong-ink);
+  --t-over-bg: var(--d-over-bg);
+  --t-over-line: var(--d-over-line);
+  --t-over-ink: var(--d-over-ink);
+  --t-quiet-bg: var(--d-quiet-bg);
+  --t-quiet-line: var(--d-quiet-line);
+  --t-quiet-ink: var(--d-quiet-ink);
+  --t-informing-bg: var(--d-informing-bg);
+  --t-informing-line: var(--d-informing-line);
+  --t-informing-ink: var(--d-informing-ink);
+  --t-danger: var(--d-danger);
+  --t-on-danger: var(--d-on-danger);
+  --t-shadow-e1: var(--d-shadow-e1);
+  --t-shadow-e2: var(--d-shadow-e2);
+  --t-shadow-e3: var(--d-shadow-e3);
+  --t-g50: var(--d-g50);
+  --t-g100: var(--d-g100);
+  --t-g200: var(--d-g200);
+  --t-g300: var(--d-g300);
+  --t-g400: var(--d-g400);
+  --t-g500: var(--d-g500);
+  --t-g600: var(--d-g600);
+  --t-g700: var(--d-g700);
+  --t-g800: var(--d-g800);
+  --t-g900: var(--d-g900);
+}
+
+/* Tell the browser which form controls and scrollbars to draw. */
+:root { color-scheme: light; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; } }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 body {
   margin: 0;
