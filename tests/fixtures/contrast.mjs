@@ -74,7 +74,7 @@ export const needed = (size, weight) => (size >= 24 || (size >= 18.66 && weight 
  *
  * The walk stops at <html> and falls back to white, which is a real limitation and not a safe
  * default on a dark theme — but it is unreachable in both callers, because the artboard paints
- * its own wrapper and the app paints `body` (`background-color: var(--dk-surface)` in
+ * its own wrapper and the app paints `body` (`background-color: rgb(var(--t-paper))` in
  * app/globals.css). If a future surface leaves the ground to <html>, this is the line to fix,
  * and it will announce itself as a page-wide contrast failure rather than as silence.
  */

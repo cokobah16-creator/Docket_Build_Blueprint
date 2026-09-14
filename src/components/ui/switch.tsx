@@ -1,10 +1,28 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { createContext, useContext, useId, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
 // A real checkbox under a drawn track, so it keeps the keyboard, the focus
 // ring and the screen-reader announcement a styled <div> would throw away.
+
+/**
+ * The id of the <SettingRow> hint a control is sitting next to, so the control can
+ * point aria-describedby at it.
+ *
+ * A row's hint is where the qualifier lives — which surface the setting touches,
+ * what it costs, what it does not do — and it was rendered as a sibling <p> that
+ * nothing referred to. So a screen-reader user heard the switch's label and none of
+ * the sentence that makes the label mean anything: on the brand form, "Let your
+ * public site follow a visitor\'s dark mode" without the half that says it is only
+ * that site and not the portal or this console.
+ *
+ * It goes through context rather than a prop because the row owns the text and the
+ * control owns the reference, and nothing in between should have to carry an id it
+ * does not use. All three switches in the app sit inside a row, so all three are
+ * described now without a single call site changing.
+ */
+const SettingHintId = createContext<string | undefined>(undefined);
 
 export function Switch({
   checked,
@@ -20,6 +38,7 @@ export function Switch({
   disabled?: boolean;
   className?: string;
 }) {
+  const describedBy = useContext(SettingHintId);
   return (
     <span
       className={cn(
@@ -38,6 +57,7 @@ export function Switch({
         type="checkbox"
         role="switch"
         aria-label={label}
+        aria-describedby={describedBy}
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
@@ -83,6 +103,10 @@ export function SettingRow({
   divided?: boolean;
   children: ReactNode;
 }) {
+  // Generated even when there is no hint, because a hook cannot be conditional;
+  // the id is simply never attached to anything in that case and the control's
+  // aria-describedby stays undefined.
+  const hintId = useId();
   return (
     <div
       className={cn(
@@ -92,9 +116,13 @@ export function SettingRow({
     >
       <div className="min-w-0">
         <p className="text-13 font-semibold text-ink-strong">{title}</p>
-        {hint && <p className="mt-0.5 text-11 text-ink-muted">{hint}</p>}
+        {hint && (
+          <p id={hintId} className="mt-0.5 text-11 text-ink-muted">
+            {hint}
+          </p>
+        )}
       </div>
-      {children}
+      <SettingHintId.Provider value={hint ? hintId : undefined}>{children}</SettingHintId.Provider>
     </div>
   );
 }
