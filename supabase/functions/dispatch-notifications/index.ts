@@ -26,7 +26,26 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import webpush from 'npm:web-push@3';
 
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') ?? 'mailto:ops@docket.app', Deno.env.get('VAPID_PUBLIC_KEY')!, Deno.env.get('VAPID_PRIVATE_KEY')!);
+// WEB PUSH IS CONFIGURED HERE, AND A MISSING KEY MUST NOT TAKE THE WHOLE DISPATCHER DOWN WITH IT.
+// setVapidDetails validates its arguments and throws, and this runs at module scope — so with the
+// VAPID variables unset the isolate never started: every request answered 500 WORKER_ERROR,
+// INCLUDING the cron-secret check, nothing went out on ANY channel, and rows already claimed sat at
+// 'sending' to be requeued every ten minutes for ever. A missing PUSH key silently took out email
+// and SMS too. Now the absence is a fact the function carries, and only the push channel answers
+// for it. A key that is present but malformed degrades the same way, and for the same reason.
+const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY') ?? '';
+const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY') ?? '';
+let PUSH_READY = false;
+if (VAPID_PUBLIC && VAPID_PRIVATE) {
+  try {
+    webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') ?? 'mailto:ops@docket.app', VAPID_PUBLIC, VAPID_PRIVATE);
+    PUSH_READY = true;
+  } catch (e) {
+    console.error('web push is not configured:', String((e as { message?: string })?.message ?? e));
+  }
+} else {
+  console.error('web push is not configured: VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY are not both set');
+}
 
 /** One claimed row, as claim_notifications() returns it: the row, the recipient, the firm. */
 type Row = {
@@ -254,6 +273,9 @@ async function sendSms(to: string, text: string): Promise<Sent> {
 
 /** Returns how many subscriptions took the push. A subscription the browser has withdrawn is deleted. */
 async function sendPush(userId: string, subject: string, text: string, url: string): Promise<number> {
+  // Permanent, not transient: no number of retries sets an environment variable. Recorded by
+  // finish_notification(), so it reaches the operator's screen instead of looping in the queue.
+  if (!PUSH_READY) throw new SendError('web push is not configured on this deployment', false, 'webpush');
   const { data: subs, error } = await supabase.from('push_subscriptions').select('id, endpoint, keys').eq('user_id', userId);
   if (error) throw new SendError(`push subscriptions unreadable: ${error.message}`, true, 'webpush');
   if (!subs?.length) throw new SendError('no push subscription', false, 'webpush');

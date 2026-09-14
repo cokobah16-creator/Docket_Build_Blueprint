@@ -22,7 +22,12 @@
 // The service role is used here, which is allowed in an Edge Function and nowhere else.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const PAYSTACK_SECRET = Deno.env.get('PAYSTACK_SECRET_KEY')!;
+/**
+ * Empty when the variable is unset, and guarded in the handler below rather than asserted here.
+ * The `!` this replaces bought a type and hid a crash: it is erased at runtime, so an unset key
+ * travelled on as undefined and blew up inside Web Crypto.
+ */
+const PAYSTACK_SECRET = Deno.env.get('PAYSTACK_SECRET_KEY') ?? '';
 const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
 
 // The same allowance as src/lib/rate-limit.ts LIMITS.webhook_bad. The two runtimes cannot share
@@ -116,6 +121,28 @@ async function invoiceRef(invoiceNumber: string): Promise<{ invoiceId: string | 
 
 Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return new Response('method not allowed', { status: 405 });
+
+  // 0. A deployment without the key cannot verify anything, and must SAY SO rather than crash.
+  //    Unset, the key reached crypto.subtle.importKey with zero length, which throws — and the
+  //    throw happened before any record() call, so Paystack received a bare 500 and rule 4 above,
+  //    that every delivery is written down, was broken precisely when an operator most needed the
+  //    evidence. The 500 stays, and is correct by this file's own rule: an operator sets the key
+  //    and Paystack's redelivery then succeeds, which is exactly when a retry is worth asking for.
+  //    The status was never the defect. The silence was.
+  if (!PAYSTACK_SECRET) {
+    console.error('PAYSTACK_SECRET_KEY is not set: no delivery can be verified on this deployment');
+    // Bounded by the same allowance as an unverified delivery, for the same reason: a key left
+    // unset for a day must not let Paystack's retries fill webhook_events.
+    if (await badDeliveryAllowed(await callerKey(req))) {
+      await record({
+        signatureOk: false,
+        outcome: 'error',
+        error: 'PAYSTACK_SECRET_KEY is not set on this deployment: the signature could not be checked, so the charge was not applied',
+      });
+    }
+    return new Response('not configured', { status: 500 });
+  }
+
   const body = await req.text();
   const signature = req.headers.get('x-paystack-signature') ?? '';
 
