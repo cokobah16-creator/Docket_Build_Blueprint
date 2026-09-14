@@ -21,6 +21,15 @@ export interface BrandColours {
   primary?: string;
   accent?: string;
   surface?: string;
+  /**
+   * Opt-in: may this firm's own public site follow a visitor into the dark theme?
+   * Absent or false means no, and that is deliberate — in dark the firm's colour is
+   * re-toned to stay legible (src/lib/brand.ts), and doing that unasked to a page
+   * the firm considers theirs is how a support ticket saying "our green is wrong"
+   * starts. Docket's own surfaces, the client portal and the staff console, do not
+   * consult this.
+   */
+  dark_mode?: boolean;
 }
 
 export interface FirmBrand {

@@ -20,7 +20,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { firmBySlug } from "@/lib/tenant";
-import { brandFontsUrl, brandStyle } from "@/lib/brand";
+import { brandFontsUrl, brandStyle, tenantAllowsDark } from "@/lib/brand";
 import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
 import { after } from "next/server";
 
@@ -60,7 +60,14 @@ export default async function FirmLayout({
   const base = `/${firm.slug}`;
 
   return (
-    <div style={brandStyle(firm.brand)} className="min-h-screen bg-brand-surface">
+    // The firm's own shop window, so dark is the firm's call rather than ours:
+    // tenantAllowsDark() is false unless they opted in, and brandStyle() then emits
+    // the light values for both schemes, which pins the page to the colours they chose.
+    <div
+      data-brand
+      style={brandStyle(firm.brand, { allowDark: tenantAllowsDark(firm.brand) })}
+      className="min-h-screen bg-brand-surface"
+    >
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
       <header className="border-b border-black/5 bg-white">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">

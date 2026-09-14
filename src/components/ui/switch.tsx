@@ -29,6 +29,11 @@ export function Switch({
         className,
       )}
     >
+      {/* The track is drawn 28px tall because that is what a switch looks like,
+          but the thing a thumb actually hits is this input, and 28 is sixteen
+          pixels under the floor tests/fixtures/ergonomics.mjs enforces. It
+          reaches 8px past the track top and bottom instead of stopping at it:
+          44px of target around a 28px drawing, with nothing drawn moved. */}
       <input
         type="checkbox"
         role="switch"
@@ -36,7 +41,7 @@ export function Switch({
         checked={checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="peer absolute inset-0 z-10 cursor-pointer opacity-0 disabled:cursor-default"
+        className="peer absolute inset-x-0 -inset-y-2 z-10 cursor-pointer opacity-0 disabled:cursor-default"
       />
       {/* The knob stays literally white in both themes. It is a moving part
           rather than a surface, and it has to read against an arbitrary firm's

@@ -461,3 +461,55 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   The tenant's colours, per theme.
+
+   brandStyle() (src/lib/brand.ts) cannot choose the theme for itself. Its values
+   arrive as a style ATTRIBUTE, an attribute holds one value per variable, and an
+   attribute outranks every selector in this file — so a single --dk-primary set
+   there could never be re-pointed by the rules below. It therefore emits both
+   sets, as --dk-*-l and --dk-*-d, and these three rules alias the real variable
+   onto one of them. The choice is static CSS, so the first paint is already
+   right: no tenant page flashes its light colours on a dark ground.
+
+   THE ELEMENT CARRYING brandStyle() MUST ALSO CARRY data-brand. Without it these
+   rules never match; the suffixed variables sit there unread and --dk-primary
+   inherits the :root defaults at the top of this file.
+
+   The selectors mirror the --t-* ones above exactly, and for the same reason:
+   the OS preference, the explicit toggle and a pinned subtree must not be able
+   to drift apart. A firm that has not opted into dark is not a case here —
+   brandStyle() gives it the same colour under both names, so these rules resolve
+   to it either way and the decision stays in one place.
+
+   The fonts are not aliased: a firm's typefaces are its typefaces in both themes,
+   so brandStyle() emits --dk-font-heading and --dk-font-body once and unsuffixed.
+   --------------------------------------------------------------------------- */
+[data-brand] {
+  --dk-primary: var(--dk-primary-l);
+  --dk-accent: var(--dk-accent-l);
+  --dk-surface: var(--dk-surface-l);
+  --dk-on-primary: var(--dk-on-primary-l);
+  --dk-on-accent: var(--dk-on-accent-l);
+}
+
+/* The viewer's OS asks for dark and they have not explicitly chosen light. */
+@media (prefers-color-scheme: dark) {
+  [data-brand]:not([data-theme="light"] *) {
+    --dk-primary: var(--dk-primary-d);
+    --dk-accent: var(--dk-accent-d);
+    --dk-surface: var(--dk-surface-d);
+    --dk-on-primary: var(--dk-on-primary-d);
+    --dk-on-accent: var(--dk-on-accent-d);
+  }
+}
+
+/* The viewer explicitly chose dark. */
+[data-theme="dark"] [data-brand] {
+  --dk-primary: var(--dk-primary-d);
+  --dk-accent: var(--dk-accent-d);
+  --dk-surface: var(--dk-surface-d);
+  --dk-on-primary: var(--dk-on-primary-d);
+  --dk-on-accent: var(--dk-on-accent-d);
+}

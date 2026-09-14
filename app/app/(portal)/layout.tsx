@@ -92,7 +92,10 @@ export default async function PortalLayout({ children }: { children: ReactNode }
   const gate = supabase && firm ? await consentGateFor(supabase, firm) : null;
 
   return (
-    <div style={brandStyle(firm?.brand)} className="min-h-[100dvh] bg-brand-surface">
+    // data-brand is what makes the two colour sets brandStyle() emits selectable:
+    // without it the --dk-primary-l / --dk-primary-d pair sits there unread and the
+    // firm's colour never changes for the dark theme. See app/globals.css.
+    <div data-brand style={brandStyle(firm?.brand)} className="min-h-[100dvh] bg-brand-surface">
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
       <ToastProvider>
         <ServiceWorkerRegistrar />
