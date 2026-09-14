@@ -50,6 +50,16 @@ crest or card object, the layout is asymmetric, and the footer disclaims
 affiliation with any court, the Nigerian Bar Association or any government
 agency. Keep all six.
 
+**Light only.** The app has a dark theme; this page does not, and opts out
+explicitly with `data-theme-scope="light"` on its root element. Four of the six
+brand-risk mitigations above are stated in terms of a warm light ground — "warm,
+never white", "no symmetric green-white-green thirds" — and none of them has an
+agreed meaning on a dark one. Deriving a dark landing from the app's tokens
+would change the brand-risk posture of the platform's most public page without
+anyone having designed it. If a dark landing is ever wanted, re-argue all six
+mitigations here first and have that reviewed; do not let the token layer
+decide it.
+
 ## What the page may claim
 
 Every concrete claim has to be true of the code on the branch, and the page
