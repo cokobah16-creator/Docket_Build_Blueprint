@@ -43,36 +43,52 @@ const base = cn(
   // change is hidden underneath the fingertip that caused it, the movement is
   // not.
   "active:translate-y-px disabled:opacity-50",
-  // The same two states again for the ARIA-disabled button. The dim can be
-  // written plainly because nothing else on the element sets opacity, so there
-  // is no tie to settle. The press drop is a new problem rather than a repeated
-  // one: a real `disabled` element never matches :active, so there was nothing
-  // to switch off, but an aria-disabled button is still a live button and does
+  // The same states again for the ARIA-disabled button. The dim can be written
+  // plainly because nothing else on the element sets opacity, so there is no
+  // tie to settle. The press drop is a new problem rather than a repeated one:
+  // a real `disabled` element never matches :active, so there was nothing to
+  // switch off, but an aria-disabled button is still a live button and does
   // match it — and a control that dips under the finger while refusing the
   // press is telling the finger something untrue.
-  "aria-disabled:opacity-50 aria-disabled:active:translate-y-0",
+  //
+  // The cursor is the third thing plain `disabled` was doing here for free, and
+  // the one that does not survive the swap on its own. Preflight sets
+  // `button { cursor: pointer }` and then takes it back with
+  // `:disabled { cursor: default }`; an aria-disabled button matches only the
+  // first of those, so a pending button went on offering the pointing hand to a
+  // mouse it was about to refuse. switch.tsx states the same rule for the same
+  // reason.
+  "aria-disabled:opacity-50 aria-disabled:active:translate-y-0 aria-disabled:cursor-default",
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2",
 );
 
 // `border-edge` rather than a hairline: this border is the only thing bounding
 // the control, so it has to clear 3:1 (WCAG 1.4.11).
 //
-// The label is INK, not the firm's colour. 89 of these sit in the staff console
-// and the registry console, which are Docket's own surfaces and which a
-// tenant's colour must never reach — and that is a live rule rather than a
-// theoretical one, because app/app/(portal)/layout.tsx and
-// app/(public)/[firm]/layout.tsx both carry data-brand now (as does the preview
-// block in admin/settings/settings-forms.tsx, deliberately, so a firm can see
-// its own colours before its clients do). brandStyle() IS read, so `text-brand`
-// here would really be the firm's own colour and not the #1c2b3a fallback.
+// The label is INK, not the firm's colour, and one class string has to answer
+// for two kinds of surface.
 //
-// Contrast says the same thing independently, and this is the part that holds
-// in either theme: a firm's colour is only ever derived against its own fill —
-// --dk-on-primary is computed for bg-brand — and nothing anywhere measures that
-// colour against `bg-raised`. So a brand label on this fill has no guaranteed
-// ratio at all, in light or in dark. Ink says the same thing at 14:1 in both.
-// The firm's colour is on the PRIMARY button, which is where a client looks for
-// it; "Cancel" was never carrying the brand.
+// 89 of these sit in the staff console and the registry console, which are
+// Docket's own surfaces and which a tenant's colour must never reach. Neither
+// app/firm/(console)/layout.tsx nor app/admin/layout.tsx carries data-brand, so
+// --dk-primary there stays the :root default at globals.css:36 — #1c2b3a, and
+// fixed in both themes, because all four rules that re-point it are scoped to
+// [data-brand]. That is a navy label on a card that is rgb(36 34 31) in dark:
+// 1.10:1, which is not a colour so much as a shape.
+//
+// The other thirty-odd sit in the portal and on a firm's public site, and those
+// DO carry data-brand — app/app/(portal)/layout.tsx and
+// app/(public)/[firm]/layout.tsx, as does the preview block in
+// admin/settings/settings-forms.tsx, deliberately, so a firm can see its own
+// colours before its clients do. There `text-brand` really would resolve to the
+// firm's own colour, and that is no better: a firm's colour is only ever derived
+// against its own fill — --dk-on-primary is computed for bg-brand — and nothing
+// anywhere measures the colour itself against `bg-raised`. A brand label on this
+// fill has no guaranteed ratio at all, in light or in dark.
+//
+// Ink clears 14:1 on this fill in both themes. The firm's colour is on the
+// PRIMARY button, which is where a client looks for it; "Cancel" was never
+// carrying the brand.
 //
 // The focus ring is stated for the same reason and must be stated at all: with
 // no outline-color of its own the ring falls back to the label's colour, which

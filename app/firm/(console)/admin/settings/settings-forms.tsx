@@ -849,11 +849,15 @@ function BrandSection({ firmId, firmName, firmSlug, brand }: FirmSettingsProps) 
               preview that followed this console into dark would be showing them a page
               that does not exist.
 
-              Which is why the tagline is text-ink-muted and the edge is border-hairline
-              rather than fixed greys. Switched on, the panel is no longer pinned and
-              bg-brand-surface becomes the theme's dark ground — and a `text-gray-700`
-              tagline on it would be dark grey on a dark page, which is precisely the
-              illegibility this preview exists to let a firm see before its clients do. */}
+              The tagline and the edge are named for their role for the same reason,
+              and NOT because the greys they replace were broken: tailwind.config.ts
+              maps the whole gray-* scale onto --t-g*, so text-gray-700 already flipped,
+              and --l-g200 and --d-g200 are byte-identical to the hairline token now
+              in their place. What changes is what they answer to. With the switch on
+              this panel is unpinned, and bg-brand-surface is then DARK_TOKENS.surface —
+              the theme's own --d-paper, because a page ground cannot be lifted — which
+              is the exact ground --t-ink-muted's 6.9:1 was computed on. The gray bridge
+              promises nothing of the kind and is documented as a thing to be deleted. */}
           <div
             data-brand
             data-theme-scope={tenantAllowsDark(preview) ? undefined : "light"}

@@ -88,7 +88,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-docket-paper">
+    // Pinned light, and it has to be said out loud. This shell paints a light
+    // literal on its own wrapper, and the body behind it follows the reader's
+    // theme (app/globals.css) — so without this the gutter would be dark behind a
+    // cream console, which is the seam the body rule exists to close. The pin also
+    // keeps the theme's own neutrals light inside here, so an `ink` or a `hairline`
+    // in a console screen still reads against this cream rather than against a dark
+    // page that is not there. Docket's own consoles get a dark palette of their
+    // own; this is the honest statement that they have not got one yet.
+    <div data-theme-scope="light" className="min-h-screen bg-docket-paper">
       <header className="border-b border-black/5 bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">

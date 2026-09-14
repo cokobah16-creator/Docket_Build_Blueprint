@@ -630,8 +630,16 @@ export async function updateBrand(firmId: string, input: BrandInput): Promise<Se
   refresh();
 
   const notes = diffNotes(brand, stored, BRAND_LABELS);
+  // What the row came back holding, not what was typed into the form. A database still on
+  // migration 49 drops dark_mode exactly as it always did, and diffNotes has just said so on the
+  // line above — so reading d.darkMode here would print "Dark mode on your public site was
+  // dropped by the database and is not saved" and then, immediately under it, a promise that the
+  // firm's site now follows a visitor into dark. That contradiction is the lie on the screen
+  // every re-read in this file exists to prevent.
+  const storedColours = stored.colours as { dark_mode?: boolean } | null | undefined;
+  const darkKept = storedColours?.dark_mode === true;
   notes.push(
-    d.darkMode
+    darkKept
       ? "Your public site now follows a visitor who has their phone set to dark, and your colours are re-toned there so they stay legible on a dark page. Your client portal and this console already did that and are unchanged."
       : "Your public site stays light for every visitor, whatever their phone is set to. Your client portal and this console follow the visitor either way.",
   );

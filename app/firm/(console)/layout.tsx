@@ -142,7 +142,15 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
   );
 
   return (
-    <div style={CONSOLE_TOKENS} className="min-h-[100dvh] bg-brand-surface">
+    // Pinned light, and it has to be said out loud. This shell paints a light
+    // literal on its own wrapper, and the body behind it follows the reader's
+    // theme (app/globals.css) — so without this the gutter would be dark behind a
+    // cream console, which is the seam the body rule exists to close. The pin also
+    // keeps the theme's own neutrals light inside here, so an `ink` or a `hairline`
+    // in a console screen still reads against this cream rather than against a dark
+    // page that is not there. Docket's own consoles get a dark palette of their
+    // own; this is the honest statement that they have not got one yet.
+    <div data-theme-scope="light" style={CONSOLE_TOKENS} className="min-h-[100dvh] bg-brand-surface">
       <link rel="stylesheet" href={CONSOLE_FONTS} />
       {/* The offline shell for the console too: without it a dropped connection shows the browser's own error page. */}
       <ServiceWorkerRegistrar />

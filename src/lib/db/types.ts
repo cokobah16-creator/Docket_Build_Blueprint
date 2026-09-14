@@ -29,14 +29,16 @@ export interface BrandColours {
    * starts. Docket's own surfaces, the client portal and the staff console, do not
    * consult this.
    *
-   * NOT STORABLE YET, and nothing in the product can turn it on. validate_brand()
-   * (supabase/migrations/20260910000013_security_review.sql) rebuilds firms.brand
-   * from a whitelist and keeps only colours.primary/accent/surface, so a dark_mode
-   * written from anywhere is dropped by the trigger with no error at all — and
-   * updateBrand() in src/lib/actions/firm-settings.ts rebuilds `colours` the same
-   * way. Until a migration adds the key to that whitelist and the brand form grows
-   * a switch, tenantAllowsDark() is false for every firm, which is the safe answer
-   * and the one the public site is already written around.
+   * ONLY THE JSON BOOLEAN true IS EVER STORED HERE. validate_brand() rebuilds
+   * firms.brand from a whitelist, and under `colours` it kept a key only where the
+   * value matched a six-digit hex regex — which a boolean never does, so every
+   * dark_mode ever written was dropped by the trigger with no error at all.
+   * Migration 50 (supabase/migrations/20260910000050_tenant_dark_mode.sql) adds
+   * this one key, tested against the boolean rather than against the hex regex,
+   * and the brand form at /firm/admin/settings is what sets it. A quoted "true",
+   * a 1 and a false store nothing, so the only two states a row can hold are
+   * `true` and absent — which is why tenantAllowsDark() tests `=== true` and why
+   * turning the option off removes the key rather than storing false.
    */
   dark_mode?: boolean;
 }
