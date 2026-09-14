@@ -73,6 +73,9 @@ const KEEP = [
   { file: 'src/components/video/consultation-room.tsx',
     contains: 'bg-white text-[#0B0B0C]',
     why: 'a white Admit button sitting on the dark call surface; it must stay white' },
+  { file: 'src/components/ui/switch.tsx',
+    contains: 'size-[22px] rounded-full bg-white',
+    why: "the switch knob is an object rather than a surface, and it has to read against an arbitrary firm's brand colour on one side of the track; bg-raised is a dark grey in dark mode and would sink into a dark brand the moment the switch was turned on" },
 ];
 
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

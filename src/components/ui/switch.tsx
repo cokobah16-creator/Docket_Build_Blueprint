@@ -47,12 +47,22 @@ export function Switch({
           rather than a surface, and it has to read against an arbitrary firm's
           brand colour on one side of the track and a neutral on the other;
           `bg-raised` is a dark grey in dark mode and would sink into a dark
-          brand the moment the switch was turned on. */}
+          brand the moment the switch was turned on.
+
+          Its focus ring is ink at offset 4, and both halves of that are
+          load-bearing. It was `outline-brand`, which drew the firm's colour on
+          top of a track that is `bg-brand` the moment the switch is on — a
+          focus indicator the same colour as the thing it indicates. And at
+          offset 2 a 22px knob's ring spans 26px to 30px across, so all but its
+          last pixel lay inside the 28px track and had the fill to contrast
+          against rather than the page. Offset 4 spans 30px to 34px, clear of
+          the track entirely, where ink is 15:1 in both themes whatever colour
+          the firm chose. */}
       <span
         aria-hidden="true"
         className={cn(
           "size-[22px] rounded-full bg-white shadow-e2 transition-transform duration-fast",
-          "peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand",
+          "peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-ink",
           checked ? "translate-x-[18px]" : "translate-x-0",
         )}
       />

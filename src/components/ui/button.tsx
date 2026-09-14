@@ -59,9 +59,10 @@ const variants: Record<Variant, string> = {
   primary: "bg-brand text-brand-on focus-visible:outline-brand",
   secondary: "bg-brand-accent text-brand-on-accent focus-visible:outline-brand-accent",
   ghost: bordered,
-  // The same treatment under the name the rest of the app hand-rolls it with
-  // ("border border-gray-300 bg-white text-brand hover:bg-black/5", 40-odd
-  // sites). `ghost` keeps its own name because 120 callers already say it.
+  // Deliberately the same string, under the name the 40-odd sites that hand-roll
+  // this shape ("border border-gray-300 bg-white text-brand hover:bg-black/5")
+  // reach for. `ghost` keeps its own name because 120 callers already say it, so
+  // the two are synonyms until one of them is given a reason to differ.
   quiet: bordered,
   danger: "bg-danger text-danger-on focus-visible:outline-danger",
   // The staff console wears no firm's colours — see app/firm/(console)/layout.
