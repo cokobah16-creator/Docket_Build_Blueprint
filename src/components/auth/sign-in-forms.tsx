@@ -87,6 +87,7 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { normalizeNigerianPhone, isE164 } from "@/lib/nigeria";
 import { isNetworkFailure } from "@/lib/drafts";
 import { arm, lastDeadline, remaining, type Cooldowns } from "@/lib/cooldown";
+import { stitchSignedInVisitor } from "@/lib/actions/analytics";
 import { useConnectionState } from "@/components/ui/connection";
 import {
   failureShape,
@@ -446,6 +447,20 @@ export function SignInForms({
   function completeSignIn() {
     verified.current = true;
     setSignedIn(true);
+
+    // BEFORE the caller navigates, and never awaited. The session exists only in this browser
+    // until something tells the server, and the two things the join needs — the httpOnly visitor
+    // cookie and POSTHOG_KEY — are both server-side, so a browser-side sign-in cannot make it
+    // alone. Without this, site_viewed and booking_started stay attached to the anonymous cookie
+    // while everything after sign-in belongs to the account, and the funnel Docket reads splits
+    // into two people who each did half of it.
+    //
+    // Fired first so the request is on its way before onSignedIn() starts a transition, and not
+    // awaited so a slow round trip cannot hold up a screen that has already said "Signed in".
+    // Every caller navigates client-side (router.replace/refresh) or not at all, so the document
+    // is never torn down and the request completes either way.
+    void stitchSignedInVisitor().catch(() => undefined);
+
     try {
       onSignedIn?.();
     } catch {

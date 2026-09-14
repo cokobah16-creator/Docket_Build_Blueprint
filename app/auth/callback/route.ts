@@ -11,18 +11,22 @@
 // back into a sentence there (src/lib/auth-errors.ts), never into a query string carrying
 // GoTrue's own words.
 //
-// THE FUNNEL IS STITCHED HERE. Until this moment the person has been counted under the
-// anonymous cookie middleware.ts minted (VISITOR_COOKIE) — that is the id on site_viewed and
-// booking_started. identify() tells PostHog that the anonymous visitor and the account that
-// just signed in are one person, so the funnel does not break in half at the sign-in step.
-// Nothing but two opaque ids is sent; no email, no phone, no name.
+// THE FUNNEL IS STITCHED HERE — but not only here, which was the bug. Until this moment the
+// person has been counted under the anonymous cookie middleware.ts minted (VISITOR_COOKIE): that
+// is the id on site_viewed and booking_started. stitchVisitor() tells PostHog that the anonymous
+// visitor and the account that just signed in are one person, so the funnel does not break in
+// half at the sign-in step. Nothing but two opaque ids is sent; no email, no phone, no name.
+//
+// This route is reached by exactly one sign-in, the emailed magic link. The phone code and the
+// code in that same email both verify in the browser and never come through here, so for them the
+// join is made by src/lib/actions/analytics.ts instead — the same helper, called from the other
+// side. See src/lib/observability/stitch.ts for what that costs when it is missed.
 
-import { NextResponse, after } from "next/server";
-import { cookies } from "next/headers";
+import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { loginHref, safeNext, surfaceFor } from "@/lib/auth-redirect";
 import { callbackReason } from "@/lib/auth-errors";
-import { VISITOR_COOKIE, identify } from "@/lib/observability";
+import { stitchVisitor } from "@/lib/observability/stitch";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -39,13 +43,10 @@ export async function GET(request: Request) {
   if (supabase && code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     exchangeFailed = Boolean(error);
-    const userId: string | null = data?.user?.id ?? data?.session?.user?.id ?? null;
-    if (userId) {
-      const anonymousId =
-        (await cookies()).getAll().find((c) => c.name === VISITOR_COOKIE)?.value ?? null;
-      // Fired and ignored: a failed stitch loses a report, never a sign-in.
-      after(() => identify(userId, anonymousId).catch(() => undefined));
-    }
+    // The same join the phone and email codes now make through src/lib/actions/analytics.ts. It
+    // used to be written out here, which is why it only ever covered the one sign-in that passes
+    // through this route.
+    await stitchVisitor(data?.user?.id ?? data?.session?.user?.id ?? null);
   }
 
   const reason = callbackReason({
