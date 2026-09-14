@@ -127,7 +127,27 @@ SMTPPY
 )
 fi
 
-BODY=$(APP_URL="$APP_URL" REDIRECTS="$REDIRECTS" PHONE_JSON="$PHONE_JSON" SMTP_JSON="$SMTP_JSON" MAGIC_LINK_HTML="$MAGIC_LINK_HTML" python3 - <<'PY'
+# GOOGLE, WHICH IS THE ONE WAY IN THAT DELIVERS NOTHING. Every other route depends on a message
+# reaching a person — an SMS through Twilio, a mail through SMTP — and both of those have failed in
+# this project already. Google asks nothing of either, so it is the route that keeps working when a
+# provider does not.
+#
+# THE REDIRECT URI GOOGLE NEEDS IS NOT DOCKET'S. It is Supabase's callback, and it is the single
+# commonest reason a Google button returns redirect_uri_mismatch. The summary prints it.
+GOOGLE_JSON=""
+if [ -n "${GOOGLE_CLIENT_ID:-}" ] && [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
+  GOOGLE_JSON=$(python3 - <<'GOOGLEPY'
+import json, os
+print(json.dumps({
+  "external_google_enabled": True,
+  "external_google_client_id": os.environ["GOOGLE_CLIENT_ID"],
+  "external_google_secret": os.environ["GOOGLE_CLIENT_SECRET"],
+}))
+GOOGLEPY
+)
+fi
+
+BODY=$(APP_URL="$APP_URL" REDIRECTS="$REDIRECTS" PHONE_JSON="$PHONE_JSON" SMTP_JSON="$SMTP_JSON" GOOGLE_JSON="$GOOGLE_JSON" MAGIC_LINK_HTML="$MAGIC_LINK_HTML" python3 - <<'PY'
 import json, os
 body = {
   "site_url": os.environ["APP_URL"],
@@ -142,6 +162,8 @@ if os.environ.get("PHONE_JSON"):
   body.update(json.loads(os.environ["PHONE_JSON"]))
 if os.environ.get("SMTP_JSON"):
   body.update(json.loads(os.environ["SMTP_JSON"]))
+if os.environ.get("GOOGLE_JSON"):
+  body.update(json.loads(os.environ["GOOGLE_JSON"]))
 print(json.dumps(body))
 PY
 )
@@ -198,7 +220,17 @@ else:
     print("                         The quota shows as 429 email rate limit exceeded in the auth")
     print("                         log. Set RESEND_API_KEY and EMAIL_FROM and re-run.")
 print("   phone sign-in       :", c.get("external_phone_enabled"), "provider:", c.get("sms_provider"))
+print("   Google sign-in      :", c.get("external_google_enabled"))
 '
+if [ -n "$GOOGLE_JSON" ]; then
+  echo "   Google redirect URI : https://${SUPABASE_PROJECT_REF}.supabase.co/auth/v1/callback"
+  echo "                         This exact string must be an Authorised redirect URI on the OAuth"
+  echo "                         client in Google Cloud Console, or Google answers"
+  echo "                         redirect_uri_mismatch and the button does nothing. It is Supabase"
+  echo "                         that Google returns to, never Docket."
+else
+  echo "   Google sign-in not changed: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it."
+fi
 if [ -z "$PHONE_JSON" ]; then
   echo "   phone provider not changed: set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_MESSAGE_SERVICE_SID to enable SMS OTP."
 fi

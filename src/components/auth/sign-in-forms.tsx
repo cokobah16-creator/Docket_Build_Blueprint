@@ -99,12 +99,25 @@ import {
   SIGN_IN_NOT_SENT,
   SIGN_IN_TROUBLE,
   SMS_JUST_SENT,
+  GOOGLE_UNAVAILABLE,
 } from "@/lib/auth-errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Alert } from "@/components/ui/alert";
 
 type Mode = "phone" | "email";
+
+/**
+ * How a phone code travels. GoTrue takes this as options.channel on signInWithOtp; it is the same
+ * Twilio call with a different sender, and it changes delivery only — verifyOtp stays type "sms"
+ * for both, because the code being verified is the same code either way.
+ *
+ * WhatsApp matters here more than it would elsewhere: it is how much of Nigeria actually messages,
+ * it crosses networks that drop SMS on the DND route, and it costs the firm nothing extra. It is
+ * offered beside SMS rather than instead of it, because it needs a WhatsApp sender configured on
+ * Twilio and a handset that has WhatsApp, and neither is a safe assumption for every client.
+ */
+type Channel = "sms" | "whatsapp";
 
 /** scripts/configure-providers.sh sets sms_otp_length 6 and sms_otp_exp 600. Both are said out loud. */
 const CODE_LENGTH = 6;
@@ -225,6 +238,12 @@ export function SignInForms({
 
   /** The resolved E.164 a code was actually sent to. The only string verify and resend may use. */
   const [sentTo, setSentTo] = useState<string | null>(null);
+  /**
+   * Which way the live code travelled. A resend has to use the same channel: somebody who asked
+   * for WhatsApp because their SMS never arrives should not be quietly sent a text when they tap
+   * "Resend", and the code on screen belongs to whichever message they are actually looking at.
+   */
+  const [sentVia, setSentVia] = useState<Channel>("sms");
   const [sentToEmail, setSentToEmail] = useState<string | null>(null);
 
   const [busy, setBusy] = useState(false);
@@ -353,21 +372,26 @@ export function SignInForms({
    * number gets an auth user with no rows behind RLS and one unsolicited SMS, bounded by the
    * per-number cooldown and the project's thirty sends an hour. That is the cheaper side.
    */
-  async function sendCode(target: string, again: boolean) {
+  async function sendCode(target: string, again: boolean, channel: Channel = "sms") {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     clearMessages();
     try {
-      const { error: err } = await client.auth.signInWithOtp({ phone: target });
+      // options.channel only where it is not the default: an older GoTrue that does not know the
+      // field would reject a request carrying it, and every SMS send would break to buy nothing.
+      const { error: err } = await client.auth.signInWithOtp(
+        channel === "whatsapp" ? { phone: target, options: { channel: "whatsapp" } } : { phone: target },
+      );
       if (err) {
-        const problem = signInProblem("send_sms", failureShape(err));
+        const problem = signInProblem(channel === "whatsapp" ? "send_whatsapp" : "send_sms", failureShape(err));
         if (problem.cooldownSeconds) {
           // A code is already in flight — from another tab, another device, or a first tap this one
           // did not see. It has ten minutes to live, so moving forward is the truthful thing to do,
           // and the countdown says when another can be asked for. A red banner holding the person
           // on the start screen would be a lie about what happened.
           setSentTo(target);
+          setSentVia(channel);
           setPhoneStage("verify");
           setNotice(problem.text);
           armCooldown(target, problem.cooldownSeconds);
@@ -386,6 +410,7 @@ export function SignInForms({
         return;
       }
       setSentTo(target);
+      setSentVia(channel);
       setPhoneStage("verify");
       setCode("");
       lastTried.current = null;
@@ -402,8 +427,12 @@ export function SignInForms({
     }
   }
 
-  function startPhone(e: FormEvent) {
-    e.preventDefault();
+  /**
+   * Split from the submit handler because two different controls start a send and they hand over
+   * two different events — the form gives a FormEvent, the WhatsApp button a MouseEvent, and
+   * neither is assignable to the other. The work takes a channel and no event at all.
+   */
+  function beginPhone(channel: Channel) {
     const resolved = resolvePhone(phone);
     if (!resolved) {
       // Blocked here rather than at GoTrue. A round trip to be told the same thing costs a wait on
@@ -423,7 +452,12 @@ export function SignInForms({
       setNotice(SMS_JUST_SENT);
       return;
     }
-    void sendCode(resolved, false);
+    void sendCode(resolved, false, channel);
+  }
+
+  function startPhone(e: FormEvent) {
+    e.preventDefault();
+    beginPhone("sms");
   }
 
   /**
@@ -652,6 +686,67 @@ export function SignInForms({
     }
   }
 
+  /**
+   * Google, which is the one way in that needs no message delivered at all.
+   *
+   * Every other route depends on a provider handing a code to a person: an SMS through Twilio, an
+   * email through whatever SMTP the project has. Both of those have failed in this project's own
+   * auth log — a Twilio caller ID that was an Account SID, and the built-in mail service refusing
+   * every address outside the Supabase organisation. Google asks nothing of either.
+   *
+   * NO NEW SERVER CODE. signInWithOAuth uses PKCE, so Google returns the browser to
+   * /auth/callback?code=..., which already exchanges the code, already reports a failed exchange
+   * in words, and already stitches the anonymous visitor to the account. redirectTo carries the
+   * same ?next= every other route carries, so a Google sign-in lands on the invoice the person
+   * was sent to, exactly like the rest.
+   *
+   * It signs in whoever holds the Google account, which is not by itself an entitlement to
+   * anything: RLS decides what they can see, and an address the firm never invited opens an
+   * account with no matters behind it — the same bargain the phone and email routes already make.
+   */
+  async function startGoogle() {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    clearMessages();
+    try {
+      const { error: err } = await client.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectNext)}`,
+        },
+      });
+      // Only reached when the handshake never started; on success the browser has already left.
+      if (err) setFormError(signInProblem("start_google", failureShape(err)).text || GOOGLE_UNAVAILABLE);
+    } catch (caught) {
+      setFormError(isNetworkFailure(caught) ? SIGN_IN_NOT_SENT : GOOGLE_UNAVAILABLE);
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }
+
+  /** The Google button, shown on both start screens and on neither verify screen — see below. */
+  const googleButton = (
+    <>
+      <div className="flex items-center gap-3 pt-1" aria-hidden="true">
+        <span className="h-px flex-1 bg-gray-200" />
+        <span className="text-[11.5px] text-gray-500">or</span>
+        <span className="h-px flex-1 bg-gray-200" />
+      </div>
+      <Button
+        type="button"
+        variant="ghost"
+        size="lg"
+        className="w-full border border-gray-300"
+        disabled={busy}
+        onClick={() => void startGoogle()}
+      >
+        Continue with Google
+      </Button>
+    </>
+  );
+
   function startEmail(e: FormEvent) {
     e.preventDefault();
     const address = email.trim();
@@ -765,6 +860,22 @@ export function SignInForms({
           <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
             {busy ? "Sending code…" : "Send code"}
           </Button>
+          {/* BELOW the send button, and it has to stay below it. Its name matches /send/i too, and
+              journeys.spec.ts:112 and :311 both take .first() on /send|continue|code/i and /send/i —
+              so putting WhatsApp first would hand the spec the wrong control and silently test the
+              wrong channel. Same reason the Google button is last: "Continue with Google" matches
+              /continue/i. A type="button" so it does not submit the form it sits in. */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="lg"
+            className="w-full border border-gray-300"
+            disabled={busy}
+            onClick={() => beginPhone("whatsapp")}
+          >
+            Send it on WhatsApp instead
+          </Button>
+          {googleButton}
           {offlineNote}
         </form>
       )}
@@ -797,7 +908,7 @@ export function SignInForms({
               safeguard. The clamp belongs in onCodeChange, where it can see the whole string. */}
           <Input
             id={CODE_FIELD_ID}
-            label={`Code sent to ${prettyPhone(sentTo)}`}
+            label={`Code sent ${sentVia === "whatsapp" ? "on WhatsApp" : "by text"} to ${prettyPhone(sentTo)}`}
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
@@ -834,10 +945,14 @@ export function SignInForms({
             className="w-full"
             disabled={busy || phoneWait > 0}
             onClick={() => {
-              if (sentTo) void sendCode(sentTo, true);
+              if (sentTo) void sendCode(sentTo, true, sentVia);
             }}
           >
-            {phoneWait > 0 ? `Resend code in ${phoneWait}s` : "Resend code"}
+            {phoneWait > 0
+              ? `Resend code in ${phoneWait}s`
+              : sentVia === "whatsapp"
+                ? "Resend on WhatsApp"
+                : "Resend code"}
           </Button>
           <Button variant="ghost" size="sm" className="w-full" onClick={changeNumber}>
             Change the number
@@ -863,6 +978,7 @@ export function SignInForms({
           <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
             {busy ? "Sending link…" : "Email me a sign-in link"}
           </Button>
+          {googleButton}
           {offlineNote}
         </form>
       )}

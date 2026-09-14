@@ -51,7 +51,13 @@ export interface AuthFailureShape {
 }
 
 /** Which call failed. The same GoTrue code means different things at different steps. */
-export type SignInStep = "send_sms" | "verify_sms" | "send_email" | "verify_email";
+export type SignInStep =
+  | "send_sms"
+  | "send_whatsapp"
+  | "verify_sms"
+  | "send_email"
+  | "verify_email"
+  | "start_google";
 
 export interface SignInProblem {
   /** The sentence to show. Always ours, never the provider's. */
@@ -103,6 +109,18 @@ export const LINK_DID_NOT_WORK =
 
 /** The send failed at the SMS provider, or the send hook timed out. Same move either way. */
 export const CODE_NOT_SENT = "We could not send a code to that number. Check it, or sign in by email instead.";
+
+/**
+ * The same failure on the WhatsApp channel, which needs its own sentence because it has its own
+ * way of being wrong: a number can be perfectly good and simply not be on WhatsApp, which is not
+ * true of SMS. So this points at the text message rather than at the number.
+ */
+export const WHATSAPP_NOT_SENT =
+  "We could not reach that number on WhatsApp. Send it as a text message instead, or sign in by email.";
+
+/** Google sign-in is off at the project level, or the handshake never started. */
+export const GOOGLE_UNAVAILABLE =
+  "Signing in with Google is not available right now. Use the phone number or email your firm has for you.";
 
 /** Phone sign-in refused for a reason that is about the number, said without saying which. */
 export const PHONE_NO_ENTRY =
@@ -220,6 +238,36 @@ export function signInProblem(step: SignInStep, failure: AuthFailureShape): Sign
       says(/token has expired or is invalid|invalid token/i)
     ) {
       return { text: CODE_DID_NOT_WORK };
+    }
+    return { text: SIGN_IN_TROUBLE };
+  }
+
+  if (step === "start_google") {
+    // Nothing here is about the person: an OAuth handshake that will not start is about the
+    // project's configuration or the network, and both leave the same two ways in.
+    return { text: GOOGLE_UNAVAILABLE, switchTo: "phone" };
+  }
+
+  if (step === "send_whatsapp") {
+    // GoTrue answers the WhatsApp channel with the same codes as SMS — it is the same Twilio call
+    // with a different sender — so the rules are the SMS rules, and only the provider-failure
+    // sentence differs, because "not on WhatsApp" is a real and common reason a good number fails.
+    if (
+      code === "sms_send_failed" ||
+      code === "hook_timeout" ||
+      code === "hook_timeout_after_retry" ||
+      says(/error sending .*otp to provider|failed to reach hook/i)
+    ) {
+      return { text: WHATSAPP_NOT_SENT };
+    }
+    if (code === "phone_provider_disabled" || says(/unsupported phone provider/i)) {
+      return { text: SMS_TURNED_OFF, switchTo: "email" };
+    }
+    if (code === "validation_failed" || says(/e\.164|invalid phone/i)) {
+      return { text: PHONE_NO_ENTRY };
+    }
+    if (code === "otp_disabled" || code === "user_banned" || says(/signups not allowed/i)) {
+      return { text: PHONE_NO_ENTRY };
     }
     return { text: SIGN_IN_TROUBLE };
   }
