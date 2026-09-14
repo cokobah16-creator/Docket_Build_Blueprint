@@ -28,6 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Input, Select } from "@/components/ui/input";
+import { SettingRow, Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/cn";
 import type { DomainRequestRow, FirmBrand } from "@/lib/db/types";
 import {
@@ -640,7 +641,7 @@ function ServiceSection({ firmId, serviceOfProcess, colleagues, status }: FirmSe
 
 // ---------------------------------------------------------------- brand
 
-function BrandSection({ firmId, firmName, brand }: FirmSettingsProps) {
+function BrandSection({ firmId, firmName, firmSlug, brand }: FirmSettingsProps) {
   const { pending, result, run } = useSave();
   const [tagline, setTagline] = useState(brand?.tagline ?? "");
   const [cta, setCta] = useState(brand?.cta ?? "");
@@ -656,13 +657,22 @@ function BrandSection({ firmId, firmName, brand }: FirmSettingsProps) {
   const [contactWhatsapp, setContactWhatsapp] = useState(
     ((brand?.contact ?? {}) as { whatsapp?: string | null }).whatsapp ?? "",
   );
+  // tenantAllowsDark() rather than a truthiness test on the raw key: the database keeps the
+  // boolean true and nothing else, so a firm whose row somehow carries "true" or 1 is off, and
+  // the switch has to show the same answer the public site acts on.
+  const [darkMode, setDarkMode] = useState(tenantAllowsDark(brand));
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const preview: FirmBrand = {
     tagline,
     cta,
-    colours: { primary: primary || undefined, accent: accent || undefined, surface: surface || undefined },
+    colours: {
+      primary: primary || undefined,
+      accent: accent || undefined,
+      surface: surface || undefined,
+      dark_mode: darkMode || undefined,
+    },
     fonts: { heading: headingFont || undefined, body: bodyFont || undefined },
   };
 
@@ -725,6 +735,7 @@ function BrandSection({ firmId, firmName, brand }: FirmSettingsProps) {
               contactPhone,
               contactAddress,
               contactWhatsapp,
+              darkMode,
             }),
           );
         }}
@@ -740,6 +751,29 @@ function BrandSection({ firmId, firmName, brand }: FirmSettingsProps) {
         <p className="-mt-2 text-sm text-gray-500">
           Six-digit hex, such as #1c2b3a. The database stores it lowercase and drops anything that is
           not six hex digits.
+        </p>
+
+        {/* The title names the surface, and it has to: the phones this is read on are the same
+            phones the switch is about, and an administrator who reads "Dark mode" alone will take
+            it for a setting that turns dark off for their clients or for themselves. It does
+            neither. The portal and this console follow the visitor whatever is chosen here. */}
+        <SettingRow
+          title="Let your public site follow a visitor's dark mode"
+          hint={
+            <>
+              Only your own site at <code>/{firmSlug}</code>. Your clients' portal and this console
+              follow the phone they are held in either way, and nothing here changes that.
+            </>
+          }
+          divided={false}
+        >
+          <Switch label="Let your public site follow a visitor's dark mode" checked={darkMode} onChange={setDarkMode} />
+        </SettingRow>
+        <p className="-mt-2 text-sm text-gray-500">
+          On, a visitor whose phone is set to dark reads your site on a dark page, and your colours
+          are adjusted there so they stay legible on it — a deep navy comes back a lighter navy, and
+          the wording on top of it is picked to stay readable. Off, your site is light for everyone,
+          in the colours above exactly as you set them.
         </p>
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -794,7 +828,14 @@ function BrandSection({ firmId, firmName, brand }: FirmSettingsProps) {
           <Input label="WhatsApp number" value={contactWhatsapp} onChange={(e) => setContactWhatsapp(e.target.value)} maxLength={200} inputMode="tel" />
         </div>
 
-        <Labelled label="How it looks">
+        <Labelled
+          label="How it looks"
+          hint={
+            darkMode
+              ? "In whatever theme this console is in, because that is now what a visitor's phone decides on your site too."
+              : "Light, whatever theme this console is in, because that is what every visitor to your site gets until the switch above is on."
+          }
+        >
           {/* text-brand-on and text-brand-on-accent, NOT text-white. This panel is inside
               brandStyle(preview), so bg-brand here is the firm's own colour, and the real
               site draws its foreground with readableForeground() — ink on a pale brand,
@@ -803,20 +844,24 @@ function BrandSection({ firmId, firmName, brand }: FirmSettingsProps) {
               white-on-gold here and go and change a colour that was never wrong.
 
               data-theme-scope pins the panel exactly as app/(public)/[firm]/layout.tsx
-              pins the site, and for the same reason twice over. It is truthful — a firm
-              that has not opted into dark has a site that stays light, so a preview that
-              went dark would be showing them a page that does not exist. And it is what
-              keeps the panel legible: bg-brand-surface is the firm's cream whatever the
-              console is doing, so a `text-gray-700` inside it that followed the console
-              into dark would be pale grey on cream. */}
+              pins the site, off the same answer, so the two agree by construction: with
+              the switch above off, the firm's site stays light for every visitor, and a
+              preview that followed this console into dark would be showing them a page
+              that does not exist.
+
+              Which is why the tagline is text-ink-muted and the edge is border-hairline
+              rather than fixed greys. Switched on, the panel is no longer pinned and
+              bg-brand-surface becomes the theme's dark ground — and a `text-gray-700`
+              tagline on it would be dark grey on a dark page, which is precisely the
+              illegibility this preview exists to let a firm see before its clients do. */}
           <div
             data-brand
             data-theme-scope={tenantAllowsDark(preview) ? undefined : "light"}
             style={brandStyle(preview, { allowDark: tenantAllowsDark(preview) })}
-            className="rounded-card border border-gray-200 bg-brand-surface p-4"
+            className="rounded-card border border-hairline bg-brand-surface p-4"
           >
             <p className="font-heading text-lg font-semibold text-brand">{firmName}</p>
-            {tagline && <p className="mt-1 font-body text-sm text-gray-700">{tagline}</p>}
+            {tagline && <p className="mt-1 font-body text-sm text-ink-muted">{tagline}</p>}
             <span className="mt-3 inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on">
               {cta || "Book a consultation"}
             </span>
