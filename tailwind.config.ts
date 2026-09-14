@@ -142,12 +142,15 @@ const config: Config = {
         body: ["var(--dk-font-body)", "system-ui", "sans-serif"],
       },
 
+      // Named rather than sm/md/lg/xl on purpose. Overriding Tailwind's own
+      // scale would silently move existing callers — `rounded-xl` has 11 uses
+      // that would shift 12px -> 16px with nobody having asked for it. These
+      // names collide with nothing, so adopting them is always deliberate.
       borderRadius: {
-        sm: "6px", // chips, pills
-        md: "9px", // buttons, fields
-        lg: "12px", // cards
-        xl: "16px", // sheets
-        card: "12px", // the original name, kept so existing callers still work
+        chip: "6px", // pills, chips, small tags
+        control: "9px", // buttons, inputs, selects — today's rounded-[9px]
+        card: "12px", // cards, alerts, choice cards — the name already in use
+        sheet: "18px", // modals, the phone More sheet — today's rounded-t-[18px]
       },
 
       // Elevation. In dark mode a shadow is nearly invisible, so each level

@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { MATTER_TYPES, TEMPLATE_PLACEHOLDERS, type DocumentTemplateRow, type TemplateExecution } from "@/lib/db/types";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const EXECUTION: Array<{ value: TemplateExecution; label: string; help: string }> = [
   { value: "electronic", label: "Signed in Docket", help: "The client reads it here and signs by typing their name; the signed version is locked." },

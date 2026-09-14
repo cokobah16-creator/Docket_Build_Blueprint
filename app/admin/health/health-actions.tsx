@@ -113,7 +113,7 @@ async function setProviderRateAction(formData: FormData): Promise<void> {
 
 const RATE_PROVIDERS = ["termii", "twilio", "resend", "webpush"] as const;
 const RATE_CHANNELS = ["sms", "email", "push"] as const;
-const inputClass = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const inputClass = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 /** The form that enters a rate. No client JavaScript: it posts and redirects like the retry does. */
 export function RatesForm() {

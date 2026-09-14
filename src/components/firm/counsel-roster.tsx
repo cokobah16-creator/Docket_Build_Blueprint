@@ -31,7 +31,7 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
 import type { MatterCounselRow, ServiceDirectoryRow } from "@/lib/db/types";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const SIDES: Array<{ value: string; label: string }> = [
   { value: "opposing", label: "Opposing counsel" },

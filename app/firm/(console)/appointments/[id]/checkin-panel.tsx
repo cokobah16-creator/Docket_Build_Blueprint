@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { formatDay } from "@/lib/days";
 import type { AppointmentReadiness, ConflictMatch, DocumentRequestRow } from "@/lib/db/types";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWrite }: { appointmentId: string; firmId: string; readiness: AppointmentReadiness; requests: DocumentRequestRow[]; canWrite: boolean }) {
   const router = useRouter();

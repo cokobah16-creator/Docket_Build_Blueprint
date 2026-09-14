@@ -27,7 +27,7 @@ import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import type { AvailabilityException, AvailabilityRule } from "@/lib/db/types";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 const timeField = cn(field, "min-h-[44px]");
 
 const DEFAULT_SLOT_MIN = 45;

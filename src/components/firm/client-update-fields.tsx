@@ -24,7 +24,7 @@ export interface ClientUpdateShape {
 
 export const EMPTY_SHAPE: ClientUpdateShape = { meaning: "", nextStep: "", clientAction: "", actionRequired: "unstated", nextUpdateBy: "" };
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 export function ClientUpdateFields({
   idPrefix, value, onChange, intro,

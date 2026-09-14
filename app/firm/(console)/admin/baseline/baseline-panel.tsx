@@ -18,7 +18,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { formatMoneyByCurrency } from "@/lib/money";
 import { BASELINE_CLAIMS, type FirmBaselineRow, type FirmMetrics } from "@/lib/db/types";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 /** A share, or a dash where there is nothing to take a share of. */
 function share(n: number, of: number): string {
