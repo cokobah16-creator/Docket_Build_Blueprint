@@ -345,7 +345,8 @@ another's says whether the two are running the same bytes, for free and without 
 Staging was brought up this way on 14 Sep 2026; seven of the ten matched production exactly.
 
 **Two did not, and the cause matters more than the difference.** `paystack-webhook` and
-`extract-text` are running, in production, source that exists in **no commit on any branch**:
+`extract-text` were running, in production, source that existed in **no commit on any branch**
+(**reconciled 14 Sep 2026** — see the foot of this section):
 
 | Function | What production carries | What this repository says |
 |---|---|---|
@@ -357,14 +358,24 @@ than assumed, by deploying to staging the committed file with only those lines s
 reproduced production's hash exactly (`1d35a0b3…` and `73a53234…`). For `extract-text` that also
 proves `extract.ts` itself has not drifted, because the bundle hash covers both files.
 
-The cause is the same both times: the source was retyped or hand-edited at deploy time instead of
-transcribed from the committed file. That is the habit to break, not the comments. Until production
-is redeployed from the committed files, every future hash comparison on these two will flag, and
-whoever runs it next will re-investigate what has already been investigated.
+The cause was the same both times: the source was retyped or hand-edited at deploy time instead of
+transcribed from the committed file. **That is the habit to break, not the comments** — and it is
+why this was fixed rather than tolerated. Left alone, every future hash comparison on these two
+would have flagged, and whoever ran it next would have re-investigated what had already been
+investigated. Deploy from the file; never retype it.
 
-**To reconcile:** redeploy `paystack-webhook` and `extract-text` to production from the committed
-files. Nothing behaves differently. Afterwards all ten should match staging, with `partner-api` the
-single deliberate exception — staging sets `DOCKET_SANDBOX=true` and production does not.
+**Reconciled, 14 Sep 2026.** Both were redeployed to production from the committed files —
+`paystack-webhook` **v6**, `extract-text` **v2**, `verify_jwt: false` preserved on both — and each
+came back with staging's hash exactly (`5df7111a…` and `a2e78a3d…`). Proved live rather than
+assumed, by paths that touch no database so production gained no stray rows: `paystack-webhook`
+answers `405 method not allowed` to a GET, and `extract-text` answers `404 not found` to both a
+missing and a wrong cron secret — deliberately the same answer, so the function does not confirm
+its own existence to a caller without the secret.
+
+Every production function now matches staging byte for byte **except `partner-api`**, which differs
+by design: staging sets `DOCKET_SANDBOX=true` and production does not, so their discovery responses
+must differ. That is the one hash difference anybody should expect to see; **any other is a finding
+and should be treated as one.**
 
 ---
 
@@ -820,7 +831,7 @@ select proname, proacl from pg_proc where proname in ('registry_notice_fanout', 
 |---|---|---|
 | **App** | `68439d9` (the merge of PR #23), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
 | **Schema** | Migrations **1–49**, all applied: 51 ledger entries (`20260909000001_schema` … `court_registry`, plus the two unnumbered `consultations` and `client_portal`). 34–49 were applied together on 13 Sep after the app had already deployed — the wrong order, recorded below rather than smoothed over | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
-| **Edge Functions** | `paystack-webhook` **v5** · `dispatch-notifications` **v9** (renders every event through Wave 4f, `registry_notice_received` / `registry_notice_withdrawn` included) · `video-session` **v2** · `storage-manifest` **v1** · `calendar-feed` **v1** · `delivery-receipts` **v1** · `extract-text` **v1** · `partner-api` **v1** · `partner-webhooks` **v1**. Nine functions, eight `--no-verify-jwt`; `video-session` is the only one that keeps JWT verification on | MCP `list_edge_functions`; `cron.job`; `cron.job_run_details` |
+| **Edge Functions** | `paystack-webhook` **v6** · `dispatch-notifications` **v9** (renders every event through Wave 4f, `registry_notice_received` / `registry_notice_withdrawn` included) · `video-session` **v2** · `storage-manifest` **v1** · `calendar-feed` **v1** · `delivery-receipts` **v1** · `extract-text` **v2** · `partner-api` **v1** · `partner-webhooks` **v1**. Nine functions, eight `--no-verify-jwt`; `video-session` is the only one that keeps JWT verification on. **v6 and v2 are the 14 Sep 2026 reconciliation** (§3a): comment-only redeploys from the committed files, after which every production function'''s `ezbr_sha256` matches staging'''s except `partner-api`, which differs by design | MCP `list_edge_functions`; `cron.job`; `cron.job_run_details` |
 
 **How this release was reconciled, and the two things it found.** The app had been deploying ahead
 of the schema since Wave 3a: on 13 Sep the front end on `main` named **25 relations and 56
