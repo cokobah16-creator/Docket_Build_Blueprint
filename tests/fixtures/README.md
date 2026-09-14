@@ -17,7 +17,9 @@ So a clean run here proves:
 - the page renders at 360/390/768/1024/1440 and in landscape,
 - nothing overflows its viewport horizontally,
 - the browser logged no errors other than the named fixture gaps below,
-- tap targets, focus rings, composer room and draft survival behave (`ergonomics.mjs`).
+- tap targets, focus rings, composer room and draft survival behave (`ergonomics.mjs`),
+- every colour, size, radius and status affordance on it is one the design system named, in
+  **both** themes (`design.mjs`).
 
 A clean run here proves **nothing whatever** about:
 
@@ -41,9 +43,14 @@ belongs.
 | `ergonomics.mjs` | The checks a screenshot cannot make: 44x44 tap targets, visible focus, composer above the on-screen keyboard's line, and a half-typed draft surviving a phone to desktop resize. |
 | `composer.mjs` | The first second of a form's life. Types, pastes and fills at the instant a field appears, before React has attached to it, and holds every character — in the client's message composer and in the lawyer's court-update form. Nothing in it waits for the page to settle: waiting is what hid the bug it exists to catch. |
 | `navigation.mjs` | That the console keeps naming the firm on screen through a switch, a followed link, and Back and Forward; and that the phone's More sheet traps focus, closes on Escape, makes the page behind it inert, gives focus back, and lets go when a rotation crosses the tablet breakpoint. |
+| `design.mjs` | The design linter, applied to every surface in both themes: contrast, control boundaries, the type ramp, the token set, the radius scale, the tenant-brand firewall and status affordances. Also carries `--inventory` / `--diff`, the semantic screenshot diff. See **The design linter** below. |
+| `contrast.mjs` | The colour arithmetic `design.mjs` and `design/home/verify.mjs` share — parse, luminance, ratio, alpha compositing, the AA threshold, and the walk up to the ground an element is painted on. Not a runnable check; it exists so the landing gate and the app gate cannot come to disagree about what 4.5:1 means. |
 
-All four **exit nonzero when they report problems**, so a failure cannot be mistaken for a pass by
-CI or by a person rerunning them. `npm run test:fixtures` runs the lot in order.
+All five checks **exit nonzero when they report problems**, so a failure cannot be mistaken for a
+pass by CI or by a person rerunning them. `npm run test:fixtures` runs the lot in order.
+
+`design.mjs` is last in that chain on purpose. It is **red today**, and that is the point of it —
+see below — so the four that have always been green still run and report before it stops the run.
 
 ## Rerunning the layout fixtures
 
@@ -56,18 +63,23 @@ NEXT_PUBLIC_SUPABASE_URL=http://127.0.0.1:54321 \
   NEXT_PUBLIC_SUPABASE_ANON_KEY=<key> npm run dev &
 
 # 3. run them
-MOCK_TOKEN=<key> npm run test:fixtures      # all four, stopping at the first failure
+MOCK_TOKEN=<key> npm run test:fixtures      # all five, stopping at the first failure
 
 # or one at a time
 MOCK_TOKEN=<key> npm run test:layout        # === node tests/fixtures/shots.mjs
 MOCK_TOKEN=<key> npm run test:ergonomics    # === node tests/fixtures/ergonomics.mjs
 MOCK_TOKEN=<key> npm run test:composer      # === node tests/fixtures/composer.mjs
 MOCK_TOKEN=<key> npm run test:navigation    # === node tests/fixtures/navigation.mjs
+MOCK_TOKEN=<key> npm run test:design        # === node tests/fixtures/design.mjs
 ```
 
 `shots.mjs` takes `--out <dir>` (default `/tmp/shots`), `--base <url>` (default
 `http://localhost:3000`) and `--only <substring>` to run a subset of screens. It writes
 `problems.txt` and `ignored.txt` next to the PNGs.
+
+`design.mjs` takes those same three (its `--out` defaults to `/tmp/design`, and it writes
+`design-problems.txt` and `ignored.txt` there) plus four of its own — `--viewports`, `--themes`,
+`--inventory` and `--diff` — all described below.
 
 In a sandbox with no bundled Playwright browser, set `PW_CHROMIUM` to a Chromium binary, e.g.
 `PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`. `playwright.config.ts` honours

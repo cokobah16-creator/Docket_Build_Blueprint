@@ -39,7 +39,21 @@ const base = cn(
 
 // `border-edge` rather than a hairline: this border is the only thing bounding
 // the control, so it has to clear 3:1 (WCAG 1.4.11).
-const bordered = "border border-edge bg-raised text-brand";
+//
+// The label is INK, not the firm's colour, and the two reasons are independent.
+// One: 89 of these sit in the staff console and the registry console, which are
+// Docket's own surfaces and which a tenant's colour must never reach. Two: the
+// fill moved from `bg-white` to `bg-raised`, and bg-raised flips for dark while
+// a firm's --dk-primary is a fixed navy until brandStyle() is actually read —
+// nothing in the tree carries data-brand yet — so a brand label on this fill
+// measures 1.10:1 on a dark ground. Ink says the same thing at 14:1 in both
+// themes. The firm's colour is on the PRIMARY button, which is where a client
+// looks for it; "Cancel" was never carrying the brand.
+//
+// The focus ring is stated for the same reason and must be stated at all: with
+// no outline-color of its own the ring falls back to the label's colour, which
+// differs by browser and, until this line, was the tenant's.
+const bordered = "border border-edge bg-raised text-ink-strong focus-visible:outline-ink-strong";
 
 const variants: Record<Variant, string> = {
   primary: "bg-brand text-brand-on focus-visible:outline-brand",

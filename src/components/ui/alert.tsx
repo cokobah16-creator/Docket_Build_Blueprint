@@ -38,7 +38,7 @@ export function Alert({
     <div
       role={kind === "error" ? "alert" : "status"}
       className={cn(
-        "flex items-start gap-2.5 rounded-control border px-[13px] py-[11px] text-13",
+        "flex items-start gap-2.5 rounded-card border px-[13px] py-[11px] text-13",
         PILL_TONES[kinds[kind].tone],
         className,
       )}
