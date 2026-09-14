@@ -215,9 +215,18 @@ must enrol TOTP before `/admin` will let it do anything, because every platform 
 
 ## 3. The Edge Functions
 
-Nine functions, and **eight of them must be deployed with `--no-verify-jwt`**, because their callers
+Ten functions, and **nine of them must be deployed with `--no-verify-jwt`**, because their callers
 hold no Supabase session — a payment provider, `pg_cron`, a partner's server, a calendar app. There is no `supabase/config.toml` in this repository, so the flag has to
 be on the command line every time.
+
+**Deploying through the Supabase MCP tool instead? The default is the opposite way round, and it
+fails silently.** `deploy_edge_function` takes `verify_jwt` as a REQUIRED parameter that defaults
+to `true`. Omit it and the function deploys with verification ON — Supabase then rejects every
+provider callback and every `pg_cron` call with a 401 *before* the function's own signature check
+runs, and the function's bundle hash still matches a correct deployment exactly, because the flag
+is not part of the bundle. The hash proves the code, not the deployment. Pass `verify_jwt: false`
+explicitly for all nine below, and `true` only for `video-session`. (Found on 14 Sep 2026 by
+doing precisely this to `delivery-receipts` on staging; corrected as v2.)
 
 ```bash
 supabase functions deploy paystack-webhook        --project-ref <ref> --no-verify-jwt
@@ -228,6 +237,7 @@ supabase functions deploy partner-api             --project-ref <ref> --no-verif
 supabase functions deploy partner-webhooks        --project-ref <ref> --no-verify-jwt
 supabase functions deploy calendar-feed           --project-ref <ref> --no-verify-jwt
 supabase functions deploy extract-text            --project-ref <ref> --no-verify-jwt
+supabase functions deploy storage-replicate       --project-ref <ref> --no-verify-jwt
 supabase functions deploy video-session           --project-ref <ref>
 ```
 
@@ -326,6 +336,35 @@ zero on every run thereafter, for the reason §7 gives. `curl -X POST https://<r
 with no token returns `unverified` (401) and leaves an `unverified` row in `webhook_events`. The same call to `/functions/v1/storage-manifest` returns
 `forbidden` (403) without the header and a JSON count of what it verified with it; within an hour
 `/admin/health` should show every object verified and none missing.
+
+### 3a. Is the deployed function the function in this repository?
+
+`list_edge_functions` returns an `ezbr_sha256` per function — the hash of the deployed bundle.
+Deploying the same source twice gives the same hash, so comparing one project's hash against
+another's says whether the two are running the same bytes, for free and without reading anything.
+Staging was brought up this way on 14 Sep 2026; seven of the ten matched production exactly.
+
+**Two did not, and the cause matters more than the difference.** `paystack-webhook` and
+`extract-text` are running, in production, source that exists in **no commit on any branch**:
+
+| Function | What production carries | What this repository says |
+|---|---|---|
+| `paystack-webhook` | `// Status codes: 200 for anything a retry cannot fix…` | `// Status codes are unchanged from the version this replaces: 200 …` |
+| `extract-text` | `…hand src/lib/extract.ts's answer back` (the pre-relocation wording) | `…hand extract.ts's answer back` |
+
+Both are comments, so nothing behaves differently — and in both cases that was **proved** rather
+than assumed, by deploying to staging the committed file with only those lines swapped: each
+reproduced production's hash exactly (`1d35a0b3…` and `73a53234…`). For `extract-text` that also
+proves `extract.ts` itself has not drifted, because the bundle hash covers both files.
+
+The cause is the same both times: the source was retyped or hand-edited at deploy time instead of
+transcribed from the committed file. That is the habit to break, not the comments. Until production
+is redeployed from the committed files, every future hash comparison on these two will flag, and
+whoever runs it next will re-investigate what has already been investigated.
+
+**To reconcile:** redeploy `paystack-webhook` and `extract-text` to production from the committed
+files. Nothing behaves differently. Afterwards all ten should match staging, with `partner-api` the
+single deliberate exception — staging sets `DOCKET_SANDBOX=true` and production does not.
 
 ---
 
