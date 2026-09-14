@@ -116,6 +116,15 @@ const config: Config = {
         informing: { bg: t("informing-bg"), line: t("informing-line"), ink: t("informing-ink") },
 
         danger: { DEFAULT: t("danger"), on: t("on-danger") },
+
+        // Interaction overlays. Expressed as ink at low alpha rather than as
+        // their own variables, so they flip for free: ink is near-black on
+        // paper and near-white on a dark ground, which is exactly the overlay
+        // each theme wants. The 32 `hover:bg-black/5` sites in the app do NOT
+        // flip — a black wash is invisible on a dark ground — so they migrate
+        // to this.
+        hover: "rgb(var(--t-ink) / 0.05)",
+        press: "rgb(var(--t-ink) / 0.09)",
       },
 
       // The type ramp. Ten sizes, nothing between them — named for the pixel
