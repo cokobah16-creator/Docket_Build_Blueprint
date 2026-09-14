@@ -32,6 +32,18 @@ const archivo = Archivo({ subsets: ["latin"], display: "swap" });
 // at the same time. This is that.
 export const dynamic = "force-dynamic";
 
+// THE RING'S COLOUR IS STATED, on every control here. An `outline` with no
+// outline-color of its own falls back to currentColor, and currentColor on the
+// two filled links below is `docket-paper` — the same colour as the page they
+// sit on. With `outline-offset-2` the ring is drawn ON that page, so it would
+// have been paper on paper: a keyboard user tabbing through the only three ways
+// off this screen would see the focus vanish on the one they most want. The
+// bordered link fails the same way the moment it is hovered and focused at once,
+// because the hover turns its text paper too. docket-ink reads at 15:1 on the
+// paper ground whatever the link underneath is doing.
+const RING =
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-docket-ink";
+
 const WAYS_OUT = [
   { href: "/", label: "Go to the home page", primary: true },
   { href: "/app/login", label: "Client sign in", primary: false },
@@ -48,13 +60,13 @@ export default function NotFound() {
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-8">
           <Link
             href="/"
-            className="flex min-h-[44px] items-center text-21 font-extrabold tracking-[-0.03em] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className={`flex min-h-[44px] items-center text-21 font-extrabold tracking-[-0.03em] ${RING}`}
           >
             Docket
           </Link>
           <Link
             href="/firm/start"
-            className="inline-flex min-h-[44px] items-center bg-docket-hunter px-6 text-15 font-semibold text-docket-paper hover:bg-docket-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+            className={`inline-flex min-h-[44px] items-center bg-docket-hunter px-6 text-15 font-semibold text-docket-paper hover:bg-docket-deep ${RING}`}
           >
             Register your firm
           </Link>
@@ -86,8 +98,8 @@ export default function NotFound() {
               href={w.href}
               className={
                 w.primary
-                  ? "inline-flex min-h-[44px] items-center bg-docket-hunter px-7 text-15 font-semibold text-docket-paper hover:bg-docket-deep focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
-                  : "inline-flex min-h-[44px] items-center border border-docket-hunter px-5 text-13 font-semibold text-docket-hunter hover:bg-docket-hunter hover:text-docket-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2"
+                  ? `inline-flex min-h-[44px] items-center bg-docket-hunter px-7 text-15 font-semibold text-docket-paper hover:bg-docket-deep ${RING}`
+                  : `inline-flex min-h-[44px] items-center border border-docket-hunter px-5 text-13 font-semibold text-docket-hunter hover:bg-docket-hunter hover:text-docket-paper ${RING}`
               }
             >
               {w.label}

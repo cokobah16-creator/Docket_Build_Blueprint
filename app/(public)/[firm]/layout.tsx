@@ -58,14 +58,23 @@ export default async function FirmLayout({
 
   const fontsUrl = brandFontsUrl(firm.brand);
   const base = `/${firm.slug}`;
+  const allowDark = tenantAllowsDark(firm.brand);
 
   return (
     // The firm's own shop window, so dark is the firm's call rather than ours:
     // tenantAllowsDark() is false unless they opted in, and brandStyle() then emits
     // the light values for both schemes, which pins the page to the colours they chose.
+    //
+    // The theme's NEUTRALS have to be pinned with them, and that is the whole reason
+    // data-theme-scope is here. Holding the brand colours light while --t-paper,
+    // --t-raised and --t-ink went on following the visitor's OS is the worst of both:
+    // a firm's navy heading would be sitting on a near-black card at 1.20:1, which is
+    // the exact failure this file's colours were re-toned to prevent. Opting out of
+    // dark means opting out of all of it.
     <div
       data-brand
-      style={brandStyle(firm.brand, { allowDark: tenantAllowsDark(firm.brand) })}
+      data-theme-scope={allowDark ? undefined : "light"}
+      style={brandStyle(firm.brand, { allowDark })}
       className="min-h-screen bg-brand-surface"
     >
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}

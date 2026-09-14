@@ -469,7 +469,7 @@ body {
    arrive as a style ATTRIBUTE, an attribute holds one value per variable, and an
    attribute outranks every selector in this file — so a single --dk-primary set
    there could never be re-pointed by the rules below. It therefore emits both
-   sets, as --dk-*-l and --dk-*-d, and these three rules alias the real variable
+   sets, as --dk-*-l and --dk-*-d, and these four rules alias the real variable
    onto one of them. The choice is static CSS, so the first paint is already
    right: no tenant page flashes its light colours on a dark ground.
 
@@ -477,11 +477,14 @@ body {
    rules never match; the suffixed variables sit there unread and --dk-primary
    inherits the :root defaults at the top of this file.
 
-   The selectors mirror the --t-* ones above exactly, and for the same reason:
-   the OS preference, the explicit toggle and a pinned subtree must not be able
-   to drift apart. A firm that has not opted into dark is not a case here —
-   brandStyle() gives it the same colour under both names, so these rules resolve
-   to it either way and the decision stays in one place.
+   The four selectors answer the same four questions as the --t-* ones above, and
+   for the same reason: the OS preference, the explicit toggle and a pinned subtree
+   must not be able to drift apart. The last of them is the one that is easy to
+   leave out — a subtree pinned to light with data-theme-scope keeps the theme's
+   light neutrals, so a branded element inside it that had gone on reading
+   --dk-primary-d would be setting a colour toned for a dark card on a cream one.
+   It is written as two selectors because the pin and data-brand land on the same
+   element on a firm's public site, where they are the same decision.
 
    The fonts are not aliased: a firm's typefaces are its typefaces in both themes,
    so brandStyle() emits --dk-font-heading and --dk-font-body once and unsuffixed.
@@ -512,4 +515,15 @@ body {
   --dk-surface: var(--dk-surface-d);
   --dk-on-primary: var(--dk-on-primary-d);
   --dk-on-accent: var(--dk-on-accent-d);
+}
+
+/* A subtree pinned to light, whatever the viewer's theme. Last, and at the same
+   specificity as the two dark rules, so it is source order that settles it. */
+[data-brand][data-theme-scope="light"],
+[data-theme-scope="light"] [data-brand] {
+  --dk-primary: var(--dk-primary-l);
+  --dk-accent: var(--dk-accent-l);
+  --dk-surface: var(--dk-surface-l);
+  --dk-on-primary: var(--dk-on-primary-l);
+  --dk-on-accent: var(--dk-on-accent-l);
 }

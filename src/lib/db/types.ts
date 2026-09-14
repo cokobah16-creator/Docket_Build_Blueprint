@@ -28,6 +28,15 @@ export interface BrandColours {
    * the firm considers theirs is how a support ticket saying "our green is wrong"
    * starts. Docket's own surfaces, the client portal and the staff console, do not
    * consult this.
+   *
+   * NOT STORABLE YET, and nothing in the product can turn it on. validate_brand()
+   * (supabase/migrations/20260910000013_security_review.sql) rebuilds firms.brand
+   * from a whitelist and keeps only colours.primary/accent/surface, so a dark_mode
+   * written from anywhere is dropped by the trigger with no error at all — and
+   * updateBrand() in src/lib/actions/firm-settings.ts rebuilds `colours` the same
+   * way. Until a migration adds the key to that whitelist and the brand form grows
+   * a switch, tenantAllowsDark() is false for every firm, which is the safe answer
+   * and the one the public site is already written around.
    */
   dark_mode?: boolean;
 }

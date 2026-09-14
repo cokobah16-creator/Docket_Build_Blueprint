@@ -20,7 +20,7 @@
 //   d. a colour that came from outside the token set (the anti-decay check)
 //   e. a corner radius off the scale
 //   f. a tenant's brand colour reaching a Docket-owned surface
-//   g. a status colour carrying meaning with no icon and no label beside it
+//   g. a status colour carrying meaning without both a word and a mark
 //
 // all of it twice, once with data-theme="light" on the root and once with data-theme="dark", which
 // is what makes the dark theme an enforced fact rather than an aspiration.
@@ -44,9 +44,15 @@
 // Beyond those, and stated plainly so a green run is not over-read:
 //   - it reads computed styles, so a colour inside a background-image gradient, an SVG `fill`,
 //     an ::after pseudo-element or a raster asset is invisible to it
-//   - white and black pass the token check because they ARE token values (--t-on-danger,
-//     --dk-on-primary), so a stray `bg-white` is not caught here
+//   - white passes the token check because it IS a token value (--t-on-danger, --dk-on-primary),
+//     so a stray `bg-white` is not caught here
 //   - a status conveyed by a coloured BACKGROUND alone is not caught by (g), which reads `color`
+//   - (g) leaves out the quiet tone, because --t-quiet-ink is byte-identical to --t-ink-muted in
+//     both themes and no check reading `color` can tell a "cancelled" pill from muted prose
+//   - (f) matches the firm's SEED colours, the three in firms.brand. brandStyle() derives a lifted
+//     pair for the dark theme (src/lib/brand.ts), and those derived values are not in the set:
+//     reproducing liftForDark() here would be the second copy of a rule this file exists to stop
+//     drifting, so what (f) catches is a seed colour reaching a Docket surface, not a lift of one
 //   - it judges the mock's data. A screen whose empty state is never rendered is never checked
 //
 // TO RUN IT
@@ -379,7 +385,9 @@ for (const vp of VIEWPORTS) {
         continue;
       }
       // A 404 or a 500 still renders a page, and a linter that judges an error page and reports
-      // green on it is worse than one that does not run. Say so and move on.
+      // green on it is worse than one that does not run. The mismatch is reported here and the
+      // sweep below still runs — an error page is a surface too — but the report says plainly
+      // that what was measured is not the route that was asked for.
       if (status >= 400) {
         problems.push({ check: "route", signature: `HTTP ${status} — the page checked below is an error page, not ${route.url}`, where: `${route.name} @${vp.name}`, path: route.url });
       }
@@ -434,8 +442,11 @@ function auditPage({ G, RAMP, RADII, FIELD_MIN_PX, SEED, PALETTE, docketOwned, c
 
   const findings = [];
   const rows = [];
-  const push = (check, signature, el, detail) =>
-    findings.push({ check, signature, path: pathOf(el), text: (el.textContent ?? "").trim().slice(0, 40), detail: detail ?? "" });
+  // One box is judged once by (g), whatever it is reached through: colour is inherited, so the
+  // same alert is arrived at again from every paragraph inside it.
+  const lonelyJudged = new Set();
+  const push = (check, signature, el) =>
+    findings.push({ check, signature, path: pathOf(el), text: (el.textContent ?? "").trim().slice(0, 40) });
 
   /** A selector path stable enough to follow the same element across two runs. */
   const pathOf = (el) => {
@@ -453,7 +464,14 @@ function auditPage({ G, RAMP, RADII, FIELD_MIN_PX, SEED, PALETTE, docketOwned, c
 
   const key = (c) => `${Math.round(c.r)},${Math.round(c.g)},${Math.round(c.b)}`;
 
-  /** "246 245 242", "#0F2A44" or "rgb(…)" — the three shapes a token value arrives in. */
+  /**
+   * "246 245 242", "#0F2A44" or "rgb(…)" — the three shapes a token value arrives in, and only
+   * those three. The last is anchored where `parse` is not, because a token's value either IS a
+   * colour or is not one: --t-shadow-e1 is "0 1px 2px rgb(16 24 40 / 0.04)", and an unanchored
+   * search finds the rgb() inside it and adds a shadow's tint — and, from the dark shadows, pure
+   * black — to the set of colours an element is allowed to paint. The anti-decay check below is
+   * only worth running if the allowed set is the colours the system actually named.
+   */
   const asColour = (value) => {
     const v = String(value).trim();
     if (!v) return null;
@@ -464,7 +482,7 @@ function auditPage({ G, RAMP, RADII, FIELD_MIN_PX, SEED, PALETTE, docketOwned, c
       const full = h[1].length === 3 ? h[1].replace(/./g, (c) => c + c) : h[1];
       return { r: parseInt(full.slice(0, 2), 16), g: parseInt(full.slice(2, 4), 16), b: parseInt(full.slice(4, 6), 16), a: 1 };
     }
-    return parse(v);
+    return /^rgba?\([^()]*\)$/.test(v) ? parse(v) : null;
   };
 
   // ── the token set, read off the page rather than copied from it ─────────
@@ -491,6 +509,20 @@ function auditPage({ G, RAMP, RADII, FIELD_MIN_PX, SEED, PALETTE, docketOwned, c
   for (const el of scopes) collect(el);
   for (const literal of PALETTE) { const c = asColour(literal); if (c) allowed.add(key(c)); }
 
+  // The four neutral text inks, read first so (g) below can leave out any status tone that is
+  // one of them. --t-quiet-ink is byte-identical to --t-ink-muted in both themes — "cancelled"
+  // and ordinary secondary prose are literally the same colour — so a check reading `color`
+  // cannot tell them apart, and asking would put every muted paragraph in the app on the work
+  // list for want of an icon it was never meant to carry.
+  const neutralInks = new Set();
+  for (const el of scopes) {
+    const cs = getComputedStyle(el);
+    for (const role of ["--t-ink", "--t-ink-strong", "--t-ink-muted", "--t-ink-disabled"]) {
+      const c = asColour(cs.getPropertyValue(role));
+      if (c) neutralInks.add(key(c));
+    }
+  }
+
   // The status inks, for (g). Read by name from every scope rather than typed out here, so the
   // check follows the tokens wherever they are re-aliased — a [data-theme-scope="light"] subtree
   // in a dark run holds six status inks the root does not.
@@ -499,7 +531,7 @@ function auditPage({ G, RAMP, RADII, FIELD_MIN_PX, SEED, PALETTE, docketOwned, c
     const cs = getComputedStyle(el);
     for (const tone of ["settled", "waiting", "wrong", "over", "quiet", "informing"]) {
       const c = asColour(cs.getPropertyValue(`--t-${tone}-ink`));
-      if (c) statusInks.add(key(c));
+      if (c && !neutralInks.has(key(c))) statusInks.add(key(c));
     }
   }
 
@@ -588,12 +620,29 @@ function auditPage({ G, RAMP, RADII, FIELD_MIN_PX, SEED, PALETTE, docketOwned, c
 
     // ── g. status colour, never alone ────────────────────────────────────
     //
-    // Colour is not readable to everyone and is not readable in every light. A status ink must
-    // arrive with a word or a mark beside it: text anywhere under this element, or an <svg>,
-    // which is an <svg> itself when the coloured element IS the icon.
+    // Colour is not readable to everyone and is not readable in every light, so a status carries
+    // a word AND a mark or it is not a status. StatusPill always renders both; Badge's icon is
+    // optional, and a tone reached for by hand has nothing holding it to either.
+    //
+    // The question goes to the element that DECIDED the colour, which is the highest ancestor
+    // still painting the same ink — the pill, the alert, the toast — and not to everything that
+    // merely inherited it. Asking each descendant instead reports one alert once per paragraph
+    // inside it, and reports the <path> geometry inside a status icon, which paints nothing a
+    // reader can see and cannot carry a label of its own.
     if (fg && fg.a > 0.02 && statusInks.has(key(fg))) {
-      const accompanied = Boolean((el.textContent ?? "").trim()) || tag === "svg" || Boolean(el.querySelector("svg"));
-      if (!accompanied) push("lonely", `${hex(fg)} is a status ink with no label and no icon`, el);
+      let box = el;
+      for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+        const c = parse(getComputedStyle(n).color);
+        if (!c || key(c) !== key(fg)) break;
+        box = n;
+      }
+      if (!lonelyJudged.has(box)) {
+        lonelyJudged.add(box);
+        const word = Boolean((box.textContent ?? "").trim());
+        const mark = box.tagName.toLowerCase() === "svg" || Boolean(box.querySelector("svg"));
+        if (!word || !mark)
+          push("lonely", `${hex(fg)} is a status ink with ${word ? "a label" : "no label"} and ${mark ? "an icon" : "no icon"}`, box);
+      }
     }
 
     // ── b. the control boundary ──────────────────────────────────────────
@@ -660,7 +709,7 @@ const LABELS = {
   token: "colours from outside the token set",
   radius: "corner radii off the scale",
   brand: "a tenant's brand colour on a Docket-owned surface",
-  lonely: "status colour with no label and no icon",
+  lonely: "status colour without both a label and an icon",
 };
 
 const kept = [];
@@ -679,7 +728,7 @@ const ignoredReport = lines.length
   : "ignored (known fixture gaps): none";
 
 notes.push(`${selected.length} routes x ${VIEWPORTS.length} viewports x ${THEMES.length} themes — ${inspected} elements inspected`);
-notes.push(`the landing and the 404 pin themselves to light with data-theme-scope="light" (app/globals.css), so their dark pass is their light pass again — a finding on either is counted once per pass and collapses into one row below`);
+notes.push(`a subtree pinned with data-theme-scope="light" (app/globals.css) — the landing, the 404s, and a firm's public site when its brand cannot carry a dark ground — has the same light pass twice, so a finding on one is counted once per pass and collapses into one row below`);
 
 const report = [];
 for (const [check, label] of Object.entries(LABELS)) {

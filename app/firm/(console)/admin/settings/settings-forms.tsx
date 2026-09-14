@@ -800,9 +800,18 @@ function BrandSection({ firmId, firmName, brand }: FirmSettingsProps) {
               site draws its foreground with readableForeground() — ink on a pale brand,
               paper on a dark one. Hard-coding white would make the preview disagree with
               the page it is previewing: a firm that picks pale gold would see illegible
-              white-on-gold here and go and change a colour that was never wrong. */}
+              white-on-gold here and go and change a colour that was never wrong.
+
+              data-theme-scope pins the panel exactly as app/(public)/[firm]/layout.tsx
+              pins the site, and for the same reason twice over. It is truthful — a firm
+              that has not opted into dark has a site that stays light, so a preview that
+              went dark would be showing them a page that does not exist. And it is what
+              keeps the panel legible: bg-brand-surface is the firm's cream whatever the
+              console is doing, so a `text-gray-700` inside it that followed the console
+              into dark would be pale grey on cream. */}
           <div
             data-brand
+            data-theme-scope={tenantAllowsDark(preview) ? undefined : "light"}
             style={brandStyle(preview, { allowDark: tenantAllowsDark(preview) })}
             className="rounded-card border border-gray-200 bg-brand-surface p-4"
           >

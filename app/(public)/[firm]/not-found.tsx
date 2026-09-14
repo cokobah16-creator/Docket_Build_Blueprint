@@ -38,13 +38,17 @@ export default function FirmSiteNotFound() {
           <Link href="/" className={buttonClasses("primary", "lg")}>
             Go to the home page
           </Link>
-          {/* Not buttonClasses("ghost"): it fills with `bg-raised`, which flips
-              for dark mode, and the firm's surface underneath it does not — the
-              same reason every secondary button on this site is a border and
-              the firm's own ink over the firm's own ground. The hover is
-              `bg-hover` rather than `bg-black/5` for the same reason in
-              reverse: a black wash is invisible on a dark ground, and
-              `bg-hover` is ink at 5%, which flips with the theme. */}
+          {/* Not buttonClasses("ghost"): its label and its focus ring are both
+              `ink-strong`, the THEME's near-black, and this is the one surface
+              in Docket where the secondary action is supposed to be the firm's
+              own colour on the firm's own ground — a visitor who has landed on
+              a wrong address is still being shown whose site this is. So it is
+              a border and `text-brand`, with the ring stated as `outline-brand`
+              rather than left to fall back to currentColor.
+
+              The hover is `bg-hover` rather than `bg-black/5`: a black wash is
+              nothing at all on a dark ground, and `bg-hover` is ink at 5%,
+              which follows whichever way this subtree is pinned. */}
           <Link
             href="/app/login"
             className="inline-flex min-h-[50px] items-center justify-center rounded-control border border-edge px-6 text-15 font-semibold text-brand transition duration-fast hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"

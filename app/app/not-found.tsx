@@ -25,28 +25,36 @@ export default function PortalNotFound() {
     // with the theme. In light mode paper IS that colour, so this changes
     // nothing today and keeps the page readable the moment somebody opens it on
     // a phone set to dark.
-    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-5 bg-paper px-4 py-10">
-      <Alert kind="notice" icon="search" title="This page is not here">
-        Whatever was at this address is not available to you now. A link in an old email or
-        message may point at something that has since changed, and a page only opens for the
-        account it belongs to. Nothing you have sent or paid for is affected.
-      </Alert>
+    //
+    // It is on a WRAPPER and not on the column, because the column is max-w-md:
+    // a dark ground painted only there is a near-black strip down the middle of
+    // a cream desktop window, which is a worse answer than no dark ground at
+    // all. dvh rather than vh for the reason the root layout gives — on a phone
+    // vh is the taller viewport the URL bar is hiding behind.
+    <div className="min-h-[100dvh] bg-paper">
+      <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center gap-5 px-4 py-10">
+        <Alert kind="notice" icon="search" title="This page is not here">
+          Whatever was at this address is not available to you now. A link in an old email or
+          message may point at something that has since changed, and a page only opens for the
+          account it belongs to. Nothing you have sent or paid for is affected.
+        </Alert>
 
-      <div className="flex flex-col gap-3">
-        <Link href="/app" className={buttonClasses("primary", "lg", "w-full")}>
-          Go to your home screen
-        </Link>
-        {/* Not buttonClasses("ghost"): it fills with `bg-raised` and writes on
-            it in `text-brand`, and a firm's brand colour does not flip for dark
-            mode while bg-raised does — a dark fill under a dark navy label. Ink
-            on the raised ground says the same thing in both themes. */}
-        <Link
-          href="/app/messages"
-          className="inline-flex min-h-[50px] w-full items-center justify-center rounded-control border border-edge bg-raised px-6 text-15 font-semibold text-ink-strong transition duration-fast hover:border-ink-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink-strong"
-        >
-          Message your firm
-        </Link>
-      </div>
-    </main>
+        <div className="flex flex-col gap-3">
+          <Link href="/app" className={buttonClasses("primary", "lg", "w-full")}>
+            Go to your home screen
+          </Link>
+          {/* `ghost` is already ink on a raised ground with a stated focus ring
+              — it stopped writing in the tenant's colour when button.tsx moved
+              the secondary label to `text-ink-strong`. Hand-rolling the same
+              shape here would be a thirteenth opinion about what a secondary
+              button is, and it would miss the press state: the variant carries
+              the current-colour overlay, so this link darkens under a thumb
+              like every other secondary in the app. */}
+          <Link href="/app/messages" className={buttonClasses("ghost", "lg", "w-full")}>
+            Message your firm
+          </Link>
+        </div>
+      </main>
+    </div>
   );
 }

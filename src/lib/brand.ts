@@ -150,11 +150,22 @@ function toHex(rgb: [number, number, number]): string {
   return `#${rgb.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
-/**
- * The theme's own dark page ground, --d-paper in app/globals.css. Every lift is
- * measured against it because that is what a tenant colour sits on in dark.
- */
+/** The theme's own dark page ground, --d-paper in app/globals.css. */
 const DARK_GROUND = "#1a1918";
+
+/**
+ * --d-raised, the ground a card makes on that page, and what every lift is
+ * measured against — not the page, even though the page is what --dk-surface
+ * becomes in dark.
+ *
+ * It is the LIGHTEST of the three dark grounds (paper is rgb(26 25 24), a sunken
+ * well rgb(19 18 17)), so it is the worst case, and a colour that clears it clears
+ * the other two with half a point to spare. Measuring against the page instead
+ * looks right and is not: navy lifted to 4.60:1 on the page measures 4.16:1 the
+ * moment it is set inside a card, and `text-brand` appears 205 times, nearly all
+ * of them inside cards. AA on the ground a colour never sits on is not AA.
+ */
+const DARK_CARD = "#24221f";
 
 /** The theme's --d-ink: near-white, and what a colour we cannot read falls back to. */
 const DARK_INK = "#f2f0ec";
@@ -173,8 +184,9 @@ const DARK_TARGET = 4.6;
  *
  * A firm that picked navy #0F2A44 renders at 1.20:1 on rgb(26 25 24): text-brand
  * is invisible and bg-brand is a hole in the page. Lifting only the L of its HSL
- * lands it on #3686d3 at 4.60:1, still hue 209 at 64% saturation — a shade of the
- * firm's own navy, not a colour the firm never chose.
+ * lands it on #448fd6 — 4.64:1 on a card, 5.14:1 on the page — still hue 209 at
+ * 64% saturation, a shade of the firm's own navy rather than a colour the firm
+ * never chose.
  *
  * The search is a binary chop on lightness that judges each candidate by the
  * contrast of its ROUNDED hex, so what comes back is what the browser will paint
@@ -185,7 +197,7 @@ const DARK_TARGET = 4.6;
  */
 export function liftForDark(
   colour: string,
-  ground: string = DARK_GROUND,
+  ground: string = DARK_CARD,
   need: number = DARK_TARGET,
 ): string {
   const rgb = parseHex(colour);
@@ -227,13 +239,8 @@ export const DARK_TOKENS = {
    * Docket page in dark.
    */
   surface: DARK_GROUND,
-  /**
-   * --d-raised, the ground a card makes on that page, and the worse case for a
-   * lifted colour: one lifted to 4.60:1 on the page measures about 4.2:1 on a
-   * card. Nothing here targets it yet — a caller that needs AA on cards passes
-   * this to liftForDark() as the ground instead.
-   */
-  raised: "#24221f",
+  /** --d-raised, the ground a card makes on that page, and what a lift targets. */
+  raised: DARK_CARD,
   headingFont: DEFAULT_TOKENS.headingFont,
   bodyFont: DEFAULT_TOKENS.bodyFont,
   /**

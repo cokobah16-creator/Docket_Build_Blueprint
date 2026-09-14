@@ -108,7 +108,7 @@ see. `verify.mjs` was refactored onto it with its output unchanged, byte for byt
 | token | A computed colour, background or border that came from **outside the token set**. This is the anti-decay check: it makes a stray hex impossible to land. |
 | radius | A corner off `[6, 9, 12, 18]`, 0, or full. |
 | brand | A **tenant's** brand colour on a surface Docket owns — the landing, the staff console, the registry console, the platform admin. This firewall had never had a test on it. |
-| lonely | A status colour with no icon and no label beside it. Colour is not readable to everyone and is not readable in every light. |
+| lonely | A status colour carrying meaning without **both** a word and a mark — a `Badge` given a tone but no icon, an icon tinted with a status ink and nothing near it saying what it means. Colour is not readable to everyone and is not readable in every light. `color` is inherited, so the question goes to the element that *decided* the colour — the pill, the alert, the toast — and each such box is asked once, not once per paragraph inside it. |
 
 Every one of them runs **twice per screen**, once with `data-theme="light"` on the root and once
 with `data-theme="dark"`. That is what makes the dark theme an enforced fact rather than an
@@ -143,10 +143,20 @@ Beyond that, and stated plainly so a green run is not over-read:
 
 - it reads computed styles, so a colour inside a background-image gradient, an SVG `fill`, an
   `::after` pseudo-element or a raster asset is invisible to it;
-- white and black pass the token check because they genuinely **are** token values
-  (`--t-on-danger`, `--dk-on-primary`), so a stray `bg-white` is not caught here;
+- white passes the token check because it genuinely **is** a token value (`--t-on-danger`,
+  `--dk-on-primary`), so a stray `bg-white` is not caught here. Black is **not** a token value —
+  it only ever appeared to be one because the shadow tokens are `rgb(0 0 0 / …)`, and the token
+  reader is anchored so a shadow can no longer donate its tint to the allowed set;
 - a status conveyed by a coloured **background** alone is not caught by `lonely`, which reads
   `color`;
+- `brand` matches the firm's **seed** colours, the three in `firms.brand`. `brandStyle()` derives a
+  lifted pair for the dark theme (`src/lib/brand.ts`) and those derived values are not in the set:
+  reproducing `liftForDark()` here would be the second copy of a rule this file exists to stop
+  drifting apart, so what `brand` catches is a seed colour on a Docket surface, not a lift of one;
+- `lonely` leaves the **quiet** tone out. `--t-quiet-ink` is byte-identical to `--t-ink-muted` in
+  both themes, so nothing reading `color` can tell a "cancelled" pill from ordinary secondary
+  prose, and asking would put every muted paragraph in the app on the work list for want of an
+  icon it was never meant to carry;
 - it judges the mock's data, so a screen whose empty state never renders is never checked;
 - and it inherits every limit at the top of this file: the stand-in implements no RLS and checks
   no session, so none of this says anything about who may see a screen.
