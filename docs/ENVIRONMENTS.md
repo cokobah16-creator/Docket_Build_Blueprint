@@ -20,7 +20,7 @@ so nobody reads the table below as a description of a finished thing:
 | Edge Function secrets set | **no — none of them.** So anything needing one fails on staging: `paystack-webhook` 500s rather than 401s, and nothing that sends or replicates will work until `CRON_SECRET`, the provider keys and the four R2 values are set |
 | `DOCKET_SANDBOX=true` on staging | **not yet, and it matters.** Until it is set, staging's discovery answers `sandbox: false`, which is wrong. It is wrong in the safe direction by design — a deployment that forgets says "assume real data" — but it should be set before any partner key is issued here |
 | Auth configured (site URL, redirect allow-list) | not yet — needs `scripts/configure-providers.sh` and a `SUPABASE_ACCESS_TOKEN` |
-| Test accounts seeded | not yet — see `tests/integration/README.md` for what the journeys need |
+| Test accounts seeded | **yes — 14 Sep 2026**, by `scripts/seed-staging-fixtures.mjs`, which had never been run before and needed four fixes to get through (see its commit). In place and verified by query: five users; `staging-legal` active with terms and privacy published; a client matter, a second matter the client has no claim on, and a third at a second firm acting for the same client; the client a party with `can_view_docs`; one message; and one document whose stored bytes hash to exactly the checksum recorded against them. The staff owner's TOTP secret is printed by the script and is the only copy — re-running re-enrols and prints a new one |
 | GitHub repository secrets set | not yet — only a person can write those |
 
 Until every row says yes, the authenticated journeys still skip and a skip is still not a pass.
