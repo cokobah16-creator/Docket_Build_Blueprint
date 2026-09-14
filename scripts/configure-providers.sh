@@ -37,6 +37,25 @@ if [ -n "${EXTRA_REDIRECT_URLS:-}" ]; then REDIRECTS="${REDIRECTS},${EXTRA_REDIR
 
 PHONE_JSON=""
 if [ -n "${TWILIO_ACCOUNT_SID:-}" ] && [ -n "${TWILIO_AUTH_TOKEN:-}" ] && [ -n "${TWILIO_MESSAGE_SERVICE_SID:-}" ]; then
+  # A MESSAGING SERVICE SID, NOT THE ACCOUNT SID. Both are 34 characters behind a two-letter prefix
+  # and they are trivially easy to swap; nothing downstream notices until a real person tries to
+  # sign in, at which point Twilio answers
+  #   21212: Invalid From Number (caller ID): AC...
+  # and GoTrue turns that into a 422 on /otp. This project ran with the Account SID in this slot and
+  # no client could receive a code until it was found in the auth logs. Two characters of check,
+  # here, while the value is still in somebody's hand.
+  case "$TWILIO_MESSAGE_SERVICE_SID" in
+    MG*) : ;;
+    AC*)
+      echo "ERROR: TWILIO_MESSAGE_SERVICE_SID is an ACCOUNT SID (AC...), not a Messaging Service SID." >&2
+      echo "       Twilio refuses it as a caller ID with error 21212 and no SMS code is ever sent." >&2
+      echo "       Find the MG... SID at Twilio Console > Messaging > Services." >&2
+      exit 1 ;;
+    *)
+      echo "ERROR: TWILIO_MESSAGE_SERVICE_SID does not look like a Messaging Service SID (expected MG...)." >&2
+      echo "       Twilio Console > Messaging > Services." >&2
+      exit 1 ;;
+  esac
   PHONE_JSON=$(python3 - <<PY
 import json, os
 print(json.dumps({
@@ -80,7 +99,35 @@ read -r -d '' MAGIC_LINK_HTML <<'HTML' || true
 <p>If you did not ask to sign in, nothing has happened and you can ignore this email.</p>
 HTML
 
-BODY=$(APP_URL="$APP_URL" REDIRECTS="$REDIRECTS" PHONE_JSON="$PHONE_JSON" MAGIC_LINK_HTML="$MAGIC_LINK_HTML" python3 - <<'PY'
+# WHY THIS IS NOT OPTIONAL FOR ANYTHING WITH TESTERS ON IT. Without a custom SMTP server, Supabase
+# Auth REFUSES to deliver to any address that is not a member of the project's organisation — the
+# error is "Email address not authorized" — and the handful of messages an hour it does allow come
+# from a shared service with no delivery SLA that Supabase documents as not meant for production.
+# A tester who is not on the team gets nothing, silently, and the project's own auth log fills with
+#   429: email rate limit exceeded
+# on /otp and /signup. That is exactly what happened here: every email sign-in and every emailed
+# password link failed for everyone outside the organisation, while the screens correctly reported
+# a send that genuinely had not happened.
+#
+# Resend is already a dependency for the notification dispatcher, so the credentials exist; this
+# points Auth at the same account. Port 465 is implicit TLS, which is what Resend documents.
+SMTP_JSON=""
+if [ -n "${RESEND_API_KEY:-}" ] && [ -n "${EMAIL_FROM:-}" ]; then
+  SMTP_JSON=$(python3 - <<'SMTPPY'
+import json, os
+print(json.dumps({
+  "smtp_host": os.environ.get("SMTP_HOST", "smtp.resend.com"),
+  "smtp_port": int(os.environ.get("SMTP_PORT", "465")),
+  "smtp_user": os.environ.get("SMTP_USER", "resend"),
+  "smtp_pass": os.environ["RESEND_API_KEY"],
+  "smtp_admin_email": os.environ["EMAIL_FROM"],
+  "smtp_sender_name": os.environ.get("SMTP_SENDER_NAME", "Docket"),
+}))
+SMTPPY
+)
+fi
+
+BODY=$(APP_URL="$APP_URL" REDIRECTS="$REDIRECTS" PHONE_JSON="$PHONE_JSON" SMTP_JSON="$SMTP_JSON" MAGIC_LINK_HTML="$MAGIC_LINK_HTML" python3 - <<'PY'
 import json, os
 body = {
   "site_url": os.environ["APP_URL"],
@@ -93,6 +140,8 @@ body = {
 }
 if os.environ.get("PHONE_JSON"):
   body.update(json.loads(os.environ["PHONE_JSON"]))
+if os.environ.get("SMTP_JSON"):
+  body.update(json.loads(os.environ["SMTP_JSON"]))
 print(json.dumps(body))
 PY
 )
@@ -139,6 +188,15 @@ exp = c.get("mailer_otp_exp")
 too_long = isinstance(exp, int) and exp > 3600
 print("   sign-in email lasts :", f"{exp}s" if isinstance(exp, int) else "(not reported by this API)",
       "  <- longer than an hour; Supabase advises against it" if too_long else "")
+host = c.get("smtp_host")
+if host:
+    print("   sign-in email via   :", host, "as", c.get("smtp_admin_email") or "(no sender)")
+else:
+    print("   sign-in email via   : SUPABASE BUILT-IN SMTP  <- delivers ONLY to members of the")
+    print("                         Supabase organisation that owns this project, a few an hour.")
+    print("                         Every other address fails with: Email address not authorized.")
+    print("                         The quota shows as 429 email rate limit exceeded in the auth")
+    print("                         log. Set RESEND_API_KEY and EMAIL_FROM and re-run.")
 print("   phone sign-in       :", c.get("external_phone_enabled"), "provider:", c.get("sms_provider"))
 '
 if [ -z "$PHONE_JSON" ]; then
