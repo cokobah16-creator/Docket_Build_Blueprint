@@ -75,21 +75,72 @@ async function api(path, { method = 'GET', token, body, headers = {} } = {}) {
   return json;
 }
 
-/** Storage wants raw bytes and a real content type, not JSON. */
+/**
+ * Storage wants raw bytes and a real content type, not JSON.
+ *
+ * NO x-upsert, and that is load-bearing rather than a simplification. With the header, the
+ * documents bucket refuses the write outright — 403, "new row violates row-level security policy" —
+ * because an upsert engages the UPDATE path and storage.objects carries INSERT and SELECT policies
+ * for that bucket and no UPDATE policy at all. Measured on staging, four runs: identical token,
+ * document and path, 200 without the header and 403 with it, every time.
+ *
+ * Dropping it is also the correct behaviour and not merely the working one. Every object here is
+ * named with a freshly generated version id, so there is nothing to overwrite; document versions
+ * are append-only, and bytes silently replacing the bytes somebody already checksummed is the one
+ * thing this model must never do. A collision would mean a duplicate UUID, and that should raise.
+ */
 async function putObject(bucket, path, bytes, contentType, token) {
   const res = await fetch(`${base}/storage/v1/object/${bucket}/${path}`, {
     method: 'POST',
-    headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'Content-Type': contentType, 'x-upsert': 'true' },
+    headers: { apikey: ANON, Authorization: `Bearer ${token}`, 'Content-Type': contentType },
     body: bytes,
   });
   if (!res.ok) throw new Error(`upload ${bucket}/${path} -> ${res.status}: ${(await res.text()).slice(0, 300)}`);
   return res;
 }
 
+/**
+ * A genuinely valid one-page PDF.
+ *
+ * The documents bucket accepts application/pdf, DOCX, JPEG, PNG and HEIC and nothing else
+ * (migration 4), so the .txt this script used to upload was refused 415 invalid_mime_type — which
+ * is how the first real run of this file found out. It is built rather than embedded, and it is a
+ * real PDF rather than a file named .pdf: the content stream is uncompressed and carries a text
+ * layer, so extract-text can read words out of it and looksLikeProse() accepts them. The fixture is
+ * then worth something to the extraction path as well as to the upload journey.
+ *
+ * ASCII only, deliberately: the xref offsets below are string lengths, and a multi-byte character
+ * would make every one of them wrong by a byte a reader cannot see.
+ */
+function minimalPdf(line) {
+  if (!/^[\x20-\x7e]*$/.test(line)) throw new Error('minimalPdf: ASCII only, or the xref offsets lie');
+  const content = `BT /F1 12 Tf 72 770 Td (${line.replace(/([\\()])/g, '\\$1')}) Tj ET\n`;
+  const objects = [
+    '<</Type/Catalog/Pages 2 0 R>>',
+    '<</Type/Pages/Kids[3 0 R]/Count 1>>',
+    '<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]/Resources<</Font<</F1 4 0 R>>>>/Contents 5 0 R>>',
+    '<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>',
+    `<</Length ${content.length}>>\nstream\n${content}endstream`,
+  ];
+  let pdf = '%PDF-1.4\n';
+  const offsets = [];
+  objects.forEach((body, i) => {
+    offsets.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
+  });
+  const startxref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const at of offsets) pdf += `${String(at).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<</Size ${objects.length + 1}/Root 1 0 R>>\nstartxref\n${startxref}\n%%EOF\n`;
+  return new TextEncoder().encode(pdf);
+}
+
 const admin = (path, opts = {}) =>
   api(path, { ...opts, token: SERVICE, headers: { ...(opts.headers ?? {}), apikey: SERVICE } });
 
-/** PostgREST as the service role. Used ONLY for reads this script needs to be idempotent. */
+/** PostgREST as the service role. Used for the reads this script needs to be idempotent, and
+ *  for one delete: clearing a half-made document left by a run that failed between the row and
+ *  the bytes. Nothing else here goes round the policies. */
 const svcSelect = (table, query) => admin(`/rest/v1/${table}?${query}`);
 
 /** An RPC as a signed-in person, under RLS. This is how everything real is done here. */
@@ -182,9 +233,30 @@ async function signInClientByMagicLink(email) {
   return r.access_token;
 }
 
-/** Enrol TOTP and reach aal2. Returns { token, secret } — the secret is what the journeys need. */
+/**
+ * Enrol TOTP and reach aal2. Returns { token, secret } — the secret is what the journeys need.
+ *
+ * ANY FACTOR ALREADY ON THE ACCOUNT IS REMOVED FIRST, and that is the whole point rather than
+ * tidiness. A TOTP secret is handed over once, at enrolment, and can never be read back; so a
+ * second run that found a factor sitting there could not use it, and holding that secret is the
+ * entire reason this script exists. Supabase also refuses a second factor with the same friendly
+ * name (422 mfa_factor_name_conflict) — which is how the second run of this script discovered that
+ * the header's promise of a safe re-run was not true here.
+ *
+ * Two details, both found by trying rather than by assuming:
+ *   · the factors are read from /auth/v1/user; a GET of /auth/v1/factors answers 405.
+ *   · the delete goes through the ADMIN endpoint, because unenrolling a verified factor from the
+ *     user's own aal1 session is refused 422 insufficient_aal — "AAL2 required to unenroll verified
+ *     factor" — and reaching aal2 would need the very secret that is lost. The service role is the
+ *     only way out of that circle, and a staging fixture account's old factor is worth nothing.
+ */
 async function enrolTotp(email) {
-  let token = await signInWithPassword(email, PASSWORD);
+  const token = await signInWithPassword(email, PASSWORD);
+  const user = await api('/auth/v1/user', { token });
+  for (const stale of (user?.factors ?? []).filter((f) => f.factor_type === 'totp')) {
+    await admin(`/auth/v1/admin/users/${user.id}/factors/${stale.id}`, { method: 'DELETE' });
+    console.log(`  removed an earlier TOTP factor on ${email}; nobody could read its secret back`);
+  }
   const factors = await api('/auth/v1/factors', { method: 'POST', token, body: { factor_type: 'totp' } });
   const factorId = factors.id;
   const secret = factors?.totp?.secret;
@@ -195,20 +267,6 @@ async function enrolTotp(email) {
     body: { challenge_id: challenge.id, code: await freshTotp(secret) },
   });
   return { token: verified.access_token, secret };
-}
-
-/** Sign in and climb to aal2 with a secret we already hold. */
-async function signInStaffAal2(email, secret) {
-  const token = await signInWithPassword(email, PASSWORD);
-  const list = await api('/auth/v1/factors', { token });
-  const factor = (list?.totp ?? list?.all ?? []).find((f) => f.status === 'verified') ?? (list?.totp ?? [])[0];
-  if (!factor) throw new Error(`no TOTP factor on ${email}`);
-  const challenge = await api(`/auth/v1/factors/${factor.id}/challenge`, { method: 'POST', token, body: {} });
-  const verified = await api(`/auth/v1/factors/${factor.id}/verify`, {
-    method: 'POST', token,
-    body: { challenge_id: challenge.id, code: await freshTotp(secret) },
-  });
-  return verified.access_token;
 }
 
 // ---------------------------------------------------------------- the fixtures
@@ -353,26 +411,36 @@ async function main() {
     console.log('  the thread already has a message');
   }
 
-  const docs = await svcSelect('documents', `matter_id=eq.${clientMatter}&select=id&limit=1`);
+  // A document row is written BEFORE its bytes, so "a document exists" is not "a document is
+  // finished" — the first run of this script left one with no version when the upload was refused
+  // 415. Left in place it would satisfy an "already has a document" check for ever and the fixture
+  // would never complete, so a half-made one is cleared rather than counted.
+  const halfMade = await svcSelect('documents', `matter_id=eq.${clientMatter}&current_version_id=is.null&select=id`);
+  for (const stale of halfMade) {
+    await admin(`/rest/v1/documents?id=eq.${stale.id}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } });
+    console.log('  cleared a half-made document left by an earlier run');
+  }
+
+  const docs = await svcSelect('documents', `matter_id=eq.${clientMatter}&current_version_id=not.is.null&select=id&limit=1`);
   if (docs.length === 0) {
     // The same three steps the portal takes: the row, then the bytes, then the version. The trigger
     // on document_versions sets documents.current_version_id, so it is never set by hand.
     const documentId = crypto.randomUUID();
     const versionId = crypto.randomUUID();
-    const storagePath = `${firm.id}/${documentId}/${versionId}.txt`;
-    const bytes = new TextEncoder().encode('Staging fixture document. Not a real client file.\n');
+    const storagePath = `${firm.id}/${documentId}/${versionId}.pdf`;
+    const bytes = minimalPdf('Staging fixture document. Not a real client file.');
     await api('/rest/v1/documents', {
       method: 'POST', token: clientToken, headers: { Prefer: 'return=minimal' },
-      body: { id: documentId, firm_id: firm.id, matter_id: clientMatter, name: 'staging-fixture.txt',
+      body: { id: documentId, firm_id: firm.id, matter_id: clientMatter, name: 'staging-fixture.pdf',
               category: 'client_upload', client_visible: true, uploaded_by: out.client.id },
     });
-    await putObject('documents', storagePath, bytes, 'text/plain', clientToken);
+    await putObject('documents', storagePath, bytes, 'application/pdf', clientToken);
     const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
     const checksum = [...digest].map((b) => b.toString(16).padStart(2, '0')).join('');
     await api('/rest/v1/document_versions', {
       method: 'POST', token: clientToken, headers: { Prefer: 'return=minimal' },
       body: { id: versionId, document_id: documentId, storage_path: storagePath,
-              mime: 'text/plain', size_bytes: bytes.byteLength, checksum, uploaded_by: out.client.id },
+              mime: 'application/pdf', size_bytes: bytes.byteLength, checksum, uploaded_by: out.client.id },
     });
     console.log('  client uploaded a document, with a real checksum');
   } else {
