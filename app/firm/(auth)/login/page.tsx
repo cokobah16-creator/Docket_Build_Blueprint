@@ -6,6 +6,7 @@
 // served the strict nonce policy like every other console screen.
 
 import { safeNext } from "@/lib/auth-redirect";
+import { callbackMessage } from "@/lib/auth-errors";
 import { StaffLoginForm } from "./staff-login-form";
 
 export const metadata = { title: "Staff sign-in" };
@@ -13,15 +14,19 @@ export const metadata = { title: "Staff sign-in" };
 export default async function StaffLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; reason?: string }>;
 }) {
+  const params = await searchParams;
   // Checked here as well as where it was written: a redirect target read back off a URL is
   // exactly the shape an open redirect takes.
-  const next = safeNext((await searchParams).next);
+  const next = safeNext(params.next);
+  // A recovery link that failed comes back here now, not to the client portal — /auth/callback
+  // carries both kinds and picks the screen from where the link was heading (surfaceFor).
+  const problem = callbackMessage(params.reason);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
-      <StaffLoginForm next={next} />
+      <StaffLoginForm next={next} problem={problem} />
     </main>
   );
 }

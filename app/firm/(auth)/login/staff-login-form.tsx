@@ -17,7 +17,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardBody } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
 
-export function StaffLoginForm({ next }: { next: string | null }) {
+export function StaffLoginForm({
+  next,
+  problem,
+}: {
+  next: string | null;
+  /** Why the link that brought them here did not work, if that is how they arrived. */
+  problem?: string | null;
+}) {
   const router = useRouter();
   const supabase = supabaseBrowser();
   const [email, setEmail] = useState("");
@@ -56,6 +63,11 @@ export function StaffLoginForm({ next }: { next: string | null }) {
       <p className="mt-1 text-sm text-gray-600">
         Sign in with your firm email. Two-factor authentication is required.
       </p>
+      {problem && (
+        <Alert kind="warning" title="That link did not sign you in" className="mt-4">
+          {problem}
+        </Alert>
+      )}
       <Card className="mt-4">
         <CardBody>
           <form onSubmit={submit} className="space-y-4">
@@ -79,6 +91,12 @@ export function StaffLoginForm({ next }: { next: string | null }) {
             <Button type="submit" size="lg" className="w-full" disabled={busy}>
               {busy ? "Signing in…" : "Sign in"}
             </Button>
+            {/* The only way out of a forgotten password that does not involve ringing somebody.
+                Below the button rather than beside the field: it is the escape hatch, not a
+                competing action. */}
+            <a href="/firm/forgot" className="block text-center text-sm font-medium text-brand underline">
+              Forgotten your password?
+            </a>
           </form>
         </CardBody>
       </Card>
