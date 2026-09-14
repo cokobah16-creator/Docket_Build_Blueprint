@@ -28,22 +28,30 @@ export function Modal({
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
       onClick={onClose}
     >
+      {/* A sheet lifts off the page by being a lighter surface as well as by
+          casting a shadow: `shadow-e3` is nearly invisible against a dark
+          ground, so `bg-raised` is what keeps the dialog an object in dark
+          mode. */}
       <div
         ref={surface}
         role="dialog"
         aria-modal="true"
         aria-label={title}
         tabIndex={-1}
-        className="w-full max-w-lg rounded-card bg-white shadow-xl focus:outline-none"
+        className="w-full max-w-lg rounded-sheet bg-raised shadow-e3 focus:outline-none"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 className="font-heading text-base font-semibold text-gray-900">{title}</h2>
+        <header className="flex items-center justify-between border-b border-hairline px-5 py-4">
+          <h2 className="font-heading text-17 font-semibold text-ink-strong">{title}</h2>
+          {/* Close was a 26px target, which is the control a thumb misses most
+              often and the one it can least afford to miss twice. It is 44px
+              now, and the negative margin takes the extra back out so the
+              header keeps the height it was drawn at. */}
           <button
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
-            className="rounded p-1 text-gray-500 hover:bg-gray-100"
+            className="-my-2.5 -mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-control text-ink-muted transition duration-fast hover:bg-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
             <span aria-hidden="true">✕</span>
           </button>

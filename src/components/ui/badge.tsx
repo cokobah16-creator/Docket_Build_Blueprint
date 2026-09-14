@@ -6,9 +6,11 @@ import { Icon, type IconName } from "@/components/ui/icon";
 // every pill carries an icon and a label (master prompt §42, WCAG 2.2).
 //
 // Four grounds carry every state, so a glance is enough: green is settled,
-// amber is waiting on someone, red is wrong, grey is over. The literal hex
-// values are Docket's own — they must not move with a firm's brand colour,
-// or "confirmed" would mean something different at every firm.
+// amber is waiting on someone, red is wrong, grey is over. The values are
+// Docket's own and live in app/globals.css as --l-*/--d-* pairs — they must not
+// move with a firm's brand colour, or "confirmed" would mean something
+// different at every firm, and they flip for dark mode on their own, which is
+// why no rule here carries a `dark:` prefix.
 
 export type Status =
   | "pending"
@@ -26,14 +28,17 @@ export type Status =
   | "active"
   | "closed";
 
-/** The grounds a pill may sit on. Anything new picks one rather than inventing. */
+/**
+ * The grounds a pill may sit on. Anything new picks one rather than inventing —
+ * alerts and toasts read this same table, so a tone is drawn once.
+ */
 export const PILL_TONES = {
-  settled: "border-[#A7D8BE] bg-[#ECFDF3] text-[#05603A]",
-  waiting: "border-[#F3DDA4] bg-[#FFFAEB] text-[#92400E]",
-  wrong: "border-[#E5C4C4] bg-[#FEF3F2] text-[#912018]",
-  over: "border-[#D5D9DF] bg-[#F9FAFB] text-[#475467]",
-  quiet: "border-gray-200 bg-gray-100 text-gray-600",
-  informing: "border-[#BAE0F5] bg-[#F0F9FF] text-[#065986]",
+  settled: "border-settled-line bg-settled-bg text-settled-ink",
+  waiting: "border-waiting-line bg-waiting-bg text-waiting-ink",
+  wrong: "border-wrong-line bg-wrong-bg text-wrong-ink",
+  over: "border-over-line bg-over-bg text-over-ink",
+  quiet: "border-quiet-line bg-quiet-bg text-quiet-ink",
+  informing: "border-informing-line bg-informing-bg text-informing-ink",
 } as const;
 
 export type PillTone = keyof typeof PILL_TONES;
@@ -68,7 +73,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11.5px] font-semibold",
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-11 font-semibold",
         PILL_TONES[s.tone],
         className,
       )}
@@ -94,7 +99,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[11.5px] font-semibold",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-11 font-semibold",
         PILL_TONES[tone],
         className,
       )}

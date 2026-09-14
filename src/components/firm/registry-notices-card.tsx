@@ -22,7 +22,7 @@ import { formatWhen } from "@/lib/time";
 import { confirmRegistryNotice, rejectRegistryNotice } from "@/lib/actions/registry";
 import type { FirmRegistryNoticeRow } from "@/lib/db/types";
 
-const field = "mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 text-[15px] text-gray-900 focus:border-[#141414] focus:outline-none";
+const field = "mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 text-base text-gray-900 focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]";
 
 export function RegistryNoticesCard({ firmId, firmParam, timezone, notices }: {
   firmId: string;

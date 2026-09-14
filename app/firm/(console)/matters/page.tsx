@@ -23,7 +23,7 @@ import type { MatterStatus } from "@/lib/db/types";
 export const metadata = { title: "Matters" };
 
 const LIMIT = 200;
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 /** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
 const TONES: Record<string, string> = {

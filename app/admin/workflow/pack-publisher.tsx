@@ -9,7 +9,7 @@ import { publishWorkflowPack } from "@/lib/actions/workflow";
 import { Alert } from "@/components/ui/alert";
 import { MATTER_TYPES, type WorkflowPackRow } from "@/lib/db/types";
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 const EXAMPLE = `{
   "statuses": [
     { "key": "instructions", "label": "Instructions Received", "colour": "slate", "sort": 10, "next_action": "Open the file" },

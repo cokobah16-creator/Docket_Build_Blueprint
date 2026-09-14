@@ -23,8 +23,8 @@ export function Switch({
   return (
     <span
       className={cn(
-        "relative inline-flex h-7 w-[46px] shrink-0 items-center rounded-full p-[3px] transition-colors",
-        checked ? "bg-brand" : "bg-gray-300",
+        "relative inline-flex h-7 w-[46px] shrink-0 items-center rounded-full p-[3px] transition-colors duration-fast",
+        checked ? "bg-brand" : "bg-edge",
         disabled && "opacity-50",
         className,
       )}
@@ -38,10 +38,15 @@ export function Switch({
         onChange={(e) => onChange(e.target.checked)}
         className="peer absolute inset-0 z-10 cursor-pointer opacity-0 disabled:cursor-default"
       />
+      {/* The knob stays literally white in both themes. It is a moving part
+          rather than a surface, and it has to read against an arbitrary firm's
+          brand colour on one side of the track and a neutral on the other;
+          `bg-raised` is a dark grey in dark mode and would sink into a dark
+          brand the moment the switch was turned on. */}
       <span
         aria-hidden="true"
         className={cn(
-          "size-[22px] rounded-full bg-white shadow-[0_1px_3px_rgba(0,0,0,0.25)] transition-transform",
+          "size-[22px] rounded-full bg-white shadow-e2 transition-transform duration-fast",
           "peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brand",
           checked ? "translate-x-[18px]" : "translate-x-0",
         )}
@@ -67,12 +72,12 @@ export function SettingRow({
     <div
       className={cn(
         "flex items-start justify-between gap-3.5",
-        divided && "border-t border-gray-100 pt-[15px]",
+        divided && "border-t border-hairline pt-[15px]",
       )}
     >
       <div className="min-w-0">
-        <p className="text-[13.5px] font-semibold text-gray-900">{title}</p>
-        {hint && <p className="mt-0.5 text-xs leading-[1.45] text-gray-500">{hint}</p>}
+        <p className="text-13 font-semibold text-ink-strong">{title}</p>
+        {hint && <p className="mt-0.5 text-11 text-ink-muted">{hint}</p>}
       </div>
       {children}
     </div>

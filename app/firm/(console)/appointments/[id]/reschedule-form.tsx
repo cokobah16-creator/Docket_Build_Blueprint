@@ -54,7 +54,7 @@ export function RescheduleForm({
   if (done) return <Alert kind="success">Moved. The client has been notified and reminders were reset.</Alert>;
 
   const fmt = new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: timezone });
-  const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+  const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
   return (
     <form onSubmit={onSubmit} className="space-y-3">

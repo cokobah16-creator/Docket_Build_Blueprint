@@ -36,7 +36,7 @@ export interface StaffUpdate extends UpdateRow {
   posted_by: string | null;
 }
 
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const KIND_ICON: Record<string, string> = {
   court_sitting: "⚖", consultation: "🎥", appointment: "📅", filing: "📄", correspondence: "✉",

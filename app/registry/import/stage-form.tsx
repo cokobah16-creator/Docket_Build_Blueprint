@@ -16,7 +16,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 
-const field = "mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 text-[15px] text-gray-900 focus:border-[#141414] focus:outline-none";
+const field = "mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 text-base text-gray-900 focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]";
 
 type Field = keyof NoticeRowInput;
 const FIELDS: Array<{ key: Field; label: string; hint: string; required?: boolean }> = [

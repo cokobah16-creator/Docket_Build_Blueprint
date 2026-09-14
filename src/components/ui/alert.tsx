@@ -1,19 +1,23 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { Icon, type IconName } from "@/components/ui/icon";
+import { PILL_TONES, type PillTone } from "@/components/ui/badge";
 
 type Kind = "info" | "success" | "warning" | "error" | "notice";
 
-// `notice` is the quiet sand ground the phone uses for things that are true
-// but not wrong — the offline copy, the fifteen-minute booking hold. Amber is
-// reserved for what is actually waiting on someone.
+// An alert says the same six things a pill says, so it is drawn from the same
+// six grounds rather than from a second set of hexes that drifted out of step
+// with the first. `notice` is the quiet sand ground the phone uses for things
+// that are true but not wrong — the offline copy, the fifteen-minute booking
+// hold — which is the `over` tone; amber stays reserved for what is actually
+// waiting on someone.
 
-const kinds: Record<Kind, { classes: string; icon: IconName }> = {
-  info: { classes: "border-[#BAE0F5] bg-[#F0F9FF] text-[#065986]", icon: "alert" },
-  success: { classes: "border-[#A7D8BE] bg-[#ECFDF3] text-[#05603A]", icon: "check" },
-  warning: { classes: "border-[#F3DDA4] bg-[#FFFAEB] text-[#92400E]", icon: "warning" },
-  error: { classes: "border-[#E5C4C4] bg-[#FEF3F2] text-[#912018]", icon: "alert" },
-  notice: { classes: "border-[#D9D2C4] bg-[#FBF7EE] text-[#5C4F35]", icon: "clock" },
+const kinds: Record<Kind, { tone: PillTone; icon: IconName }> = {
+  info: { tone: "informing", icon: "alert" },
+  success: { tone: "settled", icon: "check" },
+  warning: { tone: "waiting", icon: "warning" },
+  error: { tone: "wrong", icon: "alert" },
+  notice: { tone: "over", icon: "clock" },
 };
 
 export function Alert({
@@ -34,8 +38,8 @@ export function Alert({
     <div
       role={kind === "error" ? "alert" : "status"}
       className={cn(
-        "flex items-start gap-2.5 rounded-[10px] border px-[13px] py-[11px] text-[12.5px] leading-[1.45]",
-        kinds[kind].classes,
+        "flex items-start gap-2.5 rounded-control border px-[13px] py-[11px] text-13",
+        PILL_TONES[kinds[kind].tone],
         className,
       )}
     >

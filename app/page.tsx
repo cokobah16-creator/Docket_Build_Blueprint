@@ -163,7 +163,16 @@ export default function PlatformLanding() {
   const showRoutingNote = configured && !isProductionDeployment();
 
   return (
-    <div className={`${archivo.className} min-h-screen bg-docket-paper text-docket-ink`}>
+    // Pinned to light whatever the reader's theme. Four of the six Nigerian
+    // brand-risk mitigations in design/home/README.md are stated in terms of a
+    // warm LIGHT ground — "warm, never white", "no symmetric green-white-green
+    // thirds" — so a dark landing would change that posture without anyone
+    // having designed it. The docket-* palette is literal and would not flip on
+    // its own, but this keeps a future `text-gray-500` here from doing so.
+    <div
+      data-theme-scope="light"
+      className={`${archivo.className} min-h-screen bg-docket-paper text-docket-ink`}
+    >
       <header className="border-b border-docket-hair">
         <div className="mx-auto flex max-w-[1240px] flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-8">
           <div className="flex items-baseline gap-3">

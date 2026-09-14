@@ -11,10 +11,14 @@ export function Card({
   className?: string;
   children: ReactNode;
 }) {
+  // A card's separation from the page is the surface first and the shadow
+  // second: `shadow-e1` is all but invisible on a dark ground, so it is
+  // `bg-raised` sitting one step above `bg-paper` that keeps the card an object
+  // in both themes. Neither token alone is enough, which is why both are here.
   return (
     <section
       className={cn(
-        "overflow-hidden rounded-card border border-gray-200 bg-white shadow-[0_1px_2px_rgba(16,24,40,0.04)]",
+        "overflow-hidden rounded-card border border-hairline bg-raised shadow-e1",
         className,
       )}
     >
@@ -31,8 +35,8 @@ export function CardHeader({
   action?: ReactNode;
 }) {
   return (
-    <header className="flex items-center justify-between gap-4 border-b border-gray-100 px-[17px] py-[13px]">
-      <h2 className="font-heading text-[15.5px] font-semibold text-gray-900">{title}</h2>
+    <header className="flex items-center justify-between gap-4 border-b border-hairline px-[17px] py-[13px]">
+      <h2 className="font-heading text-17 font-semibold text-ink-strong">{title}</h2>
       {/* A card's action is a word or two — "All", "Pay". A word is a small
           thing for a thumb to find, so the slot grows the hit area to 44px and
           takes the extra back out in negative margin, leaving the header the
@@ -65,7 +69,7 @@ export function CardRow({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("border-t border-gray-100 px-[17px] py-[13px] first:border-t-0", className)}>
+    <div className={cn("border-t border-hairline px-[17px] py-[13px] first:border-t-0", className)}>
       {children}
     </div>
   );
@@ -83,8 +87,8 @@ export function EmptyState({
 }) {
   return (
     <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-      <p className="text-sm font-medium text-gray-700">{title}</p>
-      {hint && <p className="text-sm text-gray-500">{hint}</p>}
+      <p className="text-15 font-medium text-ink">{title}</p>
+      {hint && <p className="text-15 text-ink-muted">{hint}</p>}
       {action}
     </div>
   );

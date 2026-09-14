@@ -33,7 +33,7 @@ export const metadata = { title: "Availability" };
 
 const PREVIEW_DAYS = 14;
 const BOOKED_STATUSES = ["pending", "awaiting_payment", "confirmed", "rescheduled"];
-const field = "mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-brand focus:outline-none";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 /** Calendar-date arithmetic on a YYYY-MM-DD, done at noon UTC so no zone can shift the day. */
 function addDays(ymd: string, days: number): string {

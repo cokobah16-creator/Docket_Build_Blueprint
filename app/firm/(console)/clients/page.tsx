@@ -339,7 +339,7 @@ export default async function FirmClientsPage({
         </p>
       </header>
 
-      <form method="get" action="/firm/clients" className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-[#DDD9D2] bg-white px-3.5">
+      <form method="get" action="/firm/clients" className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-[#DDD9D2] bg-white px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]">
         {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
         {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
         <Icon name="search" size={17} strokeWidth={1.8} className="shrink-0 text-[#57534E]" />
