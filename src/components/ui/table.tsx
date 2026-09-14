@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 export function Table({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div className={cn("overflow-x-auto", className)}>
-      <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
+      <table className="w-full min-w-[36rem] border-collapse text-left text-15">
         {children}
       </table>
     </div>
@@ -15,15 +15,15 @@ export function Table({ children, className }: { children: ReactNode; className?
 }
 
 export function THead({ children }: { children: ReactNode }) {
-  return <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">{children}</thead>;
+  return <thead className="border-b border-hairline text-11 uppercase tracking-wide text-ink-muted">{children}</thead>;
 }
 
 export function TBody({ children }: { children: ReactNode }) {
-  return <tbody className="divide-y divide-gray-100">{children}</tbody>;
+  return <tbody className="divide-y divide-hairline">{children}</tbody>;
 }
 
 export function TR({ children, className }: { children: ReactNode; className?: string }) {
-  return <tr className={cn("hover:bg-gray-50", className)}>{children}</tr>;
+  return <tr className={cn("hover:bg-sunken", className)}>{children}</tr>;
 }
 
 export function TH({ children, className, ...props }: ThHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
@@ -36,7 +36,7 @@ export function TH({ children, className, ...props }: ThHTMLAttributes<HTMLTable
 
 export function TD({ children, className, ...props }: TdHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
   return (
-    <td className={cn("px-4 py-3 text-gray-800", className)} {...props}>
+    <td className={cn("px-4 py-3 text-ink", className)} {...props}>
       {children}
     </td>
   );

@@ -397,6 +397,61 @@ body {
   }
 }
 
+/* A placeholder block waiting for its screen (src/components/ui/skeleton.tsx).
+   The flat tint is bg-sunken on the element itself; this is only the band that
+   travels across it, so that a screen still loading reads as busy rather than
+   as broken furniture.
+
+   The band is a pseudo-element moved with `transform` rather than the usual
+   animated `background-position`, because background-position repaints the
+   whole block on every frame: a list of twenty placeholders is then twenty
+   repaints sixty times a second, and a skeleton that makes a mid-range phone
+   hot is worse than the pause it was drawn to cover. A transform is composited
+   and costs the layout nothing.
+
+   The highlight is ink at 6%, so one declaration serves both themes: on paper
+   it darkens the sunken tint, on a dark ground it lightens it. */
+@keyframes dkShimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.dk-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+
+.dk-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    90deg,
+    rgb(var(--t-ink) / 0) 0%,
+    rgb(var(--t-ink) / 0.06) 50%,
+    rgb(var(--t-ink) / 0) 100%
+  );
+  transform: translateX(-100%);
+  animation: dkShimmer 1.5s ease-in-out infinite;
+}
+
+/* The reduce block below does not stop an animation, it CLAMPS it: the whole
+   travel runs in one frame and the element rests wherever its declarations
+   leave it. Nothing about a placeholder should depend on which end of the
+   travel a band happens to stop at — a highlight frozen across every block
+   reads as a rendering fault, not as a deliberate still — so under reduce the
+   band is not drawn at all and the flat bg-sunken tint is the whole of the
+   resting state. */
+@media (prefers-reduced-motion: reduce) {
+  .dk-shimmer::after {
+    content: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

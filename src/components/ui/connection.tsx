@@ -5,6 +5,7 @@
 // reconnect is announced the same way. Nothing is guessed about the server.
 
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/ui/icon";
 import { clearAllDrafts } from "@/lib/drafts";
 
 export function useConnectionState(): { online: boolean; known: boolean } {
@@ -20,13 +21,18 @@ export function useConnectionState(): { online: boolean; known: boolean } {
   return { online, known };
 }
 
-/** A small pill shown only while offline; silent otherwise. */
+/**
+ * A small pill shown only while offline; silent otherwise. It wears the same
+ * `waiting` ground every other "someone is being waited on" state wears, and it
+ * carries the icon as well as the word — being offline is a state, and a state
+ * is never colour alone.
+ */
 export function ConnectionBadge() {
   const { online, known } = useConnectionState();
   if (!known || online) return null;
   return (
-    <span role="status" className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-900">
-      <span aria-hidden="true" className="size-1.5 rounded-full bg-amber-600" />
+    <span role="status" className="inline-flex items-center gap-1 rounded-full border border-waiting-line bg-waiting-bg px-2 py-0.5 text-11 font-semibold text-waiting-ink">
+      <Icon name="offline" size={12} strokeWidth={2.4} />
       Offline
     </span>
   );
@@ -36,7 +42,7 @@ export function ConnectionBadge() {
 export function OfflineNote() {
   const { online, known } = useConnectionState();
   if (!known || online) return null;
-  return <p className="text-xs text-amber-900">You are offline. What you type is kept on this device; send it when you are back.</p>;
+  return <p className="text-13 text-waiting-ink">You are offline. What you type is kept on this device; send it when you are back.</p>;
 }
 
 /** On the login pages: a shared device keeps no draft across sign-ins. */

@@ -9,3 +9,5 @@ export { Switch, SettingRow } from "./switch";
 export { Table, THead, TBody, TR, TH, TD } from "./table";
 export { Modal } from "./modal";
 export { ToastProvider, useToast } from "./toast";
+export { Skeleton, SkeletonText, SkeletonCard, SkeletonRow } from "./skeleton";
+export { Spinner } from "./spinner";

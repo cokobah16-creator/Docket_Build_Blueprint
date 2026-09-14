@@ -8,12 +8,25 @@ import {
   type ReactNode,
 } from "react";
 import { cn } from "@/lib/cn";
+import { Icon, type IconName } from "@/components/ui/icon";
+import { PILL_TONES, type PillTone } from "@/components/ui/badge";
 
 interface ToastItem {
   id: number;
   message: string;
   kind: "success" | "error" | "info";
 }
+
+// A toast said which of the three it was in colour alone — a saturated fill
+// with white type — so a viewer who cannot tell green from red read every one
+// of them as the same sentence. It now takes the same tone and the same icon a
+// pill or an alert would take for that meaning, and the ground is a token, so
+// it is a warm tint in light and a deep one in dark rather than an unlit block.
+const TOAST_TONES: Record<ToastItem["kind"], { tone: PillTone; icon: IconName }> = {
+  success: { tone: "settled", icon: "check" },
+  error: { tone: "wrong", icon: "alert" },
+  info: { tone: "informing", icon: "alert" },
+};
 
 const ToastContext = createContext<{ push: (message: string, kind?: ToastItem["kind"]) => void }>({
   push: () => {},
@@ -45,12 +58,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={cn(
-              "pointer-events-auto rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow-lg",
-              t.kind === "success" && "bg-emerald-700",
-              t.kind === "error" && "bg-red-700",
-              t.kind === "info" && "bg-gray-900",
+              // A toast floats over everything, so it carries both halves of
+              // elevation: a tinted surface that reads in dark mode and the
+              // shadow that reads in light.
+              "pointer-events-auto flex items-center gap-2 rounded-control border px-4 py-2.5 text-15 font-medium shadow-e3",
+              PILL_TONES[TOAST_TONES[t.kind].tone],
             )}
           >
+            <Icon name={TOAST_TONES[t.kind].icon} size={16} strokeWidth={2.2} className="shrink-0" />
             {t.message}
           </div>
         ))}
