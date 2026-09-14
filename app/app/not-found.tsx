@@ -18,6 +18,8 @@ import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { buttonClasses } from "@/components/ui/button";
 
+export const metadata = { title: "Page not found" };
+
 export default function PortalNotFound() {
   return (
     // `bg-paper` rather than whatever the body is painted: the body's ground is
@@ -33,7 +35,14 @@ export default function PortalNotFound() {
     // vh is the taller viewport the URL bar is hiding behind.
     <div className="min-h-[100dvh] bg-paper">
       <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center gap-5 px-4 py-10">
-        <Alert kind="notice" icon="search" title="This page is not here">
+        {/* The heading is an <h1> rather than the Alert's `title`, which renders as a
+            <p>. Without one this screen had no heading at all: a screen-reader user
+            navigating by heading landed on a page with nothing to land on, and the
+            document kept the layout's "Docket" as its title. The Alert keeps the
+            explanation and drops its own title so the sentence is not said twice. */}
+        <h1 className="text-21 font-bold tracking-[-0.02em] text-ink-strong">This page is not here</h1>
+
+        <Alert kind="notice" icon="search">
           Whatever was at this address is not available to you now. A link in an old email or
           message may point at something that has since changed, and a page only opens for the
           account it belongs to. Nothing you have sent or paid for is affected.

@@ -367,10 +367,35 @@
 :root[data-theme="dark"] { color-scheme: dark; }
 [data-theme-scope="light"] { color-scheme: light; }
 
+/* The ground behind everything, and the one element no branded subtree contains.
+   It used to read --dk-surface, which resolves here from :root and is therefore a
+   fixed cream in every theme. That was true enough while the app was light-only;
+   now brandStyle() paints the wrapper dark while the body behind it stayed cream,
+   and the seam shows wherever the wrapper does not reach — most visibly in the
+   rubber-band overscroll at the top of a portal screen on iOS, which is a phone
+   gesture people make constantly.
+
+   So the body follows the theme. That is the right default for the portal and the
+   console, which is where nearly all of the time is spent.
+
+   It costs something on the two pages that pin themselves to light —
+   app/page.tsx and app/not-found.tsx — because they pin on their OWN wrapper, and
+   a wrapper cannot reach its ancestor. In a dark browser those would get a dark
+   band behind a deliberately light page. `:has()` fixes it by letting the body ask
+   whether a pinned subtree is inside it, and it is guarded by @supports because a
+   browser without it must not drop the whole rule: on Android WebViews too old for
+   `:has()` the landing simply keeps the dark band in overscroll, which is the cost
+   the two pages were going to pay anyway and is confined to them. */
 body {
   margin: 0;
-  background-color: var(--dk-surface);
+  background-color: rgb(var(--t-paper));
   font-family: var(--dk-font-body), system-ui, sans-serif;
+}
+
+@supports selector(:has(*)) {
+  body:has([data-theme-scope="light"]) {
+    background-color: rgb(var(--l-paper));
+  }
 }
 
 /* Screens rise a few pixels as they arrive, so a tap reads as a move rather

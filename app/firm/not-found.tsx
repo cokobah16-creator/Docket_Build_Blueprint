@@ -20,6 +20,8 @@ import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { buttonClasses } from "@/components/ui/button";
 
+export const metadata = { title: "Page not found" };
+
 export default function ConsoleNotFound() {
   return (
     // `bg-paper` rather than whatever the body is painted: the body's ground is
@@ -34,7 +36,13 @@ export default function ConsoleNotFound() {
     // gives — on a phone vh is the taller viewport the URL bar is hiding behind.
     <div className="min-h-[100dvh] bg-paper">
       <main className="mx-auto flex min-h-[100dvh] max-w-md flex-col justify-center gap-5 px-4 py-10">
-        <Alert kind="notice" icon="search" title="This page is not here">
+        {/* An <h1> rather than the Alert's `title`, which renders as a <p>. Without
+            one this screen had no heading and the document kept the layout's title,
+            so a lawyer using a screen reader had nothing to navigate to. The Alert
+            keeps the explanation and drops its own title. */}
+        <h1 className="text-21 font-bold tracking-[-0.02em] text-ink-strong">This page is not here</h1>
+
+        <Alert kind="notice" icon="search">
           There is no record at this address for the firm you are signed in to. It may have been
           closed or deleted, or it may belong to another firm — if you act for more than one,
           check which firm the console is showing before opening the link again.
