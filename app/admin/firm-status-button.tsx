@@ -36,7 +36,7 @@ export function FirmStatusControl({ firmId, status }: { firmId: string; status: 
         name="status"
         value={choice}
         onChange={(e) => setChoice(e.target.value)}
-        className="min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+        className="min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
       >
         <option value="pending">Pending — awaiting verification</option>
         <option value="active">Active</option>
@@ -48,7 +48,7 @@ export function FirmStatusControl({ firmId, status }: { firmId: string; status: 
         maxLength={500}
         placeholder="Why (kept in the audit trail)"
         aria-label="Why this status is changing"
-        className="min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900"
+        className="min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
       />
       <button
         type="submit"

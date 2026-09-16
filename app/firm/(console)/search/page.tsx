@@ -126,7 +126,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
             <input
               id="q" name="q" type="search" defaultValue={q} autoFocus minLength={2} maxLength={200}
               placeholder="Okonkwo · LD/4521/2026 · quicksilver covenant"
-              className="min-h-11 w-full rounded-lg border border-gray-300 px-3 text-[15px] text-gray-900 focus:border-[#141414] focus:outline-none"
+              className="min-h-11 w-full rounded-lg border border-gray-300 px-3 text-base text-gray-900 focus:border-[#141414] focus:outline-none"
             />
             <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-[#141414] px-4 text-[14px] font-medium text-white">
               Search

@@ -32,7 +32,7 @@ export function AcceptAuthorityForm({ token }: { token: string }) {
         The code from your link
         <input
           value={value} onChange={(e) => setValue(e.target.value)} required
-          className="mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 font-mono text-[13px] text-gray-900 focus:border-brand focus:outline-none"
+          className="mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 font-mono text-base text-gray-900 focus:border-brand focus:outline-none"
         />
       </label>
       <Button type="submit" disabled={busy || value.trim().length === 0}>{busy ? "Taking it up…" : "Take up this authority"}</Button>

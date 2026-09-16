@@ -346,7 +346,7 @@ export function DeadlinesPanel({
                   <Button type="button" size="sm" variant="ghost" onClick={() => recompute(d)}>Recount</Button>
                   {dischargeFor === d.id ? (
                     <span className="flex flex-wrap items-center gap-2">
-                      <input type="text" maxLength={1000} value={dischargeNote} onChange={(e) => setDischargeNote(e.target.value)} placeholder="Why it no longer applies" className="rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                      <input type="text" maxLength={1000} value={dischargeNote} onChange={(e) => setDischargeNote(e.target.value)} placeholder="Why it no longer applies" className="rounded-lg border border-gray-300 px-3 py-2 text-base" />
                       <Button type="button" size="sm" variant="ghost" disabled={busy === d.id} onClick={() => void discharge(d.id)}>Discharge</Button>
                       <Button type="button" size="sm" variant="ghost" onClick={() => setDischargeFor(null)}>Cancel</Button>
                     </span>

@@ -549,7 +549,7 @@ export function CopyLink({ value, label = "Copy link" }: { value: string; label?
           value={value}
           aria-label={label}
           onFocus={(e) => e.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800"
+          className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-base text-gray-800"
         />
         <Button type="button" variant="ghost" onClick={copy}>
           {state === "copied" ? "Copied" : label}

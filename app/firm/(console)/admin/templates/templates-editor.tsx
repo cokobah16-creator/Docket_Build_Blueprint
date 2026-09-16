@@ -155,7 +155,7 @@ export function TemplatesEditor({ firmId, templates, canWrite, timezone }: { fir
               </fieldset>
               <label className="block text-sm">
                 <span className="font-medium text-gray-800">The words</span>
-                <textarea className={`${field} min-h-[260px] font-mono text-xs`} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} required maxLength={60000} placeholder={"Dear {client.name},\n\nWe refer to {matter.title} ({matter.reference}) …\n\nOur fee is {extra.fee}.\n\n{lawyer.name}\n{firm.name}"} />
+                <textarea className={`${field} min-h-[260px] font-mono text-base`} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} required maxLength={60000} placeholder={"Dear {client.name},\n\nWe refer to {matter.title} ({matter.reference}) …\n\nOur fee is {extra.fee}.\n\n{lawyer.name}\n{firm.name}"} />
               </label>
               {unknown.length > 0 && <Alert kind="warning">Not on the list, so the database will refuse this template: {unknown.map((k) => `{${k}}`).join(", ")}. Use a placeholder below, or {"{extra.name}"} for a value typed at generation.</Alert>}
               {typed.length > 0 && <p className="text-xs text-gray-600">Typed at generation, each time: {typed.map((k) => `{${k}}`).join(", ")}.</p>}

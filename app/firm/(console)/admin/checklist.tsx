@@ -154,7 +154,7 @@ export function Checklist({ firmId, readiness, canWrite }: { firmId: string; rea
               {skipping === s.key && (
                 <div className="w-full rounded-lg border border-gray-200 p-3">
                   <label htmlFor={`skip-${s.key}`} className="text-sm font-medium text-gray-900">Why this firm is setting it aside</label>
-                  <input id={`skip-${s.key}`} type="text" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Optional, kept in the audit trail" />
+                  <input id={`skip-${s.key}`} type="text" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" placeholder="Optional, kept in the audit trail" />
                   <div className="mt-2 flex gap-2">
                     <Button type="button" size="sm" disabled={pending} onClick={() => skip(s.key)}>{pending ? "Saving…" : "Set aside"}</Button>
                     <Button type="button" size="sm" variant="ghost" onClick={() => setSkipping(null)}>Cancel</Button>

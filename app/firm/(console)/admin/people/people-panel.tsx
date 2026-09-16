@@ -112,7 +112,7 @@ function CopyLink({ url, label = "Copy the link" }: { url: string; label?: strin
           value={url}
           aria-label="Invitation link to copy"
           onFocus={(e) => e.currentTarget.select()}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-xs text-gray-700 sm:w-80"
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-700 sm:w-80"
         />
       )}
     </span>

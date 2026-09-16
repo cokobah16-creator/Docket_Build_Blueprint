@@ -39,10 +39,10 @@ export function AddMemberForm({ registryId }: { registryId: string }) {
     <form action={action} className="mt-2 flex flex-wrap items-end gap-2">
       <input type="hidden" name="registryId" value={registryId} />
       <label className="block text-xs text-gray-700">Email (they sign up first)
-        <input name="email" type="email" required autoCapitalize="none" className="mt-1 block min-h-[40px] w-56 rounded-lg border border-gray-300 px-2 text-sm" />
+        <input name="email" type="email" required autoCapitalize="none" className="mt-1 block min-h-[40px] w-56 rounded-lg border border-gray-300 px-2 text-base" />
       </label>
       <label className="block text-xs text-gray-700">Role
-        <select name="role" defaultValue="clerk" className="mt-1 block min-h-[40px] rounded-lg border border-gray-300 bg-white px-2 text-sm">
+        <select name="role" defaultValue="clerk" className="mt-1 block min-h-[40px] rounded-lg border border-gray-300 bg-white px-2 text-base">
           <option value="registrar">Registrar — publishes and withdraws</option>
           <option value="clerk">Clerk — stages</option>
         </select>
@@ -80,7 +80,7 @@ export function RegistryStatusForm({ registryId, status }: { registryId: string;
       <input type="hidden" name="registryId" value={registryId} />
       <input type="hidden" name="status" value={next} />
       <label className="block text-xs text-gray-700">Why (kept in the audit trail)
-        <input name="note" maxLength={500} className="mt-1 block min-h-[40px] w-64 rounded-lg border border-gray-300 px-2 text-sm" />
+        <input name="note" maxLength={500} className="mt-1 block min-h-[40px] w-64 rounded-lg border border-gray-300 px-2 text-base" />
       </label>
       <Button type="submit" size="sm" variant="ghost" disabled={pending}>
         {pending ? "Saving…" : next === "suspended" ? "Suspend — nothing new can be published" : "Restore"}

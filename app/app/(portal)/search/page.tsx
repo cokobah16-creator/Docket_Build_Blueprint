@@ -106,7 +106,7 @@ export default async function PortalSearch({ searchParams }: { searchParams: Pro
             <input
               id="q" name="q" type="search" defaultValue={q} autoFocus minLength={2} maxLength={200}
               placeholder="A word from an update, a file name, a reference"
-              className="min-h-11 w-full rounded-lg border border-gray-300 px-3 text-[15px] text-gray-900 focus:border-brand focus:outline-none"
+              className="min-h-11 w-full rounded-lg border border-gray-300 px-3 text-base text-gray-900 focus:border-brand focus:outline-none"
             />
             <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-brand px-4 text-sm font-medium text-brand-on">
               Search

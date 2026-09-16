@@ -81,20 +81,74 @@ const KEEP = [
 const esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** One rule, applied so that any variant prefix in front of it survives. */
-function rule(from, to, tail = '(?![\\w-])') {
+function rule(kind, from, to, tail = '(?![\\w-])') {
   return {
-    from, to,
+    kind, from, to,
     re: new RegExp(`(^|[\\s"'\`])((?:[a-z-]+:)*)${esc(from)}${tail}`, 'g'),
     sub: (_m, lead, variants) => `${lead}${variants}${to}`,
   };
 }
 
 const RULES = [];
-if (!ONLY || ONLY === 'colour') for (const [f, t, tail] of COLOUR) RULES.push(rule(f, t, tail));
-if (!ONLY || ONLY === 'text')   for (const [froms, t] of TEXT) for (const f of froms) RULES.push(rule(f, t));
-if (!ONLY || ONLY === 'radius') for (const [f, t] of RADIUS) RULES.push(rule(f, t));
+if (!ONLY || ONLY === 'colour') for (const [f, t, tail] of COLOUR) RULES.push(rule('colour', f, t, tail));
+if (!ONLY || ONLY === 'text')   for (const [froms, t] of TEXT) for (const f of froms) RULES.push(rule('text', f, t));
+if (!ONLY || ONLY === 'radius') for (const [f, t] of RADIUS) RULES.push(rule('radius', f, t));
 // Longest source first so a shorter rule cannot eat a longer one's prefix.
 RULES.sort((a, b) => b.from.length - a.from.length);
+
+// WHY A FONT SIZE IS NEVER REWRITTEN INSIDE A FORM CONTROL
+//
+// The ramp has no 16px step, deliberately: 16 is where inputs live, and it is a
+// platform constraint rather than a typographic choice — a real input under 16px
+// makes iOS Safari zoom the whole page on focus.
+//
+// So mapping an input's `text-sm` to `text-15` would leave it zooming at 15px
+// while giving it a class that reads as a considered ramp step. That is worse
+// than leaving it alone: the bug stops looking like one. Colour and radius still
+// apply inside these tags; only the type rules are held, and every size held
+// back is printed, so a clean run never implies they were looked at and approved.
+//
+// The scan tracks quotes and braces because a JSX attribute value routinely
+// contains both — className={`… ${x} …`} — and a naive search for the next '>'
+// would end the tag in the middle of one.
+function formControlMask(src) {
+  const mask = new Uint8Array(src.length);
+  const open = /<(input|textarea|select)\b/g;
+  let m;
+  while ((m = open.exec(src))) {
+    let i = m.index, depth = 0, quote = null;
+    for (; i < src.length; i++) {
+      const c = src[i];
+      if (quote) { if (c === quote && src[i - 1] !== '\\') quote = null; continue; }
+      if (c === '"' || c === "'" || c === '`') { quote = c; continue; }
+      if (c === '{') depth++;
+      else if (c === '}') depth--;
+      else if (c === '>' && depth <= 0) break;
+    }
+    const tag = src.slice(m.index, Math.min(i + 1, src.length));
+    // A file picker, a checkbox or a submit button has no typing surface, so its
+    // font size styles a label and is an ordinary ramp candidate. Only a control
+    // a person types into is held back.
+    if (!/type=["']?(file|checkbox|radio|color|range|hidden|submit|button|image|reset)\b/.test(tag)) {
+      mask.fill(1, m.index, Math.min(i + 1, src.length));
+    }
+    open.lastIndex = i;
+  }
+  return mask;
+}
+
+/** Split a line into runs that are inside a form-control tag and runs that are not. */
+function segments(line, mask, from) {
+  const out = [];
+  let start = 0;
+  for (let i = 1; i <= line.length; i++) {
+    if (i === line.length || mask[from + i] !== mask[from + start]) {
+      out.push({ text: line.slice(start, i), inControl: mask[from + start] === 1 });
+      start = i;
+    }
+  }
+  return out.length ? out : [{ text: line, inControl: false }];
+}
 
 const files = [];
 function walk(d) {
@@ -108,24 +162,46 @@ walk('app'); walk('src');
 
 let totalFiles = 0, totalHits = 0, skipped = 0;
 const perRule = new Map();
+const held = [];
 
 for (const file of files) {
   const before = fs.readFileSync(file, 'utf8');
   const keeps = KEEP.filter(k => file.endsWith(k.file));
+  const mask = formControlMask(before);
   const lines = before.split('\n');
   let changed = 0;
+  let at = 0;
 
-  const after = lines.map(line => {
+  const after = lines.map((line, lineNo) => {
+    const from = at;
+    at += line.length + 1;
     if (keeps.some(k => line.includes(k.contains))) { skipped++; return line; }
     // Only touch a line that actually carries a class list.
     if (!/class(Name)?\s*=|^\s*(const|let|var)\s|["'`][^"'`]*\b(bg|text|border|rounded|divide|hover|focus|md|lg|sm):?-/.test(line)) return line;
-    let out = line;
-    for (const r of RULES) {
-      r.re.lastIndex = 0;
-      const n = (out.match(r.re) || []).length;
-      if (n) { out = out.replace(r.re, r.sub); changed += n; perRule.set(r.from, (perRule.get(r.from) || 0) + n); }
-    }
-    return out;
+
+    const apply = (text, inControl) => {
+      let out = text;
+      for (const r of RULES) {
+        if (inControl && r.kind === 'text') {
+          r.re.lastIndex = 0;
+          const n = (out.match(r.re) || []).length;
+          if (n) held.push({ file, line: lineNo + 1, from: r.from, would: r.to });
+          continue;
+        }
+        r.re.lastIndex = 0;
+        const n = (out.match(r.re) || []).length;
+        if (n) { out = out.replace(r.re, r.sub); changed += n; perRule.set(r.from, (perRule.get(r.from) || 0) + n); }
+      }
+      return out;
+    };
+
+    // The common case is a line with no form control on it at all; segmenting
+    // every line would only make the regexes run against smaller pieces and risk
+    // a match that straddles a boundary.
+    let anyControl = false;
+    for (let i = 0; i < line.length; i++) if (mask[from + i]) { anyControl = true; break; }
+    if (!anyControl) return apply(line, false);
+    return segments(line, mask, from).map(seg => apply(seg.text, seg.inControl)).join('');
   }).join('\n');
 
   if (after !== before) {
@@ -137,6 +213,13 @@ for (const file of files) {
 console.log(`${DRY ? 'WOULD REWRITE' : 'rewrote'} ${totalHits} classes across ${totalFiles} files`);
 if (skipped) console.log(`${skipped} line(s) left alone by the exception list:`);
 for (const k of KEEP) console.log(`    ${k.file} — ${k.why}`);
+
+if (held.length) {
+  console.log(`\n${held.length} font size(s) held back inside a control a person types into —`);
+  console.log('the ramp has no 16px step, so a rewrite would relabel a field that still zooms on iOS:');
+  for (const h of held) console.log(`    ${h.file}:${h.line}  ${h.from} (would have become ${h.would})`);
+  console.log('    Set these to text-base rather than a ramp step. See src/components/ui/input.tsx.');
+}
 console.log('\nby rule:');
 for (const [from, n] of [...perRule].sort((a, b) => b[1] - a[1])) {
   const to = RULES.find(r => r.from === from).to;

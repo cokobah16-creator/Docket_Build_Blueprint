@@ -196,7 +196,7 @@ export function CollaborationPanel({
                     <label className="text-xs text-gray-700">
                       Share a version
                       <select value={pick[r.id] ?? ""} onChange={(e) => setPick({ ...pick, [r.id]: e.target.value })}
-                              className="mt-1 block min-h-11 rounded-lg border border-gray-300 px-2 text-sm">
+                              className="mt-1 block min-h-11 rounded-lg border border-gray-300 px-2 text-base">
                         <option value="">Choose a document</option>
                         {shareable.map((d) => <option key={d.id} value={d.versionId ?? ""}>{d.name}</option>)}
                       </select>

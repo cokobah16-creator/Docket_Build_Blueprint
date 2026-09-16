@@ -84,7 +84,7 @@ export function SignDialog({ open, name, versionId, storagePath, matterId, profi
             </label>
             <label className="block text-sm">
               <span className="font-medium text-gray-800">Type your name{profileName ? ` exactly as it is on your profile: ${profileName}` : ""}</span>
-              <input value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" maxLength={200} autoComplete="off" />
+              <input value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" maxLength={200} autoComplete="off" />
             </label>
             <p className="text-xs text-gray-600">What is recorded: who you are, the name you typed, this version and its checksum, that you opened it, and when. Once signed, no further version can be added to this document.</p>
             <div className="flex gap-2">

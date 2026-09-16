@@ -389,9 +389,9 @@ export function StaffDocuments({
         {askError && <div className="mt-2"><Alert kind="error">{askError}</Alert></div>}
         {askOpen && (
           <form onSubmit={ask} className="mt-3 grid gap-2 sm:grid-cols-3">
-            <input value={askTitle} onChange={(e) => setAskTitle(e.target.value)} required maxLength={200} placeholder="What document" className="rounded-lg border border-gray-300 px-3 py-2 text-sm sm:col-span-2" />
-            <input type="date" value={askDue} onChange={(e) => setAskDue(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-sm" aria-label="By when" />
-            <input value={askWhy} onChange={(e) => setAskWhy(e.target.value)} maxLength={2000} placeholder="Why it is needed (the client sees this)" className="rounded-lg border border-gray-300 px-3 py-2 text-sm sm:col-span-3" />
+            <input value={askTitle} onChange={(e) => setAskTitle(e.target.value)} required maxLength={200} placeholder="What document" className="rounded-lg border border-gray-300 px-3 py-2 text-base sm:col-span-2" />
+            <input type="date" value={askDue} onChange={(e) => setAskDue(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-base" aria-label="By when" />
+            <input value={askWhy} onChange={(e) => setAskWhy(e.target.value)} maxLength={2000} placeholder="Why it is needed (the client sees this)" className="rounded-lg border border-gray-300 px-3 py-2 text-base sm:col-span-3" />
             <div className="sm:col-span-3"><Button type="submit" size="sm" disabled={askBusy || !online || askTitle.trim().length < 2}>{askBusy ? "Asking…" : "Ask"}</Button>{askDraft.restored && <span className="ml-2 text-xs text-gray-600">Draft restored.</span>}<OfflineNote /></div>
           </form>
         )}
@@ -430,24 +430,24 @@ export function StaffDocuments({
           {genOpen && (
             <form onSubmit={generate} className="mt-3 grid gap-2 sm:grid-cols-2">
               <label className="text-xs text-gray-700 sm:col-span-2">Template
-                <select value={gen.templateId} onChange={(e) => setGen({ ...gen, templateId: e.target.value, extra: {} })} required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                <select value={gen.templateId} onChange={(e) => setGen({ ...gen, templateId: e.target.value, extra: {} })} required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base">
                   <option value="">Choose…</option>
                   {usable.map((t) => <option key={t.id} value={t.id}>{t.name} · v{t.version} · {t.execution === "paper" ? "executed on paper" : t.execution === "electronic" ? "signed in Docket" : "either"}</option>)}
                 </select>
               </label>
               <label className="text-xs text-gray-700">Document name
-                <input value={gen.name} onChange={(e) => setGen({ ...gen, name: e.target.value })} maxLength={200} placeholder={genTemplate?.name ?? "As the template"} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                <input value={gen.name} onChange={(e) => setGen({ ...gen, name: e.target.value })} maxLength={200} placeholder={genTemplate?.name ?? "As the template"} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" />
               </label>
               {clients.length > 1 && (
                 <label className="text-xs text-gray-700">Addressed to
-                  <select value={gen.clientId} onChange={(e) => setGen({ ...gen, clientId: e.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm">
+                  <select value={gen.clientId} onChange={(e) => setGen({ ...gen, clientId: e.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base">
                     {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </label>
               )}
               {extraKeys.map((k) => (
                 <label key={k} className="text-xs text-gray-700 sm:col-span-2">{k.replace(/_/g, " ")} <span className="text-gray-500">(typed for this document)</span>
-                  <input value={gen.extra[k] ?? ""} onChange={(e) => setGen({ ...gen, extra: { ...gen.extra, [k]: e.target.value } })} required maxLength={2000} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" />
+                  <input value={gen.extra[k] ?? ""} onChange={(e) => setGen({ ...gen, extra: { ...gen.extra, [k]: e.target.value } })} required maxLength={2000} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" />
                 </label>
               ))}
               {genTemplate?.note && <p className="text-xs text-gray-500 sm:col-span-2">{genTemplate.note}</p>}
@@ -546,11 +546,11 @@ export function StaffDocuments({
                 {paperFor === d.id && d.version && (
                   <form onSubmit={(e) => savePaper(e, d)} className="mt-2 grid gap-2 rounded-lg bg-gray-50 p-3 sm:grid-cols-2">
                     <p className="text-xs text-gray-600 sm:col-span-2">This version is the executed copy as uploaded. Recording it locks the document on it; the day is the day on the instrument.</p>
-                    <label className="text-xs text-gray-700">Executed on<input type="date" required value={paper.executedOn} onChange={(e) => setPaper({ ...paper, executedOn: e.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" /></label>
-                    <label className="text-xs text-gray-700">Witness<input value={paper.witnessName} onChange={(e) => setPaper({ ...paper, witnessName: e.target.value })} maxLength={200} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" /></label>
-                    <label className="text-xs text-gray-700">Attested by<input value={paper.attestedBy} onChange={(e) => setPaper({ ...paper, attestedBy: e.target.value })} maxLength={200} placeholder="Commissioner for Oaths, notary…" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" /></label>
-                    <label className="text-xs text-gray-700">Stamp duty reference<input value={paper.stampRef} onChange={(e) => setPaper({ ...paper, stampRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" /></label>
-                    <label className="text-xs text-gray-700">Registration reference<input value={paper.registrationRef} onChange={(e) => setPaper({ ...paper, registrationRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" /></label>
+                    <label className="text-xs text-gray-700">Executed on<input type="date" required value={paper.executedOn} onChange={(e) => setPaper({ ...paper, executedOn: e.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
+                    <label className="text-xs text-gray-700">Witness<input value={paper.witnessName} onChange={(e) => setPaper({ ...paper, witnessName: e.target.value })} maxLength={200} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
+                    <label className="text-xs text-gray-700">Attested by<input value={paper.attestedBy} onChange={(e) => setPaper({ ...paper, attestedBy: e.target.value })} maxLength={200} placeholder="Commissioner for Oaths, notary…" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
+                    <label className="text-xs text-gray-700">Stamp duty reference<input value={paper.stampRef} onChange={(e) => setPaper({ ...paper, stampRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
+                    <label className="text-xs text-gray-700">Registration reference<input value={paper.registrationRef} onChange={(e) => setPaper({ ...paper, registrationRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
                     <div className="sm:col-span-2"><Button type="submit" size="sm" disabled={Boolean(busy) || !online}>Record</Button><OfflineNote /></div>
                   </form>
                 )}

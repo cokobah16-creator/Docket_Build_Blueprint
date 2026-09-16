@@ -457,7 +457,7 @@ export function IntakeEditor({
                 rows={16}
                 spellCheck={false}
                 disabled={!canWrite}
-                className="mt-1 w-full overflow-x-auto whitespace-pre rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
+                className="mt-1 w-full overflow-x-auto whitespace-pre rounded-lg border border-gray-300 px-3 py-2 font-mono text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
                 value={text}
                 onChange={(e) => {
                   setText(e.target.value);
