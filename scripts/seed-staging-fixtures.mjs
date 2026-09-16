@@ -273,7 +273,14 @@ async function enrolTotp(email) {
 const FIXTURES = {
   staff:      { email: 'staff.owner@docket-staging.invalid',   fullName: 'Ada Owner' },
   colleague:  { email: 'staff.colleague@docket-staging.invalid', fullName: 'Bode Colleague' },
-  client:     { email: 'client@docket-staging.invalid', phone: '+2348000000001', fullName: 'Chidi Client' },
+  // The phone is overridable and its default is a placeholder, deliberately on both counts.
+  // The client signs in by SMS OTP, so this number must be the one registered as a Supabase TEST
+  // number (Authentication -> Providers -> Phone) — otherwise redeeming the fixed code mints a
+  // BRAND NEW user with no matter, no message and no document, and the journeys fail looking like
+  // a product fault rather than a mismatched fixture. Measured on 16 Sep 2026: exactly that.
+  // It is not hardcoded to the real number because this file is committed and a working test
+  // number is somebody's actual mobile. Pass FIXTURE_CLIENT_PHONE to match your dashboard.
+  client:     { email: 'client@docket-staging.invalid', phone: process.env.FIXTURE_CLIENT_PHONE ?? '+2348000000001', fullName: 'Chidi Client' },
   otherStaff: { email: 'staff.secondfirm@docket-staging.invalid', fullName: 'Dupe Second' },
   platform:   { email: 'platform.admin@docket-staging.invalid', fullName: 'Platform Admin' },
   firm:       { name: 'Staging Legal Partners', slug: 'staging-legal' },
@@ -504,6 +511,10 @@ async function main() {
   console.log(`E2E_STAFF_TOTP_SECRET=${staffSecret}`);
   console.log(`E2E_FORBIDDEN_MATTER_ID=${forbiddenMatter}`);
   console.log('');
+  console.log('# This number must be registered as a Supabase TEST number with the fixed code below,');
+  console.log('# and it must be THIS account\'s number: an OTP signs in whoever owns it, so a mismatch');
+  console.log('# yields a valid session for a stranger with none of the fixture data. Override the');
+  console.log('# default with FIXTURE_CLIENT_PHONE.');
   console.log('# The client signs in with a phone OTP and nothing else: /auth/callback handles only');
   console.log('# ?code= with exchangeCodeForSession, and a magic link arrives as a URL fragment that');
   console.log('# nothing on /app reads. So register this number as a Supabase SMS TEST number with a');
