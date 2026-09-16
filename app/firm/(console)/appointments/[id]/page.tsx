@@ -184,11 +184,11 @@ export default async function FirmAppointmentPage({
         <CardHeader title="Client" />
         <CardBody>
           <dl className="space-y-2 text-sm">
-            <div><dt className="text-gray-500">Name</dt><dd className="font-medium text-gray-900">{cl?.full_name ?? "—"}</dd></div>
-            <div><dt className="text-gray-500">Phone</dt><dd className="font-medium text-gray-900">{cl?.phone ?? "—"}</dd></div>
-            <div><dt className="text-gray-500">Email</dt><dd className="font-medium text-gray-900">{cl?.email ?? "—"}</dd></div>
+            <div><dt className="text-ink-muted">Name</dt><dd className="font-medium text-ink">{cl?.full_name ?? "—"}</dd></div>
+            <div><dt className="text-ink-muted">Phone</dt><dd className="font-medium text-ink">{cl?.phone ?? "—"}</dd></div>
+            <div><dt className="text-ink-muted">Email</dt><dd className="font-medium text-ink">{cl?.email ?? "—"}</dd></div>
             {appt.client_timezone && appt.client_timezone !== tz && (
-              <div><dt className="text-gray-500">Client's time</dt><dd className="font-medium text-gray-900">{formatWhen(appt.starts_at, appt.client_timezone)} ({appt.client_timezone})</dd></div>
+              <div><dt className="text-ink-muted">Client's time</dt><dd className="font-medium text-ink">{formatWhen(appt.starts_at, appt.client_timezone)} ({appt.client_timezone})</dd></div>
             )}
           </dl>
         </CardBody>
@@ -201,8 +201,8 @@ export default async function FirmAppointmentPage({
             <dl className="space-y-2 text-sm">
               {Object.entries(answers).map(([k, v]) => (
                 <div key={k}>
-                  <dt className="text-gray-500">{k.replace(/_/g, " ")}</dt>
-                  <dd className="whitespace-pre-wrap font-medium text-gray-900">
+                  <dt className="text-ink-muted">{k.replace(/_/g, " ")}</dt>
+                  <dd className="whitespace-pre-wrap font-medium text-ink">
                     {Array.isArray(v) ? v.map((x) => (typeof x === "object" && x && "name" in (x as object) ? String((x as { name: string }).name) : String(x))).join(", ") : typeof v === "object" ? JSON.stringify(v) : String(v)}
                   </dd>
                 </div>
@@ -217,9 +217,9 @@ export default async function FirmAppointmentPage({
           <CardHeader title="Session" />
           <CardBody>
             <dl className="space-y-1 text-sm">
-              <div className="flex justify-between gap-2"><dt className="text-gray-500">Started</dt><dd>{session.started_at ? formatWhen(session.started_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
-              <div className="flex justify-between gap-2"><dt className="text-gray-500">Client admitted</dt><dd>{session.client_admitted_at ? formatWhen(session.client_admitted_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
-              <div className="flex justify-between gap-2"><dt className="text-gray-500">Ended</dt><dd>{session.ended_at ? formatWhen(session.ended_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
+              <div className="flex justify-between gap-2"><dt className="text-ink-muted">Started</dt><dd>{session.started_at ? formatWhen(session.started_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
+              <div className="flex justify-between gap-2"><dt className="text-ink-muted">Client admitted</dt><dd>{session.client_admitted_at ? formatWhen(session.client_admitted_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
+              <div className="flex justify-between gap-2"><dt className="text-ink-muted">Ended</dt><dd>{session.ended_at ? formatWhen(session.ended_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
             </dl>
           </CardBody>
         </Card>
@@ -238,7 +238,7 @@ export default async function FirmAppointmentPage({
         <Card>
           <CardHeader title="Client did not attend?" />
           <CardBody className="space-y-2">
-            <p className="text-sm text-gray-600">Marks the appointment as a no-show. The client keeps their receipt; nothing is refunded automatically.</p>
+            <p className="text-sm text-ink-muted">Marks the appointment as a no-show. The client keeps their receipt; nothing is refunded automatically.</p>
             <form action={noShow}><Button type="submit" variant="ghost">Mark as no-show</Button></form>
           </CardBody>
         </Card>

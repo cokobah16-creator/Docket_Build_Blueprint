@@ -35,15 +35,15 @@ export function PreferencesForm({ initial }: { initial: NotificationPreference[]
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-gray-500">
+            <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
               <th className="py-2 pr-2">Event</th>
               {PREFERENCE_CHANNELS.map((c) => <th key={c.channel} className="py-2 text-center">{c.label}</th>)}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-hairline">
             {PREFERENCE_EVENTS.map((e) => (
               <tr key={e.event}>
-                <td className="py-2 pr-2 text-gray-800">{e.label}</td>
+                <td className="py-2 pr-2 text-ink">{e.label}</td>
                 {PREFERENCE_CHANNELS.map((c) => {
                   const k = `${e.event}|${c.channel}`;
                   return (

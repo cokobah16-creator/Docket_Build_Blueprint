@@ -26,7 +26,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const FIELD_LABELS: Record<ImportField, { label: string; hint: string; required?: boolean }> = {
   title: { label: "Working title", hint: "What the firm calls the file. Required.", required: true },
@@ -281,7 +281,7 @@ export function ImportWizard({
               Each matter will come in; its client will not be linked until a check on that matter is cleared. The result page says so per row.
             </Alert>
           )}
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-muted">
             A CSV export from your spreadsheet, one matter per row, with a header row. You say what each column means next.
             Dates are calendar days (YYYY-MM-DD or DD/MM/YYYY). Every client is invited by phone or email — even one already on Docket — and never linked by a number in a file.{" "}
             <Link href="/firm/admin/import/template" className="text-brand underline">See the columns and download a template</Link>.
@@ -302,14 +302,14 @@ export function ImportWizard({
         <CardBody className="space-y-4">
           {error && <Alert kind="error">{error}</Alert>}
           {table.warnings.map((w) => <Alert key={w} kind="warning">{w}</Alert>)}
-          <p className="text-sm text-gray-600">{table.rows.length} rows, {table.headers.length} columns. Columns left as “not imported” are ignored.</p>
+          <p className="text-sm text-ink-muted">{table.rows.length} rows, {table.headers.length} columns. Columns left as “not imported” are ignored.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {IMPORT_FIELDS.map((f) => (
               <div key={f}>
-                <label htmlFor={`map-${f}`} className="text-sm font-medium text-gray-900">
+                <label htmlFor={`map-${f}`} className="text-sm font-medium text-ink">
                   {FIELD_LABELS[f].label}{FIELD_LABELS[f].required && <span className="text-red-700"> *</span>}
                 </label>
-                {FIELD_LABELS[f].hint && <p className="text-xs text-gray-500">{FIELD_LABELS[f].hint}</p>}
+                {FIELD_LABELS[f].hint && <p className="text-xs text-ink-muted">{FIELD_LABELS[f].hint}</p>}
                 <select id={`map-${f}`} value={mapping[f] === undefined ? "" : String(mapping[f])} onChange={(e) => setMapping((m) => ({ ...m, [f]: e.target.value === "" ? undefined : Number(e.target.value) }))} className={field}>
                   <option value="">Not imported</option>
                   {table.headers.map((h, i) => h && <option key={`${h}-${i}`} value={String(i)}>{h}{table.headers.filter((x) => x === h).length > 1 ? ` (column ${i + 1})` : ""}</option>)}
@@ -335,7 +335,7 @@ export function ImportWizard({
         <CardHeader title={`What will happen — ${fileName}`} />
         <CardBody className="space-y-4">
           {error && <Alert kind="error">{error}</Alert>}
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-ink">
             <strong>{inCount}</strong> of {rows.length} rows will be filed{dupes.size > 0 ? `; ${dupes.size} ticked out because they already look like a matter on the books` : ""}
             {warned > 0 ? `; ${warned} carry a warning — the database checks the same things and refuses such a row with its reason recorded, unless you tick it out` : ""}.
             Each row is filed on its own: one bad row never stops the rest.
@@ -351,22 +351,22 @@ export function ImportWizard({
               Staged {progress.staged} of {progress.total}; filed {progress.processed} of {progress.total}. Stay on this page.
             </Alert>
           )}
-          <div className="max-h-[60vh] overflow-auto rounded-lg border border-gray-200">
+          <div className="max-h-[60vh] overflow-auto rounded-lg border border-hairline">
             <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
+              <thead className="sticky top-0 bg-sunken text-xs uppercase tracking-wide text-ink-muted">
                 <tr>
                   <th className="px-2 py-2">In</th><th className="px-2 py-2">#</th><th className="px-2 py-2">Title</th><th className="px-2 py-2">Client</th><th className="px-2 py-2">Status</th><th className="px-2 py-2">Opened</th><th className="px-2 py-2">Notes</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.row_no} className={skips.has(r.row_no) ? "text-gray-400" : r.issues.length ? "bg-amber-50" : ""}>
+                  <tr key={r.row_no} className={skips.has(r.row_no) ? "text-ink-muted" : r.issues.length ? "bg-amber-50" : ""}>
                     <td className="px-2 py-1.5">
                       <input type="checkbox" aria-label={`Include row ${r.row_no}`} checked={!skips.has(r.row_no)} disabled={phase === "running"}
                         onChange={(e) => setSkips((s) => { const n = new Set(s); if (e.target.checked) n.delete(r.row_no); else n.add(r.row_no); return n; })} className="h-5 w-5" />
                     </td>
                     <td className="px-2 py-1.5 font-mono text-xs">{r.row_no}</td>
-                    <td className="px-2 py-1.5">{r.raw.title ?? <em className="text-red-700">no title</em>}{r.raw.legacy_reference ? <span className="ml-1 text-xs text-gray-500">({r.raw.legacy_reference})</span> : null}</td>
+                    <td className="px-2 py-1.5">{r.raw.title ?? <em className="text-red-700">no title</em>}{r.raw.legacy_reference ? <span className="ml-1 text-xs text-ink-muted">({r.raw.legacy_reference})</span> : null}</td>
                     <td className="px-2 py-1.5 text-xs">{[r.raw.client_name, r.raw.client_phone, r.raw.client_email].filter(Boolean).join(" · ")}</td>
                     <td className="px-2 py-1.5 text-xs">{r.raw.status ?? "new inquiry"}</td>
                     <td className="px-2 py-1.5 text-xs">{r.raw.opened_on ?? "today"}</td>

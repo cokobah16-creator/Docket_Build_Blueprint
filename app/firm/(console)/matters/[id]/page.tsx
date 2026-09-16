@@ -70,8 +70,8 @@ const TABS: TabSpec[] = [
 /** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
 const TONES: Record<string, string> = {
   slate: "border-slate-300 bg-slate-50 text-slate-800",
-  gray: "border-gray-300 bg-gray-50 text-gray-700",
-  grey: "border-gray-300 bg-gray-50 text-gray-700",
+  gray: "border-edge bg-sunken text-ink",
+  grey: "border-edge bg-sunken text-ink",
   blue: "border-blue-300 bg-blue-50 text-blue-900",
   sky: "border-sky-300 bg-sky-50 text-sky-900",
   indigo: "border-indigo-300 bg-indigo-50 text-indigo-900",
@@ -258,7 +258,7 @@ export default async function MatterWorkbench({
             },
           ];
           return tiles.map((t) => (
-            <Link key={t.label} href={t.href} className="rounded-[11px] border border-[#DDD9D2] bg-white p-3 hover:border-[#141414]">
+            <Link key={t.label} href={t.href} className="rounded-[11px] border border-[#DDD9D2] bg-raised p-3 hover:border-[#141414]">
               <p className="text-[10.5px] uppercase leading-snug tracking-[0.06em] text-[#57534E]">{t.label}</p>
               <p className={cn("mt-1 line-clamp-2 text-[13.5px] font-semibold leading-snug", t.ink ?? "text-[#141414]")}>{t.value}</p>
               <p className="mt-1 line-clamp-2 text-[11px] leading-snug text-[#57534E]">{t.hint}</p>
@@ -279,7 +279,7 @@ export default async function MatterWorkbench({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">{matter.title}</h1>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink-muted">
               {matter.reference} · {typeLabel(matter.type)} · opened {formatWhen(`${matter.opened_at}T00:00:00Z`, "UTC", { dateStyle: "medium" })}
             </p>
           </div>
@@ -294,25 +294,25 @@ export default async function MatterWorkbench({
           </div>
         </div>
 
-        {matter.cause_title && <p className="text-sm font-medium text-gray-900">{matter.cause_title}</p>}
+        {matter.cause_title && <p className="text-sm font-medium text-ink">{matter.cause_title}</p>}
 
-        <p className="text-sm text-gray-700">
+        <p className="text-sm text-ink">
           {matter.court_name ?? "No court recorded"}
           {matter.judicial_division ? `, ${matter.judicial_division}` : ""}
           {matter.suit_number ? ` · ${matter.suit_number}` : " · no suit number yet"}
           {matter.judge ? ` · ${matter.judge}` : ""}
         </p>
 
-        <p className="text-sm text-gray-800">
+        <p className="text-sm text-ink">
           {matter.next_event_at ? (
             <>
               Next in court: <strong>{formatWhen(matter.next_event_at, tz, { dateStyle: "full", timeStyle: "short" })}</strong>
-              {matter.next_event_note ? ` · ${matter.next_event_note}` : ""} <span className="text-gray-500">({tz})</span>
+              {matter.next_event_note ? ` · ${matter.next_event_note}` : ""} <span className="text-ink-muted">({tz})</span>
             </>
           ) : matter.awaiting_date ? (
             <span className="font-medium text-amber-800">Awaiting a date from the court.</span>
           ) : (
-            <span className="text-gray-500">No court date fixed.</span>
+            <span className="text-ink-muted">No court date fixed.</span>
           )}
         </p>
 
@@ -320,7 +320,7 @@ export default async function MatterWorkbench({
           <p className="text-sm font-medium text-brand">
             Next action: {matter.next_action}
             {(matter.next_action_owner_id || matter.next_action_due) && (
-              <span className="font-normal text-gray-600">
+              <span className="font-normal text-ink-muted">
                 {" · "}
                 {matter.next_action_owner_id ? (names[matter.next_action_owner_id] ?? "a colleague") : <span className="text-amber-800">nobody on it</span>}
                 {matter.next_action_due && (
@@ -336,7 +336,7 @@ export default async function MatterWorkbench({
           </p>
         )}
 
-        <p className="text-xs text-gray-600">
+        <p className="text-xs text-ink-muted">
           Handling: {handling ?? "not recorded"} · Originating: {originating ?? "not recorded"}
           {leadLawyerId && names[leadLawyerId] ? ` · Conduct: ${names[leadLawyerId]}` : ""}
         </p>
@@ -376,7 +376,7 @@ function StatusChip({ status }: { status: MatterStatus }) {
     <span
       className={cn(
         "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        hex ? "bg-white" : TONES[colour.toLowerCase()] ?? "border-gray-300 bg-gray-50 text-gray-700",
+        hex ? "bg-raised" : TONES[colour.toLowerCase()] ?? "border-edge bg-sunken text-ink",
       )}
       style={hex ? { borderColor: colour, color: colour } : undefined}
     >
@@ -578,23 +578,23 @@ async function InvoicesSection({
         title={outstandingLabel ? `Invoices · ${outstandingLabel} outstanding` : "Invoices"}
         action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">Raise an invoice</Link>}
       />
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-hairline">
         {invoices.map((inv) => {
           const outstanding = Math.max(0, inv.total_minor - inv.paid_minor);
           const payable = inv.status !== "draft" && inv.status !== "cancelled";
           return (
             <li key={inv.id} className="space-y-2 px-4 py-4 sm:px-5">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-sm font-medium text-gray-900">{inv.number}</p>
+                <p className="text-sm font-medium text-ink">{inv.number}</p>
                 <StatusPill status={inv.status as Status} />
               </div>
-              <p className="text-sm text-gray-700">
+              <p className="text-sm text-ink">
                 {formatMoneyMinor(inv.total_minor, inv.currency)}
                 {inv.vat_minor > 0 ? ` (incl. ${formatMoneyMinor(inv.vat_minor, inv.currency)} VAT)` : ""}
                 {inv.paid_minor > 0 ? ` · ${formatMoneyMinor(inv.paid_minor, inv.currency)} paid` : ""}
                 {payable && outstanding > 0 ? ` · ${formatMoneyMinor(outstanding, inv.currency)} outstanding` : ""}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-ink-muted">
                 {inv.issued_at ? `Issued ${fmtDay(inv.issued_at)}` : `Drafted ${fmtDay(inv.created_at)}`}
                 {inv.due_at ? ` · due ${fmtCalendarDay(inv.due_at)}` : ""}
               </p>
@@ -607,10 +607,10 @@ async function InvoicesSection({
                 ) : payable ? (
                   <CopyButton path={`/app/payments/${inv.id}`} label={outstanding > 0 ? "Copy the pay-by-link" : "Copy the receipt link"} />
                 ) : (
-                  <p className="text-xs text-gray-500">Cancelled — the record stays on the file.</p>
+                  <p className="text-xs text-ink-muted">Cancelled — the record stays on the file.</p>
                 )}
                 {inv.status === "draft" && (
-                  <p className="text-xs text-gray-500">A draft is invisible to your client until it is issued.</p>
+                  <p className="text-xs text-ink-muted">A draft is invisible to your client until it is issued.</p>
                 )}
               </div>
             </li>

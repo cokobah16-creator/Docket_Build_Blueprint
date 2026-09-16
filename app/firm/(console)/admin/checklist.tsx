@@ -112,32 +112,32 @@ export function Checklist({ firmId, readiness, canWrite }: { firmId: string; rea
         ] as Array<[string, boolean, string]>).map(([label, ok, text]) => (
           <div key={label} className={ok ? "rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2" : "rounded-lg border border-amber-200 bg-amber-50 px-3 py-2"}>
             <p className={ok ? "text-sm font-semibold text-emerald-900" : "text-sm font-semibold text-amber-900"}>{ok ? "✓ " : "· "}{label}</p>
-            <p className="text-xs text-gray-700">{text}</p>
+            <p className="text-xs text-ink">{text}</p>
           </div>
         ))}
       </div>
 
       {error && <Alert kind="error">{error}</Alert>}
 
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-ink-muted">
         {remaining.length === 0
           ? "Everything on the list is done or set aside."
           : `${remaining.length} ${remaining.length === 1 ? "step" : "steps"} left. Each line is a fact read from the database now, not a box someone ticked.`}
       </p>
 
-      <ol className="divide-y divide-gray-100">
+      <ol className="divide-y divide-hairline">
         {list.map((s, i) => {
           const sk = skipped[s.key];
           return (
             <li key={s.key} className="flex flex-wrap items-start justify-between gap-3 py-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium text-gray-900">
-                  <span className={s.done ? "mr-2 text-emerald-700" : sk ? "mr-2 text-gray-400" : "mr-2 text-amber-700"}>{s.done ? "✓" : sk ? "–" : String(i + 1)}</span>
-                  <span className={sk && !s.done ? "text-gray-500 line-through" : ""}>{s.label}</span>
+                <p className="text-sm font-medium text-ink">
+                  <span className={s.done ? "mr-2 text-emerald-700" : sk ? "mr-2 text-ink-muted" : "mr-2 text-amber-700"}>{s.done ? "✓" : sk ? "–" : String(i + 1)}</span>
+                  <span className={sk && !s.done ? "text-ink-muted line-through" : ""}>{s.label}</span>
                 </p>
-                {!s.done && !sk && s.why && <p className="mt-0.5 text-xs text-gray-600">{s.why}</p>}
+                {!s.done && !sk && s.why && <p className="mt-0.5 text-xs text-ink-muted">{s.why}</p>}
                 {sk && !s.done && (
-                  <p className="mt-0.5 text-xs text-gray-500">
+                  <p className="mt-0.5 text-xs text-ink-muted">
                     Set aside{sk.note ? `: ${sk.note}` : ""}.
                     {canWrite && <button type="button" className="ml-2 underline" disabled={pending} onClick={() => resume(s.key)}>Put it back</button>}
                   </p>
@@ -152,9 +152,9 @@ export function Checklist({ firmId, readiness, canWrite }: { firmId: string; rea
                 </div>
               )}
               {skipping === s.key && (
-                <div className="w-full rounded-lg border border-gray-200 p-3">
-                  <label htmlFor={`skip-${s.key}`} className="text-sm font-medium text-gray-900">Why this firm is setting it aside</label>
-                  <input id={`skip-${s.key}`} type="text" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" placeholder="Optional, kept in the audit trail" />
+                <div className="w-full rounded-lg border border-hairline p-3">
+                  <label htmlFor={`skip-${s.key}`} className="text-sm font-medium text-ink">Why this firm is setting it aside</label>
+                  <input id={`skip-${s.key}`} type="text" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" placeholder="Optional, kept in the audit trail" />
                   <div className="mt-2 flex gap-2">
                     <Button type="button" size="sm" disabled={pending} onClick={() => skip(s.key)}>{pending ? "Saving…" : "Set aside"}</Button>
                     <Button type="button" size="sm" variant="ghost" onClick={() => setSkipping(null)}>Cancel</Button>

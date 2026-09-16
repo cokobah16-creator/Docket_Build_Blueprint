@@ -43,7 +43,7 @@ export function AdminNav() {
                 aria-current={current ? "page" : undefined}
                 className={cn(
                   "block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium",
-                  current ? "bg-black/5 text-brand" : "text-gray-700 hover:bg-black/5 hover:text-brand",
+                  current ? "bg-hover text-brand" : "text-ink hover:bg-hover hover:text-brand",
                 )}
               >
                 {item.label}

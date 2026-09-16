@@ -95,7 +95,7 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
             aria-current={view === key ? "page" : undefined}
             className={cn(
               "flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
-              view === key ? "border-[#141414] bg-[#141414] text-white" : "border-[#D6D3CE] bg-white text-[#57534E]",
+              view === key ? "border-[#141414] bg-[#141414] text-white" : "border-[#D6D3CE] bg-raised text-[#57534E]",
             )}
           >
             {label}
@@ -125,7 +125,7 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
                   <li key={a.id}>
                     <Link
                       href={`/firm/appointments/${a.id}`}
-                      className="flex flex-col gap-1.5 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-gray-50 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
+                      className="flex flex-col gap-1.5 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-sunken sm:flex-row sm:items-start sm:justify-between sm:gap-3"
                     >
                       <span className="flex min-w-0 items-start gap-3">
                         {/* The time is the column a diary is read down. */}

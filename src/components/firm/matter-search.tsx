@@ -27,7 +27,7 @@ export function MatterSearch({
         const query = q.trim();
         router.push(query ? `${action}?q=${encodeURIComponent(query)}` : action);
       }}
-      className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-[#DDD9D2] bg-white px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]"
+      className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-[#DDD9D2] bg-raised px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]"
     >
       <Icon name="search" size={17} strokeWidth={1.8} className="shrink-0 text-[#57534E]" />
       <input
@@ -37,7 +37,7 @@ export function MatterSearch({
         placeholder={placeholder}
         aria-label={placeholder}
         // 16px so iOS Safari does not zoom the page when the field takes focus.
-        className="w-full min-w-0 min-h-11 border-0 bg-transparent py-2 text-base text-[#141414] placeholder:text-gray-500 focus:outline-none"
+        className="w-full min-w-0 min-h-11 border-0 bg-transparent py-2 text-base text-[#141414] placeholder:text-ink-muted focus:outline-none"
       />
     </form>
   );

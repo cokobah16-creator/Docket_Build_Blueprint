@@ -381,29 +381,29 @@ export function StaffDocuments({
 
       {/* What the client has been asked for. A request is a row: it shows here, on the client's
           documents tab, and in their notifications, until it is answered or withdrawn. */}
-      <section className="border-b border-gray-100 px-5 py-3">
+      <section className="border-b border-hairline px-5 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-gray-900">Asked of the client</h3>
+          <h3 className="text-sm font-semibold text-ink">Asked of the client</h3>
           <Button size="sm" variant="ghost" onClick={() => setAskOpen((o) => !o)}>{askOpen ? "Cancel" : "Ask for a document"}</Button>
         </div>
         {askError && <div className="mt-2"><Alert kind="error">{askError}</Alert></div>}
         {askOpen && (
           <form onSubmit={ask} className="mt-3 grid gap-2 sm:grid-cols-3">
-            <input value={askTitle} onChange={(e) => setAskTitle(e.target.value)} required maxLength={200} placeholder="What document" className="rounded-lg border border-gray-300 px-3 py-2 text-base sm:col-span-2" />
-            <input type="date" value={askDue} onChange={(e) => setAskDue(e.target.value)} className="rounded-lg border border-gray-300 px-3 py-2 text-base" aria-label="By when" />
-            <input value={askWhy} onChange={(e) => setAskWhy(e.target.value)} maxLength={2000} placeholder="Why it is needed (the client sees this)" className="rounded-lg border border-gray-300 px-3 py-2 text-base sm:col-span-3" />
-            <div className="sm:col-span-3"><Button type="submit" size="sm" disabled={askBusy || !online || askTitle.trim().length < 2}>{askBusy ? "Asking…" : "Ask"}</Button>{askDraft.restored && <span className="ml-2 text-xs text-gray-600">Draft restored.</span>}<OfflineNote /></div>
+            <input value={askTitle} onChange={(e) => setAskTitle(e.target.value)} required maxLength={200} placeholder="What document" className="rounded-lg border border-edge px-3 py-2 text-base sm:col-span-2" />
+            <input type="date" value={askDue} onChange={(e) => setAskDue(e.target.value)} className="rounded-lg border border-edge px-3 py-2 text-base" aria-label="By when" />
+            <input value={askWhy} onChange={(e) => setAskWhy(e.target.value)} maxLength={2000} placeholder="Why it is needed (the client sees this)" className="rounded-lg border border-edge px-3 py-2 text-base sm:col-span-3" />
+            <div className="sm:col-span-3"><Button type="submit" size="sm" disabled={askBusy || !online || askTitle.trim().length < 2}>{askBusy ? "Asking…" : "Ask"}</Button>{askDraft.restored && <span className="ml-2 text-xs text-ink-muted">Draft restored.</span>}<OfflineNote /></div>
           </form>
         )}
         {openRequests.length === 0 ? (
-          <p className="mt-2 text-xs text-gray-500">Nothing outstanding.</p>
+          <p className="mt-2 text-xs text-ink-muted">Nothing outstanding.</p>
         ) : (
           <ul className="mt-2 space-y-1.5">
             {openRequests.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                 <span className="min-w-0">
-                  <span className="font-medium text-gray-900">{r.title}</span>
-                  <span className="text-xs text-gray-600">
+                  <span className="font-medium text-ink">{r.title}</span>
+                  <span className="text-xs text-ink-muted">
                     {r.due_on ? ` · by ${dayFmt.format(new Date(`${r.due_on}T00:00:00Z`))}` : ""}
                     {r.requested_by && names[r.requested_by] ? ` · asked by ${names[r.requested_by]}` : ""}
                   </span>
@@ -421,36 +421,36 @@ export function StaffDocuments({
           names any it has no value for; nothing is guessed and nothing is typed except what the
           template marks as typed. */}
       {templates.length > 0 && (
-        <section className="border-b border-gray-100 px-5 py-3">
+        <section className="border-b border-hairline px-5 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-gray-900">From a template</h3>
+            <h3 className="text-sm font-semibold text-ink">From a template</h3>
             <Button size="sm" variant="ghost" onClick={() => setGenOpen((o) => !o)} disabled={usable.length === 0}>{genOpen ? "Cancel" : "Generate a document"}</Button>
           </div>
-          {usable.length === 0 && <p className="mt-1 text-xs text-gray-500">None of the firm&apos;s templates is for {matterType?.replace(/_/g, " ") ?? "this"} matters.</p>}
+          {usable.length === 0 && <p className="mt-1 text-xs text-ink-muted">None of the firm&apos;s templates is for {matterType?.replace(/_/g, " ") ?? "this"} matters.</p>}
           {genOpen && (
             <form onSubmit={generate} className="mt-3 grid gap-2 sm:grid-cols-2">
-              <label className="text-xs text-gray-700 sm:col-span-2">Template
-                <select value={gen.templateId} onChange={(e) => setGen({ ...gen, templateId: e.target.value, extra: {} })} required className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base">
+              <label className="text-xs text-ink sm:col-span-2">Template
+                <select value={gen.templateId} onChange={(e) => setGen({ ...gen, templateId: e.target.value, extra: {} })} required className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base">
                   <option value="">Choose…</option>
                   {usable.map((t) => <option key={t.id} value={t.id}>{t.name} · v{t.version} · {t.execution === "paper" ? "executed on paper" : t.execution === "electronic" ? "signed in Docket" : "either"}</option>)}
                 </select>
               </label>
-              <label className="text-xs text-gray-700">Document name
-                <input value={gen.name} onChange={(e) => setGen({ ...gen, name: e.target.value })} maxLength={200} placeholder={genTemplate?.name ?? "As the template"} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" />
+              <label className="text-xs text-ink">Document name
+                <input value={gen.name} onChange={(e) => setGen({ ...gen, name: e.target.value })} maxLength={200} placeholder={genTemplate?.name ?? "As the template"} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" />
               </label>
               {clients.length > 1 && (
-                <label className="text-xs text-gray-700">Addressed to
-                  <select value={gen.clientId} onChange={(e) => setGen({ ...gen, clientId: e.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base">
+                <label className="text-xs text-ink">Addressed to
+                  <select value={gen.clientId} onChange={(e) => setGen({ ...gen, clientId: e.target.value })} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base">
                     {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </select>
                 </label>
               )}
               {extraKeys.map((k) => (
-                <label key={k} className="text-xs text-gray-700 sm:col-span-2">{k.replace(/_/g, " ")} <span className="text-gray-500">(typed for this document)</span>
-                  <input value={gen.extra[k] ?? ""} onChange={(e) => setGen({ ...gen, extra: { ...gen.extra, [k]: e.target.value } })} required maxLength={2000} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" />
+                <label key={k} className="text-xs text-ink sm:col-span-2">{k.replace(/_/g, " ")} <span className="text-ink-muted">(typed for this document)</span>
+                  <input value={gen.extra[k] ?? ""} onChange={(e) => setGen({ ...gen, extra: { ...gen.extra, [k]: e.target.value } })} required maxLength={2000} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" />
                 </label>
               ))}
-              {genTemplate?.note && <p className="text-xs text-gray-500 sm:col-span-2">{genTemplate.note}</p>}
+              {genTemplate?.note && <p className="text-xs text-ink-muted sm:col-span-2">{genTemplate.note}</p>}
               <div className="sm:col-span-2"><Button type="submit" size="sm" disabled={genBusy || !online || !genTemplate}>{genBusy ? "Generating…" : "Generate"}</Button><OfflineNote /></div>
             </form>
           )}
@@ -458,8 +458,8 @@ export function StaffDocuments({
       )}
       {error && <div className="px-4 pt-4 sm:px-5"><Alert kind="error" title="That was refused">{error}</Alert></div>}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 sm:px-5">
-        <p className="text-xs text-gray-500">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-4 py-3 sm:px-5">
+        <p className="text-xs text-ink-muted">
           PDF, Word, JPEG, PNG or HEIC · up to 25 MB · uploaded here it stays with the firm until you share it.
         </p>
         <label className="inline-flex min-h-[44px] cursor-pointer items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90">
@@ -469,11 +469,11 @@ export function StaffDocuments({
       </div>
 
       {documents.length === 0 ? (
-        <p className="px-5 py-10 text-center text-sm text-gray-500">
+        <p className="px-5 py-10 text-center text-sm text-ink-muted">
           Nothing filed on this matter yet. Upload the processes, exhibits or correspondence — then share with the client the ones they should have.
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-hairline">
           {documents.map((d) => {
             const uploader = d.uploaded_by ? names[d.uploaded_by] ?? null : null;
             const rows = versions[d.id];
@@ -481,8 +481,8 @@ export function StaffDocuments({
               <li key={d.id} id={`doc-${d.id}`} className="scroll-mt-20 px-4 py-4 sm:px-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-gray-900">{d.name}</p>
-                    <p className="mt-0.5 text-xs text-gray-500">
+                    <p className="truncate text-sm font-medium text-ink">{d.name}</p>
+                    <p className="mt-0.5 text-xs text-ink-muted">
                       {fmt.format(new Date(d.created_at))}
                       {uploader ? ` · ${uploader}` : ""}
                       {d.version?.size_bytes ? ` · ${fmtSize(d.version.size_bytes)}` : ""}
@@ -506,7 +506,7 @@ export function StaffDocuments({
                       <span className="text-xs text-[#92400E]">No file yet — the upload stopped.</span>
                       {/* Bound to this row, so it finishes THIS document on any device, rather than
                           depending on ids this browser happens to still hold. */}
-                      <label className="inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-gray-300 px-3 text-sm text-gray-800 hover:bg-black/5">
+                      <label className="inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-edge px-3 text-sm text-ink hover:bg-hover">
                         Finish upload
                         <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => uploadVersion(d, e)} disabled={Boolean(busy)} />
                       </label>
@@ -525,7 +525,7 @@ export function StaffDocuments({
                       </p>
                     )}
                     {signaturesOf(d).map((sg) => (
-                      <p key={sg.id} className="text-gray-700">Signed by {sg.signer_name} ({sg.signer_role === "staff" ? `for the firm${sg.signer_scn ? `, ${sg.signer_scn}` : ""}` : "client"}) · {fmt.format(new Date(sg.signed_at))} · over checksum {sg.checksum.slice(0, 12)}…</p>
+                      <p key={sg.id} className="text-ink">Signed by {sg.signer_name} ({sg.signer_role === "staff" ? `for the firm${sg.signer_scn ? `, ${sg.signer_scn}` : ""}` : "client"}) · {fmt.format(new Date(sg.signed_at))} · over checksum {sg.checksum.slice(0, 12)}…</p>
                     ))}
                     {!isLocked(d) && d.signature_requested_at && <p className="text-[#92400E]">Signature asked for {fmt.format(new Date(d.signature_requested_at))}{d.signature_requested_by && names[d.signature_requested_by] ? ` by ${names[d.signature_requested_by]}` : ""} · not yet signed</p>}
                   </div>
@@ -544,13 +544,13 @@ export function StaffDocuments({
                   </div>
                 )}
                 {paperFor === d.id && d.version && (
-                  <form onSubmit={(e) => savePaper(e, d)} className="mt-2 grid gap-2 rounded-lg bg-gray-50 p-3 sm:grid-cols-2">
-                    <p className="text-xs text-gray-600 sm:col-span-2">This version is the executed copy as uploaded. Recording it locks the document on it; the day is the day on the instrument.</p>
-                    <label className="text-xs text-gray-700">Executed on<input type="date" required value={paper.executedOn} onChange={(e) => setPaper({ ...paper, executedOn: e.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-                    <label className="text-xs text-gray-700">Witness<input value={paper.witnessName} onChange={(e) => setPaper({ ...paper, witnessName: e.target.value })} maxLength={200} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-                    <label className="text-xs text-gray-700">Attested by<input value={paper.attestedBy} onChange={(e) => setPaper({ ...paper, attestedBy: e.target.value })} maxLength={200} placeholder="Commissioner for Oaths, notary…" className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-                    <label className="text-xs text-gray-700">Stamp duty reference<input value={paper.stampRef} onChange={(e) => setPaper({ ...paper, stampRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-                    <label className="text-xs text-gray-700">Registration reference<input value={paper.registrationRef} onChange={(e) => setPaper({ ...paper, registrationRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
+                  <form onSubmit={(e) => savePaper(e, d)} className="mt-2 grid gap-2 rounded-lg bg-sunken p-3 sm:grid-cols-2">
+                    <p className="text-xs text-ink-muted sm:col-span-2">This version is the executed copy as uploaded. Recording it locks the document on it; the day is the day on the instrument.</p>
+                    <label className="text-xs text-ink">Executed on<input type="date" required value={paper.executedOn} onChange={(e) => setPaper({ ...paper, executedOn: e.target.value })} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" /></label>
+                    <label className="text-xs text-ink">Witness<input value={paper.witnessName} onChange={(e) => setPaper({ ...paper, witnessName: e.target.value })} maxLength={200} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" /></label>
+                    <label className="text-xs text-ink">Attested by<input value={paper.attestedBy} onChange={(e) => setPaper({ ...paper, attestedBy: e.target.value })} maxLength={200} placeholder="Commissioner for Oaths, notary…" className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" /></label>
+                    <label className="text-xs text-ink">Stamp duty reference<input value={paper.stampRef} onChange={(e) => setPaper({ ...paper, stampRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" /></label>
+                    <label className="text-xs text-ink">Registration reference<input value={paper.registrationRef} onChange={(e) => setPaper({ ...paper, registrationRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" /></label>
                     <div className="sm:col-span-2"><Button type="submit" size="sm" disabled={Boolean(busy) || !online}>Record</Button><OfflineNote /></div>
                   </form>
                 )}
@@ -559,7 +559,7 @@ export function StaffDocuments({
                   <label
                     className={cn(
                       "inline-flex min-h-[44px] cursor-pointer items-center gap-2 rounded-lg border px-3 text-sm",
-                      isShared(d) ? "border-emerald-300 bg-emerald-50 text-emerald-900" : "border-gray-300 bg-white text-gray-700",
+                      isShared(d) ? "border-emerald-300 bg-emerald-50 text-emerald-900" : "border-edge bg-raised text-ink",
                     )}
                   >
                     <input
@@ -577,17 +577,17 @@ export function StaffDocuments({
                   </label>
                   {isClientUpload(d) &&
                     (isReviewed(d) ? (
-                      <span className="text-sm text-gray-500">Reviewed</span>
+                      <span className="text-sm text-ink-muted">Reviewed</span>
                     ) : (
                       <Button size="sm" variant="ghost" onClick={() => markReviewed(d)} disabled={Boolean(busy)}>
                         Mark as reviewed
                       </Button>
                     ))}
                 </div>}
-                {isLocked(d) && <p className="mt-2 text-xs text-gray-500">{isShared(d) ? "Your client can see this." : "Staff only."} Executed: no further version, and the visibility set when it was signed stays.</p>}
+                {isLocked(d) && <p className="mt-2 text-xs text-ink-muted">{isShared(d) ? "Your client can see this." : "Staff only."} Executed: no further version, and the visibility set when it was signed stays.</p>}
 
                 {rows && (
-                  <ul className="mt-3 space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+                  <ul className="mt-3 space-y-1 rounded-lg bg-sunken p-3 text-xs text-ink-muted">
                     {rows.length === 0 && <li>No versions recorded — the file was never uploaded.</li>}
                     {rows.map((v, i) => (
                       <li key={v.id} className="flex flex-wrap justify-between gap-2">
@@ -615,10 +615,10 @@ export function StaffDocuments({
 
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title={preview?.doc.name ?? "Document"}>
         {preview && (preview.loading ? (
-          <p className="text-sm text-gray-600">Preparing a secure link…</p>
+          <p className="text-sm text-ink-muted">Preparing a secure link…</p>
         ) : !preview.url ? (
           <div className="space-y-3">
-            <p className="text-sm text-gray-700">Low-data mode is on. Load this {fmtSize(preview.doc.version?.size_bytes) || "file"} preview?</p>
+            <p className="text-sm text-ink">Low-data mode is on. Load this {fmtSize(preview.doc.version?.size_bytes) || "file"} preview?</p>
             <Button onClick={() => openPreview(preview.doc, preview.doc.version, true)}>Load preview</Button>
           </div>
         ) : isImage(preview.doc.version?.mime) ? (
@@ -626,16 +626,16 @@ export function StaffDocuments({
           <img src={preview.url} alt={preview.doc.name} className="max-h-[70vh] w-full rounded-lg object-contain" />
         ) : isPdf(preview.doc.version?.mime) ? (
           <div className="space-y-3">
-            <iframe src={preview.url} title={preview.doc.name} className="h-[70vh] w-full rounded-lg border border-gray-200" />
+            <iframe src={preview.url} title={preview.doc.name} className="h-[70vh] w-full rounded-lg border border-hairline" />
             <a href={preview.url} target="_blank" rel="noreferrer" className="text-sm text-brand underline">Open in a new tab</a>
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-700">This file type has no in-app preview.</p>
+            <p className="text-sm text-ink">This file type has no in-app preview.</p>
             <a href={preview.url} className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on" download={preview.doc.name}>Download</a>
           </div>
         ))}
-        <p className="mt-3 text-xs text-gray-500">Links expire after two minutes.</p>
+        <p className="mt-3 text-xs text-ink-muted">Links expire after two minutes.</p>
       </Modal>
     </div>
   );

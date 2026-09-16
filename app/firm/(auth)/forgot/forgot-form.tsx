@@ -115,7 +115,7 @@ export function ForgotPasswordForm() {
         </Alert>
         <Card>
           <CardBody className="space-y-3">
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-ink">
               Two-factor authentication is unchanged. Setting a new password does not switch it off, and
               you will still be asked for your authenticator code before the console opens.
             </p>

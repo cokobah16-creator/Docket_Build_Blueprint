@@ -74,14 +74,14 @@ export default async function AppointmentsPage() {
     }).format(new Date(a.starts_at));
     return (
       <li key={a.id}>
-        <div className="flex flex-col gap-2.5 border-t border-gray-100 px-4 py-3.5 first:border-t-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div className="flex flex-col gap-2.5 border-t border-hairline px-4 py-3.5 first:border-t-0 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
           <Link href={`/app/appointments/${a.id}`} className="min-w-0 hover:underline">
-            <p className="text-sm font-semibold text-gray-900">{when}</p>
-            <p className="mt-0.5 text-xs text-gray-500">
+            <p className="text-sm font-semibold text-ink">{when}</p>
+            <p className="mt-0.5 text-xs text-ink-muted">
               <span className="font-mono">{a.reference}</span> · {a.mode.replace("_", " ")}
             </p>
             {a.service_id && serviceName.has(a.service_id) && (
-              <p className="mt-0.5 text-xs text-gray-600">{serviceName.get(a.service_id)}</p>
+              <p className="mt-0.5 text-xs text-ink-muted">{serviceName.get(a.service_id)}</p>
             )}
           </Link>
           <div className="flex shrink-0 flex-wrap items-center gap-2.5">
@@ -117,11 +117,11 @@ export default async function AppointmentsPage() {
           <Card>
             <CardHeader title="Booking and changes" />
             <div className="space-y-3 px-[17px] py-[15px]">
-              <p className="text-[12.5px] leading-relaxed text-gray-600">
+              <p className="text-[12.5px] leading-relaxed text-ink-muted">
                 A virtual consultation opens its waiting room ten minutes before the start. Tap
                 Join then; there is nothing to install.
               </p>
-              <p className="text-[12.5px] leading-relaxed text-gray-600">
+              <p className="text-[12.5px] leading-relaxed text-ink-muted">
                 Rescheduling and cancellation are on each appointment, free of charge up to 24
                 hours before it.
               </p>

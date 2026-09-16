@@ -160,13 +160,13 @@ export function MessagesThread({
           not notice — the transcript would keep a height the phone no longer
           has and push the composer under the keyboard. */}
       <div className="max-h-[50dvh] space-y-3 overflow-y-auto px-4 py-4 sm:px-5 lg:max-h-[55dvh]">
-        {messages.length === 0 && <p className="py-6 text-center text-sm text-gray-500">No messages yet. Say hello — your lawyer is notified.</p>}
+        {messages.length === 0 && <p className="py-6 text-center text-sm text-ink-muted">No messages yet. Say hello — your lawyer is notified.</p>}
         {messages.map((m) => {
           const mine = m.sender_id === userId;
           const name = mine ? "You" : (m.sender_id && senderNames[m.sender_id]) || firmName;
           return (
             <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
-              <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-brand text-brand-on" : "bg-gray-100 text-gray-900"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${mine ? "bg-brand text-brand-on" : "bg-sunken text-ink"}`}>
                 {!mine && <p className="mb-0.5 text-xs font-semibold opacity-80">{name}</p>}
                 {m.body && <p className="whitespace-pre-wrap">{m.body}</p>}
                 {m.attachments?.length > 0 && (
@@ -176,7 +176,7 @@ export function MessagesThread({
                     ))}
                   </ul>
                 )}
-                <p className={`mt-1 text-[11px] ${mine ? "text-brand-on opacity-80" : "text-gray-500"}`}>
+                <p className={`mt-1 text-[11px] ${mine ? "text-brand-on opacity-80" : "text-ink-muted"}`}>
                   {fmt.format(new Date(m.created_at))}{mine && m.read_at ? " · Read" : ""}
                 </p>
               </div>
@@ -187,19 +187,19 @@ export function MessagesThread({
       </div>
       {/* Sticky, so Send stays on screen when the keyboard opens over the page
           and the bottom bar sits above it. */}
-      <form onSubmit={submit} className="sticky bottom-0 space-y-2 border-t border-gray-100 bg-white px-4 py-3 sm:px-5">
+      <form onSubmit={submit} className="sticky bottom-0 space-y-2 border-t border-hairline bg-raised px-4 py-3 sm:px-5">
         {error && <Alert kind="error">{error}</Alert>}
         {attachments.length > 0 && (
           <ul className="flex flex-wrap gap-2 text-xs">
             {attachments.map((a) => (
-              <li key={a.document_id} className="inline-flex items-center gap-1.5 rounded-full bg-gray-100 py-1 pl-2.5 pr-1 text-gray-700">
+              <li key={a.document_id} className="inline-flex items-center gap-1.5 rounded-full bg-sunken py-1 pl-2.5 pr-1 text-ink">
                 <Icon name="paperclip" size={12} />
                 {a.name}
                 <button
                   type="button"
                   aria-label={`Remove ${a.name}`}
                   onClick={() => setAttachments((c) => c.filter((x) => x.document_id !== a.document_id))}
-                  className="grid size-6 place-items-center rounded-full hover:bg-gray-200"
+                  className="grid size-6 place-items-center rounded-full hover:bg-hairline"
                 >
                   <Icon name="close" size={12} strokeWidth={2.4} />
                 </button>
@@ -220,7 +220,7 @@ export function MessagesThread({
           placeholder="Write a message…"
           // 16px: below that iOS Safari zooms the page the moment this takes
           // focus, and the person is left pinching back out to read the reply.
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
+          className="w-full rounded-lg border border-edge px-3 py-2 text-base focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
         />
         <div className="flex items-center justify-between gap-2">
           <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 text-sm text-brand underline focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-brand">
@@ -229,7 +229,7 @@ export function MessagesThread({
           </label>
           <Button type="submit" disabled={Boolean(busy) || !online || (!body.trim() && attachments.length === 0)}>{busy === "Sending…" ? "Sending…" : "Send"}</Button>
         </div>
-        {draft.restored && <p className="text-xs text-gray-600">Draft restored — not sent yet.</p>}
+        {draft.restored && <p className="text-xs text-ink-muted">Draft restored — not sent yet.</p>}
         <OfflineNote />
       </form>
     </div>

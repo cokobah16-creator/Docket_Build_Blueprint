@@ -40,7 +40,7 @@ export function FirmRow({
         aria-current={selected ? "true" : undefined}
         className={cn(
           "flex w-full items-center gap-3 px-[17px] py-[13px] text-left",
-          selected ? "bg-[#FBFAF7]" : "hover:bg-gray-50",
+          selected ? "bg-[#FBFAF7]" : "hover:bg-sunken",
           className,
         )}
       >
@@ -52,8 +52,8 @@ export function FirmRow({
           {firm.initial}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-gray-900">{firm.name}</span>
-          <span className="mt-0.5 block text-xs text-gray-500">{firm.meta}</span>
+          <span className="block text-sm font-semibold text-ink">{firm.name}</span>
+          <span className="mt-0.5 block text-xs text-ink-muted">{firm.meta}</span>
         </span>
         {selected ? (
           <span
@@ -114,7 +114,7 @@ export function FirmSwitcher({
         className="flex items-center gap-1.5 text-left"
       >
         {children}
-        <Icon name="chevron-down" size={13} strokeWidth={2} className="text-gray-400" />
+        <Icon name="chevron-down" size={13} strokeWidth={2} className="text-ink-muted" />
       </button>
 
       {open && (
@@ -123,19 +123,19 @@ export function FirmSwitcher({
             type="button"
             aria-label="Close"
             onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-gray-900/40"
+            className="absolute inset-0 bg-black/40"
           />
           <div
             id={sheetId}
             role="dialog"
             aria-modal="true"
             aria-label="Your firms"
-            className="absolute inset-x-0 bottom-0 mx-auto max-w-lg animate-[dkRise_.22s_ease-out] rounded-t-[18px] bg-white pb-[calc(18px+env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_32px_rgba(0,0,0,0.18)]"
+            className="absolute inset-x-0 bottom-0 mx-auto max-w-lg animate-[dkRise_.22s_ease-out] rounded-t-[18px] bg-raised pb-[calc(18px+env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_32px_rgba(0,0,0,0.18)]"
           >
-            <div aria-hidden="true" className="mx-auto mb-3 mt-1.5 h-1 w-[38px] rounded-full bg-gray-200" />
+            <div aria-hidden="true" className="mx-auto mb-3 mt-1.5 h-1 w-[38px] rounded-full bg-hairline" />
             <div className="px-[18px] pb-2.5">
               <h2 className="font-heading text-[17px] font-semibold text-brand">Your firms</h2>
-              <p className="mt-0.5 text-xs text-gray-500">
+              <p className="mt-0.5 text-xs text-ink-muted">
                 One sign-in. The app takes the name and colours of the firm you open.
               </p>
             </div>
@@ -151,7 +151,7 @@ export function FirmSwitcher({
                 ref={closeRef}
                 type="button"
                 onClick={() => setOpen(false)}
-                className="min-h-11 w-full rounded-[9px] border border-gray-300 text-sm font-medium text-gray-700"
+                className="min-h-11 w-full rounded-[9px] border border-edge text-sm font-medium text-ink"
               >
                 Close
               </button>

@@ -27,7 +27,7 @@ import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import type { AvailabilityException, AvailabilityRule } from "@/lib/db/types";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 const timeField = cn(field, "min-h-[44px]");
 
 const DEFAULT_SLOT_MIN = 45;
@@ -309,14 +309,14 @@ export function AvailabilityEditor({
         <CardHeader
           title="The working week"
           action={
-            <span className="hidden text-xs text-gray-500 sm:inline">
+            <span className="hidden text-xs text-ink-muted sm:inline">
               {totalBlocks === 0 ? "nothing set" : `${totalBlocks} block${totalBlocks === 1 ? "" : "s"}`}
             </span>
           }
         />
         <CardBody className="space-y-4">
-          <p className="text-sm text-gray-600">
-            These are {whose} own local times in <span className="font-medium text-gray-900">{lawyerTimezone}</span> — the
+          <p className="text-sm text-ink-muted">
+            These are {whose} own local times in <span className="font-medium text-ink">{lawyerTimezone}</span> — the
             zone the booking engine reads for this lawyer. A day with no block takes no consultations at all.
           </p>
 
@@ -336,10 +336,10 @@ export function AvailabilityEditor({
               const blocks = week[weekday];
               const problem = problems[weekday];
               return (
-                <section key={label} className={cn("rounded-xl border p-3", problem ? "border-red-300 bg-red-50/40" : "border-gray-200")}>
+                <section key={label} className={cn("rounded-xl border p-3", problem ? "border-red-300 bg-red-50/40" : "border-hairline")}>
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-heading text-sm font-semibold text-gray-900">{label}</h3>
+                      <h3 className="font-heading text-sm font-semibold text-ink">{label}</h3>
                       {blocks.length === 0 ? (
                         <Badge>closed</Badge>
                       ) : (
@@ -361,7 +361,7 @@ export function AvailabilityEditor({
                   </div>
 
                   {blocks.length === 0 ? (
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-sm text-ink-muted">
                       Closed — nothing is offered on a {label}.
                       {canEdit ? " Add a block to open it." : ""}
                     </p>
@@ -370,10 +370,10 @@ export function AvailabilityEditor({
                       {blocks.map((b, index) => {
                         const id = `d${weekday}b${index}`;
                         return (
-                          <li key={b.key} className="rounded-lg border border-gray-200 bg-white p-3">
+                          <li key={b.key} className="rounded-lg border border-hairline bg-raised p-3">
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label htmlFor={`${id}start`} className="text-xs font-medium text-gray-700">Starts</label>
+                                <label htmlFor={`${id}start`} className="text-xs font-medium text-ink">Starts</label>
                                 <input
                                   id={`${id}start`} type="time" value={b.startTime} disabled={!canEdit}
                                   onChange={(e) => patch(weekday, b.key, { startTime: e.target.value })}
@@ -381,7 +381,7 @@ export function AvailabilityEditor({
                                 />
                               </div>
                               <div>
-                                <label htmlFor={`${id}end`} className="text-xs font-medium text-gray-700">Ends</label>
+                                <label htmlFor={`${id}end`} className="text-xs font-medium text-ink">Ends</label>
                                 <input
                                   id={`${id}end`} type="time" value={b.endTime} disabled={!canEdit}
                                   onChange={(e) => patch(weekday, b.key, { endTime: e.target.value })}
@@ -389,7 +389,7 @@ export function AvailabilityEditor({
                                 />
                               </div>
                               <div>
-                                <label htmlFor={`${id}bs`} className="text-xs font-medium text-gray-700">Break starts</label>
+                                <label htmlFor={`${id}bs`} className="text-xs font-medium text-ink">Break starts</label>
                                 <input
                                   id={`${id}bs`} type="time" value={b.breakStart} disabled={!canEdit}
                                   onChange={(e) => patch(weekday, b.key, { breakStart: e.target.value })}
@@ -397,7 +397,7 @@ export function AvailabilityEditor({
                                 />
                               </div>
                               <div>
-                                <label htmlFor={`${id}be`} className="text-xs font-medium text-gray-700">Break ends</label>
+                                <label htmlFor={`${id}be`} className="text-xs font-medium text-ink">Break ends</label>
                                 <input
                                   id={`${id}be`} type="time" value={b.breakEnd} disabled={!canEdit}
                                   onChange={(e) => patch(weekday, b.key, { breakEnd: e.target.value })}
@@ -405,7 +405,7 @@ export function AvailabilityEditor({
                                 />
                               </div>
                               <div>
-                                <label htmlFor={`${id}slot`} className="text-xs font-medium text-gray-700">Slot (minutes)</label>
+                                <label htmlFor={`${id}slot`} className="text-xs font-medium text-ink">Slot (minutes)</label>
                                 <input
                                   id={`${id}slot`} type="number" inputMode="numeric" min={5} max={240} step={5}
                                   value={b.slotMin} disabled={!canEdit}
@@ -414,7 +414,7 @@ export function AvailabilityEditor({
                                 />
                               </div>
                               <div>
-                                <label htmlFor={`${id}cap`} className="text-xs font-medium text-gray-700">Daily cap</label>
+                                <label htmlFor={`${id}cap`} className="text-xs font-medium text-ink">Daily cap</label>
                                 <input
                                   id={`${id}cap`} type="number" inputMode="numeric" min={1} max={40} step={1}
                                   value={b.maxPerDay} disabled={!canEdit}
@@ -447,7 +447,7 @@ export function AvailabilityEditor({
             })}
           </div>
 
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-muted">
             The slot length is the step between start times, not the length of the appointment — that comes from the
             service. The daily cap counts appointments already in the diary that day: once it is reached, the whole day
             stops being offered.
@@ -471,7 +471,7 @@ export function AvailabilityEditor({
             </div>
           )}
           {canEdit && week[1].length === 0 && (
-            <p className="text-xs text-gray-500">Set Monday first, then copy it across the working week.</p>
+            <p className="text-xs text-ink-muted">Set Monday first, then copy it across the working week.</p>
           )}
         </CardBody>
       </Card>
@@ -479,7 +479,7 @@ export function AvailabilityEditor({
       <Card>
         <CardHeader title="Days off and blocked hours" />
         <CardBody className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-muted">
             Court, leave, a public holiday. A blocked day disappears from the wizard entirely; a blocked range removes
             only the slots it touches. Appointments already booked are not moved — reschedule those on the diary.
           </p>
@@ -487,10 +487,10 @@ export function AvailabilityEditor({
           {exError && <Alert kind="error" title="Not blocked">{exError}</Alert>}
 
           {canEdit && (
-            <div className="space-y-3 rounded-xl border border-gray-200 p-3">
+            <div className="space-y-3 rounded-xl border border-hairline p-3">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="ex_date" className="text-sm font-medium text-gray-900">Date</label>
+                  <label htmlFor="ex_date" className="text-sm font-medium text-ink">Date</label>
                   <input
                     id="ex_date" type="date" min={todayYmd} value={exDate}
                     onChange={(e) => { setExDate(e.target.value); setExError(null); }}
@@ -498,7 +498,7 @@ export function AvailabilityEditor({
                   />
                 </div>
                 <div>
-                  <span className="text-sm font-medium text-gray-900">How much of it</span>
+                  <span className="text-sm font-medium text-ink">How much of it</span>
                   <div className="mt-1 flex gap-2">
                     <button
                       type="button"
@@ -506,7 +506,7 @@ export function AvailabilityEditor({
                       onClick={() => { setExWholeDay(true); setExError(null); }}
                       className={cn(
                         "min-h-[44px] flex-1 rounded-xl border px-3 text-sm font-medium",
-                        exWholeDay ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
+                        exWholeDay ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink hover:border-brand",
                       )}
                     >
                       Whole day
@@ -517,7 +517,7 @@ export function AvailabilityEditor({
                       onClick={() => { setExWholeDay(false); setExError(null); }}
                       className={cn(
                         "min-h-[44px] flex-1 rounded-xl border px-3 text-sm font-medium",
-                        !exWholeDay ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
+                        !exWholeDay ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink hover:border-brand",
                       )}
                     >
                       Part of it
@@ -529,18 +529,18 @@ export function AvailabilityEditor({
               {!exWholeDay && (
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="ex_start" className="text-sm font-medium text-gray-900">Blocked from</label>
+                    <label htmlFor="ex_start" className="text-sm font-medium text-ink">Blocked from</label>
                     <input id="ex_start" type="time" value={exStart} onChange={(e) => setExStart(e.target.value)} className={timeField} />
                   </div>
                   <div>
-                    <label htmlFor="ex_end" className="text-sm font-medium text-gray-900">Blocked until</label>
+                    <label htmlFor="ex_end" className="text-sm font-medium text-ink">Blocked until</label>
                     <input id="ex_end" type="time" value={exEnd} onChange={(e) => setExEnd(e.target.value)} className={timeField} />
                   </div>
                 </div>
               )}
 
               <div>
-                <label htmlFor="ex_reason" className="text-sm font-medium text-gray-900">Reason</label>
+                <label htmlFor="ex_reason" className="text-sm font-medium text-ink">Reason</label>
                 <input
                   id="ex_reason" type="text" maxLength={200} value={exReason}
                   onChange={(e) => setExReason(e.target.value)}
@@ -553,13 +553,13 @@ export function AvailabilityEditor({
                       key={r}
                       type="button"
                       onClick={() => setExReason(r)}
-                      className="min-h-[44px] rounded-full border border-gray-300 bg-white px-4 text-sm text-gray-800 hover:border-brand"
+                      className="min-h-[44px] rounded-full border border-edge bg-raised px-4 text-sm text-ink hover:border-brand"
                     >
                       {r}
                     </button>
                   ))}
                 </div>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-ink-muted">
                   The reason is for the chambers only — a client never sees it, only that nothing is free.
                 </p>
               </div>
@@ -580,15 +580,15 @@ export function AvailabilityEditor({
               }
             />
           ) : (
-            <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+            <ul className="divide-y divide-hairline rounded-lg border border-hairline">
               {initialExceptions.map((e) => (
                 <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 p-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-ink">
                       {dayLabel(e.on_date)}
                       {e.start_time && e.end_time ? ` · ${hm(e.start_time)}–${hm(e.end_time)}` : " · whole day"}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-ink-muted">
                       {e.is_available
                         ? "Marked available — the booking engine only reads blocks, so this changes nothing."
                         : e.reason?.trim() || "No reason recorded"}

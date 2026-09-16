@@ -26,7 +26,7 @@ export async function PolicyPage({
       {page?.body ? (
         <ContentBody body={page.body} />
       ) : url ? (
-        <p className="text-gray-700">
+        <p className="text-ink">
           Read the current {title.toLowerCase()} at{" "}
           <a href={url} className="font-medium text-brand underline" target="_blank" rel="noreferrer">
             {url}
@@ -34,7 +34,7 @@ export async function PolicyPage({
           .
         </p>
       ) : (
-        <div className="space-y-3 text-gray-700">
+        <div className="space-y-3 text-ink">
           <p>
             {firm.legal_name ?? firm.name} has not published the full text of its {title.toLowerCase()} on
             this site yet. The version you accept when signing in is recorded against your account.

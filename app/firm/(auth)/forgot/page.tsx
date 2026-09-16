@@ -21,7 +21,7 @@ export default function ForgotPasswordPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
       <h1 className="font-heading text-2xl font-semibold text-brand">Forgotten password</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-muted">
         We will email you a link that signs you in once, so you can set a new one.
       </p>
       <div className="mt-4">

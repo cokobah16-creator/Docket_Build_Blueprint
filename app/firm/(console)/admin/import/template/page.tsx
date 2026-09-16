@@ -35,12 +35,12 @@ export default function ImportTemplatePage() {
       <Card>
         <CardHeader title="The columns an import understands" action={<TemplateDownload columns={COLUMNS.map((c) => c[0])} />} />
         <CardBody>
-          <p className="text-sm text-gray-600">Column names can be anything — you say what each means when you upload. These are the meanings. Only <strong>title</strong> is required.</p>
-          <dl className="mt-3 divide-y divide-gray-100">
+          <p className="text-sm text-ink-muted">Column names can be anything — you say what each means when you upload. These are the meanings. Only <strong>title</strong> is required.</p>
+          <dl className="mt-3 divide-y divide-hairline">
             {COLUMNS.map(([k, v]) => (
               <div key={k} className="grid gap-1 py-2 sm:grid-cols-[180px_1fr]">
-                <dt className="font-mono text-xs text-gray-900">{k}</dt>
-                <dd className="text-sm text-gray-700">{v}</dd>
+                <dt className="font-mono text-xs text-ink">{k}</dt>
+                <dd className="text-sm text-ink">{v}</dd>
               </div>
             ))}
           </dl>

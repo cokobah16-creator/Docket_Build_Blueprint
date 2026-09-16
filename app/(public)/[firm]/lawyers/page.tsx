@@ -21,19 +21,19 @@ export default async function LawyersPage({ params }: { params: Promise<{ firm: 
   return (
     <PageShell title="Our lawyers" intro="Book a consultation with any of them, or let the firm match you.">
       {lawyers.length === 0 ? (
-        <p className="text-gray-600">Lawyer profiles are being set up.</p>
+        <p className="text-ink-muted">Lawyer profiles are being set up.</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {lawyers.map((l) => (
             <Link key={l.id} href={`/${firm.slug}/lawyers/${l.slug ?? l.id}`} className="block">
               <Card className="h-full transition hover:shadow-md">
                 <CardBody className="space-y-1">
-                  <h2 className="font-heading text-base font-semibold text-gray-900">
+                  <h2 className="font-heading text-base font-semibold text-ink">
                     {lawyerDisplayName(l, firm.name)}
                   </h2>
-                  {l.title && <p className="text-sm text-gray-600">{l.title}</p>}
+                  {l.title && <p className="text-sm text-ink-muted">{l.title}</p>}
                   {l.practice_areas.length > 0 && (
-                    <p className="text-xs text-gray-500">{l.practice_areas.join(" · ")}</p>
+                    <p className="text-xs text-ink-muted">{l.practice_areas.join(" · ")}</p>
                   )}
                 </CardBody>
               </Card>

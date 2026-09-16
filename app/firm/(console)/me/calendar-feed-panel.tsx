@@ -64,7 +64,7 @@ export function CalendarFeedPanel({ firmId, feed, feedBase, timezone }: {
               From URL; Apple: File → New Calendar Subscription; Outlook: Add calendar → Subscribe from web).
               It refreshes itself.
             </p>
-            <code className="mt-2 block break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11.5px] text-gray-900">{url}</code>
+            <code className="mt-2 block break-all rounded-lg bg-raised px-2 py-1.5 font-mono text-[11.5px] text-ink">{url}</code>
             <p className="mt-2 text-xs">
               Anyone holding this address reads your diary, so treat it as a password. Only its hash is
               stored here; if you lose the phone it is on, come back and replace it — the old one stops

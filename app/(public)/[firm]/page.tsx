@@ -51,7 +51,7 @@ export default async function FirmHome({
         <h1 className="max-w-2xl font-heading text-4xl font-semibold leading-tight text-brand sm:text-5xl">
           {firm.brand.tagline ?? `Legal help from ${firm.name}`}
         </h1>
-        <p className="mt-4 max-w-xl text-lg text-gray-600">
+        <p className="mt-4 max-w-xl text-lg text-ink-muted">
           Tell us what you need, book a time that works for you, and meet your
           lawyer face to face — from your phone.
         </p>
@@ -64,7 +64,7 @@ export default async function FirmHome({
           </Link>
           <Link
             href={`${base}/lawyers`}
-            className="rounded-lg border border-gray-300 px-6 py-3.5 text-base font-medium text-brand hover:bg-black/5"
+            className="rounded-lg border border-edge px-6 py-3.5 text-base font-medium text-brand hover:bg-hover"
           >
             Speak with a lawyer
           </Link>
@@ -72,7 +72,7 @@ export default async function FirmHome({
       </section>
 
       <section aria-labelledby="how-heading" className="pb-16">
-        <h2 id="how-heading" className="font-heading text-2xl font-semibold text-gray-900">
+        <h2 id="how-heading" className="font-heading text-2xl font-semibold text-ink">
           How it works
         </h2>
         <ol className="mt-6 grid gap-4 sm:grid-cols-3">
@@ -81,10 +81,10 @@ export default async function FirmHome({
             ["Book & pay", "Pick a time that suits you and pay securely. Your slot is held for 15 minutes."],
             ["Meet & track", "Join the consultation from your phone, then follow your matter as it progresses."],
           ].map(([title, body], i) => (
-            <li key={title} className="rounded-card border border-gray-200 bg-white p-5">
+            <li key={title} className="rounded-card border border-hairline bg-raised p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">Step {i + 1}</p>
-              <p className="mt-1 font-heading text-base font-semibold text-gray-900">{title}</p>
-              <p className="mt-1 text-sm text-gray-600">{body}</p>
+              <p className="mt-1 font-heading text-base font-semibold text-ink">{title}</p>
+              <p className="mt-1 text-sm text-ink-muted">{body}</p>
             </li>
           ))}
         </ol>
@@ -93,7 +93,7 @@ export default async function FirmHome({
       {services.length > 0 && (
         <section aria-labelledby="services-heading" className="pb-16">
           <div className="flex items-baseline justify-between">
-            <h2 id="services-heading" className="font-heading text-2xl font-semibold text-gray-900">
+            <h2 id="services-heading" className="font-heading text-2xl font-semibold text-ink">
               How we can help
             </h2>
             <Link href={`${base}/services`} className="text-sm font-medium text-brand underline">
@@ -105,8 +105,8 @@ export default async function FirmHome({
               <Link key={service.id} href={`${base}/services/${service.slug}`} className="block">
                 <Card className="h-full transition hover:shadow-md">
                   <CardBody className="space-y-2">
-                    <h3 className="font-heading text-base font-semibold text-gray-900">{service.name}</h3>
-                    {service.description && <p className="text-sm text-gray-600">{service.description}</p>}
+                    <h3 className="font-heading text-base font-semibold text-ink">{service.name}</h3>
+                    {service.description && <p className="text-sm text-ink-muted">{service.description}</p>}
                     <p className="text-sm font-medium text-brand">
                       {formatMoneyMinor(service.price_minor, service.currency)} · {service.duration_min} minutes
                     </p>
@@ -120,7 +120,7 @@ export default async function FirmHome({
 
       {lawyers.length > 0 && (
         <section aria-labelledby="lawyers-heading" className="pb-16">
-          <h2 id="lawyers-heading" className="font-heading text-2xl font-semibold text-gray-900">
+          <h2 id="lawyers-heading" className="font-heading text-2xl font-semibold text-ink">
             Our lawyers
           </h2>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -128,10 +128,10 @@ export default async function FirmHome({
               <Link key={l.id} href={`${base}/lawyers/${l.slug ?? l.id}`} className="block">
                 <Card className="h-full transition hover:shadow-md">
                   <CardBody>
-                    <p className="font-heading text-base font-semibold text-gray-900">
+                    <p className="font-heading text-base font-semibold text-ink">
                       {lawyerDisplayName(l, firm.name)}
                     </p>
-                    {l.title && <p className="text-sm text-gray-600">{l.title}</p>}
+                    {l.title && <p className="text-sm text-ink-muted">{l.title}</p>}
                   </CardBody>
                 </Card>
               </Link>

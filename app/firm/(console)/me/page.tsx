@@ -91,7 +91,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
     <div className="flex flex-col gap-3.5">
       <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Me &amp; the firm</h1>
 
-      <div className="flex items-center gap-3.5 rounded-card border border-[#DDD9D2] bg-white p-[15px]">
+      <div className="flex items-center gap-3.5 rounded-card border border-[#DDD9D2] bg-raised p-[15px]">
         <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-[10px] bg-[#141414] font-heading text-[17px] font-bold text-white">
           {initials}
         </span>
@@ -137,7 +137,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
             <li key={l.href}>
               <Link
                 href={l.href}
-                className="flex items-center justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0 hover:bg-gray-50"
+                className="flex items-center justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0 hover:bg-sunken"
               >
                 <span className="min-w-0">
                   <span className="block text-[13.5px] font-semibold text-[#141414]">{l.label}</span>
@@ -155,7 +155,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
                       {l.count}
                     </span>
                   )}
-                  <Icon name="chevron-right" size={16} strokeWidth={2} className="text-gray-500" />
+                  <Icon name="chevron-right" size={16} strokeWidth={2} className="text-ink-muted" />
                 </span>
               </Link>
             </li>
@@ -163,7 +163,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
         </ul>
       </Card>
 
-      <div className="rounded-card border border-[#DDD9D2] bg-white px-[15px] py-3.5">
+      <div className="rounded-card border border-[#DDD9D2] bg-raised px-[15px] py-3.5">
         <p className="text-[11px] uppercase tracking-[0.06em] text-[#57534E]">This phone is a working tool</p>
         <p className="mt-1.5 text-xs leading-[1.55] text-[#57534E]">
           The console wears no firm&apos;s colours — those belong to the client app. Colour here means

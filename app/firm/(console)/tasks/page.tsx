@@ -78,7 +78,7 @@ export default async function FirmTasks({ searchParams }: { searchParams: Promis
     return qs ? `/firm/tasks?${qs}` : "/firm/tasks";
   };
   const chip = (active: boolean) =>
-    cn("flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm", active ? "border-[#141414] bg-[#141414] text-white" : "border-gray-300 bg-white text-gray-700");
+    cn("flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm", active ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink");
 
   return (
     <div className="flex flex-col gap-3.5">

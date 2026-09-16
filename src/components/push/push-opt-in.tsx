@@ -117,7 +117,7 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
           </Button>
         )}
         {state === "denied" && (
-          <p className="max-w-[180px] text-right text-[11px] leading-[1.4] text-gray-500">
+          <p className="max-w-[180px] text-right text-[11px] leading-[1.4] text-ink-muted">
             Allow notifications for this site in your browser settings.
           </p>
         )}

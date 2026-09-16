@@ -114,9 +114,9 @@ function verbOf(action: string): string | null {
 
 function Field({ name, children }: { name: string; children: ReactNode }) {
   return (
-    <div className="flex flex-col gap-0.5 border-t border-gray-100 py-1.5 first:border-0 sm:flex-row sm:gap-3">
-      <code className="shrink-0 text-xs text-gray-500 sm:w-48">{name}</code>
-      <span className="break-words text-sm text-gray-800">{children}</span>
+    <div className="flex flex-col gap-0.5 border-t border-hairline py-1.5 first:border-0 sm:flex-row sm:gap-3">
+      <code className="shrink-0 text-xs text-ink-muted sm:w-48">{name}</code>
+      <span className="break-words text-sm text-ink">{children}</span>
     </div>
   );
 }
@@ -200,7 +200,7 @@ export default async function AuditPage({
     <div className="space-y-5">
       <header className="min-w-0">
         <h2 className="font-heading text-2xl font-semibold text-brand">Audit trail</h2>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-ink-muted">
           {firmName} · what has been done, in the order it happened, shown in your own time zone ({tz})
         </p>
       </header>
@@ -290,18 +290,18 @@ export default async function AuditPage({
               const verb = verbOf(row.action);
 
               return (
-                <article key={row.id} className="rounded-lg border border-gray-200 p-4">
+                <article key={row.id} className="rounded-lg border border-hairline p-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-ink">
                       <code className="text-sm">{row.action}</code>
-                      {verb && <span className="ml-2 text-sm font-normal text-gray-600">({verb})</span>}
+                      {verb && <span className="ml-2 text-sm font-normal text-ink-muted">({verb})</span>}
                     </p>
-                    <time dateTime={row.at} className="text-sm text-gray-600">
+                    <time dateTime={row.at} className="text-sm text-ink-muted">
                       {formatWhen(row.at, tz, { dateStyle: "medium", timeStyle: "medium" })}
                     </time>
                   </div>
 
-                  <p className="mt-1 text-sm text-gray-600">
+                  <p className="mt-1 text-sm text-ink-muted">
                     {row.actor_id
                       ? actor
                         ? `By ${actor}.`
@@ -311,7 +311,7 @@ export default async function AuditPage({
                     {row.entity_id ? (
                       <>
                         {" "}
-                        <span className="text-gray-500">({row.entity_id.slice(0, 8)}…)</span>
+                        <span className="text-ink-muted">({row.entity_id.slice(0, 8)}…)</span>
                       </>
                     ) : null}
                     .
@@ -319,7 +319,7 @@ export default async function AuditPage({
 
                   {changedEntries.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
                         Columns this write changed
                       </p>
                       <div className="mt-1">
@@ -329,7 +329,7 @@ export default async function AuditPage({
                           </Field>
                         ))}
                       </div>
-                      <p className="mt-2 text-xs text-gray-500">
+                      <p className="mt-2 text-xs text-ink-muted">
                         These are the values the row was changed <span className="font-medium">to</span>. The row
                         trigger records what a column became, not what it was before, so there is no earlier value to
                         show here. Where the database wrote the line itself — a role change, a plan, a domain — it
@@ -340,7 +340,7 @@ export default async function AuditPage({
 
                   {hasFromTo && (
                     <div className="mt-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Before and after</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Before and after</p>
                       <div className="mt-1">
                         <Field name="before">{describeValue(meta.from, tz)}</Field>
                         <Field name="after">{describeValue(meta.to, tz)}</Field>
@@ -350,7 +350,7 @@ export default async function AuditPage({
 
                   {otherKeys.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Recorded with it</p>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Recorded with it</p>
                       <div className="mt-1">
                         {otherKeys.map((k) => (
                           <Field key={k} name={k}>
@@ -362,7 +362,7 @@ export default async function AuditPage({
                   )}
 
                   {changedEntries.length === 0 && !hasFromTo && otherKeys.length === 0 && (
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mt-2 text-sm text-ink-muted">
                       {changed
                         ? "This write moved no column: the row was saved with the values it already had, and the trigger recorded that nothing differed."
                         : "No detail was recorded with this line. A row that was added or deleted writes the fact and the row's id; only a change records the columns that moved."}
@@ -380,7 +380,7 @@ export default async function AuditPage({
           {olderHref && (
             <Link
               href={olderHref}
-              className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
+              className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:bg-hover"
             >
               Older entries
             </Link>
@@ -398,32 +398,32 @@ export default async function AuditPage({
 
       <Card>
         <CardHeader title="What this log does and does not cover" />
-        <CardBody className="space-y-3 text-sm text-gray-600">
+        <CardBody className="space-y-3 text-sm text-ink-muted">
           <p>
             Every line is written by the database as the work happens, and nothing can change one
             afterwards. The names are the database's own: <code>matters.update</code> is a row that
             was changed, <code>invoice.issued</code> is a function that recorded what it did.
           </p>
           <p>
-            <span className="font-medium text-gray-900">These tables write a line by themselves</span>{" "}
+            <span className="font-medium text-ink">These tables write a line by themselves</span>{" "}
             whenever a row is added, changed or deleted: {ROW_AUDITED.join(", ")}.
           </p>
           <p>
-            <span className="font-medium text-gray-900">These are audited, but not where you can
+            <span className="font-medium text-ink">These are audited, but not where you can
             read it.</span>{" "}
             {AUDITED_BUT_UNSCOPED.join(", ")} have no firm on the row, so the line the database
             writes is not attached to any firm and this screen cannot show it. The one that will
-            catch you out is <span className="font-medium text-gray-900">firms</span>: changing
+            catch you out is <span className="font-medium text-ink">firms</span>: changing
             your own name, brand, policies or settlement account on the Settings screen leaves no
             line here. Docket&rsquo;s own acts on your firm — creating it, verifying it, suspending
             it, mapping a domain — do appear, because those are written by a function that names
             the firm.
           </p>
           <p>
-            <span className="font-medium text-gray-900">These do not.</span> A change to{" "}
+            <span className="font-medium text-ink">These do not.</span> A change to{" "}
             {NOT_AUDITED.join(", ")} leaves no line here at all — most of all{" "}
-            <span className="font-medium text-gray-900">intake_forms</span> and{" "}
-            <span className="font-medium text-gray-900">content</span>, which are edited from this
+            <span className="font-medium text-ink">intake_forms</span> and{" "}
+            <span className="font-medium text-ink">content</span>, which are edited from this
             very console. Do not read a silence about them as “nothing happened”. Some of what
             those tables are used for is recorded another way — a court update writes a row in{" "}
             <code>updates</code>, which is audited — but the forms and the website pages are not.

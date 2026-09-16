@@ -47,7 +47,7 @@ export default async function RegistriesPage() {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-semibold text-docket-hunter">Court registries</h1>
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-sm text-ink-muted">
           A registry publishes its court&rsquo;s cause list to the firms that already hold its suits. Create one only
           when a real registry has agreed to the pilot — the checklist is in <code>docs/COURT_REGISTRY_PILOT.md</code>.
         </p>
@@ -78,25 +78,25 @@ export default async function RegistriesPage() {
             <Card key={r.id}>
               <CardHeader title={r.name} action={<span className={r.status === "active" ? "text-xs font-medium text-emerald-800" : "text-xs font-medium text-red-800"}>{r.status}</span>} />
               <CardBody className="space-y-3">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-ink">
                   {court?.name ?? "Court not found"}{court?.state_code ? ` · ${court.state_code}` : ""} · created {formatWhen(r.created_at, timezone)}
                   {r.contact_name ? ` · contact ${r.contact_name}` : ""}{r.contact_email ? ` <${r.contact_email}>` : ""}
                 </p>
-                {r.note && <p className="text-xs text-gray-600">{r.note}</p>}
+                {r.note && <p className="text-xs text-ink-muted">{r.note}</p>}
 
                 {!health.error && <PilotCounts row={healthById.get(r.id)} timezone={timezone} />}
 
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Who acts for it</p>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Who acts for it</p>
                   {its.length === 0 ? (
                     <p className="mt-1 text-sm text-amber-800">Nobody yet — it cannot publish until a registrar is added.</p>
                   ) : (
-                    <ul className="mt-1 divide-y divide-gray-100">
+                    <ul className="mt-1 divide-y divide-hairline">
                       {its.map((m) => {
                         const p = personById.get(m.user_id);
                         return (
                           <li key={m.user_id} className="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm">
-                            <span>{p?.full_name ?? p?.email ?? m.user_id} <span className="text-gray-500">· {m.role}{p?.email && p?.full_name ? ` · ${p.email}` : ""}</span></span>
+                            <span>{p?.full_name ?? p?.email ?? m.user_id} <span className="text-ink-muted">· {m.role}{p?.email && p?.full_name ? ` · ${p.email}` : ""}</span></span>
                             <RemoveMemberButton registryId={r.id} userId={m.user_id} />
                           </li>
                         );
@@ -125,7 +125,7 @@ export default async function RegistriesPage() {
 function PilotCounts({ row, timezone }: { row: RegistryPilotHealthRow | undefined; timezone: string }) {
   if (!row) {
     return (
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-ink-muted">
         No figures for this registry yet — it has published nothing and no firm has decided anything.
       </p>
     );
@@ -140,16 +140,16 @@ function PilotCounts({ row, timezone }: { row: RegistryPilotHealthRow | undefine
   ];
   return (
     <div>
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">The pilot, measured</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">The pilot, measured</p>
       <dl className="mt-1 grid grid-cols-2 gap-x-4 gap-y-1 sm:grid-cols-3">
         {cells.map(([label, n]) => (
           <div key={label} className="flex items-baseline justify-between gap-2 text-sm">
-            <dt className="text-gray-600">{label}</dt>
+            <dt className="text-ink-muted">{label}</dt>
             <dd className="font-semibold tabular-nums text-docket-hunter">{n}</dd>
           </div>
         ))}
       </dl>
-      <p className="mt-1 text-xs text-gray-500">
+      <p className="mt-1 text-xs text-ink-muted">
         {row.first_published_at
           ? <>Publishing since {formatWhen(row.first_published_at, timezone)}{row.last_published_at ? `, most recently ${formatWhen(row.last_published_at, timezone)}` : ""}.{" "}</>
           : <>Nothing published yet.{" "}</>}

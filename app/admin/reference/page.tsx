@@ -205,7 +205,7 @@ export default async function AdminReferencePage({
     <div className="space-y-6">
       <header className="space-y-2">
         <h1 className="font-heading text-2xl font-semibold text-brand">Reference data</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-ink-muted">
           The court calendar and the court directory, maintained by the platform for every firm on
           Docket.
         </p>
@@ -222,7 +222,7 @@ export default async function AdminReferencePage({
         <Card>
           <CardHeader title="Is the non-sitting-day check on?" />
           <CardBody className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink-muted">
               <code>is_non_sitting_day()</code> is what warns a lawyer before a court date is fixed on
               a day the court does not sit, and what the database consults before it accepts the next
               date on a matter. It reads three things, and only one of them needs no data.
@@ -281,7 +281,7 @@ export default async function AdminReferencePage({
               </li>
             </ul>
 
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-ink-muted">
               The directory itself holds <strong>{activeCourts}</strong> open platform court
               {activeCourts === 1 ? "" : "s"}
               {totalPlatformCourts !== activeCourts ? ` (${totalPlatformCourts} rows including closed ones)` : ""}. A
@@ -296,7 +296,7 @@ export default async function AdminReferencePage({
       <section id="vacations" className="space-y-4">
         <CourtVacationEditor vacations={vacations} />
         {vacations.length === VACATION_LIMIT && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-ink-muted">
             Showing the {VACATION_LIMIT} most recent windows by start date. Older ones are not on this
             page.
           </p>
@@ -306,7 +306,7 @@ export default async function AdminReferencePage({
       {/* ============================================================ holidays */}
       <section id="holidays" className="space-y-4">
         <PublicHolidayEditor holidays={holidays} />
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-muted">
           Showing holidays from 1 January {thisYear} onwards
           {holidays.length === HOLIDAY_LIMIT ? `, capped at the first ${HOLIDAY_LIMIT}` : ""}. Earlier
           years are kept in the database and still answer for dates in the past.
@@ -324,14 +324,14 @@ export default async function AdminReferencePage({
       {/* ============================================================ courts */}
       <section id="courts" className="space-y-4">
         <PlatformCourtEditor courts={courts} totalCourts={totalPlatformCourts} search={courtSearch} />
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-muted">
           {courtSearch
             ? `${courts.length} of ${totalPlatformCourts} platform courts match “${courtSearch}”.`
             : `Showing ${courts.length} platform courts of ${totalPlatformCourts}, by name. Search above to reach any of the others — this screen is the only place a platform court can be corrected or closed.`}
         </p>
       </section>
 
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-ink-muted">
         Failures across the platform — settlement, the notification queue and webhooks — are on{" "}
         <Link href="/admin/health" className="font-medium text-brand underline">
           the health screen

@@ -53,7 +53,7 @@ export default async function JoinMatterPage({
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">Docket</p>
       <h1 className="mt-1 font-heading text-2xl font-semibold text-brand">Join your matter</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <p className="mt-1 text-sm text-ink-muted">
         Your lawyers have invited you to follow a file on Docket.
       </p>
       <Card className="mt-4">
@@ -61,7 +61,7 @@ export default async function JoinMatterPage({
           <JoinMatterForm token={token} signedIn={Boolean(user)} identity={user?.phone ?? user?.email ?? null} />
         </CardBody>
       </Card>
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-sm text-ink-muted">
         Staff? <a href="/firm/login" className="font-medium text-brand underline">Sign in to the console</a>
       </p>
     </main>

@@ -67,7 +67,7 @@ export function InvoiceResult({ invoiceId, number, initialStatus, totalMinor, pa
           <div className="flex flex-wrap gap-3">
             {done && <a href={`/app/payments/${invoiceId}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on">Download receipt</a>}
             {!done && <Button variant="ghost" onClick={retry}>Try paying again</Button>}
-            <Link href={backHref} className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand">Back</Link>
+            <Link href={backHref} className="rounded-lg border border-edge px-4 py-2.5 text-sm font-medium text-brand">Back</Link>
           </div>
         </CardBody>
       </Card>

@@ -99,7 +99,7 @@ const variants: Record<Variant, string> = {
   primary: "bg-brand text-brand-on focus-visible:outline-brand",
   secondary: "bg-brand-accent text-brand-on-accent focus-visible:outline-brand-accent",
   // This is also what the forty-odd sites that still hand-roll the shape as
-  // "border border-gray-300 bg-white text-brand hover:bg-black/5" should be
+  // "border border-edge bg-raised text-brand hover:bg-hover" should be
   // migrated onto. A second name, `quiet`, was added for them and has been
   // taken away again: it resolved to this same string, nothing ever asked for
   // it, and two names for one value is how two variants drift apart by accident

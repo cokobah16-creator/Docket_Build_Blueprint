@@ -43,7 +43,7 @@ const SHOW = 200;
 
 // 16px so iOS Safari does not zoom the page when the field takes focus.
 const field =
-  "w-full min-w-0 border-0 bg-transparent py-2 text-base text-[#141414] placeholder:text-gray-500 focus:outline-none";
+  "w-full min-w-0 border-0 bg-transparent py-2 text-base text-[#141414] placeholder:text-ink-muted focus:outline-none";
 
 /** Statuses that mean the person actually turned up (or was billed for turning up). */
 const SEEN_STATUSES = new Set(["confirmed", "rescheduled", "completed"]);
@@ -325,7 +325,7 @@ export default async function FirmClientsPage({
   const chipClass = (active: boolean) =>
     cn(
       "flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
-      active ? "border-[#141414] bg-[#141414] text-white" : "border-[#D6D3CE] bg-white text-[#57534E]",
+      active ? "border-[#141414] bg-[#141414] text-white" : "border-[#D6D3CE] bg-raised text-[#57534E]",
     );
 
   const bookingHref = firm ? `/${firm.slug}/book` : null;
@@ -339,7 +339,7 @@ export default async function FirmClientsPage({
         </p>
       </header>
 
-      <form method="get" action="/firm/clients" className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-[#DDD9D2] bg-white px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]">
+      <form method="get" action="/firm/clients" className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-[#DDD9D2] bg-raised px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]">
         {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
         {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
         <Icon name="search" size={17} strokeWidth={1.8} className="shrink-0 text-[#57534E]" />
@@ -420,7 +420,7 @@ export default async function FirmClientsPage({
                 <li key={c.id}>
                   <Link
                     href={`/firm/clients/${c.id}${sp.firm ? `?firm=${sp.firm}` : ""}`}
-                    className="block border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-gray-50"
+                    className="block border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-sunken"
                   >
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="flex min-w-0 items-center gap-2">

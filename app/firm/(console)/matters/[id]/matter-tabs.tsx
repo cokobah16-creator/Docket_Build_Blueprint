@@ -48,7 +48,7 @@ export function MatterTabs({
                   "flex min-h-[44px] shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-sm font-medium",
                   current
                     ? "border-brand bg-brand text-brand-on"
-                    : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+                    : "border-edge bg-raised text-ink hover:border-brand",
                 )}
               >
                 {t.label}
@@ -97,7 +97,7 @@ export function CopyButton({
       <button
         type="button"
         onClick={copy}
-        className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-brand hover:bg-black/5"
+        className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-sm font-medium text-brand hover:bg-hover"
       >
         {state === "copied" ? "Copied" : label}
       </button>
@@ -107,7 +107,7 @@ export function CopyButton({
           value={text}
           aria-label="Link to copy"
           onFocus={(e) => e.currentTarget.select()}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-700 sm:w-80"
+          className="w-full rounded-lg border border-edge px-3 py-2 text-base text-ink sm:w-80"
         />
       )}
     </span>

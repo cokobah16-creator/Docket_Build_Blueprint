@@ -96,7 +96,7 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
   return (
     <div className="space-y-5">
       <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Service inbox</h1>
-      <p className="text-sm text-gray-600">
+      <p className="text-sm text-ink-muted">
         Processes served on {myFirmIds.size > 1 ? "your firms" : ctx.firmName} through Docket, and the ones
         they served. Times in {timezone}.
       </p>
@@ -114,7 +114,7 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
           />
         ) : (
           <CardBody className="p-0">
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-hairline">
               {diary.map((r) => {
                 const due = r.response_due_on as string;
                 const overdue = due < today;
@@ -122,13 +122,13 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
                 return (
                   <li key={`diary-${r.id}`} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{r.process_title}</p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-sm font-medium text-ink">{r.process_title}</p>
+                      <p className="text-xs text-ink-muted">
                         {r.recipient_matter_id ? matterLabels.get(r.recipient_matter_id) ?? "one of your matters" : "not filed against a matter"}
                         {" · from "}{firmName(r.serving_firm_id)}
                       </p>
                     </div>
-                    <p className={overdue ? "text-sm font-semibold text-red-700" : dueToday ? "text-sm font-semibold text-amber-800" : "text-sm text-gray-700"}>
+                    <p className={overdue ? "text-sm font-semibold text-red-700" : dueToday ? "text-sm font-semibold text-amber-800" : "text-sm text-ink"}>
                       {overdue ? "Overdue — was due " : dueToday ? "Due today, " : "Due "}
                       {dayLabel(due)}
                     </p>
@@ -137,7 +137,7 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
               })}
             </ul>
             {unfiled.length > 0 && (
-              <p className="border-t border-gray-100 px-5 py-3 text-xs text-gray-500">
+              <p className="border-t border-hairline px-5 py-3 text-xs text-ink-muted">
                 {unfiled.length} process{unfiled.length === 1 ? "" : "es"} below {unfiled.length === 1 ? "has" : "have"} not been filed against a matter yet.
               </p>
             )}
@@ -154,7 +154,7 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
             action={<Link href="/firm/matters" className="text-sm font-medium text-brand underline">Open your matters</Link>}
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {received.map((r) => {
               const due = r.response_due_on;
               const overdue = Boolean(due && due < today);
@@ -162,24 +162,24 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
               return (
                 <li key={r.id} className="space-y-2 px-5 py-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-ink">
                       {r.process_title}
                       {r.is_originating && <Badge className="ml-2">originating</Badge>}
                       {r.substituted_by_order && <Badge className="ml-2">substituted service</Badge>}
                     </p>
-                    <p className="text-sm text-gray-500">{fmt(r.served_at)}</p>
+                    <p className="text-sm text-ink-muted">{fmt(r.served_at)}</p>
                   </div>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-ink">
                     {r.case_title ?? "—"}{r.suit_number ? ` · ${r.suit_number}` : ""}{r.court_name ? ` · ${r.court_name}` : ""}
                     {r.served_for_party ? ` · for ${r.served_for_party}` : ""}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-ink-muted">
                     From {firmName(r.serving_firm_id)} · served by {r.served_by_name ?? "counsel"}
                     {r.served_by_scn ? ` (${r.served_by_scn})` : ""}
                     {r.served_on_name ? ` · served on ${r.served_on_name}` : ""}
                     {r.deemed_served_on ? ` · deemed served ${dayLabel(r.deemed_served_on)}` : ""}
                   </p>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-ink-muted">
                     {r.document_name}
                     {r.document_size_bytes ? ` · ${fileSize(r.document_size_bytes)}` : ""}
                     {r.checksum ? ` · ${r.checksum}` : ""}
@@ -188,19 +188,19 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
 
                   {r.recipient_matter_id ? (
                     <p className="text-sm">
-                      <span className="text-gray-700">
+                      <span className="text-ink">
                         Filed against {matterLabels.get(r.recipient_matter_id) ?? "one of your matters"}
                       </span>
                       {due ? (
-                        <span className={overdue ? "font-semibold text-red-700" : "text-gray-700"}>
+                        <span className={overdue ? "font-semibold text-red-700" : "text-ink"}>
                           {" · "}{overdue ? "response was due " : "response due "}{dayLabel(due)}
                         </span>
                       ) : (
-                        <span className="text-gray-500">{" · no response date set"}</span>
+                        <span className="text-ink-muted">{" · no response date set"}</span>
                       )}
                     </p>
                   ) : (
-                    <p className="text-sm text-gray-500">Not filed against a matter yet.</p>
+                    <p className="text-sm text-ink-muted">Not filed against a matter yet.</p>
                   )}
 
                   <FileServiceForm
@@ -233,22 +233,22 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
             action={<Link href="/firm/matters" className="text-sm font-medium text-brand underline">Go to a matter</Link>}
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {sent.map((r) => (
               <li key={r.id} className="space-y-2 px-5 py-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-ink">
                       {r.process_title}
                       {r.is_originating && <Badge className="ml-2">originating</Badge>}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-ink-muted">
                       {r.case_title ?? "—"}{r.suit_number ? ` · ${r.suit_number}` : ""}
                       {r.served_for_party ? ` · served for ${r.served_for_party}` : ""}
                     </p>
-                    <p className="text-sm text-gray-500">On {firmName(r.served_firm_id)}</p>
+                    <p className="text-sm text-ink-muted">On {firmName(r.served_firm_id)}</p>
                   </div>
-                  <p className="text-sm text-gray-500">
+                  <p className="text-sm text-ink-muted">
                     {fmt(r.served_at)} · {r.acknowledged_at ? `acknowledged ${fmt(r.acknowledged_at)}` : "awaiting acknowledgement"}
                     {r.acknowledged_by_name ? ` by ${r.acknowledged_by_name}` : ""}
                   </p>
@@ -256,7 +256,7 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
                 {adminFirmIds.has(r.serving_firm_id) ? (
                   <RevokeServiceForm serviceId={r.id} />
                 ) : (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-muted">
                     Served in error? An owner or admin of your firm can withdraw it — the database allows nobody else.
                   </p>
                 )}

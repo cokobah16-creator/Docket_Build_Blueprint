@@ -39,8 +39,8 @@ import { cn } from "@/lib/cn";
 const JOIN_PATH = "/firm/join";
 
 const field =
-  "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
-const labelClass = "block text-sm font-medium text-gray-800";
+  "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const labelClass = "block text-sm font-medium text-ink";
 
 export interface PersonView {
   userId: string;
@@ -102,7 +102,7 @@ function CopyLink({ url, label = "Copy the link" }: { url: string; label?: strin
       <button
         type="button"
         onClick={copy}
-        className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-brand hover:bg-black/5"
+        className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-sm font-medium text-brand hover:bg-hover"
       >
         {state === "copied" ? "Copied" : label}
       </button>
@@ -112,7 +112,7 @@ function CopyLink({ url, label = "Copy the link" }: { url: string; label?: strin
           value={url}
           aria-label="Invitation link to copy"
           onFocus={(e) => e.currentTarget.select()}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-700 sm:w-80"
+          className="w-full rounded-lg border border-edge px-3 py-2 text-base text-ink sm:w-80"
         />
       )}
     </span>
@@ -335,7 +335,7 @@ export function PeoplePanel({
                   className={field}
                   placeholder="colleague@example.com"
                 />
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-sm text-ink-muted">
                   This is the address they must sign in with. accept_staff_invite() compares it to
                   the address on their account and refuses any other, so a personal address on the
                   invitation and a work address at sign-in will not meet.
@@ -358,9 +358,9 @@ export function PeoplePanel({
                     </option>
                   ))}
                 </select>
-                <p className="mt-1 text-sm text-gray-500">{roleHint(inviteRole)}</p>
+                <p className="mt-1 text-sm text-ink-muted">{roleHint(inviteRole)}</p>
                 {!callerIsOwner && (
-                  <p className="mt-1 text-sm text-gray-500">
+                  <p className="mt-1 text-sm text-ink-muted">
                     Owner is not on this list because only an owner may invite another owner — the
                     database raises “only an owner may invite another owner” if it is tried.
                   </p>
@@ -410,7 +410,7 @@ export function PeoplePanel({
                     <p className="mt-1 text-sm text-emerald-900">
                       Docket does not send this. Send the link yourself — it is the invitation.
                     </p>
-                    <p className="mt-2 break-all rounded border border-emerald-200 bg-white px-3 py-2 text-xs text-emerald-900">
+                    <p className="mt-2 break-all rounded border border-emerald-200 bg-raised px-3 py-2 text-xs text-emerald-900">
                       {mintedLink || `${JOIN_PATH}?token=…`}
                     </p>
                     <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -460,26 +460,26 @@ export function PeoplePanel({
                   key={p.userId}
                   className={cn(
                     "rounded-lg border p-4",
-                    p.isYou ? "border-brand/30 bg-brand-surface/40" : "border-gray-200 bg-white",
+                    p.isYou ? "border-brand/30 bg-brand-surface/40" : "border-hairline bg-raised",
                   )}
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-ink">
                         {p.name}
                         {p.isYou && <span className="ml-2 text-sm font-normal text-brand">(this is you)</span>}
                       </p>
-                      {p.title && <p className="text-sm text-gray-600">{p.title}</p>}
-                      <p className="break-all text-sm text-gray-600">{p.email ?? "No email address on their profile"}</p>
-                      {p.phone && <p className="text-sm text-gray-600">{p.phone}</p>}
-                      {p.scn && <p className="text-sm text-gray-600">Enrolment number {p.scn}</p>}
+                      {p.title && <p className="text-sm text-ink-muted">{p.title}</p>}
+                      <p className="break-all text-sm text-ink-muted">{p.email ?? "No email address on their profile"}</p>
+                      {p.phone && <p className="text-sm text-ink-muted">{p.phone}</p>}
+                      {p.scn && <p className="text-sm text-ink-muted">Enrolment number {p.scn}</p>}
                     </div>
-                    <Badge className="bg-gray-100 text-gray-800">{roleLabel(p.role)}</Badge>
+                    <Badge className="bg-sunken text-ink">{roleLabel(p.role)}</Badge>
                   </div>
 
-                  <p className="mt-2 text-sm text-gray-600">{roleHint(p.role)}</p>
+                  <p className="mt-2 text-sm text-ink-muted">{roleHint(p.role)}</p>
 
-                  <ul className="mt-2 space-y-1 text-sm text-gray-600">
+                  <ul className="mt-2 space-y-1 text-sm text-ink-muted">
                     <li>
                       {p.availabilityRules > 0
                         ? `${p.availabilityRules} weekly availability ${p.availabilityRules === 1 ? "rule" : "rules"} — clients can book them.`
@@ -511,9 +511,9 @@ export function PeoplePanel({
                   )}
 
                   {canWrite && (
-                    <div className="mt-3 space-y-3 border-t border-gray-100 pt-3">
+                    <div className="mt-3 space-y-3 border-t border-hairline pt-3">
                       {blockedRole ? (
-                        <p className="text-sm text-gray-600">{blockedRole}</p>
+                        <p className="text-sm text-ink-muted">{blockedRole}</p>
                       ) : (
                         <div className="flex flex-wrap items-end gap-2">
                           <div className="min-w-[12rem] flex-1">
@@ -547,7 +547,7 @@ export function PeoplePanel({
                       )}
 
                       {blockedRemoval ? (
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-ink-muted">
                           {blockedRemoval}
                           {p.futureConsultations > 0 && (
                             <>
@@ -628,11 +628,11 @@ export function PeoplePanel({
               const url = linkFor(i.token);
               const busy = working === i.id;
               return (
-                <div key={i.id} className="rounded-lg border border-gray-200 p-4">
+                <div key={i.id} className="rounded-lg border border-hairline p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="break-all font-medium text-gray-900">{i.email}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="break-all font-medium text-ink">{i.email}</p>
+                      <p className="text-sm text-ink-muted">
                         Invited as {roleLabel(i.role).toLowerCase()}
                         {i.invitedBy ? ` by ${i.invitedBy}` : ""} on {day.format(new Date(i.createdAt))}
                       </p>
@@ -642,7 +642,7 @@ export function PeoplePanel({
                     </Badge>
                   </div>
 
-                  <p className="mt-2 text-sm text-gray-600">
+                  <p className="mt-2 text-sm text-ink-muted">
                     {i.expired
                       ? `This link stopped working on ${fmt.format(new Date(i.expiresAt))}. accept_staff_invite() refuses it with “invite invalid or expired”. Cancel it and invite them again.`
                       : `The link works until ${fmt.format(new Date(i.expiresAt))}.`}
@@ -650,7 +650,7 @@ export function PeoplePanel({
 
                   {!i.expired && (
                     <>
-                      <p className="mt-2 break-all rounded border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700">
+                      <p className="mt-2 break-all rounded border border-hairline bg-sunken px-3 py-2 text-xs text-ink">
                         {url || `${JOIN_PATH}?token=…`}
                       </p>
                       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -661,7 +661,7 @@ export function PeoplePanel({
                           )}&body=${encodeURIComponent(
                             `${firmName} has invited you to join its Docket console as ${roleLabel(i.role).toLowerCase()}. Open this link, sign in with ${i.email}, and accept: ${url}`,
                           )}`}
-                          className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-brand hover:bg-black/5"
+                          className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-sm font-medium text-brand hover:bg-hover"
                         >
                           Open in your email app
                         </a>

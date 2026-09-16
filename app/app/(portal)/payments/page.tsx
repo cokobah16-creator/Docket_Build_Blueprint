@@ -31,12 +31,12 @@ export default async function PaymentsPage() {
         {invoices.length === 0 ? (
           <EmptyState title="No invoices yet" hint="Consultation fees and matter invoices appear here with receipts." />
         ) : (
-          <CardBody className="divide-y divide-gray-100 p-0">
+          <CardBody className="divide-y divide-hairline p-0">
             {invoices.map((inv) => (
-              <Link key={inv.id} href={`/app/payments/${inv.id}`} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-gray-50">
+              <Link key={inv.id} href={`/app/payments/${inv.id}`} className="flex items-center justify-between gap-3 px-5 py-4 hover:bg-sunken">
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{inv.number}</p>
-                  <p className="text-xs text-gray-500">{formatMoneyMinor(inv.total_minor, inv.currency)}</p>
+                  <p className="text-sm font-medium text-ink">{inv.number}</p>
+                  <p className="text-xs text-ink-muted">{formatMoneyMinor(inv.total_minor, inv.currency)}</p>
                 </div>
                 <StatusPill status={inv.status as Status} />
               </Link>

@@ -126,7 +126,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
             <input
               id="q" name="q" type="search" defaultValue={q} autoFocus minLength={2} maxLength={200}
               placeholder="Okonkwo · LD/4521/2026 · quicksilver covenant"
-              className="min-h-11 w-full rounded-lg border border-gray-300 px-3 text-base text-gray-900 focus:border-[#141414] focus:outline-none"
+              className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline-none"
             />
             <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-[#141414] px-4 text-[14px] font-medium text-white">
               Search
@@ -159,7 +159,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
             <Link
               href={keep({ kind: null })}
               className={cn("min-h-9 rounded-full border px-3 py-1.5 text-[12.5px]",
-                kind === null ? "border-[#141414] bg-[#141414] text-white" : "border-gray-300 bg-white text-gray-700 hover:border-[#141414]")}
+                kind === null ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink hover:border-[#141414]")}
             >
               Everything
             </Link>
@@ -168,7 +168,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
                 key={k}
                 href={keep({ kind: k })}
                 className={cn("min-h-9 rounded-full border px-3 py-1.5 text-[12.5px]",
-                  kind === k ? "border-[#141414] bg-[#141414] text-white" : "border-gray-300 bg-white text-gray-700 hover:border-[#141414]")}
+                  kind === k ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink hover:border-[#141414]")}
               >
                 {label}
               </Link>
@@ -192,7 +192,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
                   <li key={`${hit.kind}:${hit.id}`}>
                     <Link
                       href={hrefFor(hit)}
-                      className="flex flex-col gap-1 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-gray-50"
+                      className="flex flex-col gap-1 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-sunken"
                     >
                       <span className="flex items-baseline justify-between gap-3">
                         <span className="min-w-0 text-[13.5px] font-semibold text-[#141414]">{hit.title}</span>

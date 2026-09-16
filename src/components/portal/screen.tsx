@@ -64,11 +64,11 @@ export function ScreenHeader({
 }) {
   const Title = titleAs === "heading" ? "h1" : "p";
   return (
-    <header className="sticky top-0 z-20 -mx-4 -mt-3.5 mb-0.5 flex min-h-[50px] items-center gap-2.5 border-b border-[#EBE7E0] bg-white/[0.92] px-3.5 py-2.5 backdrop-blur-xl md:-mx-6 md:-mt-5 md:px-6 lg:-mx-8 lg:px-8">
+    <header className="sticky top-0 z-20 -mx-4 -mt-3.5 mb-0.5 flex min-h-[50px] items-center gap-2.5 border-b border-hairline bg-raised/[0.92] px-3.5 py-2.5 backdrop-blur-xl md:-mx-6 md:-mt-5 md:px-6 lg:-mx-8 lg:px-8">
       <Link
         href={back}
         aria-label={backLabel}
-        className="grid size-9 shrink-0 place-items-center rounded-full border border-gray-200 bg-white text-brand"
+        className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-raised text-brand"
       >
         <Icon name="chevron-left" size={19} strokeWidth={2} />
       </Link>
@@ -79,14 +79,14 @@ export function ScreenHeader({
               className={cn(
                 "truncate",
                 titleAs === "heading" && "font-heading text-[17px] font-semibold text-brand",
-                titleAs === "mono" && "font-mono text-[13px] text-gray-600",
-                titleAs === "plain" && "text-[13px] font-semibold text-gray-900",
+                titleAs === "mono" && "font-mono text-[13px] text-ink-muted",
+                titleAs === "plain" && "text-[13px] font-semibold text-ink",
               )}
             >
               {title}
             </Title>
           )}
-          {subtitle && <p className="mt-px truncate text-[11px] text-gray-500">{subtitle}</p>}
+          {subtitle && <p className="mt-px truncate text-[11px] text-ink-muted">{subtitle}</p>}
         </div>
       )}
       {children}
@@ -104,8 +104,8 @@ export function FactRow({
 }) {
   return (
     <div className="flex justify-between gap-4 text-[13.5px]">
-      <dt className="shrink-0 text-gray-500">{label}</dt>
-      <dd className="text-right font-semibold text-gray-900">{children}</dd>
+      <dt className="shrink-0 text-ink-muted">{label}</dt>
+      <dd className="text-right font-semibold text-ink">{children}</dd>
     </div>
   );
 }

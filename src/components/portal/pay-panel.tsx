@@ -61,7 +61,7 @@ export function PayPanel({
     <div className="flex flex-col gap-3.5">
       {holdExpiresAt && (
         <div className="flex items-center justify-between gap-2.5">
-          <p className="text-[13px] font-semibold text-gray-900">Pay to confirm</p>
+          <p className="text-[13px] font-semibold text-ink">Pay to confirm</p>
           <span
             className={cn(
               "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11.5px] font-semibold",
@@ -77,16 +77,16 @@ export function PayPanel({
         </div>
       )}
 
-      <div className="flex flex-col gap-1 rounded-card border border-gray-200 bg-white p-4">
-        <p className="text-xs uppercase tracking-[0.07em] text-gray-500">Amount due</p>
+      <div className="flex flex-col gap-1 rounded-card border border-hairline bg-raised p-4">
+        <p className="text-xs uppercase tracking-[0.07em] text-ink-muted">Amount due</p>
         <p className="font-heading text-[34px] font-semibold leading-none tracking-[-0.02em] text-brand">{amount}</p>
-        <p className="mt-1.5 text-[12.5px] text-gray-600">
+        <p className="mt-1.5 text-[12.5px] text-ink-muted">
           <span className="font-mono">{invoiceNumber}</span> · {description}
         </p>
       </div>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-xs uppercase tracking-[0.07em] text-gray-500">
+        <legend className="mb-1 text-xs uppercase tracking-[0.07em] text-ink-muted">
           How would you like to pay?
         </legend>
         {METHODS.map((m) => {
@@ -99,29 +99,29 @@ export function PayPanel({
               aria-checked={on}
               onClick={() => setChannel(m.key)}
               className={cn(
-                "flex w-full items-center justify-between gap-3 rounded-[11px] border bg-white px-[15px] py-3.5",
-                on ? "border-brand" : "border-gray-200",
+                "flex w-full items-center justify-between gap-3 rounded-[11px] border bg-raised px-[15px] py-3.5",
+                on ? "border-brand" : "border-hairline",
               )}
             >
               <span className="flex min-w-0 items-center gap-3">
                 <span
                   className={cn(
                     "grid size-9 shrink-0 place-items-center rounded-lg",
-                    on ? "bg-brand text-brand-on" : "bg-gray-100 text-gray-500",
+                    on ? "bg-brand text-brand-on" : "bg-sunken text-ink-muted",
                   )}
                 >
                   <Icon name={m.icon} size={18} />
                 </span>
                 <span className="min-w-0 text-left">
-                  <span className="block text-sm font-semibold text-gray-900">{m.label}</span>
-                  <span className="mt-0.5 block text-xs text-gray-500">{m.hint}</span>
+                  <span className="block text-sm font-semibold text-ink">{m.label}</span>
+                  <span className="mt-0.5 block text-xs text-ink-muted">{m.hint}</span>
                 </span>
               </span>
               <span
                 aria-hidden="true"
                 className={cn(
                   "size-5 shrink-0 rounded-full",
-                  on ? "border-[6px] border-brand" : "border-[1.5px] border-gray-300",
+                  on ? "border-[6px] border-brand" : "border-[1.5px] border-edge",
                 )}
               />
             </button>
@@ -151,8 +151,8 @@ export function PayPanel({
         {pending ? "Taking payment…" : `Pay ${amount}`}
       </Button>
 
-      <p className="flex items-start gap-2.5 text-[11.5px] leading-relaxed text-gray-500">
-        <Icon name="shield" size={15} className="mt-px shrink-0 text-gray-400" />
+      <p className="flex items-start gap-2.5 text-[11.5px] leading-relaxed text-ink-muted">
+        <Icon name="shield" size={15} className="mt-px shrink-0 text-ink-muted" />
         Paystack takes the payment and settles it to {firmName}&apos;s own subaccount. Docket never
         holds client money.
       </p>

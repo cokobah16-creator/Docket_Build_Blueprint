@@ -87,7 +87,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
     return qs ? `/firm/messages?${qs}` : "/firm/messages";
   };
   const chip = (active: boolean) =>
-    cn("flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm", active ? "border-[#141414] bg-[#141414] text-white" : "border-gray-300 bg-white text-gray-700");
+    cn("flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm", active ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink");
 
   const target = (t: FirmThread) =>
     t.matter_id ? `/firm/matters/${t.matter_id}?tab=messages` : `/firm/appointments/${t.appointment_id}`;
@@ -145,7 +145,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
                   aria-current={isOpen ? "page" : undefined}
                   className={cn(
                     "flex items-start justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0",
-                    isOpen ? "bg-[#F0EEEA]" : "hover:bg-gray-50",
+                    isOpen ? "bg-[#F0EEEA]" : "hover:bg-sunken",
                   )}
                 >
                   <span className="min-w-0">
@@ -201,7 +201,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
   ) : (
     <Card className="grid min-h-[320px] place-items-center p-8 text-center">
       <div className="max-w-xs">
-        <Icon name="mail" size={28} className="mx-auto text-gray-300" />
+        <Icon name="mail" size={28} className="mx-auto text-ink-disabled" />
         <p className="mt-3 text-sm font-semibold text-[#141414]">
           {threads.length > 0 ? "Choose a conversation" : "No conversations yet"}
         </p>

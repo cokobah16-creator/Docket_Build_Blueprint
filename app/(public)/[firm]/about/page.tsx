@@ -21,7 +21,7 @@ export default async function AboutPage({ params }: { params: Promise<{ firm: st
       {page?.body ? (
         <ContentBody body={page.body} />
       ) : (
-        <div className="space-y-4 text-gray-700">
+        <div className="space-y-4 text-ink">
           <p>
             {firm.legal_name ?? firm.name} is a Nigerian law practice built around one idea:
             clients should always know where their matter stands.

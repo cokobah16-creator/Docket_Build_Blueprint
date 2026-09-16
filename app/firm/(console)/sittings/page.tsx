@@ -25,7 +25,7 @@ import { RegistryNoticesCard } from "@/components/firm/registry-notices-card";
 
 export const metadata = { title: "Sittings" };
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 interface MatterCourt {
   id: string;
@@ -186,7 +186,7 @@ export default async function SittingsPage({
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Sittings</h1>
-          <p className="text-sm text-gray-600">{ctx.firmName} · times in {tz}</p>
+          <p className="text-sm text-ink-muted">{ctx.firmName} · times in {tz}</p>
         </div>
         <Link href="/firm/matters" className="shrink-0 text-sm text-brand underline">All matters →</Link>
       </header>
@@ -216,7 +216,7 @@ export default async function SittingsPage({
             action={<Link href="/firm/matters" className="text-sm text-brand underline">Open a matter to post an update</Link>}
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {due.map((s: SittingDue) => {
               const matter = matterById.get(s.matter_id) ?? null;
               return (
@@ -224,8 +224,8 @@ export default async function SittingsPage({
                   <details>
                     <summary className="cursor-pointer marker:text-brand">
                       <span className="ml-1 inline-block align-top">
-                        <span className="block text-sm font-medium text-gray-900">{s.cause_title}</span>
-                        <span className="mt-0.5 block text-xs text-gray-600">
+                        <span className="block text-sm font-medium text-ink">{s.cause_title}</span>
+                        <span className="mt-0.5 block text-xs text-ink-muted">
                           {s.suit_number ?? s.reference}
                           {s.court ? ` · ${s.court}` : ""}
                           {s.purpose || s.purpose_kind ? ` · ${s.purpose ?? (s.purpose_kind ?? "").replace(/_/g, " ")}` : ""}
@@ -237,7 +237,7 @@ export default async function SittingsPage({
                         <span className="mt-1 block text-xs font-medium text-brand underline">Post what happened</span>
                       </span>
                     </summary>
-                    <div className="mt-4 border-t border-gray-100 pt-4">
+                    <div className="mt-4 border-t border-hairline pt-4">
                       <CourtUpdateForm
                         matterId={s.matter_id}
                         firmId={firmId}
@@ -249,7 +249,7 @@ export default async function SittingsPage({
                         judicialDivision={matter?.judicial_division ?? null}
                         sittingAt={s.scheduled_at}
                       />
-                      <p className="mt-3 text-xs text-gray-500">
+                      <p className="mt-3 text-xs text-ink-muted">
                         <Link href={`/firm/matters/${s.matter_id}`} className="text-brand underline">Open the matter →</Link>
                       </p>
                     </div>
@@ -269,18 +269,18 @@ export default async function SittingsPage({
             hint="A deadline is counted from a sitting or a service on a matter's Deadlines tab, from the rules the platform has entered, and confirmed by a lawyer."
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {proposedDeadlines.length > 0 && (
               <li className="px-4 py-2 text-xs font-medium text-amber-800 sm:px-5">{proposedDeadlines.length} proposed and not yet confirmed by a lawyer.</li>
             )}
             {deadlines.map((d) => (
               <li key={d.id} className={cn("px-4 py-3 sm:px-5", d.status === "confirmed" && d.due_on < today && "bg-red-50")}>
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-ink">
                   {formatDay(d.due_on)} · {d.title}
                   {d.status === "proposed" ? <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900">proposed</span> : null}
                   {d.status === "confirmed" && d.due_on < today ? <span className="ml-2 text-xs font-semibold text-red-700">past</span> : null}
                 </p>
-                <p className="text-xs text-gray-600">
+                <p className="text-xs text-ink-muted">
                   {d.cause_title} · {d.reference}
                   {d.rule_name ? ` · ${d.rule_name} (${d.rule_version})` : " · the firm's own date"}
                   {d.calculation?.coverage && !d.calculation.coverage.any_vacation_calendar ? " · counted with no vacation calendar entered" : ""}
@@ -301,17 +301,17 @@ export default async function SittingsPage({
             action={<Link href="/firm/matters" className="text-sm text-brand underline">Open a matter</Link>}
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {days.map((day) => (
               <li key={day.label} className="px-4 py-4 sm:px-5">
-                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">{day.label}</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{day.label}</p>
                 <ul className="mt-2 space-y-3">
                   {day.rows.map((row) => (
                     <li key={row.court_event_id} id={`event-${row.court_event_id}`}>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-ink">
                         {formatWhen(row.scheduled_at, tz, { timeStyle: "short" })} · {row.cause_title}
                       </p>
-                      <p className="text-xs text-gray-600">
+                      <p className="text-xs text-ink-muted">
                         {row.suit_number ?? row.reference}
                         {row.court ? ` · ${row.court}` : ""}
                         {row.courtroom ? ` · ${row.courtroom}` : ""}
@@ -329,18 +329,18 @@ export default async function SittingsPage({
                       </div>
 
                       <details className="mt-2">
-                        <summary className="cursor-pointer text-xs font-medium text-gray-700 marker:text-brand">
+                        <summary className="cursor-pointer text-xs font-medium text-ink marker:text-brand">
                           <span className="ml-1 underline">Date vacated</span>
                         </summary>
-                        <form action={vacate} className="mt-2 space-y-2 rounded-lg border border-gray-200 p-3">
+                        <form action={vacate} className="mt-2 space-y-2 rounded-lg border border-hairline p-3">
                           <input type="hidden" name="eventId" value={row.court_event_id} />
                           <input type="hidden" name="tz" value={tz} />
                           <input type="hidden" name="firm" value={sp.firm ?? ""} />
                           <div>
-                            <label htmlFor={`vr_${row.court_event_id}`} className="text-sm font-medium text-gray-900">
+                            <label htmlFor={`vr_${row.court_event_id}`} className="text-sm font-medium text-ink">
                               Why the date was vacated <span className="text-red-700">*</span>
                             </label>
-                            <p className="text-xs text-gray-500">Your client reads this on the timeline.</p>
+                            <p className="text-xs text-ink-muted">Your client reads this on the timeline.</p>
                             <input
                               id={`vr_${row.court_event_id}`} name="reason" type="text" required minLength={3} maxLength={500}
                               placeholder="The judge is on election duty" className={field}
@@ -348,16 +348,16 @@ export default async function SittingsPage({
                           </div>
                           <div className="flex flex-wrap items-end gap-3">
                             <div className="min-w-[9rem] flex-1">
-                              <label htmlFor={`vd_${row.court_event_id}`} className="text-sm font-medium text-gray-900">Refixed to (if the registry gave a date)</label>
+                              <label htmlFor={`vd_${row.court_event_id}`} className="text-sm font-medium text-ink">Refixed to (if the registry gave a date)</label>
                               <input id={`vd_${row.court_event_id}`} name="newDate" type="date" className={field} />
                             </div>
                             <div className="w-28">
-                              <label htmlFor={`vt_${row.court_event_id}`} className="text-sm font-medium text-gray-900">Time</label>
+                              <label htmlFor={`vt_${row.court_event_id}`} className="text-sm font-medium text-ink">Time</label>
                               <input id={`vt_${row.court_event_id}`} name="newTime" type="time" defaultValue="09:00" className={field} />
                             </div>
                           </div>
                           <div>
-                            <label htmlFor={`vp_${row.court_event_id}`} className="text-sm font-medium text-gray-900">Fixed for</label>
+                            <label htmlFor={`vp_${row.court_event_id}`} className="text-sm font-medium text-ink">Fixed for</label>
                             <input
                               id={`vp_${row.court_event_id}`} name="newPurpose" type="text" maxLength={200}
                               placeholder={row.purpose ?? "hearing"} className={field}
@@ -365,11 +365,11 @@ export default async function SittingsPage({
                           </div>
                           <button
                             type="submit"
-                            className="min-h-[44px] w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5"
+                            className="min-h-[44px] w-full rounded-lg border border-edge px-4 py-2.5 text-sm font-medium text-brand hover:bg-hover"
                           >
                             Record the vacated date
                           </button>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-ink-muted">
                             Leave the date blank if the registry has not refixed it — the matter is then marked as awaiting a date.
                           </p>
                         </form>

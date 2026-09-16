@@ -21,15 +21,15 @@ export default async function ServicesPage({ params }: { params: Promise<{ firm:
   return (
     <PageShell title="Services" intro="Every engagement starts with a consultation so your lawyer understands your situation first.">
       {services.length === 0 ? (
-        <p className="text-gray-600">Services are being set up. Please contact the firm directly.</p>
+        <p className="text-ink-muted">Services are being set up. Please contact the firm directly.</p>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {services.map((s) => (
             <Link key={s.id} href={`/${firm.slug}/services/${s.slug}`} className="block">
               <Card className="h-full transition hover:shadow-md">
                 <CardBody className="space-y-2">
-                  <h2 className="font-heading text-base font-semibold text-gray-900">{s.name}</h2>
-                  {s.description && <p className="text-sm text-gray-600">{s.description}</p>}
+                  <h2 className="font-heading text-base font-semibold text-ink">{s.name}</h2>
+                  {s.description && <p className="text-sm text-ink-muted">{s.description}</p>}
                   <p className="text-sm font-medium text-brand">
                     {formatMoneyMinor(s.price_minor, s.currency)} · {s.duration_min} minutes
                   </p>

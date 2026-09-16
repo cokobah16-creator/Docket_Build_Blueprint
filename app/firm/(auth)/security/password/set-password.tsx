@@ -144,7 +144,7 @@ export function SetPassword() {
   }
 
   if (stage === "checking") {
-    return <p className="text-sm text-gray-600">Checking your link…</p>;
+    return <p className="text-sm text-ink-muted">Checking your link…</p>;
   }
 
   if (stage === "dead") {
@@ -214,7 +214,7 @@ export function SetPassword() {
           <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
             {busy ? "Saving…" : "Set the new password"}
           </Button>
-          <p className="text-[11.5px] leading-relaxed text-gray-500">
+          <p className="text-[11.5px] leading-relaxed text-ink-muted">
             Your authenticator app is not affected. The console will still ask for its code.
           </p>
         </form>

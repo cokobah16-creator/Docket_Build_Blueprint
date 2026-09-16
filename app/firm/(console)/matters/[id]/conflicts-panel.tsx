@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { formatWhen } from "@/lib/time";
 import type { AdversePartyRow, ConflictCheckRow, ConflictMatch } from "@/lib/db/types";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const RELATION_LABELS: Record<AdversePartyRow["relation"], string> = {
   adverse: "Adverse party",
@@ -95,26 +95,26 @@ export function ConflictsPanel({
   }
 
   return (
-    <div className="divide-y divide-gray-100 border-t border-gray-100">
+    <div className="divide-y divide-hairline border-t border-hairline">
       {error && <div className="px-4 py-4 sm:px-5"><Alert kind="error" title="That was refused">{error}</Alert></div>}
 
       <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">The other side</h3>
-        <p className="mt-0.5 text-sm text-gray-600">
+        <h3 className="font-heading text-base font-semibold text-ink">The other side</h3>
+        <p className="mt-0.5 text-sm text-ink-muted">
           Everyone a conflict check must know about: the opposing party, co-parties, witnesses, related companies.
           Aliases catch the other spellings. The client never sees this list.
         </p>
         {adverse.length > 0 && (
-          <ul className="mt-3 divide-y divide-gray-100">
+          <ul className="mt-3 divide-y divide-hairline">
             {adverse.map((p) => (
               <li key={p.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-ink">
                     {p.name}
-                    <span className="ml-2 text-xs font-normal text-gray-500">{RELATION_LABELS[p.relation]} · {p.kind === "organisation" ? "organisation" : "person"}</span>
+                    <span className="ml-2 text-xs font-normal text-ink-muted">{RELATION_LABELS[p.relation]} · {p.kind === "organisation" ? "organisation" : "person"}</span>
                   </p>
-                  {p.aliases.length > 0 && <p className="text-xs text-gray-600">Also known as {p.aliases.join(", ")}</p>}
-                  {p.note && <p className="mt-0.5 text-xs text-gray-600">{p.note}</p>}
+                  {p.aliases.length > 0 && <p className="text-xs text-ink-muted">Also known as {p.aliases.join(", ")}</p>}
+                  {p.note && <p className="mt-0.5 text-xs text-ink-muted">{p.note}</p>}
                 </div>
                 <Button size="sm" variant="ghost" disabled={working === p.id} onClick={() => remove(p.id)}>
                   {working === p.id ? "Removing…" : "Remove"}
@@ -126,22 +126,22 @@ export function ConflictsPanel({
         <form onSubmit={add} className="mt-3 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="adverse-name" className="text-sm font-medium text-gray-900">Name</label>
+              <label htmlFor="adverse-name" className="text-sm font-medium text-ink">Name</label>
               <input id="adverse-name" type="text" maxLength={200} value={name} onChange={(e) => setName(e.target.value)} className={field} placeholder="As it appears on the process" />
             </div>
             <div>
-              <label htmlFor="adverse-aliases" className="text-sm font-medium text-gray-900">Also known as</label>
+              <label htmlFor="adverse-aliases" className="text-sm font-medium text-ink">Also known as</label>
               <input id="adverse-aliases" type="text" maxLength={600} value={aliases} onChange={(e) => setAliases(e.target.value)} className={field} placeholder="Other spellings, separated by commas" />
             </div>
             <div>
-              <label htmlFor="adverse-kind" className="text-sm font-medium text-gray-900">Who</label>
+              <label htmlFor="adverse-kind" className="text-sm font-medium text-ink">Who</label>
               <select id="adverse-kind" value={kind} onChange={(e) => setKind(e.target.value === "organisation" ? "organisation" : "person")} className={field}>
                 <option value="person">A person</option>
                 <option value="organisation">A company or body</option>
               </select>
             </div>
             <div>
-              <label htmlFor="adverse-relation" className="text-sm font-medium text-gray-900">Their part</label>
+              <label htmlFor="adverse-relation" className="text-sm font-medium text-ink">Their part</label>
               <select id="adverse-relation" value={relation} onChange={(e) => setRelation(e.target.value as AdversePartyRow["relation"])} className={field}>
                 {(Object.keys(RELATION_LABELS) as Array<AdversePartyRow["relation"]>).map((r) => (
                   <option key={r} value={r}>{RELATION_LABELS[r]}</option>
@@ -150,7 +150,7 @@ export function ConflictsPanel({
             </div>
           </div>
           <div>
-            <label htmlFor="adverse-note" className="text-sm font-medium text-gray-900">Note <span className="text-gray-500">(optional)</span></label>
+            <label htmlFor="adverse-note" className="text-sm font-medium text-ink">Note <span className="text-ink-muted">(optional)</span></label>
             <input id="adverse-note" type="text" maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} className={field} />
           </div>
           <Button type="submit" size="sm" disabled={busy || name.trim().length < 2}>{busy ? "Adding…" : "Add to the other side"}</Button>
@@ -160,8 +160,8 @@ export function ConflictsPanel({
       <section className="px-4 py-4 sm:px-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h3 className="font-heading text-base font-semibold text-gray-900">Conflict checks</h3>
-            <p className="mt-0.5 text-sm text-gray-600">
+            <h3 className="font-heading text-base font-semibold text-ink">Conflict checks</h3>
+            <p className="mt-0.5 text-sm text-ink-muted">
               A check searches the firm&rsquo;s own register for everyone this matter names — the client, the other side,
               the cause title — against every other matter, and records what it found. You decide; Docket only finds.
             </p>
@@ -185,24 +185,24 @@ export function ConflictsPanel({
         )}
 
         {checks.length === 0 ? (
-          <p className="mt-3 text-sm text-gray-600">No check has been run on this matter.</p>
+          <p className="mt-3 text-sm text-ink-muted">No check has been run on this matter.</p>
         ) : (
           <ul className="mt-3 space-y-3">
             {checks.map((c) => (
-              <li key={c.id} className="rounded-lg border border-gray-200 p-3">
+              <li key={c.id} className="rounded-lg border border-hairline p-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-ink">
                     {c.outcome ? OUTCOME_LABELS[c.outcome] : "Undecided"}
-                    <span className="ml-2 text-xs font-normal text-gray-500">
+                    <span className="ml-2 text-xs font-normal text-ink-muted">
                       {c.matches.length === 1 ? "1 match" : `${c.matches.length} matches`} for {(c.query.names?.length ?? 0) > 0 ? c.query.names!.join(", ") : (c.query.keys ?? []).join(", ")}
                     </span>
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-muted">
                     Run {formatWhen(c.created_at, timezone)}{c.created_by ? ` by ${names[c.created_by] ?? "a colleague"}` : ""}
                   </p>
                 </div>
                 {c.outcome && (
-                  <p className="mt-1 text-xs text-gray-600">
+                  <p className="mt-1 text-xs text-ink-muted">
                     Decided {c.reviewed_at ? formatWhen(c.reviewed_at, timezone) : ""}{c.reviewed_by ? ` by ${names[c.reviewed_by] ?? "a colleague"}` : ""}
                     {c.decision_note ? ` — ${c.decision_note}` : ""}
                   </p>

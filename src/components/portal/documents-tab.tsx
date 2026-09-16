@@ -208,8 +208,8 @@ export function DocumentsTab({
     <div>
       {error && <div className="px-5 pt-4"><Alert kind="error">{error}</Alert></div>}
       {canUpload && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-3">
-          <p className="text-xs text-gray-500">PDF, Word, JPEG, PNG or HEIC · up to 25 MB · shared with your firm</p>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-hairline px-5 py-3">
+          <p className="text-xs text-ink-muted">PDF, Word, JPEG, PNG or HEIC · up to 25 MB · shared with your firm</p>
           <label
             onClick={() => setForRequest(null)}
             className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
@@ -222,14 +222,14 @@ export function DocumentsTab({
       )}
       {/* What the firm has asked for and has not received. An upload made from here answers it. */}
       {requests.filter((r) => !r.fulfilled_at && !r.cancelled_at).length > 0 && (
-        <section className="border-b border-gray-100 bg-[#FFFAEB] px-5 py-4">
+        <section className="border-b border-hairline bg-[#FFFAEB] px-5 py-4">
           <h3 className="text-sm font-semibold text-[#92400E]">Your firm has asked you for</h3>
           <ul className="mt-2 space-y-2">
             {requests.filter((r) => !r.fulfilled_at && !r.cancelled_at).map((r) => (
               <li key={r.id} className="flex flex-wrap items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{r.title}</p>
-                  {r.why && <p className="text-xs text-gray-700">{r.why}</p>}
+                  <p className="text-sm font-medium text-ink">{r.title}</p>
+                  {r.why && <p className="text-xs text-ink">{r.why}</p>}
                   {r.due_on && <p className="text-xs text-[#92400E]">By {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${r.due_on}T00:00:00Z`))}</p>}
                 </div>
                 {canUpload && (
@@ -243,22 +243,22 @@ export function DocumentsTab({
         </section>
       )}
       {requests.some((r) => r.fulfilled_at) && (
-        <p className="border-b border-gray-100 px-5 py-2 text-xs text-gray-500">
+        <p className="border-b border-hairline px-5 py-2 text-xs text-ink-muted">
           Answered: {requests.filter((r) => r.fulfilled_at).map((r) => r.title).join(", ")}.
         </p>
       )}
       {documents.length === 0 ? (
-        <p className="px-5 py-8 text-center text-sm text-gray-500">
+        <p className="px-5 py-8 text-center text-sm text-ink-muted">
           {audience === "staff" ? "Nothing has been sent in on this consultation yet." : "No documents yet. Upload one, or wait for your lawyer to share."}
         </p>
       ) : (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y divide-hairline">
           {documents.map((d) => (
             <li key={d.id} className="px-5 py-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-gray-900">{d.name}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="truncate text-sm font-medium text-ink">{d.name}</p>
+                  <p className="text-xs text-ink-muted">
                     {fmt.format(new Date(d.created_at))}{d.version?.size_bytes ? ` · ${fmtSize(d.version.size_bytes)}` : ""}{d.category ? ` · ${d.category.replace(/_/g, " ")}` : ""}
                     {d.version_count > 1 && (
                       <> · <button type="button" className="underline" onClick={() => loadVersions(d)}>{d.version_count} versions</button></>
@@ -280,7 +280,7 @@ export function DocumentsTab({
                     </p>
                   )}
                   {signaturesOf(d).map((sg) => (
-                    <p key={sg.id} className="text-xs text-gray-600">Signed by {sg.signer_id === userId ? "you" : sg.signer_name}{sg.signer_role === "staff" ? " for the firm" : ""} · {fmt.format(new Date(sg.signed_at))}</p>
+                    <p key={sg.id} className="text-xs text-ink-muted">Signed by {sg.signer_id === userId ? "you" : sg.signer_name}{sg.signer_role === "staff" ? " for the firm" : ""} · {fmt.format(new Date(sg.signed_at))}</p>
                   ))}
                 </div>
                 {d.version ? (
@@ -294,7 +294,7 @@ export function DocumentsTab({
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="text-xs text-[#92400E]">No file yet — the upload stopped.</span>
                     {canUpload && userId && d.uploaded_by === userId && (
-                      <label className="inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-gray-300 px-3 text-sm text-gray-800 hover:bg-black/5">
+                      <label className="inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-edge px-3 text-sm text-ink hover:bg-hover">
                         Finish upload
                         <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => finishUpload(d, e)} disabled={Boolean(busy)} />
                       </label>
@@ -307,7 +307,7 @@ export function DocumentsTab({
                 )}
               </div>
               {versions[d.id] && (
-                <ul className="mt-2 space-y-1 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+                <ul className="mt-2 space-y-1 rounded-lg bg-sunken p-3 text-xs text-ink-muted">
                   {versions[d.id].map((v, i) => (
                     <li key={v.id} className="flex justify-between gap-2">
                       <span>Version {versions[d.id].length - i} · {fmt.format(new Date(v.created_at))} · {fmtSize(v.size_bytes)}</span>
@@ -328,10 +328,10 @@ export function DocumentsTab({
 
       <Modal open={Boolean(preview)} onClose={() => setPreview(null)} title={preview?.doc.name ?? "Document"}>
         {preview && (preview.loading ? (
-          <p className="text-sm text-gray-600">Preparing a secure link…</p>
+          <p className="text-sm text-ink-muted">Preparing a secure link…</p>
         ) : !preview.url ? (
           <div className="space-y-3">
-            <p className="text-sm text-gray-700">Low-data mode is on. Load this {fmtSize(preview.doc.version?.size_bytes) || "file"} preview?</p>
+            <p className="text-sm text-ink">Low-data mode is on. Load this {fmtSize(preview.doc.version?.size_bytes) || "file"} preview?</p>
             <Button onClick={() => openPreview(preview.doc, true)}>Load preview</Button>
           </div>
         ) : isImage(preview.doc.version?.mime) ? (
@@ -339,16 +339,16 @@ export function DocumentsTab({
           <img src={preview.url} alt={preview.doc.name} className="max-h-[70vh] w-full rounded-lg object-contain" />
         ) : isPdf(preview.doc.version?.mime) ? (
           <div className="space-y-3">
-            <iframe src={preview.url} title={preview.doc.name} className="h-[70vh] w-full rounded-lg border border-gray-200" />
+            <iframe src={preview.url} title={preview.doc.name} className="h-[70vh] w-full rounded-lg border border-hairline" />
             <a href={preview.url} target="_blank" rel="noreferrer" className="text-sm text-brand underline">Open in a new tab</a>
           </div>
         ) : (
           <div className="space-y-3">
-            <p className="text-sm text-gray-700">This file type has no in-app preview.</p>
+            <p className="text-sm text-ink">This file type has no in-app preview.</p>
             <a href={preview.url} className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on" download={preview.doc.name}>Download</a>
           </div>
         ))}
-        <p className="mt-3 text-xs text-gray-500">Links expire after two minutes.</p>
+        <p className="mt-3 text-xs text-ink-muted">Links expire after two minutes.</p>
       </Modal>
     </div>
   );

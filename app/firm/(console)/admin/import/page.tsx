@@ -61,19 +61,19 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
           {batches.length === 0 ? (
             <EmptyState title="Nothing has been imported yet" hint="Every import is kept, row by row, with what became of each." />
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-hairline">
               {batches.map((b) => (
                 <li key={b.id} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
                   <div>
                     <Link href={`/firm/admin/import/${b.id}?firm=${firmId}`} className="text-sm font-medium text-brand underline">{b.source_name ?? "A file"}</Link>
-                    <p className="text-xs text-gray-600">{b.row_count} {b.row_count === 1 ? "row" : "rows"} · {b.created_by ? names[b.created_by] ?? "a colleague" : "a colleague"} · {formatWhen(b.created_at, ctx.timezone)}</p>
+                    <p className="text-xs text-ink-muted">{b.row_count} {b.row_count === 1 ? "row" : "rows"} · {b.created_by ? names[b.created_by] ?? "a colleague" : "a colleague"} · {formatWhen(b.created_at, ctx.timezone)}</p>
                   </div>
-                  <span className="text-xs text-gray-600">{b.processed_at ? "Processed" : "Not finished — open it to continue"}</span>
+                  <span className="text-xs text-ink-muted">{b.processed_at ? "Processed" : "Not finished — open it to continue"}</span>
                 </li>
               ))}
             </ul>
           )}
-          <p className="mt-3 text-xs text-gray-500">The twenty most recent are listed.</p>
+          <p className="mt-3 text-xs text-ink-muted">The twenty most recent are listed.</p>
         </CardBody>
       </Card>
     </div>

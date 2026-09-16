@@ -37,7 +37,7 @@ import { CopyLink } from "../new/invoice-composer";
 
 export const metadata = { title: "Invoice" };
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const OWING = new Set(["issued", "partially_paid", "overdue"]);
 
@@ -177,7 +177,7 @@ export default async function FirmInvoicePage({
           <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">
             {isPaid ? "Receipt" : "Invoice"} {inv.number}
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-muted">
             {clientName} · {firmName}
             {matter ? " · " : ""}
             {matter && (
@@ -213,49 +213,49 @@ export default async function FirmInvoicePage({
             <CardHeader title="What was billed" />
             <CardBody>
               {items.length === 0 ? (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-ink-muted">
                   No lines are recorded against this invoice. Its totals below are the ones the database holds.
                 </p>
               ) : (
-                <ul className="divide-y divide-gray-100">
+                <ul className="divide-y divide-hairline">
                   {items.map((item) => {
                     const quantity = Number(item.quantity);
                     const lineMinor = Math.round(Number(item.unit_minor) * quantity);
                     return (
                       <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm text-gray-900">{item.description}</p>
+                          <p className="text-sm text-ink">{item.description}</p>
                           {quantity !== 1 && (
-                            <p className="text-xs text-gray-500">
+                            <p className="text-xs text-ink-muted">
                               {quantity} × {money(Number(item.unit_minor))}
                             </p>
                           )}
                         </div>
-                        <p className="shrink-0 text-sm font-medium text-gray-900">{money(lineMinor)}</p>
+                        <p className="shrink-0 text-sm font-medium text-ink">{money(lineMinor)}</p>
                       </li>
                     );
                   })}
                 </ul>
               )}
 
-              <dl className="mt-4 space-y-2 border-t border-gray-100 pt-4 text-sm">
+              <dl className="mt-4 space-y-2 border-t border-hairline pt-4 text-sm">
                 <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-gray-600">Subtotal</dt>
-                  <dd className="text-gray-900">{money(Number(inv.subtotal_minor))}</dd>
+                  <dt className="text-ink-muted">Subtotal</dt>
+                  <dd className="text-ink">{money(Number(inv.subtotal_minor))}</dd>
                 </div>
                 <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-gray-600">VAT</dt>
-                  <dd className="text-gray-900">{money(Number(inv.vat_minor))}</dd>
+                  <dt className="text-ink-muted">VAT</dt>
+                  <dd className="text-ink">{money(Number(inv.vat_minor))}</dd>
                 </div>
                 <div className="flex items-baseline justify-between gap-4">
                   <dt className="font-heading text-base font-semibold text-brand">Total</dt>
                   <dd className="font-heading text-base font-semibold text-brand">{money(Number(inv.total_minor))}</dd>
                 </div>
                 <div className="flex items-baseline justify-between gap-4">
-                  <dt className="text-gray-600">Paid</dt>
-                  <dd className="text-gray-900">{money(Number(inv.paid_minor))}</dd>
+                  <dt className="text-ink-muted">Paid</dt>
+                  <dd className="text-ink">{money(Number(inv.paid_minor))}</dd>
                 </div>
-                <div className="flex items-baseline justify-between gap-4 border-t border-gray-100 pt-2">
+                <div className="flex items-baseline justify-between gap-4 border-t border-hairline pt-2">
                   <dt className={cn("font-medium", outstanding > 0 ? "text-amber-800" : "text-emerald-800")}>
                     {outstanding > 0 ? "Outstanding" : "Nothing outstanding"}
                   </dt>
@@ -266,9 +266,9 @@ export default async function FirmInvoicePage({
               </dl>
 
               {Number(inv.vat_minor) > 0 && firm?.tin && (
-                <p className="mt-3 text-xs text-gray-500">VAT charged under TIN {firm.tin}.</p>
+                <p className="mt-3 text-xs text-ink-muted">VAT charged under TIN {firm.tin}.</p>
               )}
-              <p className="mt-3 text-xs text-gray-500">
+              <p className="mt-3 text-xs text-ink-muted">
                 Raised {formatWhen(inv.created_at, tz, { dateStyle: "medium", timeStyle: "short" })}
                 {inv.issued_at ? ` · issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium", timeStyle: "short" })}` : " · not issued yet"}
                 {inv.due_at ? ` · falls due ${dayLabel(inv.due_at)}` : " · no due date set"} · times in {tz}.
@@ -281,8 +281,8 @@ export default async function FirmInvoicePage({
             <CardBody>
               {payments.length === 0 ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-700">Nothing has been paid against this invoice yet.</p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink">Nothing has been paid against this invoice yet.</p>
+                  <p className="text-sm text-ink-muted">
                     {isDraft
                       ? "Issue it and the client can pay from their app; the payment is recorded here the moment the provider confirms it."
                       : isCancelled
@@ -291,18 +291,18 @@ export default async function FirmInvoicePage({
                   </p>
                 </div>
               ) : (
-                <ul className="divide-y divide-gray-100">
+                <ul className="divide-y divide-hairline">
                   {payments.map((p) => (
                     <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-gray-900">
+                        <p className="text-sm text-ink">
                           {formatMoneyMinor(Number(p.amount_minor), p.currency)} · {p.status.replace(/_/g, " ")}
                         </p>
-                        <p className="break-all text-xs text-gray-500">
+                        <p className="break-all text-xs text-ink-muted">
                           {p.provider} · {p.provider_ref}
                         </p>
                       </div>
-                      <p className="shrink-0 text-xs text-gray-600">
+                      <p className="shrink-0 text-xs text-ink-muted">
                         {p.paid_at ? formatWhen(p.paid_at, tz, { dateStyle: "medium", timeStyle: "short" }) : "not settled"}
                       </p>
                     </li>
@@ -318,16 +318,16 @@ export default async function FirmInvoicePage({
             <CardHeader title={isPaid ? "The client's receipt" : "The client's pay link"} />
             <CardBody className="space-y-3">
               {isDraft ? (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-ink-muted">
                   The link works once the invoice is issued. Until then the client&rsquo;s app shows them nothing.
                 </p>
               ) : isCancelled ? (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-ink-muted">
                   This invoice was cancelled, so the link only tells the client it can no longer be paid.
                 </p>
               ) : (
                 <>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-muted">
                     {isPaid
                       ? "This opens the receipt in the client's own app."
                       : `This signs ${clientName} in to their own app on this invoice. Anyone holding it can see the invoice, so send it only to the client.`}
@@ -347,7 +347,7 @@ export default async function FirmInvoicePage({
                     {mailHref && (
                       <a
                         href={mailHref}
-                        className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
+                        className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:bg-hover"
                       >
                         Send by email
                       </a>
@@ -365,7 +365,7 @@ export default async function FirmInvoicePage({
                 href={`/app/payments/${inv.id}/pdf`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex min-h-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
+                className="flex min-h-[44px] items-center justify-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:bg-hover"
               >
                 Open the PDF {isPaid ? "receipt" : "invoice"}
               </a>
@@ -377,27 +377,27 @@ export default async function FirmInvoicePage({
             <CardBody>
               <dl className="space-y-2 text-sm">
                 <div>
-                  <dt className="text-gray-500">Client</dt>
-                  <dd className="font-medium text-gray-900">
+                  <dt className="text-ink-muted">Client</dt>
+                  <dd className="font-medium text-ink">
                     <Link href={`/firm/clients/${inv.client_id}${firmQuery}`} className="text-brand underline">
                       {clientName}
                     </Link>
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Phone</dt>
-                  <dd className="font-medium text-gray-900">{client?.phone ?? "—"}</dd>
+                  <dt className="text-ink-muted">Phone</dt>
+                  <dd className="font-medium text-ink">{client?.phone ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Email</dt>
-                  <dd className="break-all font-medium text-gray-900">
+                  <dt className="text-ink-muted">Email</dt>
+                  <dd className="break-all font-medium text-ink">
                     {client?.email ?? <span className="text-amber-800">none on file — no receipt can be emailed</span>}
                   </dd>
                 </div>
                 {matter && (
                   <div>
-                    <dt className="text-gray-500">Matter</dt>
-                    <dd className="font-medium text-gray-900">
+                    <dt className="text-ink-muted">Matter</dt>
+                    <dd className="font-medium text-ink">
                       <Link href={`/firm/matters/${matter.id}?tab=invoices`} className="text-brand underline">
                         {matter.reference} · {matter.title}
                       </Link>
@@ -414,13 +414,13 @@ export default async function FirmInvoicePage({
               <CardBody className="space-y-3">
                 <form action={issue} className="space-y-3">
                   <div>
-                    <label htmlFor="dueOn" className="text-sm font-medium text-gray-900">Falls due on</label>
-                    <p className="text-xs text-gray-500">
+                    <label htmlFor="dueOn" className="text-sm font-medium text-ink">Falls due on</label>
+                    <p className="text-xs text-ink-muted">
                       Optional. {inv.due_at ? `Currently ${dayLabel(inv.due_at)}; leave it empty to keep that day.` : "Leave it empty for no due date."}
                     </p>
                     <input id="dueOn" name="dueOn" type="date" defaultValue="" className={field} />
                   </div>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-muted">
                     Issuing tells {clientName} straight away and lets them pay {money(Number(inv.total_minor))} from
                     their app.
                   </p>
@@ -435,27 +435,27 @@ export default async function FirmInvoicePage({
               <CardHeader title="Cancel it" />
               <CardBody className="space-y-3">
                 {inv.appointment_id ? (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-muted">
                     This is a consultation fee. Cancel the appointment instead and its invoice follows — the database
                     refuses to cancel it on its own.
                   </p>
                 ) : isAdmin ? (
                   <form action={cancel} className="space-y-3">
                     <div>
-                      <label htmlFor="reason" className="text-sm font-medium text-gray-900">
+                      <label htmlFor="reason" className="text-sm font-medium text-ink">
                         Why <span className="text-red-700">*</span>
                       </label>
-                      <p className="text-xs text-gray-500">Kept in the firm&rsquo;s audit trail. The client is not sent this.</p>
+                      <p className="text-xs text-ink-muted">Kept in the firm&rsquo;s audit trail. The client is not sent this.</p>
                       <textarea id="reason" name="reason" rows={3} required minLength={3} maxLength={500} className={field} />
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-ink-muted">
                       Once cancelled the client cannot pay it. A part-paid or paid invoice can never be cancelled —
                       raise a credit note instead.
                     </p>
                     <Button type="submit" variant="danger">Cancel this invoice</Button>
                   </form>
                 ) : (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-ink-muted">
                     An owner or an admin of {firm?.name ?? ctx.firmName} can cancel an unpaid invoice. The database
                     allows nobody else, so ask one of them.
                   </p>
@@ -468,18 +468,18 @@ export default async function FirmInvoicePage({
             <Card>
               <CardHeader title="Chase it" />
               <CardBody className="space-y-2">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-ink">
                   {money(outstanding)} is still owed
                   {inv.due_at ? `, due ${dayLabel(inv.due_at)}` : ""}.
                 </p>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-ink-muted">
                   Send the link above again, or open the matter and message the client on the file so the exchange is
                   kept with it.
                 </p>
                 {matter && (
                   <Link
                     href={`/firm/matters/${matter.id}?tab=messages`}
-                    className="flex min-h-[44px] items-center justify-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
+                    className="flex min-h-[44px] items-center justify-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:bg-hover"
                   >
                     Message the client on the matter
                   </Link>

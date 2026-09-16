@@ -32,7 +32,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body className="min-h-screen text-gray-900 antialiased">
+      <body className="min-h-screen text-ink antialiased">
         <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-5 px-4 py-10">
           <Alert kind="error" title="Docket did not load">
             Something went wrong on our side before the page could be built. Try again in a

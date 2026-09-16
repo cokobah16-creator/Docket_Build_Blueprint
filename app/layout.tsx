@@ -30,7 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       {/* dvh rather than vh: on a phone vh is the tall viewport the URL bar is
           hiding behind, so a "full height" screen is taller than the glass. */}
-      <body className="min-h-[100dvh] text-gray-900 antialiased">{children}</body>
+      <body className="min-h-[100dvh] text-ink antialiased">{children}</body>
     </html>
   );
 }

@@ -25,9 +25,9 @@ export default async function LawyerProfilePage({ params }: { params: Params }) 
   return (
     <PageShell title={lawyerDisplayName(row, firm.name)} intro={row.title ?? undefined}>
       {row.practice_areas.length > 0 && (
-        <p className="text-sm text-gray-500">{row.practice_areas.join(" · ")}</p>
+        <p className="text-sm text-ink-muted">{row.practice_areas.join(" · ")}</p>
       )}
-      {row.bio && <p className="mt-4 whitespace-pre-line text-gray-700">{row.bio}</p>}
+      {row.bio && <p className="mt-4 whitespace-pre-line text-ink">{row.bio}</p>}
       <div className="mt-8">
         <Link
           href={`/${firm.slug}/book?lawyer=${row.id}`}

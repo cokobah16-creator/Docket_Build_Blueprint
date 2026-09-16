@@ -78,7 +78,7 @@ export default async function FirmLayout({
       className="min-h-screen bg-brand-surface"
     >
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
-      <header className="border-b border-black/5 bg-white">
+      <header className="border-b border-black/5 bg-raised">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
           <Link href={base} className="font-heading text-lg font-semibold text-brand">
             {firm.name}
@@ -88,12 +88,12 @@ export default async function FirmLayout({
               <Link
                 key={item.href}
                 href={`${base}${item.href}`}
-                className="text-sm font-medium text-gray-600 hover:text-brand"
+                className="text-sm font-medium text-ink-muted hover:text-brand"
               >
                 {item.label}
               </Link>
             ))}
-            <Link href="/app/login" className="text-sm font-medium text-gray-600 hover:text-brand">
+            <Link href="/app/login" className="text-sm font-medium text-ink-muted hover:text-brand">
               Client sign in
             </Link>
             <Link
@@ -108,8 +108,8 @@ export default async function FirmLayout({
 
       <main>{children}</main>
 
-      <footer className="mt-16 border-t border-black/5 bg-white">
-        <div className="mx-auto max-w-5xl space-y-3 px-4 py-8 text-sm text-gray-500">
+      <footer className="mt-16 border-t border-black/5 bg-raised">
+        <div className="mx-auto max-w-5xl space-y-3 px-4 py-8 text-sm text-ink-muted">
           {firm.policies.disclaimer?.text ? <p>{String(firm.policies.disclaimer.text)}</p> : null}
           <p className="flex flex-wrap gap-x-4 gap-y-1">
             <Link href={`${base}/terms`} className="hover:text-brand">Terms of service</Link>

@@ -28,7 +28,7 @@ export function FirmStatusControl({ firmId, status }: { firmId: string; status: 
   return (
     <form action={action} className="space-y-2">
       <input type="hidden" name="firmId" value={firmId} />
-      <label className="block text-xs font-medium text-gray-600" htmlFor={`status-${firmId}`}>
+      <label className="block text-xs font-medium text-ink-muted" htmlFor={`status-${firmId}`}>
         Status
       </label>
       <select
@@ -36,19 +36,19 @@ export function FirmStatusControl({ firmId, status }: { firmId: string; status: 
         name="status"
         value={choice}
         onChange={(e) => setChoice(e.target.value)}
-        className="min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
+        className="min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink"
       >
         <option value="pending">Pending — awaiting verification</option>
         <option value="active">Active</option>
         <option value="suspended">Suspended</option>
       </select>
-      <p className="text-xs text-gray-500">{WHAT_IT_DOES[choice]}</p>
+      <p className="text-xs text-ink-muted">{WHAT_IT_DOES[choice]}</p>
       <input
         name="note"
         maxLength={500}
         placeholder="Why (kept in the audit trail)"
         aria-label="Why this status is changing"
-        className="min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
+        className="min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink"
       />
       <button
         type="submit"

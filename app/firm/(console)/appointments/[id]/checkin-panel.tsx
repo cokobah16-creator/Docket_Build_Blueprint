@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { formatDay } from "@/lib/days";
 import type { AppointmentReadiness, ConflictMatch, DocumentRequestRow } from "@/lib/db/types";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWrite }: { appointmentId: string; firmId: string; readiness: AppointmentReadiness; requests: DocumentRequestRow[]; canWrite: boolean }) {
   const router = useRouter();
@@ -63,25 +63,25 @@ export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWr
   return (
     <div className="space-y-4">
       {error && <Alert kind="error" title="That was refused">{error}</Alert>}
-      <ul className="divide-y divide-gray-100">
+      <ul className="divide-y divide-hairline">
         {readiness.items.map((i) => (
           <li key={i.kind} className="flex items-start gap-3 py-2">
             <span className={i.satisfied ? "mt-0.5 text-emerald-700" : "mt-0.5 text-amber-700"} aria-hidden="true">{i.satisfied ? "✓" : "·"}</span>
             <div className="min-w-0">
-              <p className={i.satisfied ? "text-sm text-gray-500" : "text-sm font-medium text-gray-900"}>{i.label}</p>
-              <p className="text-xs text-gray-600">{i.detail}{i.kind === "intake" && i.missing?.length ? ` (${i.missing.map((m) => m.label).join(", ")})` : ""}</p>
+              <p className={i.satisfied ? "text-sm text-ink-muted" : "text-sm font-medium text-ink"}>{i.label}</p>
+              <p className="text-xs text-ink-muted">{i.detail}{i.kind === "intake" && i.missing?.length ? ` (${i.missing.map((m) => m.label).join(", ")})` : ""}</p>
             </div>
           </li>
         ))}
-        {readiness.items.length === 0 && <li className="py-2 text-sm text-gray-600">Nothing is required of the client before this consultation.</li>}
+        {readiness.items.length === 0 && <li className="py-2 text-sm text-ink-muted">Nothing is required of the client before this consultation.</li>}
       </ul>
 
       {/* The firm's own check. It exists as a readiness item only where the firm requires
           clearance, and only a check naming this consultation clears it. */}
       {readiness.items.some((i) => i.kind === "conflict") && (
-        <div className="rounded-lg border border-gray-200 p-3">
-          <p className="text-sm font-medium text-gray-900">The firm&rsquo;s own check</p>
-          <p className="text-xs text-gray-600">Run against this consultation, over the firm&rsquo;s own register. The client never sees what it found.</p>
+        <div className="rounded-lg border border-hairline p-3">
+          <p className="text-sm font-medium text-ink">The firm&rsquo;s own check</p>
+          <p className="text-xs text-ink-muted">Run against this consultation, over the firm&rsquo;s own register. The client never sees what it found.</p>
           {readiness.items.find((i) => i.kind === "conflict")?.satisfied ? (
             <p className="mt-2 text-sm text-emerald-800">Cleared.</p>
           ) : (
@@ -109,39 +109,39 @@ export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWr
       {readiness.held && (
         <div className="flex flex-wrap items-center gap-3">
           <Button type="button" onClick={confirm} disabled={pending || !canWrite}>{pending ? "Confirming…" : "Confirm the consultation"}</Button>
-          <span className="text-xs text-gray-600">
+          <span className="text-xs text-ink-muted">
             {readiness.ready ? "Everything asked for is in." : readiness.checkin_required ? "The database refuses until every item above is in." : "Nothing is required; confirm when you are ready."}
           </span>
         </div>
       )}
 
-      <div className="rounded-lg border border-gray-200 p-3">
-        <p className="text-sm font-medium text-gray-900">Ask the client for a document before you meet</p>
+      <div className="rounded-lg border border-hairline p-3">
+        <p className="text-sm font-medium text-ink">Ask the client for a document before you meet</p>
         {open.length > 0 && (
-          <ul className="mt-2 divide-y divide-gray-100">
+          <ul className="mt-2 divide-y divide-hairline">
             {open.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <span className="text-sm text-gray-800">{r.title}{r.due_on ? <span className="ml-1 text-xs text-gray-500">by {formatDay(r.due_on)}</span> : null}</span>
+                <span className="text-sm text-ink">{r.title}{r.due_on ? <span className="ml-1 text-xs text-ink-muted">by {formatDay(r.due_on)}</span> : null}</span>
                 {canWrite && <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => withdraw(r.id)}>Withdraw</Button>}
               </li>
             ))}
           </ul>
         )}
-        {answered.length > 0 && <p className="mt-2 text-xs text-gray-600">Answered: {answered.map((r) => r.title).join(", ")}.</p>}
+        {answered.length > 0 && <p className="mt-2 text-xs text-ink-muted">Answered: {answered.map((r) => r.title).join(", ")}.</p>}
         {canWrite && (
           <form onSubmit={ask} className="mt-3 space-y-2">
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
-                <label htmlFor="ck-title" className="text-sm font-medium text-gray-900">Document</label>
+                <label htmlFor="ck-title" className="text-sm font-medium text-ink">Document</label>
                 <input id="ck-title" type="text" maxLength={200} value={title} onChange={(e) => setTitle(e.target.value)} className={field} placeholder="Tenancy agreement" />
               </div>
               <div>
-                <label htmlFor="ck-due" className="text-sm font-medium text-gray-900">Needed by</label>
+                <label htmlFor="ck-due" className="text-sm font-medium text-ink">Needed by</label>
                 <input id="ck-due" type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} className={field} />
               </div>
             </div>
             <div>
-              <label htmlFor="ck-why" className="text-sm font-medium text-gray-900">Why <span className="text-gray-500">(optional, the client reads it)</span></label>
+              <label htmlFor="ck-why" className="text-sm font-medium text-ink">Why <span className="text-ink-muted">(optional, the client reads it)</span></label>
               <input id="ck-why" type="text" maxLength={2000} value={why} onChange={(e) => setWhy(e.target.value)} className={field} />
             </div>
             <Button type="submit" size="sm" disabled={pending || title.trim().length < 2}>{pending ? "Asking…" : "Ask for it"}</Button>

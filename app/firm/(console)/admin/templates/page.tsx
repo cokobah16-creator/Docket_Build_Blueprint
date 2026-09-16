@@ -35,7 +35,7 @@ export default async function TemplatesPage({ searchParams }: { searchParams: Pr
     <div className="space-y-6">
       <header>
         <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Templates</h1>
-        <p className="text-sm text-gray-600">{ctx.firmName} · documents drawn from a matter&apos;s own facts, and how each is executed</p>
+        <p className="text-sm text-ink-muted">{ctx.firmName} · documents drawn from a matter&apos;s own facts, and how each is executed</p>
       </header>
       {error && <Alert kind="error" title="The templates could not be read">{error.message}. That is a failed read, not an empty list.</Alert>}
       {!ctx.isAdmin && <Alert kind="info">You are {ctx.role} here: the templates are shown, and an owner or administrator edits them.</Alert>}

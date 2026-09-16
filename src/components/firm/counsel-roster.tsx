@@ -31,7 +31,7 @@ import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
 import type { MatterCounselRow, ServiceDirectoryRow } from "@/lib/db/types";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const SIDES: Array<{ value: string; label: string }> = [
   { value: "opposing", label: "Opposing counsel" },
@@ -103,7 +103,7 @@ function addressLine(address: Record<string, unknown> | null | undefined): strin
 function chipClass(active: boolean): string {
   return cn(
     "min-h-[44px] rounded-xl border px-3 py-2 text-sm font-medium transition",
-    active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
+    active ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink hover:border-brand",
   );
 }
 
@@ -208,8 +208,8 @@ export function CounselRoster({
     <div className="space-y-4">
       {error && <Alert kind="error" title="The database refused this">{error}</Alert>}
 
-      <p className="text-sm text-gray-600">
-        Counsel on the other side is an <span className="font-medium text-gray-900">address for service</span>, never
+      <p className="text-sm text-ink-muted">
+        Counsel on the other side is an <span className="font-medium text-ink">address for service</span>, never
         access to this file. A firm on Docket sees only the processes you serve on it; everyone else is simply where a
         process is to be delivered. Someone who should read the matter is invited as a client or a contact instead.
       </p>
@@ -221,7 +221,7 @@ export function CounselRoster({
           action={<Button onClick={() => { setAdding(true); setError(null); }}>Add counsel</Button>}
         />
       ) : (
-        <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
+        <ul className="divide-y divide-hairline rounded-lg border border-hairline">
           {counsel.map((row) => {
             const firm = row.counsel_firm_id ? directoryById.get(row.counsel_firm_id) ?? null : null;
             const sideLabel = SIDES.find((s) => s.value === row.side)?.label ?? row.side;
@@ -231,10 +231,10 @@ export function CounselRoster({
               <li key={row.id} className="space-y-2 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="font-medium text-gray-900">
+                    <p className="font-medium text-ink">
                       {firm ? firm.name : counselLabel(row)}
                     </p>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-ink-muted">
                       {sideLabel}
                       {row.party_name ? ` · for ${row.party_name}` : ""}
                       {partySideLabel ? ` (${partySideLabel})` : ""}
@@ -250,7 +250,7 @@ export function CounselRoster({
                   </div>
                 </div>
 
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-ink-muted">
                   {row.counsel_firm_id ? (
                     firm ? (
                       <>
@@ -268,27 +268,27 @@ export function CounselRoster({
                   )}
                 </p>
 
-                <dl className="grid gap-x-4 gap-y-1 text-sm text-gray-700 sm:grid-cols-2">
+                <dl className="grid gap-x-4 gap-y-1 text-sm text-ink sm:grid-cols-2">
                   {row.counsel_firm_id && row.counsel_name && (
-                    <div className="flex gap-2"><dt className="text-gray-500">Counsel</dt><dd>{row.counsel_name}</dd></div>
+                    <div className="flex gap-2"><dt className="text-ink-muted">Counsel</dt><dd>{row.counsel_name}</dd></div>
                   )}
-                  {row.scn && <div className="flex gap-2"><dt className="text-gray-500">SCN</dt><dd>{row.scn}</dd></div>}
-                  {row.email && <div className="flex gap-2"><dt className="text-gray-500">Email</dt><dd className="truncate">{row.email}</dd></div>}
-                  {row.phone && <div className="flex gap-2"><dt className="text-gray-500">Phone</dt><dd>{row.phone}</dd></div>}
+                  {row.scn && <div className="flex gap-2"><dt className="text-ink-muted">SCN</dt><dd>{row.scn}</dd></div>}
+                  {row.email && <div className="flex gap-2"><dt className="text-ink-muted">Email</dt><dd className="truncate">{row.email}</dd></div>}
+                  {row.phone && <div className="flex gap-2"><dt className="text-ink-muted">Phone</dt><dd>{row.phone}</dd></div>}
                   {row.address_for_service && (
                     <div className="flex gap-2 sm:col-span-2">
-                      <dt className="shrink-0 text-gray-500">Address for service</dt>
+                      <dt className="shrink-0 text-ink-muted">Address for service</dt>
                       <dd className="whitespace-pre-wrap">{row.address_for_service}</dd>
                     </div>
                   )}
                   {row.note && (
                     <div className="flex gap-2 sm:col-span-2">
-                      <dt className="shrink-0 text-gray-500">Note</dt>
+                      <dt className="shrink-0 text-ink-muted">Note</dt>
                       <dd className="whitespace-pre-wrap">{row.note}</dd>
                     </div>
                   )}
                 </dl>
-                <p className="text-xs text-gray-500">Recorded {dateFmt.format(new Date(row.created_at))}</p>
+                <p className="text-xs text-ink-muted">Recorded {dateFmt.format(new Date(row.created_at))}</p>
 
                 <div className="flex flex-wrap gap-2">
                   <Button size="sm" onClick={() => { setServingId(row.id); setError(null); }}>Serve a process</Button>
@@ -317,14 +317,14 @@ export function CounselRoster({
                   )}
                 </div>
                 {confirmRemove === row.id && (
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-ink-muted">
                     Counsel already served through Docket cannot be removed — the service record is your proof of service
                     and points at this row.
                   </p>
                 )}
 
                 {editing && (
-                  <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                  <div className="space-y-3 rounded-lg border border-hairline bg-sunken p-3">
                     <CounselFields
                       idPrefix={`edit_${row.id}`}
                       draft={editDraft}
@@ -351,9 +351,9 @@ export function CounselRoster({
       )}
 
       {adding && (
-        <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+        <div className="space-y-4 rounded-lg border border-hairline p-4">
           <div>
-            <p className="text-sm font-medium text-gray-900">How will this counsel be served?</p>
+            <p className="text-sm font-medium text-ink">How will this counsel be served?</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" aria-pressed={mode === "docket"} onClick={() => setMode("docket")} className={chipClass(mode === "docket")}>
                 A firm on Docket
@@ -451,7 +451,7 @@ function DirectoryPicker({
 
   return (
     <div className="space-y-2">
-      <label htmlFor="counsel_directory_search" className="text-sm font-medium text-gray-900">Their firm on Docket</label>
+      <label htmlFor="counsel_directory_search" className="text-sm font-medium text-ink">Their firm on Docket</label>
       <input
         id="counsel_directory_search"
         type="search"
@@ -460,9 +460,9 @@ function DirectoryPicker({
         placeholder="Search firms by name or state"
         className={field}
       />
-      <ul className="max-h-64 divide-y divide-gray-100 overflow-y-auto rounded-lg border border-gray-200">
+      <ul className="max-h-64 divide-y divide-hairline overflow-y-auto rounded-lg border border-hairline">
         {options.length === 0 ? (
-          <li className="px-3 py-4 text-sm text-gray-500">
+          <li className="px-3 py-4 text-sm text-ink-muted">
             No firm matches that. If they are not on Docket, record their address for service instead.
           </li>
         ) : (
@@ -474,11 +474,11 @@ function DirectoryPicker({
                 onClick={() => onChange(value === f.id ? "" : f.id)}
                 className={cn(
                   "flex min-h-[44px] w-full flex-col items-start gap-0.5 px-3 py-2 text-left text-sm",
-                  value === f.id ? "bg-brand-surface" : "hover:bg-gray-50",
+                  value === f.id ? "bg-brand-surface" : "hover:bg-sunken",
                 )}
               >
-                <span className="font-medium text-gray-900">{f.name}</span>
-                <span className="text-xs text-gray-500">
+                <span className="font-medium text-ink">{f.name}</span>
+                <span className="text-xs text-ink-muted">
                   {f.state_code ? `${f.state_code} · ` : ""}
                   {f.accepts_platform_service
                     ? "accepts service through Docket"
@@ -515,7 +515,7 @@ function CounselFields({
   return (
     <div className="space-y-3">
       <fieldset>
-        <legend className="text-sm font-medium text-gray-900">Which side?</legend>
+        <legend className="text-sm font-medium text-ink">Which side?</legend>
         <div className="mt-2 flex flex-wrap gap-2">
           {SIDES.map((s) => (
             <button
@@ -533,14 +533,14 @@ function CounselFields({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label htmlFor={id("party")} className="text-sm font-medium text-gray-900">The party they act for</label>
+          <label htmlFor={id("party")} className="text-sm font-medium text-ink">The party they act for</label>
           <input
             id={id("party")} type="text" maxLength={200} value={draft.partyName}
             onChange={(e) => set({ partyName: e.target.value })} placeholder="Adebayo Holdings Ltd" className={field}
           />
         </div>
         <div>
-          <label htmlFor={id("partyside")} className="text-sm font-medium text-gray-900">That party is the…</label>
+          <label htmlFor={id("partyside")} className="text-sm font-medium text-ink">That party is the…</label>
           <select id={id("partyside")} value={draft.partySide} onChange={(e) => set({ partySide: e.target.value })} className={field}>
             <option value="">Not recorded</option>
             {PARTY_SIDES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
@@ -550,9 +550,9 @@ function CounselFields({
 
       {mode === "docket" ? (
         <>
-          {lockedFirmName && <p className="text-sm text-gray-600">Firm: <span className="font-medium text-gray-900">{lockedFirmName}</span></p>}
+          {lockedFirmName && <p className="text-sm text-ink-muted">Firm: <span className="font-medium text-ink">{lockedFirmName}</span></p>}
           <div>
-            <label htmlFor={id("name")} className="text-sm font-medium text-gray-900">Counsel handling it (optional)</label>
+            <label htmlFor={id("name")} className="text-sm font-medium text-ink">Counsel handling it (optional)</label>
             <input
               id={id("name")} type="text" maxLength={200} value={draft.counselName}
               onChange={(e) => set({ counselName: e.target.value })} placeholder="Chinwe Okafor, Esq." className={field}
@@ -562,14 +562,14 @@ function CounselFields({
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor={id("name")} className="text-sm font-medium text-gray-900">Counsel&apos;s name</label>
+            <label htmlFor={id("name")} className="text-sm font-medium text-ink">Counsel&apos;s name</label>
             <input
               id={id("name")} type="text" maxLength={200} value={draft.counselName}
               onChange={(e) => set({ counselName: e.target.value })} placeholder="Chinwe Okafor, Esq." className={field}
             />
           </div>
           <div>
-            <label htmlFor={id("chambers")} className="text-sm font-medium text-gray-900">Their firm or chambers</label>
+            <label htmlFor={id("chambers")} className="text-sm font-medium text-ink">Their firm or chambers</label>
             <input
               id={id("chambers")} type="text" maxLength={200} value={draft.counselFirmName}
               onChange={(e) => set({ counselFirmName: e.target.value })} placeholder="Okafor & Co." className={field}
@@ -580,21 +580,21 @@ function CounselFields({
 
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
-          <label htmlFor={id("scn")} className="text-sm font-medium text-gray-900">SCN</label>
+          <label htmlFor={id("scn")} className="text-sm font-medium text-ink">SCN</label>
           <input
             id={id("scn")} type="text" maxLength={40} value={draft.scn}
             onChange={(e) => set({ scn: e.target.value })} placeholder="SCN012345" className={field}
           />
         </div>
         <div>
-          <label htmlFor={id("email")} className="text-sm font-medium text-gray-900">Email</label>
+          <label htmlFor={id("email")} className="text-sm font-medium text-ink">Email</label>
           <input
             id={id("email")} type="email" maxLength={200} value={draft.email}
             onChange={(e) => set({ email: e.target.value })} placeholder="counsel@chambers.ng" className={field}
           />
         </div>
         <div>
-          <label htmlFor={id("phone")} className="text-sm font-medium text-gray-900">Phone</label>
+          <label htmlFor={id("phone")} className="text-sm font-medium text-ink">Phone</label>
           <input
             id={id("phone")} type="tel" maxLength={40} value={draft.phone}
             onChange={(e) => set({ phone: e.target.value })} placeholder="0803…" className={field}
@@ -603,16 +603,16 @@ function CounselFields({
       </div>
 
       <div>
-        <label htmlFor={id("address")} className="text-sm font-medium text-gray-900">Address for service</label>
+        <label htmlFor={id("address")} className="text-sm font-medium text-ink">Address for service</label>
         <textarea
           id={id("address")} rows={2} maxLength={600} value={draft.addressForService}
           onChange={(e) => set({ addressForService: e.target.value })}
           placeholder="12 Awolowo Road, Ikoyi, Lagos" className={field}
         />
-        <p className="mt-1 text-xs text-gray-500">Where a process is to be delivered. This is not a login: counsel never sees the file.</p>
+        <p className="mt-1 text-xs text-ink-muted">Where a process is to be delivered. This is not a login: counsel never sees the file.</p>
       </div>
 
-      <label className="flex min-h-[44px] items-start gap-2 text-sm text-gray-800">
+      <label className="flex min-h-[44px] items-start gap-2 text-sm text-ink">
         <input type="checkbox" checked={draft.onRecord} onChange={(e) => set({ onRecord: e.target.checked })} className="mt-0.5 h-5 w-5 shrink-0" />
         Counsel is on record for that party
       </label>
@@ -632,7 +632,7 @@ function CounselFields({
       </div>
 
       <div>
-        <label htmlFor={id("note")} className="text-sm font-medium text-gray-900">Note</label>
+        <label htmlFor={id("note")} className="text-sm font-medium text-ink">Note</label>
         <textarea
           id={id("note")} rows={2} maxLength={2000} value={draft.note}
           onChange={(e) => set({ note: e.target.value })}

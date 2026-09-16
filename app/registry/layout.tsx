@@ -77,7 +77,7 @@ export default async function RegistryLayout({ children }: { children: ReactNode
     // page that is not there. Docket's own consoles get a dark palette of their
     // own; this is the honest statement that they have not got one yet.
     <div data-theme-scope="light" style={CONSOLE_TOKENS} className="min-h-screen bg-[#F5F4F1]">
-      <header className="border-b border-[#DDD9D2] bg-white">
+      <header className="border-b border-[#DDD9D2] bg-raised">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/registry" className="truncate font-heading text-base font-semibold text-[#141414]">{ctx.registry.name}</Link>
@@ -85,9 +85,9 @@ export default async function RegistryLayout({ children }: { children: ReactNode
             {ctx.registry.status === "suspended" && <Badge tone="quiet">suspended</Badge>}
           </div>
           <nav aria-label="Registry console" className="flex items-center gap-1">
-            <Link href="/registry" className="min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-black/5">Cause list</Link>
-            <Link href="/registry/import" className="min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-black/5">Stage a list</Link>
-            <Link href="/firm/security/mfa" className="min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-black/5">Security</Link>
+            <Link href="/registry" className="min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-hover">Cause list</Link>
+            <Link href="/registry/import" className="min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-hover">Stage a list</Link>
+            <Link href="/firm/security/mfa" className="min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-hover">Security</Link>
           </nav>
         </div>
       </header>

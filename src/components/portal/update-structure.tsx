@@ -36,8 +36,8 @@ export function UpdateStructure({ update, compact = false }: { update: Shaped; c
                 : ""
           }
         >
-          <dt className={compact ? "text-[10.5px] uppercase tracking-[0.06em] text-gray-500" : "text-[11px] uppercase tracking-[0.06em] text-gray-500"}>{label}</dt>
-          <dd className={kind === "action" ? "font-medium text-amber-900" : kind === "none" ? "text-green-900" : "text-gray-800"}>{text}</dd>
+          <dt className={compact ? "text-[10.5px] uppercase tracking-[0.06em] text-ink-muted" : "text-[11px] uppercase tracking-[0.06em] text-ink-muted"}>{label}</dt>
+          <dd className={kind === "action" ? "font-medium text-amber-900" : kind === "none" ? "text-green-900" : "text-ink"}>{text}</dd>
         </div>
       ))}
     </dl>

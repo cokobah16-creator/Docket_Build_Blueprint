@@ -118,7 +118,7 @@ export default async function PortalLayout({ children }: { children: ReactNode }
                 >
                   {firm?.name ?? "Docket"}
                 </Link>
-                <p className="mt-0.5 text-[11.5px] text-gray-500">Your client portal</p>
+                <p className="mt-0.5 text-[11.5px] text-ink-muted">Your client portal</p>
                 <div className="mt-2 empty:hidden"><ConnectionBadge /></div>
               </div>
             }

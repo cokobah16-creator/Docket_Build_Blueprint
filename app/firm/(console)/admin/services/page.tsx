@@ -248,14 +248,14 @@ export default async function ServicesPage({
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="font-heading text-2xl font-semibold text-brand">Services</h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-muted">
             {firmName} · what a client can book, how long it takes and what it costs
           </p>
         </div>
         {firm?.slug && (
           <Link
             href={`/${firm.slug}/book`}
-            className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:border-brand"
+            className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:border-brand"
           >
             See the booking page
           </Link>
@@ -286,7 +286,7 @@ export default async function ServicesPage({
       <Card>
         <CardHeader title="Can a client book today?" />
         <CardBody className="p-0">
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {checks.map((c) => (
               <li key={c.label} className="flex flex-wrap items-start gap-3 px-5 py-3">
                 <span
@@ -300,11 +300,11 @@ export default async function ServicesPage({
                   {c.ok ? "✓" : "!"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-ink">
                     {c.label}
                     <span className="sr-only">{c.ok ? " — done" : " — not yet"}</span>
                   </p>
-                  <p className="text-sm text-gray-600">{c.detail}</p>
+                  <p className="text-sm text-ink-muted">{c.detail}</p>
                 </div>
                 {c.href && (
                   <Link
@@ -335,19 +335,19 @@ export default async function ServicesPage({
 
       <Card>
         <CardHeader title="What the booking page does with these" />
-        <CardBody className="space-y-2 text-sm text-gray-600">
+        <CardBody className="space-y-2 text-sm text-ink-muted">
           <p>
-            A service switched <span className="font-medium text-gray-900">off</span> is not on the booking page at
+            A service switched <span className="font-medium text-ink">off</span> is not on the booking page at
             all, and book_appointment() refuses it with “service unavailable”. Consultations already in the diary are
             untouched.
           </p>
           <p>
-            A service priced at <span className="font-medium text-gray-900">zero</span> is confirmed the moment it is
+            A service priced at <span className="font-medium text-ink">zero</span> is confirmed the moment it is
             booked: no invoice is raised and nothing is charged.
           </p>
           <p>
             A priced service with{" "}
-            <span className="font-medium text-gray-900">payment before the consultation is confirmed</span> holds the
+            <span className="font-medium text-ink">payment before the consultation is confirmed</span> holds the
             slot for fifteen minutes while the client pays, and the consultation stays “awaiting payment” until the
             money arrives. Without that switch the consultation is confirmed straight away and the invoice is left to
             be paid.

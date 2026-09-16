@@ -36,8 +36,8 @@ const LIVE_STATUSES = new Set(["pending", "awaiting_payment", "confirmed", "resc
 /** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
 const TONES: Record<string, string> = {
   slate: "border-slate-300 bg-slate-50 text-slate-800",
-  gray: "border-gray-300 bg-gray-50 text-gray-700",
-  grey: "border-gray-300 bg-gray-50 text-gray-700",
+  gray: "border-edge bg-sunken text-ink",
+  grey: "border-edge bg-sunken text-ink",
   blue: "border-blue-300 bg-blue-50 text-blue-900",
   sky: "border-sky-300 bg-sky-50 text-sky-900",
   indigo: "border-indigo-300 bg-indigo-50 text-indigo-900",
@@ -161,7 +161,7 @@ function StatusChip({ status }: { status: MatterStatus }) {
     <span
       className={cn(
         "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        hex ? "bg-white" : TONES[colour.toLowerCase()] ?? "border-gray-300 bg-gray-50 text-gray-700",
+        hex ? "bg-raised" : TONES[colour.toLowerCase()] ?? "border-edge bg-sunken text-ink",
       )}
       style={hex ? { borderColor: colour, color: colour } : undefined}
     >
@@ -346,12 +346,12 @@ export default async function FirmClientPage({
             {name}
             {profile?.client_type === "business" && <Badge className="ml-2 align-middle">business</Badge>}
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-muted">
             {ctx.firmName} · {matters.length} {matters.length === 1 ? "matter" : "matters"}
             {openMatters > 0 ? ` (${openMatters} open)` : ""} ·{" "}
             {appointments.length} {appointments.length === 1 ? "consultation" : "consultations"} · times in {tz}
           </p>
-          <p className="mt-1 text-sm text-gray-600">
+          <p className="mt-1 text-sm text-ink-muted">
             {lastSeen
               ? `Last seen ${formatWhen(lastSeen, tz, { dateStyle: "full", timeStyle: "short" })}`
               : "Not seen yet — no consultation has taken place and nothing has been posted on their matters."}
@@ -406,18 +406,18 @@ export default async function FirmClientPage({
                 action={<Link href="/firm/appointments" className="text-sm text-brand underline">Go to consultations</Link>}
               />
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-hairline">
                 {appointments.map((a) => (
                   <li key={a.id}>
-                    <Link href={`/firm/appointments/${a.id}`} className="block px-5 py-4 hover:bg-gray-50">
+                    <Link href={`/firm/appointments/${a.id}`} className="block px-5 py-4 hover:bg-sunken">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-ink">
                             {formatWhen(a.starts_at, tz, { dateStyle: "medium", timeStyle: "short" })}
                             {" · "}
                             {a.service_id ? services.get(a.service_id) ?? "Consultation" : "Consultation"}
                           </p>
-                          <p className="mt-0.5 text-xs text-gray-600">
+                          <p className="mt-0.5 text-xs text-ink-muted">
                             {a.reference} · {a.mode.replace("_", " ")} ·{" "}
                             {Math.max(1, Math.round((new Date(a.ends_at).getTime() - new Date(a.starts_at).getTime()) / 60000))} min
                           </p>
@@ -425,7 +425,7 @@ export default async function FirmClientPage({
                         <StatusPill status={a.status as Status} />
                       </div>
                       {a.cancellation_reason && (
-                        <p className="mt-1 text-xs text-gray-600">Cancelled: {a.cancellation_reason}</p>
+                        <p className="mt-1 text-xs text-ink-muted">Cancelled: {a.cancellation_reason}</p>
                       )}
                     </Link>
                   </li>
@@ -457,7 +457,7 @@ export default async function FirmClientPage({
                 }
               />
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-hairline">
                 {matters.map((m) => {
                   const status = m.status_id ? statusById.get(m.status_id) ?? null : null;
                   const party = roleByMatter.get(m.id);
@@ -465,35 +465,35 @@ export default async function FirmClientPage({
                   const nextDatePassed = Boolean(m.next_event_at && new Date(m.next_event_at).getTime() < nowMs);
                   return (
                     <li key={m.id}>
-                      <Link href={`/firm/matters/${m.id}`} className="block px-5 py-4 hover:bg-gray-50">
+                      <Link href={`/firm/matters/${m.id}`} className="block px-5 py-4 hover:bg-sunken">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900">{m.title}</p>
-                            {causeDiffers && <p className="mt-0.5 text-xs italic text-gray-600">{m.cause_title}</p>}
+                            <p className="text-sm font-medium text-ink">{m.title}</p>
+                            {causeDiffers && <p className="mt-0.5 text-xs italic text-ink-muted">{m.cause_title}</p>}
                           </div>
                           <div className="flex shrink-0 flex-wrap items-center gap-2">
                             {status && <StatusChip status={status} />}
                             {m.closed_at && (
-                              <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                              <span className="inline-flex items-center rounded-full border border-edge bg-sunken px-2.5 py-0.5 text-xs font-medium text-ink">
                                 Closed
                               </span>
                             )}
                           </div>
                         </div>
-                        <p className="mt-1 text-xs text-gray-600">
+                        <p className="mt-1 text-xs text-ink-muted">
                           {m.reference}
                           {party ? ` · ${PARTY_ROLE_LABELS[party.role] ?? party.role} on this file` : ""}
                           {party && !party.can_view_docs ? " · cannot see documents" : ""}
                           {` · opened ${dayLabel(m.opened_at)}`}
                         </p>
                         {(m.court_name || m.suit_number) && (
-                          <p className="mt-1 text-xs text-gray-600">
+                          <p className="mt-1 text-xs text-ink-muted">
                             {m.court_name ?? "Court not recorded"}
                             {m.suit_number ? ` · ${m.suit_number}` : ""}
                           </p>
                         )}
                         {m.next_event_at && (
-                          <p className={cn("mt-1 text-xs", nextDatePassed ? "text-amber-800" : "text-gray-800")}>
+                          <p className={cn("mt-1 text-xs", nextDatePassed ? "text-amber-800" : "text-ink")}>
                             {nextDatePassed ? "Court date has passed: " : "Next court date: "}
                             <strong>{formatWhen(m.next_event_at, tz, { dateStyle: "medium", timeStyle: "short" })}</strong>
                             {m.next_event_note ? ` · ${m.next_event_note}` : ""}
@@ -520,7 +520,7 @@ export default async function FirmClientPage({
               />
             ) : (
               <>
-                <ul className="divide-y divide-gray-100">
+                <ul className="divide-y divide-hairline">
                   {invoices.map((inv) => {
                     const due = Number(inv.total_minor) - Number(inv.paid_minor);
                     const payable = inv.status !== "draft" && inv.status !== "cancelled";
@@ -529,10 +529,10 @@ export default async function FirmClientPage({
                       <li key={inv.id} className="px-5 py-4">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-gray-900">
+                            <p className="text-sm font-medium text-ink">
                               {inv.number} · {formatMoneyMinor(Number(inv.total_minor), inv.currency)}
                             </p>
-                            <p className="mt-0.5 text-xs text-gray-600">
+                            <p className="mt-0.5 text-xs text-ink-muted">
                               {inv.issued_at ? `Issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium" })}` : "Not issued"}
                               {inv.due_at ? ` · due ${dayLabel(inv.due_at)}` : ""}
                               {Number(inv.paid_minor) > 0 ? ` · paid ${formatMoneyMinor(Number(inv.paid_minor), inv.currency)}` : ""}
@@ -552,23 +552,23 @@ export default async function FirmClientPage({
                         </div>
 
                         {payable ? (
-                          <p className="mt-2 break-all text-xs text-gray-600">
+                          <p className="mt-2 break-all text-xs text-ink-muted">
                             {due > 0 ? "Payment link to send them: " : "Receipt link: "}
                             <Link href={`/app/payments/${inv.id}`} className="text-brand underline">{link}</Link>
                           </p>
                         ) : inv.status === "draft" ? (
-                          <p className="mt-2 text-xs text-gray-500">
+                          <p className="mt-2 text-xs text-ink-muted">
                             A draft is invisible to the client — the database refuses them a draft invoice. Issue it from
                             Invoices and the payment link appears here.
                           </p>
                         ) : (
-                          <p className="mt-2 text-xs text-gray-500">Cancelled — nothing to collect.</p>
+                          <p className="mt-2 text-xs text-ink-muted">Cancelled — nothing to collect.</p>
                         )}
                       </li>
                     );
                   })}
                 </ul>
-                <CardBody className="border-t border-gray-100 text-xs text-gray-500">
+                <CardBody className="border-t border-hairline text-xs text-ink-muted">
                   {billed.size > 0 && (
                     <>
                       Billed {moneyLabel(billed)} in all, {moneyLabel(paid) || formatMoneyMinor(0, invoices[0].currency)} received.{" "}
@@ -589,18 +589,18 @@ export default async function FirmClientPage({
             <CardBody>
               <dl className="space-y-2 text-sm">
                 <div>
-                  <dt className="text-gray-500">Name</dt>
-                  <dd className="font-medium text-gray-900">{profile?.full_name ?? "—"}</dd>
+                  <dt className="text-ink-muted">Name</dt>
+                  <dd className="font-medium text-ink">{profile?.full_name ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Phone</dt>
-                  <dd className="font-medium text-gray-900">
+                  <dt className="text-ink-muted">Phone</dt>
+                  <dd className="font-medium text-ink">
                     {profile?.phone ? <a href={`tel:${profile.phone}`} className="text-brand underline">{profile.phone}</a> : "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Email</dt>
-                  <dd className="font-medium text-gray-900">
+                  <dt className="text-ink-muted">Email</dt>
+                  <dd className="font-medium text-ink">
                     {profile?.email ? (
                       <a href={`mailto:${profile.email}`} className="break-all text-brand underline">{profile.email}</a>
                     ) : (
@@ -609,44 +609,44 @@ export default async function FirmClientPage({
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Client type</dt>
-                  <dd className="font-medium text-gray-900">
+                  <dt className="text-ink-muted">Client type</dt>
+                  <dd className="font-medium text-ink">
                     {profile?.client_type === "business" ? "Business" : profile?.client_type === "individual" ? "Individual" : "—"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Company</dt>
-                  <dd className="font-medium text-gray-900">{profile?.company_name ?? "—"}</dd>
+                  <dt className="text-ink-muted">Company</dt>
+                  <dd className="font-medium text-ink">{profile?.company_name ?? "—"}</dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Their time zone</dt>
-                  <dd className="font-medium text-gray-900">
+                  <dt className="text-ink-muted">Their time zone</dt>
+                  <dd className="font-medium text-ink">
                     {profile?.timezone ?? "—"}
                     {profile && profile.timezone !== tz ? " (yours is " + tz + ")" : ""}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-gray-500">Preferred channel</dt>
-                  <dd className="font-medium text-gray-900">
+                  <dt className="text-ink-muted">Preferred channel</dt>
+                  <dd className="font-medium text-ink">
                     {CHANNEL_LABELS[channel] ?? channel}
                     {channelUnreachable && <span className="text-amber-800"> — but there is no email address on file</span>}
                   </dd>
                 </div>
                 {addressLine && (
                   <div>
-                    <dt className="text-gray-500">Address</dt>
-                    <dd className="whitespace-pre-wrap font-medium text-gray-900">{addressLine}</dd>
+                    <dt className="text-ink-muted">Address</dt>
+                    <dd className="whitespace-pre-wrap font-medium text-ink">{addressLine}</dd>
                   </div>
                 )}
                 {profile && (
                   <div>
-                    <dt className="text-gray-500">On Docket since</dt>
-                    <dd className="font-medium text-gray-900">{formatWhen(profile.created_at, tz, { dateStyle: "medium" })}</dd>
+                    <dt className="text-ink-muted">On Docket since</dt>
+                    <dd className="font-medium text-ink">{formatWhen(profile.created_at, tz, { dateStyle: "medium" })}</dd>
                   </div>
                 )}
               </dl>
             </CardBody>
-            <CardBody className="border-t border-gray-100 text-xs text-gray-500">
+            <CardBody className="border-t border-hairline text-xs text-ink-muted">
               A profile belongs to the person, not to the firm: the database lets someone edit their own details and
               nobody else&rsquo;s, so there is no form here that would work. If something is wrong, ask {name} to correct
               it in their own app, and record what they told you as an internal note on the matter.
@@ -662,18 +662,18 @@ export default async function FirmClientPage({
               />
             ) : (
               <>
-                <ul className="divide-y divide-gray-100">
+                <ul className="divide-y divide-hairline">
                   {consents.map((c) => (
                     <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-gray-900">{CONSENT_LABELS[c.kind] ?? c.kind}</p>
-                        <p className="text-xs text-gray-500">Version {c.version}</p>
+                        <p className="text-sm font-medium text-ink">{CONSENT_LABELS[c.kind] ?? c.kind}</p>
+                        <p className="text-xs text-ink-muted">Version {c.version}</p>
                       </div>
-                      <p className="text-xs text-gray-600">{formatWhen(c.accepted_at, tz)}</p>
+                      <p className="text-xs text-ink-muted">{formatWhen(c.accepted_at, tz)}</p>
                     </li>
                   ))}
                 </ul>
-                <CardBody className="border-t border-gray-100 text-xs text-gray-500">
+                <CardBody className="border-t border-hairline text-xs text-ink-muted">
                   Only consents given to {ctx.firmName} are shown. Consents this person gave to another firm, or to
                   Docket itself, are theirs and are not readable here.
                 </CardBody>
@@ -683,7 +683,7 @@ export default async function FirmClientPage({
         </div>
       </div>
 
-      <p className="text-xs text-gray-500">
+      <p className="text-xs text-ink-muted">
         Everything on this screen is read as you, from {ctx.firmName}&rsquo;s own records: consultations and matters
         belonging to another firm this person also instructs are not shown. &ldquo;Last seen&rdquo; is the later of their
         most recent consultation that had already begun and the most recent entry posted on one of their matters.

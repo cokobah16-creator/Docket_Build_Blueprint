@@ -19,7 +19,7 @@ import { AUTHORITY_KINDS, CAPACITIES } from "@/lib/delegation-copy";
 import type { RepresentationRow } from "@/lib/db/types";
 
 const field =
-  "mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 text-base text-gray-900 focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]";
+  "mt-1 block w-full min-h-11 rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]";
 
 const CAPACITY_LABEL = new Map<string, string>(CAPACITIES.map((c) => [c.value, c.label]));
 const AUTHORITY_LABEL = new Map<string, string>(AUTHORITY_KINDS.map((a) => [a.value, a.label]));
@@ -112,7 +112,7 @@ export function RepresentationsPanel({
               Send this one-time link to {issued.who}. It is shown here once and Docket does not email it.
               It works only for the person you named, signed in as themselves, and only once.
             </p>
-            <code className="mt-2 block break-all rounded-lg bg-white px-2 py-1.5 font-mono text-[11.5px] text-gray-900">
+            <code className="mt-2 block break-all rounded-lg bg-raised px-2 py-1.5 font-mono text-[11.5px] text-ink">
               {typeof window === "undefined" ? "" : `${window.location.origin}/app/authority/accept?token=${issued.token}`}
             </code>
             <p className="mt-2 text-xs">
@@ -123,79 +123,79 @@ export function RepresentationsPanel({
       )}
 
       {open && canWrite && (
-        <CardBody className="border-t border-gray-100">
+        <CardBody className="border-t border-hairline">
           <form onSubmit={grant} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm text-gray-900">In what capacity
+              <label className="block text-sm text-ink">In what capacity
                 <select value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} className={field}>
                   {CAPACITIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
-                <span className="mt-1 block text-xs text-gray-500">{CAPACITIES.find((c) => c.value === form.capacity)?.hint}</span>
+                <span className="mt-1 block text-xs text-ink-muted">{CAPACITIES.find((c) => c.value === form.capacity)?.hint}</span>
               </label>
-              <label className="block text-sm text-gray-900">Acting for which body (optional)
+              <label className="block text-sm text-ink">Acting for which body (optional)
                 <input type="text" maxLength={200} value={form.organisation} placeholder="Acme Holdings Ltd"
                        onChange={(e) => setForm({ ...form, organisation: e.target.value })} className={field} />
               </label>
             </div>
 
-            <label className="block text-sm text-gray-900">Over what
+            <label className="block text-sm text-ink">Over what
               <select value={form.matterId} onChange={(e) => setForm({ ...form, matterId: e.target.value })} className={field}>
                 <option value="">Every unrestricted matter this client has with us, now and later</option>
                 {matters.map((m) => <option key={m.id} value={m.id}>{m.reference} — {m.title}</option>)}
               </select>
             </label>
 
-            <fieldset className="rounded-lg border border-gray-200 p-3">
-              <legend className="px-1 text-sm font-medium text-gray-800">What they may do</legend>
-              <p className="text-xs text-gray-500">
+            <fieldset className="rounded-lg border border-hairline p-3">
+              <legend className="px-1 text-sm font-medium text-ink">What they may do</legend>
+              <p className="text-xs text-ink-muted">
                 They can always read the matter, its timeline and its court dates, and exchange messages with you.
                 Signing is never delegated: an instrument is executed by the client, not by their representative.
               </p>
-              <label className="mt-2 flex items-center gap-2 text-sm text-gray-900">
+              <label className="mt-2 flex items-center gap-2 text-sm text-ink">
                 <input type="checkbox" checked={form.canViewDocs} onChange={(e) => setForm({ ...form, canViewDocs: e.target.checked })} />
                 Read and add documents on the file
               </label>
-              <label className="mt-1 flex items-center gap-2 text-sm text-gray-900">
+              <label className="mt-1 flex items-center gap-2 text-sm text-ink">
                 <input type="checkbox" checked={form.canPay} onChange={(e) => setForm({ ...form, canPay: e.target.checked })} />
                 See and pay what this client owes
               </label>
             </fieldset>
 
-            <fieldset className="rounded-lg border border-gray-200 p-3">
-              <legend className="px-1 text-sm font-medium text-gray-800">What you saw</legend>
-              <p className="text-xs text-gray-500">
+            <fieldset className="rounded-lg border border-hairline p-3">
+              <legend className="px-1 text-sm font-medium text-ink">What you saw</legend>
+              <p className="text-xs text-ink-muted">
                 Docket does not verify anybody&rsquo;s identity and never claims to. It records that you did, against
                 this, today — and the record cannot afterwards be edited.
               </p>
               <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                <label className="block text-sm text-gray-900">Kind
+                <label className="block text-sm text-ink">Kind
                   <select value={form.authorityKind} onChange={(e) => setForm({ ...form, authorityKind: e.target.value })} className={field}>
                     {AUTHORITY_KINDS.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
                   </select>
                 </label>
-                <label className="block text-sm text-gray-900">Its reference
+                <label className="block text-sm text-ink">Its reference
                   <input type="text" maxLength={200} value={form.authorityRef} placeholder="Board resolution of 3 September 2026"
                          onChange={(e) => setForm({ ...form, authorityRef: e.target.value })} className={field} />
                 </label>
               </div>
-              <label className="mt-2 block text-sm text-gray-900">Note
+              <label className="mt-2 block text-sm text-ink">Note
                 <input type="text" maxLength={2000} value={form.note} placeholder="Seen in the minute book, original returned"
                        onChange={(e) => setForm({ ...form, note: e.target.value })} className={field} />
               </label>
             </fieldset>
 
             <div className="grid gap-3 sm:grid-cols-3">
-              <label className="block text-sm text-gray-900">Their email
+              <label className="block text-sm text-ink">Their email
                 <input type="email" value={form.invitedEmail} onChange={(e) => setForm({ ...form, invitedEmail: e.target.value })} className={field} />
               </label>
-              <label className="block text-sm text-gray-900">or their phone
+              <label className="block text-sm text-ink">or their phone
                 <input type="tel" maxLength={32} value={form.invitedPhone} onChange={(e) => setForm({ ...form, invitedPhone: e.target.value })} className={field} />
               </label>
-              <label className="block text-sm text-gray-900">Ends on (optional)
+              <label className="block text-sm text-ink">Ends on (optional)
                 <input type="date" min={today} value={form.expiresOn} onChange={(e) => setForm({ ...form, expiresOn: e.target.value })} className={field} />
               </label>
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-ink-muted">
               One of the two is required. Whoever opens the link must be signed in as that exact person, measured
               against the address or number they authenticated with — not one typed into a profile afterwards. An
               address on its own gives nobody access, and neither does the link on its own.
@@ -214,26 +214,26 @@ export function RepresentationsPanel({
       ) : (
         <ul>
           {rows.map((r) => (
-            <li key={r.id} className="border-t border-gray-100 px-[15px] py-3 first:border-t-0">
+            <li key={r.id} className="border-t border-hairline px-[15px] py-3 first:border-t-0">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-[13.5px] font-semibold text-gray-900">
+                <p className="text-[13.5px] font-semibold text-ink">
                   {r.representative_name ?? (r.representative_id ? (names[r.representative_id] ?? "A person") : (r.invited_email ?? r.invited_phone ?? "Invited"))}
-                  <span className="font-normal text-gray-600"> · {CAPACITY_LABEL.get(r.capacity) ?? r.capacity}</span>
-                  {r.organisation_name ? <span className="font-normal text-gray-600"> for {r.organisation_name}</span> : null}
+                  <span className="font-normal text-ink-muted"> · {CAPACITY_LABEL.get(r.capacity) ?? r.capacity}</span>
+                  {r.organisation_name ? <span className="font-normal text-ink-muted"> for {r.organisation_name}</span> : null}
                 </p>
-                <span className={live(r) ? "text-xs font-medium text-[#15803D]" : "text-xs text-gray-500"}>{stateOf(r)}</span>
+                <span className={live(r) ? "text-xs font-medium text-[#15803D]" : "text-xs text-ink-muted"}>{stateOf(r)}</span>
               </div>
-              <p className="mt-0.5 text-xs text-gray-600">
+              <p className="mt-0.5 text-xs text-ink-muted">
                 {r.scope === "all_matters" ? "Every matter of this client" : "One matter"} ·
                 {" "}{r.can_view_docs ? "documents" : "no documents"} ·
                 {" "}{r.can_pay ? "may pay" : "no money"} · never signs
               </p>
-              <p className="mt-0.5 text-xs text-gray-500">
+              <p className="mt-0.5 text-xs text-ink-muted">
                 {AUTHORITY_LABEL.get(r.authority_kind) ?? r.authority_kind}
                 {r.authority_ref ? ` · ${r.authority_ref}` : ""}
                 {r.verified_by && names[r.verified_by] ? ` · verified by ${names[r.verified_by]}` : ""}
               </p>
-              {r.revoked_at && r.revoke_reason && <p className="mt-0.5 text-xs text-gray-500">Ended: {r.revoke_reason}</p>}
+              {r.revoked_at && r.revoke_reason && <p className="mt-0.5 text-xs text-ink-muted">Ended: {r.revoke_reason}</p>}
               {canWrite && !r.revoked_at && (
                 <Button size="sm" variant="ghost" className="mt-1" disabled={busy === r.id} onClick={() => void end(r.id)}>
                   {busy === r.id ? "Ending…" : "End this authority"}
@@ -244,7 +244,7 @@ export function RepresentationsPanel({
         </ul>
       )}
 
-      <CardBody className="border-t border-gray-100 text-xs text-gray-500">
+      <CardBody className="border-t border-hairline text-xs text-ink-muted">
         Ending an authority stops it at once. It cannot recall a document already downloaded or a page already read —
         the record of what was open to them, and when, is in the audit log and the document reads.
         {principalName} can end any of these themselves, from their own app.

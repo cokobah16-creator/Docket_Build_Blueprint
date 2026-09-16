@@ -350,7 +350,7 @@ export function ConsultationRoom({
       <div className={cn("flex-col gap-3.5", phase === "preflight" || phase === "connecting" ? "flex" : "hidden")}>
         {error && phase !== "error" && <Alert kind="error">{error}</Alert>}
 
-        <div className="relative aspect-[4/3] overflow-hidden rounded-card border border-gray-200 bg-[#0B0B0C]">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-card border border-hairline bg-[#0B0B0C]">
           <video ref={previewRef} playsInline autoPlay muted className="size-full object-cover" />
           {devicesOk !== true && (
             <div className="absolute inset-0 grid place-items-center text-white/50">
@@ -368,7 +368,7 @@ export function ConsultationRoom({
 
         <Alert kind={devicesOk === false ? "warning" : "success"}>{deviceMessage}</Alert>
 
-        <div className="flex flex-col gap-3 rounded-card border border-gray-200 bg-white p-[15px]">
+        <div className="flex flex-col gap-3 rounded-card border border-hairline bg-raised p-[15px]">
           <SettingRow
             title="Join with audio only"
             hint={`Uses about ${MB_PER_MIN.audio} MB a minute instead of ${MB_PER_MIN.video} MB. Best on a weak network.`}
@@ -376,7 +376,7 @@ export function ConsultationRoom({
           >
             <Switch label="Join with audio only" checked={audioOnly} onChange={setAudioOnly} />
           </SettingRow>
-          <p className="flex items-center gap-2 border-t border-gray-100 pt-[11px] text-[11.5px] text-gray-500">
+          <p className="flex items-center gap-2 border-t border-hairline pt-[11px] text-[11.5px] text-ink-muted">
             <span
               aria-hidden="true"
               className={cn("size-[7px] shrink-0 rounded-full", weak && !audioOnly ? "bg-[#D97706]" : "bg-[#16A34A]")}
@@ -405,10 +405,10 @@ export function ConsultationRoom({
             : `Thank you. ${counterpartLabel}'s summary will appear on your appointment once it is written.`}
         </Alert>
 
-        <div className="flex flex-col gap-2.5 rounded-card border border-gray-200 bg-white p-[15px]">
-          <p className="text-xs uppercase tracking-[0.07em] text-gray-500">Data used</p>
+        <div className="flex flex-col gap-2.5 rounded-card border border-hairline bg-raised p-[15px]">
+          <p className="text-xs uppercase tracking-[0.07em] text-ink-muted">Data used</p>
           <p className="font-heading text-[26px] font-semibold text-brand">{mb(endedUsed)}</p>
-          <p className="text-xs leading-[1.45] text-gray-500">
+          <p className="text-xs leading-[1.45] text-ink-muted">
             {endedAudioOnly
               ? `Audio only, ${minutes} minute${minutes === 1 ? "" : "s"}. About a tenth of what video would have cost (${mb((endedAfterMs / 60_000) * MB_PER_MIN.video)}).`
               : `Video, ${minutes} minute${minutes === 1 ? "" : "s"}. Audio only would have used about ${mb((endedAfterMs / 60_000) * MB_PER_MIN.audio)}.`}

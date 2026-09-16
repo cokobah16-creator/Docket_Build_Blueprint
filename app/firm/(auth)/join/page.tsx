@@ -34,7 +34,7 @@ export default async function JoinPage({ searchParams }: { searchParams: Promise
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
       <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">Docket</p>
       <h1 className="mt-1 font-heading text-2xl font-semibold text-brand">Join your firm</h1>
-      <p className="mt-1 text-sm text-gray-600">You have been invited to a firm on Docket. Use the email address the invitation was sent to.</p>
+      <p className="mt-1 text-sm text-ink-muted">You have been invited to a firm on Docket. Use the email address the invitation was sent to.</p>
       <Card className="mt-4">
         <CardBody>
           <JoinForm token={token} signedIn={Boolean(user)} email={user?.email ?? null} invitedEmail={invitedEmail ?? null} />

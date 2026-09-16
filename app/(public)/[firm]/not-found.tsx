@@ -46,7 +46,7 @@ export default function FirmSiteNotFound() {
               a border and `text-brand`, with the ring stated as `outline-brand`
               rather than left to fall back to currentColor.
 
-              The hover is `bg-hover` rather than `bg-black/5`: a black wash is
+              The hover is `bg-hover` rather than `bg-hover`: a black wash is
               nothing at all on a dark ground, and `bg-hover` is ink at 5%,
               which follows whichever way this subtree is pinned. */}
           <Link

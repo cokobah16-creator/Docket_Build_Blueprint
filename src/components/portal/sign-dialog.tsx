@@ -69,24 +69,24 @@ export function SignDialog({ open, name, versionId, storagePath, matterId, profi
       <div className="space-y-3">
         {error && <Alert kind="error" title="Not signed">{error}</Alert>}
         {loading ? (
-          <p className="text-sm text-gray-600">Recording that you opened it, and preparing a secure link…</p>
+          <p className="text-sm text-ink-muted">Recording that you opened it, and preparing a secure link…</p>
         ) : url ? (
           <>
-            <iframe src={url} title={name} className="h-[55vh] w-full rounded-lg border border-gray-200" />
+            <iframe src={url} title={name} className="h-[55vh] w-full rounded-lg border border-hairline" />
             <a href={url} target="_blank" rel="noreferrer" className="text-sm text-brand underline">Open in a new tab</a>
           </>
         ) : null}
         {url && (
-          <div className="space-y-2 rounded-lg bg-gray-50 p-3">
-            <label className="flex items-start gap-2 text-sm text-gray-800">
+          <div className="space-y-2 rounded-lg bg-sunken p-3">
+            <label className="flex items-start gap-2 text-sm text-ink">
               <input type="checkbox" className="mt-1" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
               <span>I have read this document and I sign it as it is shown here.</span>
             </label>
             <label className="block text-sm">
-              <span className="font-medium text-gray-800">Type your name{profileName ? ` exactly as it is on your profile: ${profileName}` : ""}</span>
-              <input value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" maxLength={200} autoComplete="off" />
+              <span className="font-medium text-ink">Type your name{profileName ? ` exactly as it is on your profile: ${profileName}` : ""}</span>
+              <input value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" maxLength={200} autoComplete="off" />
             </label>
-            <p className="text-xs text-gray-600">What is recorded: who you are, the name you typed, this version and its checksum, that you opened it, and when. Once signed, no further version can be added to this document.</p>
+            <p className="text-xs text-ink-muted">What is recorded: who you are, the name you typed, this version and its checksum, that you opened it, and when. Once signed, no further version can be added to this document.</p>
             <div className="flex gap-2">
               <Button onClick={sign} disabled={busy || !agreed || typed.trim().length < 2}>{busy ? "Signing…" : "Sign"}</Button>
               <Button variant="ghost" onClick={onClose} disabled={busy}>Not now</Button>

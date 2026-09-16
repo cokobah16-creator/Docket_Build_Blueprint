@@ -108,7 +108,7 @@ export function AdminCreateFirm() {
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? "Creating…" : "Create firm"}
       </Button>
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-ink-muted">
         The firm arrives pending: no public site and no bookings until you activate it.
       </p>
     </form>

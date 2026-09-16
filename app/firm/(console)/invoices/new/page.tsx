@@ -156,7 +156,7 @@ export default async function NewInvoicePage({
       </p>
       <header>
         <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Raise an invoice</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-ink-muted">
           {ctx.firmName} · the number is issued by the database as the invoice is raised · fees settle into the
           firm&rsquo;s own account
         </p>

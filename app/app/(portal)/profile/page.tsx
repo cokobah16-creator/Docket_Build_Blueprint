@@ -40,9 +40,9 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const firmNames = await firmNamesFor(consents.map((c) => c.firm_id ?? "").filter(Boolean));
   const tz = profile?.timezone ?? "Africa/Lagos";
   const tzOptions = TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES];
-  const label = "block text-[12.5px] font-semibold text-gray-700";
+  const label = "block text-[12.5px] font-semibold text-ink";
   // 16px so iOS Safari does not zoom the page on focus.
-  const field = "mt-1.5 w-full rounded-[9px] border border-gray-300 px-3 py-[11px] text-base text-gray-900 focus:border-brand focus:outline-none";
+  const field = "mt-1.5 w-full rounded-[9px] border border-edge px-3 py-[11px] text-base text-ink focus:border-brand focus:outline-none";
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });
 
   const choices: FirmChoice[] = firms.map((f) => ({
@@ -70,12 +70,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </div>
             <div>
               <p className={label}>Phone</p>
-              <p className="mt-1 text-[13.5px] text-gray-700">{profile?.phone ?? user.phone ?? "—"}</p>
-              <p className="mt-0.5 text-[11.5px] text-gray-500">Sign-in number — contact your firm to change it.</p>
+              <p className="mt-1 text-[13.5px] text-ink">{profile?.phone ?? user.phone ?? "—"}</p>
+              <p className="mt-0.5 text-[11.5px] text-ink-muted">Sign-in number — contact your firm to change it.</p>
             </div>
             <div>
               <label htmlFor="email" className={label}>
-                Email <span className="font-normal text-gray-500">(receipts and notifications)</span>
+                Email <span className="font-normal text-ink-muted">(receipts and notifications)</span>
               </label>
               <input id="email" name="email" type="email" defaultValue={profile?.email ?? user.email ?? ""} maxLength={200} className={field} />
             </div>
@@ -106,7 +106,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                 <input id="quietEnd" name="quietEnd" type="time" defaultValue={profile?.quiet_hours_end?.slice(0, 5) ?? ""} className={`${field} font-mono`} />
               </div>
             </div>
-            <p className="text-[11.5px] leading-relaxed text-gray-500">During quiet hours, push, SMS and email wait until the hours end. In-app notifications and 10-minute consultation reminders are never held.</p>
+            <p className="text-[11.5px] leading-relaxed text-ink-muted">During quiet hours, push, SMS and email wait until the hours end. In-app notifications and 10-minute consultation reminders are never held.</p>
             <Button type="submit">Save</Button>
           </form>
         </CardBody>
@@ -129,12 +129,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           <CardHeader title="Your firms" />
           <ul>
             {choices.map((choice) => (
-              <li key={choice.id} className="border-t border-gray-100 first:border-t-0">
+              <li key={choice.id} className="border-t border-hairline first:border-t-0">
                 <FirmRow firm={choice} selected={choice.id === firm?.id} />
               </li>
             ))}
           </ul>
-          <p className="border-t border-gray-100 px-[17px] py-3 text-[11.5px] leading-relaxed text-gray-500">
+          <p className="border-t border-hairline px-[17px] py-3 text-[11.5px] leading-relaxed text-ink-muted">
             One sign-in, whichever firms act for you. The app takes the colours and name of the firm you are reading.
           </p>
         </Card>
@@ -143,12 +143,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       <Card>
         <CardHeader title="Consent history" />
         <CardBody>
-          {consents.length === 0 ? <p className="text-[13px] text-gray-500">No consents recorded yet.</p> : (
-            <ul className="divide-y divide-gray-100 text-[13px]">
+          {consents.length === 0 ? <p className="text-[13px] text-ink-muted">No consents recorded yet.</p> : (
+            <ul className="divide-y divide-hairline text-[13px]">
               {consents.map((c) => (
                 <li key={c.id} className="flex justify-between gap-3 py-2.5">
-                  <span className="text-gray-700">{c.kind} <span className="text-gray-500">v{c.version}</span>{c.firm_id ? <span className="text-gray-500"> · {firmNames[c.firm_id] ?? "firm"}</span> : null}</span>
-                  <span className="shrink-0 text-gray-500">{fmt.format(new Date(c.accepted_at))}</span>
+                  <span className="text-ink">{c.kind} <span className="text-ink-muted">v{c.version}</span>{c.firm_id ? <span className="text-ink-muted"> · {firmNames[c.firm_id] ?? "firm"}</span> : null}</span>
+                  <span className="shrink-0 text-ink-muted">{fmt.format(new Date(c.accepted_at))}</span>
                 </li>
               ))}
             </ul>

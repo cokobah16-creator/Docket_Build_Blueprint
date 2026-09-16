@@ -28,11 +28,11 @@ export function AcceptAuthorityForm({ token }: { token: string }) {
   return (
     <form onSubmit={submit} className="space-y-3">
       {error && <Alert kind="error" title="That was refused">{error}</Alert>}
-      <label className="block text-sm text-gray-800">
+      <label className="block text-sm text-ink">
         The code from your link
         <input
           value={value} onChange={(e) => setValue(e.target.value)} required
-          className="mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 font-mono text-base text-gray-900 focus:border-brand focus:outline-none"
+          className="mt-1 block w-full min-h-11 rounded-lg border border-edge px-3 font-mono text-base text-ink focus:border-brand focus:outline-none"
         />
       </label>
       <Button type="submit" disabled={busy || value.trim().length === 0}>{busy ? "Taking it up…" : "Take up this authority"}</Button>

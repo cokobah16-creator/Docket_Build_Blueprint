@@ -47,7 +47,7 @@ export default async function NewMatterPage({
       </p>
       <header>
         <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Open a matter</h1>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-ink-muted">
           {ctx.firmName} · the reference is issued by the database as the matter opens
         </p>
       </header>

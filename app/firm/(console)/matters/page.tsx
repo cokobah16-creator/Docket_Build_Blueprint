@@ -23,13 +23,13 @@ import type { MatterStatus } from "@/lib/db/types";
 export const metadata = { title: "Matters" };
 
 const LIMIT = 200;
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 /** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
 const TONES: Record<string, string> = {
   slate: "border-slate-300 bg-slate-50 text-slate-800",
-  gray: "border-gray-300 bg-gray-50 text-gray-700",
-  grey: "border-gray-300 bg-gray-50 text-gray-700",
+  gray: "border-edge bg-sunken text-ink",
+  grey: "border-edge bg-sunken text-ink",
   blue: "border-blue-300 bg-blue-50 text-blue-900",
   sky: "border-sky-300 bg-sky-50 text-sky-900",
   indigo: "border-indigo-300 bg-indigo-50 text-indigo-900",
@@ -51,7 +51,7 @@ function StatusChip({ status }: { status: MatterStatus }) {
     <span
       className={cn(
         "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        hex ? "bg-white" : TONES[colour.toLowerCase()] ?? "border-gray-300 bg-gray-50 text-gray-700",
+        hex ? "bg-raised" : TONES[colour.toLowerCase()] ?? "border-edge bg-sunken text-ink",
       )}
       style={hex ? { borderColor: colour, color: colour } : undefined}
     >
@@ -126,7 +126,7 @@ export default async function FirmMattersPage({
   const chipClass = (active: boolean) =>
     cn(
       "flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm",
-      active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+      active ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink hover:border-brand",
     );
 
   return (
@@ -134,7 +134,7 @@ export default async function FirmMattersPage({
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Matters</h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-ink-muted">
             {ctx.firmName} · {matters.length}
             {matters.length === LIMIT ? "+ " : " "}
             {matters.length === 1 ? "matter" : "matters"}
@@ -174,14 +174,14 @@ export default async function FirmMattersPage({
           {statusId && <input type="hidden" name="status" value={statusId} />}
           {openOnly && <input type="hidden" name="open" value="1" />}
           <div>
-            <label htmlFor="q" className="text-sm font-medium text-gray-900">Search</label>
+            <label htmlFor="q" className="text-sm font-medium text-ink">Search</label>
             <input
               id="q" name="q" type="search" inputMode="search" defaultValue={search} maxLength={80}
               placeholder="Reference, title or suit number" className={field}
             />
           </div>
           <div>
-            <label htmlFor="lawyer" className="text-sm font-medium text-gray-900">Lawyer</label>
+            <label htmlFor="lawyer" className="text-sm font-medium text-ink">Lawyer</label>
             <select id="lawyer" name="lawyer" defaultValue={lawyerId ?? ""} className={field}>
               <option value="">Everyone</option>
               {staff.map((m: StaffMember) => (
@@ -222,18 +222,18 @@ export default async function FirmMattersPage({
             />
           )
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {matters.map((m: MatterListRow) => {
               const causeDiffers = Boolean(m.cause_title && m.cause_title.trim() !== m.title.trim());
               const conduct = m.handling_lawyer_id ?? m.lead_lawyer_id;
               const nextDatePassed = Boolean(m.next_event_at && new Date(m.next_event_at).getTime() < Date.now());
               return (
                 <li key={m.id}>
-                  <Link href={`/firm/matters/${m.id}`} className="block px-5 py-4 hover:bg-gray-50">
+                  <Link href={`/firm/matters/${m.id}`} className="block px-5 py-4 hover:bg-sunken">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900">{m.title}</p>
-                        {causeDiffers && <p className="mt-0.5 text-xs italic text-gray-600">{m.cause_title}</p>}
+                        <p className="text-sm font-medium text-ink">{m.title}</p>
+                        {causeDiffers && <p className="mt-0.5 text-xs italic text-ink-muted">{m.cause_title}</p>}
                       </div>
                       <div className="flex shrink-0 flex-wrap items-center gap-2">
                         {m.status && <StatusChip status={m.status} />}
@@ -243,28 +243,28 @@ export default async function FirmMattersPage({
                           </span>
                         )}
                         {m.closed_at && (
-                          <span className="inline-flex items-center rounded-full border border-gray-300 bg-gray-50 px-2.5 py-0.5 text-xs font-medium text-gray-700">
+                          <span className="inline-flex items-center rounded-full border border-edge bg-sunken px-2.5 py-0.5 text-xs font-medium text-ink">
                             Closed
                           </span>
                         )}
                       </div>
                     </div>
 
-                    <p className="mt-1 text-xs text-gray-600">
+                    <p className="mt-1 text-xs text-ink-muted">
                       {m.reference} · {typeLabel(m.type)}
                       {m.client_names.length > 0 ? ` · ${m.client_names.join(", ")}` : " · no client on the file yet"}
                       {conduct && staffById.has(conduct) ? ` · ${staffById.get(conduct)}` : ""}
                     </p>
 
                     {(m.court_name || m.suit_number) && (
-                      <p className="mt-1 text-xs text-gray-600">
+                      <p className="mt-1 text-xs text-ink-muted">
                         {m.court_name ?? "Court not recorded"}
                         {m.suit_number ? ` · ${m.suit_number}` : ""}
                       </p>
                     )}
 
                     {m.next_event_at && (
-                      <p className={cn("mt-1 text-xs", nextDatePassed ? "text-amber-800" : "text-gray-800")}>
+                      <p className={cn("mt-1 text-xs", nextDatePassed ? "text-amber-800" : "text-ink")}>
                         {nextDatePassed ? "Court date has passed: " : "Next court date: "}
                         <strong>{formatWhen(m.next_event_at, tz, { dateStyle: "medium", timeStyle: "short" })}</strong>
                         {m.next_event_note ? ` · ${m.next_event_note}` : ""}
@@ -274,9 +274,9 @@ export default async function FirmMattersPage({
                     {m.next_action && (
                       <p className="mt-1 text-xs font-medium text-brand">
                         Next action: {m.next_action}
-                        {m.next_action_owner_id && <span className="font-normal text-gray-600"> · {staffById.get(m.next_action_owner_id) ?? "a colleague"}</span>}
+                        {m.next_action_owner_id && <span className="font-normal text-ink-muted"> · {staffById.get(m.next_action_owner_id) ?? "a colleague"}</span>}
                         {m.next_action_due && (
-                          <span className={cn("font-normal", isPastDay(m.next_action_due, tz) ? "font-semibold text-red-700" : "text-gray-600")}>
+                          <span className={cn("font-normal", isPastDay(m.next_action_due, tz) ? "font-semibold text-red-700" : "text-ink-muted")}>
                             {" · "}{isPastDay(m.next_action_due, tz) ? "overdue, was due " : "due "}{formatDay(m.next_action_due)}
                           </span>
                         )}
@@ -291,7 +291,7 @@ export default async function FirmMattersPage({
       </Card>
 
       {matters.length === LIMIT && (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-ink-muted">
           Showing the {LIMIT} most recently opened matters. Search by reference, title or suit number to reach an older file.
         </p>
       )}

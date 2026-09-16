@@ -90,7 +90,7 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
                 {r.suit_number ? ` · ${r.suit_number}` : ""}
                 {r.court_name ? ` · ${r.court_name}` : ""}
               </p>
-              <p className="mt-1 text-[12.5px] leading-[1.5] text-gray-800">{r.scope_note}</p>
+              <p className="mt-1 text-[12.5px] leading-[1.5] text-ink">{r.scope_note}</p>
               <p className="mt-1 text-xs text-[#57534E]">
                 {r.shared_documents} document{r.shared_documents === 1 ? "" : "s"} shared ·
                 {" "}{r.share_updates ? "their client-facing updates are shared" : "no updates shared"}
@@ -116,13 +116,13 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
               </div>
 
               {openNotes === r.id && (
-                <div className="mt-2 rounded-lg bg-gray-50 p-3">
+                <div className="mt-2 rounded-lg bg-sunken p-3">
                   {mine.length === 0 ? (
                     <p className="text-xs text-[#57534E]">Nothing said yet.</p>
                   ) : (
                     <ul className="space-y-2">
                       {mine.map((n) => (
-                        <li key={n.id} className="text-[12.5px] text-gray-800">
+                        <li key={n.id} className="text-[12.5px] text-ink">
                           <span className="font-medium">{n.firm_id === firmId ? "Us" : "Them"}:</span> {n.body}
                         </li>
                       ))}
@@ -132,7 +132,7 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
                     <input
                       value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={4000}
                       placeholder="A note to the other firm"
-                      className="min-h-11 w-full rounded-lg border border-gray-300 px-3 text-base text-gray-900 focus:border-[#141414] focus:outline-none"
+                      className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline-none"
                     />
                     <Button type="submit" size="sm" disabled={busy === `note:${r.id}` || draft.trim().length === 0}>Send</Button>
                   </form>

@@ -33,14 +33,14 @@ export default async function CourtDatesPage() {
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz });
 
   const list = (items: CourtEventRow[]) => (
-    <ul className="divide-y divide-gray-100">
+    <ul className="divide-y divide-hairline">
       {items.map((e) => {
         const m = matters.get(e.matter_id);
         return (
           <li key={e.id} className="px-5 py-4">
-            <p className="text-sm font-medium text-gray-900">{fmt.format(new Date(e.scheduled_at))}</p>
-            <p className="text-sm text-gray-700">{m ? <Link href={`/app/matters/${m.id}`} className="underline">{m.title}</Link> : "Matter"}{e.purpose ? ` · ${e.purpose}` : ""}</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-sm font-medium text-ink">{fmt.format(new Date(e.scheduled_at))}</p>
+            <p className="text-sm text-ink">{m ? <Link href={`/app/matters/${m.id}`} className="underline">{m.title}</Link> : "Matter"}{e.purpose ? ` · ${e.purpose}` : ""}</p>
+            <p className="text-xs text-ink-muted">
               {e.court_name ?? "Court to be confirmed"} · {firmNames[e.firm_id] ?? "Your firm"}{e.outcome_update_id ? " · update posted" : ""}
               {courtDateProvenance(e) === "registry" ? " · listed by the court registry, confirmed by your lawyer" : courtDateProvenance(e) === "court" ? " · fixed by the court, notice on file" : " · as recorded by your firm"}
             </p>
@@ -57,9 +57,9 @@ export default async function CourtDatesPage() {
     <Screen>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="font-heading text-2xl font-semibold text-brand">Court dates</h1>
-        <a href="/app/court-dates/ics" className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium text-brand hover:bg-black/5">Add to calendar (.ics)</a>
+        <a href="/app/court-dates/ics" className="rounded-lg border border-edge px-3 py-1.5 text-sm font-medium text-brand hover:bg-hover">Add to calendar (.ics)</a>
       </div>
-      <p className="text-sm text-gray-600">Every court date across your matters and firms, shown in {tz}.</p>
+      <p className="text-sm text-ink-muted">Every court date across your matters and firms, shown in {tz}.</p>
       <Card>
         <CardHeader title="Upcoming" />
         {upcoming.length === 0 ? <EmptyState title="No upcoming court dates" hint="Your lawyer posts the next date after each sitting." /> : list(upcoming)}

@@ -168,7 +168,7 @@ export default function PlatformLanding() {
     // warm LIGHT ground — "warm, never white", "no symmetric green-white-green
     // thirds" — so a dark landing would change that posture without anyone
     // having designed it. The docket-* palette is literal and would not flip on
-    // its own, but this keeps a future `text-gray-500` here from doing so.
+    // its own, but this keeps a future `text-ink-muted` here from doing so.
     <div
       data-theme-scope="light"
       className={`${archivo.className} min-h-screen bg-docket-paper text-docket-ink`}
@@ -359,7 +359,7 @@ export default function PlatformLanding() {
                         </span>
                       ))}
                     </div>
-                    <div className="mt-3 rounded-xl border border-[#e3e0dc] bg-white p-4">
+                    <div className="mt-3 rounded-xl border border-[#e3e0dc] bg-raised p-4">
                       <p className="text-[13px] font-medium text-[#111827]">
                         Adjourned for continuation
                       </p>

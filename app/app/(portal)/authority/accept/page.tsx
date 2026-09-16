@@ -20,7 +20,7 @@ export default async function AcceptAuthority({ searchParams }: { searchParams: 
       <Card>
         <CardHeader title="Take up this authority" />
         <CardBody>
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-ink">
             A firm has recorded that you may act for one of its clients. Taking it up here binds it to
             <em> this</em> account, and the client is told. You will be able to read the matters it covers and
             write to the firm about them — and only what the firm listed: it may or may not include documents or
@@ -28,7 +28,7 @@ export default async function AcceptAuthority({ searchParams }: { searchParams: 
           </p>
           <div className="mt-3"><AcceptAuthorityForm token={sp.token ?? ""} /></div>
         </CardBody>
-        <CardBody className="border-t border-gray-100 text-xs text-gray-500">
+        <CardBody className="border-t border-hairline text-xs text-ink-muted">
           If you were not expecting this, do not take it up — tell the firm on a number you already have for them.
         </CardBody>
       </Card>
