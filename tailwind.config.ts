@@ -59,34 +59,6 @@ const config: Config = {
         },
 
 
-        // The gray bridge. Tailwind's own gray-* redefined warm, so the 1,959
-        // `text-gray-500`-style utilities already spread across 159 files pick
-        // up the new palette with no screen edited — and flip for dark mode,
-        // because these resolve through variables rather than literal hex.
-        //
-        // Three WCAG failures are corrected on the way through:
-        //   gray-300, the field border (150 uses)  1.35:1 -> 3.36:1 (SC 1.4.11)
-        //   gray-400, the placeholder colour       2.33:1 -> 5.22:1
-        //   gray-500, secondary text (459 uses)    4.43:1 -> 6.57:1
-        //
-        // A bridge, not a destination: `gray-500` cannot say whether it means
-        // muted prose or a placeholder, so a later pass rewrites these to the
-        // semantic names above and deletes this block. Any straggler then
-        // becomes a dead class the design linter catches.
-        gray: {
-          50: t("g50"),
-          100: t("g100"),
-          200: t("g200"),
-          300: t("g300"),
-          400: t("g400"),
-          500: t("g500"),
-          600: t("g600"),
-          700: t("g700"),
-          800: t("g800"),
-          900: t("g900"),
-          950: t("ink-strong"),
-        },
-
         // Grounds. Warm, never white.
         paper: t("paper"),
         raised: t("raised"),
