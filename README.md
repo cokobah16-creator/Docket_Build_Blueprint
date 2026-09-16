@@ -4,7 +4,7 @@
 
 This repository is the platform: the multi-tenant Postgres schema and row-level security, the server-side business flows (firm creation, booking, payment cascade, court updates, consultation notes, service of process, invites, jobs), the Nigerian reference data (states, courts, holidays), the provider adapters, the payment webhooks, the notification dispatcher, the Next.js app (tenant public sites, client PWA, staff console, platform admin), Klinique's seed data, and test suites that prove isolation between firms and between clients.
 
-**Validated:** all 51 migrations, the seed and 31 SQL suites (1,416 checks) run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`; every server function is catalogued in `docs/RPC_REFERENCE.md`.
+**Validated:** all 52 migrations, the seed and 31 SQL suites (1,416 checks) run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`; every server function is catalogued in `docs/RPC_REFERENCE.md`.
 
 ## Any firm, the same way
 
