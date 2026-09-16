@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { brandStyle } from "@/lib/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -29,8 +30,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       {/* dvh rather than vh: on a phone vh is the tall viewport the URL bar is
-          hiding behind, so a "full height" screen is taller than the glass. */}
-      <body className="min-h-[100dvh] text-ink antialiased">{children}</body>
+          hiding behind, so a "full height" screen is taller than the glass.
+
+          data-brand with Docket's own defaults, so that a route with no firm
+          behind it — sign-in, join, a password reset — still has a brand colour
+          that follows the reader's theme. Without this, `bg-brand` on those
+          pages resolved to the :root fallback, a fixed navy that measured 1.2:1
+          on the dark ground the body now paints. brandStyle(null) is the same
+          code path every firm's wrapper goes through, so the dark pair here is
+          liftForDark()'s answer rather than a second copy of it that could
+          drift. A firm's wrapper still wins inside its own subtree: custom
+          properties resolve from the nearest declaration, and its data-brand is
+          closer. */}
+      <body data-brand style={brandStyle(null)} className="min-h-[100dvh] text-ink antialiased">
+        {children}
+      </body>
     </html>
   );
 }

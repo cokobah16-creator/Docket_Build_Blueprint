@@ -273,6 +273,17 @@
   --t-shadow-e1: var(--l-shadow-e1);
   --t-shadow-e2: var(--l-shadow-e2);
   --t-shadow-e3: var(--l-shadow-e3);
+  /* The brand too, not only the theme. The root <body> carries Docket's own
+     data-brand so that a page with no firm behind it follows the reader's
+     theme, and a subtree pinned to light sits INSIDE that body — so it would
+     inherit the dark alias from above and paint a lifted navy on a cream page.
+     The rule further down handles a branded element inside a pinned one; this
+     is the other way round, and it only needs the light half re-stated. */
+  --dk-primary: var(--dk-primary-l);
+  --dk-accent: var(--dk-accent-l);
+  --dk-surface: var(--dk-surface-l);
+  --dk-on-primary: var(--dk-on-primary-l);
+  --dk-on-accent: var(--dk-on-accent-l);
 }
 
 /* Tell the browser which form controls and scrollbars to draw. */
