@@ -356,11 +356,11 @@ export function ConsultationRoom({
             <div className="absolute inset-0 grid place-items-center text-white/50">
               <div className="flex flex-col items-center gap-2.5">
                 <Icon name="camera" size={34} strokeWidth={1.4} />
-                <span className="text-[11.5px] uppercase tracking-[0.06em]">Your camera preview</span>
+                <span className="text-11 uppercase tracking-[0.06em]">Your camera preview</span>
               </div>
             </div>
           )}
-          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/[0.12] px-2.5 py-1.5 text-[11.5px] font-semibold text-white">
+          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-white/[0.12] px-2.5 py-1.5 text-11 font-semibold text-white">
             <Icon name="mic" size={13} strokeWidth={1.8} />
             Mic on
           </span>
@@ -376,7 +376,7 @@ export function ConsultationRoom({
           >
             <Switch label="Join with audio only" checked={audioOnly} onChange={setAudioOnly} />
           </SettingRow>
-          <p className="flex items-center gap-2 border-t border-hairline pt-[11px] text-[11.5px] text-ink-muted">
+          <p className="flex items-center gap-2 border-t border-hairline pt-[11px] text-11 text-ink-muted">
             <span
               aria-hidden="true"
               className={cn("size-[7px] shrink-0 rounded-full", weak && !audioOnly ? "bg-[#D97706]" : "bg-[#16A34A]")}
@@ -406,9 +406,9 @@ export function ConsultationRoom({
         </Alert>
 
         <div className="flex flex-col gap-2.5 rounded-card border border-hairline bg-raised p-[15px]">
-          <p className="text-xs uppercase tracking-[0.07em] text-ink-muted">Data used</p>
-          <p className="font-heading text-[26px] font-semibold text-brand">{mb(endedUsed)}</p>
-          <p className="text-xs leading-[1.45] text-ink-muted">
+          <p className="text-13 uppercase tracking-[0.07em] text-ink-muted">Data used</p>
+          <p className="font-heading text-26 font-semibold text-brand">{mb(endedUsed)}</p>
+          <p className="text-13 leading-[1.45] text-ink-muted">
             {endedAudioOnly
               ? `Audio only, ${minutes} minute${minutes === 1 ? "" : "s"}. About a tenth of what video would have cost (${mb((endedAfterMs / 60_000) * MB_PER_MIN.video)}).`
               : `Video, ${minutes} minute${minutes === 1 ? "" : "s"}. Audio only would have used about ${mb((endedAfterMs / 60_000) * MB_PER_MIN.audio)}.`}
@@ -443,10 +443,10 @@ export function ConsultationRoom({
       >
         <header className="flex shrink-0 items-center justify-between gap-3 px-4 py-3.5">
           <div className="min-w-0">
-            <p className="text-[13.5px] font-semibold text-white">
+            <p className="text-13 font-semibold text-white">
               {phase === "lobby" ? "Waiting room" : phase === "in-call" ? `In consultation · ${mmss(elapsed)}` : "Room"}
             </p>
-            <p className="mt-0.5 truncate text-[11.5px] text-white/55">
+            <p className="mt-0.5 truncate text-11 text-white/55">
               {counterpartLabel}
               {contextLabel ? ` · ${contextLabel}` : ""}
             </p>
@@ -454,7 +454,7 @@ export function ConsultationRoom({
           <span
             aria-live="polite"
             className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-[11px] font-semibold",
+              "inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-11 font-semibold",
               weak && !audioOnly
                 ? "border-amber-300/30 bg-amber-700/20 text-amber-200"
                 : "border-emerald-200/40 bg-emerald-800/25 text-emerald-200",
@@ -473,9 +473,9 @@ export function ConsultationRoom({
 
         {role === "owner" && waitingCount > 0 && (
           <div className="mx-4 mb-3 flex shrink-0 items-center justify-between gap-3 rounded-[11px] border border-white/15 bg-white/[0.08] p-3.5">
-            <p className="min-w-0 text-[13px] font-semibold text-white">
+            <p className="min-w-0 text-13 font-semibold text-white">
               {waitingCount === 1 ? `${counterpartLabel} is waiting` : `${waitingCount} people are waiting`}
-              <span className="mt-0.5 block text-[11.5px] font-normal text-white/55">Admit when you are ready — nothing is recorded.</span>
+              <span className="mt-0.5 block text-11 font-normal text-white/55">Admit when you are ready — nothing is recorded.</span>
             </p>
             <Button size="md" className="shrink-0 bg-white text-[#0B0B0C] hover:bg-white/90" onClick={admitAll}>
               Admit
@@ -498,8 +498,8 @@ export function ConsultationRoom({
                 <span className="grid size-[72px] animate-[dkPulse_2s_ease-in-out_infinite] place-items-center rounded-full border border-white/20 text-white/80">
                   <Icon name="clock" size={28} strokeWidth={1.5} />
                 </span>
-                <p className="text-[14.5px] font-semibold text-white">Waiting for {counterpartLabel}</p>
-                <p className="text-[12.5px] leading-relaxed text-white/60">
+                <p className="text-15 font-semibold text-white">Waiting for {counterpartLabel}</p>
+                <p className="text-13 leading-relaxed text-white/60">
                   You are in the waiting room. Keep this screen open — you will be let in shortly.
                 </p>
               </div>
@@ -510,7 +510,7 @@ export function ConsultationRoom({
         {showWarning && (
           <div className="mx-4 mt-2.5 flex shrink-0 items-start gap-2.5 rounded-[10px] border border-amber-300/30 bg-amber-700/20 p-3.5">
             <Icon name="warning" size={16} strokeWidth={1.8} className="mt-px shrink-0 text-amber-300" />
-            <div className="text-xs leading-[1.45] text-amber-100">
+            <div className="text-13 leading-[1.45] text-amber-100">
               <span className="font-semibold">Your connection is weak.</span> Turn the camera off to keep the audio clear.
               <button
                 type="button"
@@ -551,7 +551,7 @@ export function ConsultationRoom({
               <button
                 type="button"
                 onClick={() => void finish(true)}
-                className="inline-flex min-h-[54px] items-center gap-2.5 rounded-full bg-[#B42318] px-5 text-[13px] font-bold text-white"
+                className="inline-flex min-h-[54px] items-center gap-2.5 rounded-full bg-[#B42318] px-5 text-13 font-bold text-white"
               >
                 <Icon name="phone-off" size={19} strokeWidth={1.8} />
                 End &amp; write notes
@@ -566,7 +566,7 @@ export function ConsultationRoom({
               </button>
             )}
           </div>
-          <p className="text-center text-[11px] text-white/40">
+          <p className="text-center text-11 text-white/40">
             {role === "owner"
               ? "Private room · not recorded · you hold the only owner token"
               : phase === "in-call"
@@ -574,7 +574,7 @@ export function ConsultationRoom({
                 : "Private · not recorded"}
           </p>
           {role === "owner" && phase === "in-call" && (
-            <p className="text-center text-[11px] text-white/40">
+            <p className="text-center text-11 text-white/40">
               {participants > 0 ? `${participants} other participant${participants > 1 ? "s" : ""} in the room` : "No one else in the room yet"}
             </p>
           )}

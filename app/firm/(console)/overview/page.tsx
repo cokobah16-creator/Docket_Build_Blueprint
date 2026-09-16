@@ -192,10 +192,10 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Firm overview</h1>
-          <p className="text-sm text-ink-muted">{ctx.firmName} · everything in {tz}</p>
+          <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Firm overview</h1>
+          <p className="text-15 text-ink-muted">{ctx.firmName} · everything in {tz}</p>
         </div>
-        <Link href="/firm" className="rounded-lg border border-edge px-4 py-2.5 text-sm font-medium text-brand hover:bg-hover">
+        <Link href="/firm" className="rounded-lg border border-edge px-4 py-2.5 text-15 font-medium text-brand hover:bg-hover">
           Back to Today
         </Link>
       </header>
@@ -204,8 +204,8 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
         <section aria-label="Firm totals" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {tiles.map((t) => (
             <Link key={t.label} href={t.href} className="rounded-card border border-hairline bg-raised p-4 shadow-sm hover:border-brand">
-              <p className="text-xs uppercase tracking-wide text-ink-muted">{t.label}</p>
-              <p className="mt-1 font-heading text-xl font-semibold text-brand">{t.value}</p>
+              <p className="text-13 uppercase tracking-wide text-ink-muted">{t.label}</p>
+              <p className="mt-1 font-heading text-21 font-semibold text-brand">{t.value}</p>
             </Link>
           ))}
         </section>
@@ -219,17 +219,17 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
       <Card>
         <CardHeader
           title="Next 14 days"
-          action={<Link href="/firm/sittings" className="text-sm text-brand underline">Sittings →</Link>}
+          action={<Link href="/firm/sittings" className="text-15 text-brand underline">Sittings →</Link>}
         />
         {calendarCount === 0 ? (
           <EmptyState
             title="Nothing listed in the next fortnight"
             hint="Court dates appear here as you post updates and next dates; consultations appear as clients book."
-            action={<Link href="/firm/sittings" className="text-sm text-brand underline">Post a court update</Link>}
+            action={<Link href="/firm/sittings" className="text-15 text-brand underline">Post a court update</Link>}
           />
         ) : (
           <CardBody>
-            <p className="mb-3 text-xs text-ink-muted">
+            <p className="mb-3 text-13 text-ink-muted">
               Court sittings and consultations, one column per day. On a phone, only days with something listed are shown.
             </p>
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
@@ -246,23 +246,23 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                       empty && "hidden sm:block",
                     )}
                   >
-                    <p className="font-heading text-sm font-semibold text-brand">
+                    <p className="font-heading text-15 font-semibold text-brand">
                       {index === 0 ? "Today" : weekdayFmt.format(d.start)}
                     </p>
-                    <p className="text-xs text-ink-muted">{dayFmt.format(d.start)}</p>
+                    <p className="text-13 text-ink-muted">{dayFmt.format(d.start)}</p>
                     {empty ? (
-                      <p className="mt-2 text-xs text-ink-muted">Clear</p>
+                      <p className="mt-2 text-13 text-ink-muted">Clear</p>
                     ) : (
                       <ul className="mt-2 space-y-2">
                         {daySittings.map((s) => (
                           <li key={s.court_event_id}>
                             <Link href={`/firm/matters/${s.matter_id}`} className="block rounded-lg bg-brand-surface px-2 py-2 hover:bg-hover">
-                              <p className="text-xs font-semibold text-brand">
+                              <p className="text-13 font-semibold text-brand">
                                 <span aria-hidden="true">⚖ </span>
                                 {formatWhen(s.scheduled_at, tz, { timeStyle: "short" })}
                               </p>
-                              <p className="text-xs text-ink">{s.cause_title}</p>
-                              <p className="text-[11px] text-ink-muted">
+                              <p className="text-13 text-ink">{s.cause_title}</p>
+                              <p className="text-11 text-ink-muted">
                                 {s.suit_number ?? s.reference}
                                 {s.court ? ` · ${s.court}` : ""}
                                 {s.courtroom ? ` · ${s.courtroom}` : ""}
@@ -274,12 +274,12 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                         {dayAppointments.map((a) => (
                           <li key={a.id}>
                             <Link href={`/firm/appointments/${a.id}`} className="block rounded-lg border border-hairline px-2 py-2 hover:bg-sunken">
-                              <p className="text-xs font-semibold text-ink">
+                              <p className="text-13 font-semibold text-ink">
                                 <span aria-hidden="true">📅 </span>
                                 {formatWhen(a.starts_at, tz, { timeStyle: "short" })}
                               </p>
-                              <p className="text-xs text-ink">{a.client?.full_name ?? "Client"}</p>
-                              <p className="text-[11px] text-ink-muted">{a.reference} · {a.mode.replace("_", " ")} · {a.status.replace("_", " ")}</p>
+                              <p className="text-13 text-ink">{a.client?.full_name ?? "Client"}</p>
+                              <p className="text-11 text-ink-muted">{a.reference} · {a.mode.replace("_", " ")} · {a.status.replace("_", " ")}</p>
                             </Link>
                           </li>
                         ))}
@@ -297,13 +297,13 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
         <Card>
           <CardHeader
             title="Latest activity"
-            action={<Link href="/firm/matters" className="text-sm text-brand underline">All matters →</Link>}
+            action={<Link href="/firm/matters" className="text-15 text-brand underline">All matters →</Link>}
           />
           {visibleFeed.length === 0 ? (
             <EmptyState
               title="No updates posted yet"
               hint="Every court outcome, filing and note posted on a matter shows here, newest first."
-              action={<Link href="/firm/sittings" className="text-sm text-brand underline">Post a court update</Link>}
+              action={<Link href="/firm/sittings" className="text-15 text-brand underline">Post a court update</Link>}
             />
           ) : (
             <>
@@ -315,12 +315,12 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                     <li key={u.id} className="flex gap-3 px-5 py-4">
                       <span aria-hidden="true" className="mt-0.5 w-6 shrink-0 text-center text-base">{KIND_ICON[u.kind] ?? "•"}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-ink">
+                        <p className="text-15 font-medium text-ink">
                           {u.title}
                           {internal && <Badge className="ml-2 bg-amber-100 text-amber-900">internal</Badge>}
                         </p>
-                        {u.body && <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{u.body}</p>}
-                        <p className="mt-1 text-xs text-ink-muted">
+                        {u.body && <p className="mt-1 whitespace-pre-wrap text-15 text-ink">{u.body}</p>}
+                        <p className="mt-1 text-13 text-ink-muted">
                           <Link href={`/firm/matters/${u.matter_id}`} className="text-brand underline">
                             {matter ? matter.cause_title ?? matter.title : "Open matter"}
                           </Link>
@@ -331,7 +331,7 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                   );
                 })}
               </ol>
-              <CardBody className="border-t border-hairline text-xs text-ink-muted">
+              <CardBody className="border-t border-hairline text-13 text-ink-muted">
                 Entries marked internal are staff-only and never reach a client.
               </CardBody>
             </>
@@ -344,7 +344,7 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
             <EmptyState
               title="No colleagues on this firm yet"
               hint="Invite the rest of chambers, then set an originating and a handling lawyer on each matter."
-              action={<Link href="/firm/matters" className="text-sm text-brand underline">Open a matter</Link>}
+              action={<Link href="/firm/matters" className="text-15 text-brand underline">Open a matter</Link>}
             />
           ) : (
             <>
@@ -362,7 +362,7 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                     <TR key={row.id}>
                       <TD>
                         <span className="font-medium text-ink">{row.label}</span>
-                        <span className="ml-2 text-xs text-ink-muted">{row.role}</span>
+                        <span className="ml-2 text-13 text-ink-muted">{row.role}</span>
                       </TD>
                       <TD className="text-right tabular-nums">{row.originated}</TD>
                       <TD className="text-right tabular-nums">{row.handling}</TD>
@@ -385,7 +385,7 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
                   </TR>
                 </TBody>
               </Table>
-              <CardBody className="border-t border-hairline text-xs text-ink-muted">
+              <CardBody className="border-t border-hairline text-13 text-ink-muted">
                 {feesByLawyer
                   ? "Fees are payments received against invoices on each member's originated matters, in the currency they were paid."
                   : "Fees collected are not shown: the attribution view could not be read with your access."}

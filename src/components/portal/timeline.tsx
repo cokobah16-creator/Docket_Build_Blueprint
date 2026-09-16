@@ -33,7 +33,7 @@ export function Timeline({ matterId, initial, timezone }: { matterId: string; in
   }, [matterId]);
 
   if (items.length === 0) {
-    return <p className="px-5 py-8 text-center text-sm text-ink-muted">No updates yet. Your lawyer's updates on this matter appear here as they happen.</p>;
+    return <p className="px-5 py-8 text-center text-15 text-ink-muted">No updates yet. Your lawyer's updates on this matter appear here as they happen.</p>;
   }
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
   return (
@@ -45,16 +45,16 @@ export function Timeline({ matterId, initial, timezone }: { matterId: string; in
           <li key={u.id} className="flex gap-3 px-5 py-4">
             <span aria-hidden="true" className="mt-0.5 w-6 text-center text-base">{KIND_ICON[u.kind] ?? "•"}</span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-ink">{u.title}</p>
-              {u.body && <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{u.body}</p>}
+              <p className="text-15 font-medium text-ink">{u.title}</p>
+              {u.body && <p className="mt-1 whitespace-pre-wrap text-15 text-ink">{u.body}</p>}
               <UpdateStructure update={u} />
               {u.kind === "court_sitting" && (
-                <dl className="mt-2 grid gap-1 text-xs text-ink-muted sm:grid-cols-2">
+                <dl className="mt-2 grid gap-1 text-13 text-ink-muted sm:grid-cols-2">
                   {typeof p.court_name === "string" && p.court_name && <div><dt className="inline text-ink-muted">Court: </dt><dd className="inline">{p.court_name}</dd></div>}
                   {nextDate && <div><dt className="inline text-ink-muted">Next date: </dt><dd className="inline">{fmt.format(new Date(nextDate))}{typeof p.next_purpose === "string" && p.next_purpose ? ` · ${p.next_purpose}` : ""}</dd></div>}
                 </dl>
               )}
-              <p className="mt-1 text-xs text-ink-muted">{fmt.format(new Date(u.occurred_at))}</p>
+              <p className="mt-1 text-13 text-ink-muted">{fmt.format(new Date(u.occurred_at))}</p>
             </div>
           </li>
         );

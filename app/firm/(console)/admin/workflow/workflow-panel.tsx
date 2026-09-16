@@ -72,13 +72,13 @@ export function WorkflowPanel({ firmId, packs, installed, statuses, canWrite }: 
       <Card>
         <CardHeader title="Packs" />
         <CardBody className="space-y-4">
-          <p className="text-sm text-ink-muted">
+          <p className="text-15 text-ink-muted">
             A pack is a set of stages and the work each stage starts, published by Docket as a numbered version.
             Installing one adds the stages you lack and recognises the ones you have — your wording, colours and
             order are never rewritten, and no matter is moved. Installing a newer version adds only.
           </p>
           {byKey.size === 0 ? (
-            <p className="text-sm text-ink-muted">Docket has published no pack yet.</p>
+            <p className="text-15 text-ink-muted">Docket has published no pack yet.</p>
           ) : (
             <ul className="divide-y divide-hairline">
               {Array.from(byKey.entries()).map(([key, versions]) => {
@@ -89,22 +89,22 @@ export function WorkflowPanel({ firmId, packs, installed, statuses, canWrite }: 
                 return (
                   <li key={key} className="py-3">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="text-sm font-semibold text-ink">
+                      <p className="text-15 font-semibold text-ink">
                         {latest.name} <span className="font-normal text-ink-muted">· version {latest.version}</span>
-                        {have ? <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-900">installed{have < latest.version ? ` (v${have})` : ""}</span> : null}
+                        {have ? <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-13 text-emerald-900">installed{have < latest.version ? ` (v${have})` : ""}</span> : null}
                       </p>
-                      <p className="text-xs text-ink-muted">
+                      <p className="text-13 text-ink-muted">
                         {latest.matter_types?.length ? `for ${latest.matter_types.map((t) => t.replace(/_/g, " ")).join(", ")} matters` : "for every matter type"} ·
                         {" "}{def.statuses.length} stage{def.statuses.length === 1 ? "" : "s"} · {templates.length} task template{templates.length === 1 ? "" : "s"}
                       </p>
                     </div>
-                    {latest.note && <p className="text-xs text-ink-muted">{latest.note}</p>}
-                    <p className="mt-1 text-xs text-ink-muted">{def.statuses.map((s) => s.label).join(" → ")}</p>
+                    {latest.note && <p className="text-13 text-ink-muted">{latest.note}</p>}
+                    <p className="mt-1 text-13 text-ink-muted">{def.statuses.map((s) => s.label).join(" → ")}</p>
                     {canWrite && (
                       <div className="mt-2 flex flex-wrap gap-2">
                         {have === null && <Button type="button" size="sm" disabled={busy !== null} onClick={() => void install(key, latest.version)}>{busy === `${key}:${latest.version}` ? "Installing…" : "Install"}</Button>}
                         {have !== null && have < latest.version && <Button type="button" size="sm" disabled={busy !== null} onClick={() => void install(key, latest.version)}>{busy === `${key}:${latest.version}` ? "Upgrading…" : `Upgrade to version ${latest.version}`}</Button>}
-                        {have !== null && have >= latest.version && <span className="text-xs text-ink-muted">Up to date.</span>}
+                        {have !== null && have >= latest.version && <span className="text-13 text-ink-muted">Up to date.</span>}
                       </div>
                     )}
                   </li>
@@ -118,7 +118,7 @@ export function WorkflowPanel({ firmId, packs, installed, statuses, canWrite }: 
       <Card>
         <CardHeader title="Your stages" />
         <CardBody className="space-y-3">
-          <p className="text-sm text-ink-muted">
+          <p className="text-15 text-ink-muted">
             The stages a matter moves through, in order. Your clients read the label. A stage is offered on the matter
             types it names, or on every type. The key is fixed: matters and packs point at it.
           </p>
@@ -127,10 +127,10 @@ export function WorkflowPanel({ firmId, packs, installed, statuses, canWrite }: 
               <li key={s.id} className="py-3">
                 {editing === s.id ? (
                   <div className="grid gap-3 sm:grid-cols-4">
-                    <label className="text-sm text-ink sm:col-span-2">Label<input type="text" maxLength={80} value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} className={field} /></label>
-                    <label className="text-sm text-ink">Colour<input type="text" maxLength={20} value={draft.colour} onChange={(e) => setDraft({ ...draft, colour: e.target.value })} placeholder="slate, blue, green, amber, indigo, gray" className={field} /></label>
-                    <label className="text-sm text-ink">Order<input type="number" min={0} max={10000} value={draft.sort} onChange={(e) => setDraft({ ...draft, sort: Number(e.target.value) })} className={field} /></label>
-                    <label className="text-sm text-ink sm:col-span-4">Next action the stage suggests (offered when the slot is empty)<input type="text" maxLength={500} value={draft.defaultNextAction} onChange={(e) => setDraft({ ...draft, defaultNextAction: e.target.value })} className={field} /></label>
+                    <label className="text-15 text-ink sm:col-span-2">Label<input type="text" maxLength={80} value={draft.label} onChange={(e) => setDraft({ ...draft, label: e.target.value })} className={field} /></label>
+                    <label className="text-15 text-ink">Colour<input type="text" maxLength={20} value={draft.colour} onChange={(e) => setDraft({ ...draft, colour: e.target.value })} placeholder="slate, blue, green, amber, indigo, gray" className={field} /></label>
+                    <label className="text-15 text-ink">Order<input type="number" min={0} max={10000} value={draft.sort} onChange={(e) => setDraft({ ...draft, sort: Number(e.target.value) })} className={field} /></label>
+                    <label className="text-15 text-ink sm:col-span-4">Next action the stage suggests (offered when the slot is empty)<input type="text" maxLength={500} value={draft.defaultNextAction} onChange={(e) => setDraft({ ...draft, defaultNextAction: e.target.value })} className={field} /></label>
                     <div className="flex gap-2 sm:col-span-4">
                       <Button type="button" size="sm" disabled={busy === s.id} onClick={() => void saveEdit(s.id)}>{busy === s.id ? "Saving…" : "Save"}</Button>
                       <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
@@ -139,15 +139,15 @@ export function WorkflowPanel({ firmId, packs, installed, statuses, canWrite }: 
                 ) : (
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium text-ink">{s.label}{s.is_terminal ? <span className="ml-2 text-xs text-ink-muted">closes the file</span> : null}</p>
-                      <p className="text-xs text-ink-muted">
+                      <p className="text-15 font-medium text-ink">{s.label}{s.is_terminal ? <span className="ml-2 text-13 text-ink-muted">closes the file</span> : null}</p>
+                      <p className="text-13 text-ink-muted">
                         <span className="font-mono">{s.key}</span> · order {s.sort ?? 0}
                         {s.matter_types?.length ? ` · ${s.matter_types.map((t) => t.replace(/_/g, " ")).join(", ")} matters` : " · every type"}
                         {s.pack_key ? ` · from the ${s.pack_key} pack v${s.pack_version}` : " · the firm's own"}
                         {s.default_next_action ? ` · suggests: ${s.default_next_action}` : ""}
                       </p>
                     </div>
-                    {canWrite && <button type="button" className="text-xs font-medium text-brand underline" onClick={() => startEdit(s)}>Edit the wording</button>}
+                    {canWrite && <button type="button" className="text-13 font-medium text-brand underline" onClick={() => startEdit(s)}>Edit the wording</button>}
                   </div>
                 )}
               </li>

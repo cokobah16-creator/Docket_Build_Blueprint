@@ -31,9 +31,9 @@ export default async function LawyersPage({ params }: { params: Promise<{ firm: 
                   <h2 className="font-heading text-base font-semibold text-ink">
                     {lawyerDisplayName(l, firm.name)}
                   </h2>
-                  {l.title && <p className="text-sm text-ink-muted">{l.title}</p>}
+                  {l.title && <p className="text-15 text-ink-muted">{l.title}</p>}
                   {l.practice_areas.length > 0 && (
-                    <p className="text-xs text-ink-muted">{l.practice_areas.join(" · ")}</p>
+                    <p className="text-13 text-ink-muted">{l.practice_areas.join(" · ")}</p>
                   )}
                 </CardBody>
               </Card>

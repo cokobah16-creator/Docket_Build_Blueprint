@@ -316,8 +316,8 @@ export function BookingWizard({
           <Icon name="chevron-left" size={19} strokeWidth={2} />
         </button>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[13px] font-semibold text-ink">{STEP_TITLES[step]}</p>
-          <p className="mt-px truncate text-[11px] text-ink-muted">
+          <p className="truncate text-13 font-semibold text-ink">{STEP_TITLES[step]}</p>
+          <p className="mt-px truncate text-11 text-ink-muted">
             Step {stepNumber} of {steps.length} · {firm.name}
           </p>
         </div>
@@ -343,9 +343,9 @@ export function BookingWizard({
                 onClick={() => { setServiceId(s.id); setMode(null); setSlot(null); }}
                 className={choiceCardClasses(serviceId === s.id)}
               >
-                <span className="block text-[14.5px] font-semibold text-ink">{s.name}</span>
-                {s.description && <span className="mt-1 block text-[12.5px] leading-[1.45] text-ink-muted">{s.description}</span>}
-                <span className="mt-1.5 block text-[13px] font-semibold text-brand">
+                <span className="block text-15 font-semibold text-ink">{s.name}</span>
+                {s.description && <span className="mt-1 block text-13 leading-[1.45] text-ink-muted">{s.description}</span>}
+                <span className="mt-1.5 block text-13 font-semibold text-brand">
                   {formatMoneyMinor(s.price_minor, s.currency)} · {s.duration_min} minutes
                 </span>
               </button>
@@ -378,8 +378,8 @@ export function BookingWizard({
                         <Icon name={MODES[m].icon} size={18} />
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-[14.5px] font-semibold text-ink">{MODES[m].label}</span>
-                        <span className="mt-0.5 block text-[12.5px] leading-[1.45] text-ink-muted">{MODES[m].hint}</span>
+                        <span className="block text-15 font-semibold text-ink">{MODES[m].label}</span>
+                        <span className="mt-0.5 block text-13 leading-[1.45] text-ink-muted">{MODES[m].hint}</span>
                       </span>
                     </span>
                   </button>
@@ -391,7 +391,7 @@ export function BookingWizard({
         {step === "when" && (
           <>
             <StepTitle>Pick a day and time</StepTitle>
-            <p className="text-xs leading-relaxed text-ink-muted">
+            <p className="text-13 leading-relaxed text-ink-muted">
               Times are shown in your timezone ({visitorTz})
               {visitorTz !== lawyerTz ? `, and the lawyer's (${lawyerTz}) under each` : ", the same as the lawyer's"}.
               The slot is held for fifteen minutes while you pay.
@@ -400,7 +400,7 @@ export function BookingWizard({
             {/* The lawyer decides which slots exist, so the choice sits here. */}
             {lawyers.length > 1 && (
               <fieldset className="flex flex-col gap-2">
-                <legend className="mb-1 text-[12.5px] font-semibold text-ink">Who would you like to see?</legend>
+                <legend className="mb-1 text-13 font-semibold text-ink">Who would you like to see?</legend>
                 <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-0.5">
                   {lawyers.map((l) => (
                     <button
@@ -431,17 +431,17 @@ export function BookingWizard({
                       on ? "border-brand bg-brand text-brand-on" : "border-hairline bg-raised text-ink",
                     )}
                   >
-                    <span className="block text-[10.5px] uppercase tracking-[0.06em] opacity-70">{d.dow}</span>
-                    <span className="mt-0.5 block text-[17px] font-bold">{d.num}</span>
+                    <span className="block text-11 uppercase tracking-[0.06em] opacity-70">{d.dow}</span>
+                    <span className="mt-0.5 block text-17 font-bold">{d.num}</span>
                   </button>
                 );
               })}
             </div>
 
             {!date ? (
-              <p className="text-[12.5px] text-ink-muted">Pick a day to see the free times.</p>
+              <p className="text-13 text-ink-muted">Pick a day to see the free times.</p>
             ) : slotsLoading ? (
-              <p className="text-[12.5px] text-ink-muted">Checking availability…</p>
+              <p className="text-13 text-ink-muted">Checking availability…</p>
             ) : slots.length === 0 ? (
               <Alert kind="info">No free times on this day. Try another day.</Alert>
             ) : (
@@ -455,20 +455,20 @@ export function BookingWizard({
                       aria-pressed={on}
                       onClick={() => setSlot(s)}
                       className={cn(
-                        "min-h-[46px] rounded-[9px] border text-[13px] font-semibold",
+                        "min-h-[46px] rounded-[9px] border text-13 font-semibold",
                         on ? "border-brand bg-brand text-brand-on" : "border-hairline bg-raised text-ink",
                       )}
                     >
                       <span className="block">{fmtTime(s.starts_at, visitorTz)}</span>
                       {visitorTz !== lawyerTz && (
-                        <span className="block text-[10px] font-normal opacity-75">{fmtTime(s.starts_at, lawyerTz)}</span>
+                        <span className="block text-11 font-normal opacity-75">{fmtTime(s.starts_at, lawyerTz)}</span>
                       )}
                     </button>
                   );
                 })}
               </div>
             )}
-            <p className="text-[11.5px] text-ink-muted">
+            <p className="text-11 text-ink-muted">
               Two-hour lead time, the daily cap and the firm&apos;s breaks are already taken out.
             </p>
           </>
@@ -477,7 +477,7 @@ export function BookingWizard({
         {step === "intake" && form && (
           <>
             <StepTitle>A few details for your lawyer</StepTitle>
-            <p className="text-xs leading-relaxed text-ink-muted">
+            <p className="text-13 leading-relaxed text-ink-muted">
               Only what is needed to prepare. Your answers are private to {firm.name}.
             </p>
             {visibleQuestions.map((q) => (
@@ -496,7 +496,7 @@ export function BookingWizard({
         {step === "review" && service && slot && mode && (
           <>
             <StepTitle>Review and {feeMinor > 0 ? "pay" : "confirm"}</StepTitle>
-            <dl className="flex flex-col gap-3 rounded-card border border-hairline bg-raised px-4 py-[15px] text-[13.5px]">
+            <dl className="flex flex-col gap-3 rounded-card border border-hairline bg-raised px-4 py-[15px] text-13">
               <Row label="Service" value={service.name} />
               <Row label="Lawyer" value={lawyerName(lawyer, firm.name)} />
               <Row label="Format" value={MODES[mode].label} />
@@ -525,12 +525,12 @@ export function BookingWizard({
             {/* Signing in is what the confirm button needs, so it lives beside it. */}
             {!user && (
               <div className="flex flex-col gap-2.5 rounded-card border border-hairline bg-raised px-4 py-[15px]">
-                <p className="text-[13.5px] font-semibold text-ink">Sign in to hold your slot</p>
-                <p className="text-xs leading-relaxed text-ink-muted">
+                <p className="text-13 font-semibold text-ink">Sign in to hold your slot</p>
+                <p className="text-13 leading-relaxed text-ink-muted">
                   Your choices above are remembered while you sign in.
                 </p>
                 {!authChecked ? (
-                  <p className="text-[12.5px] text-ink-muted">Checking your session…</p>
+                  <p className="text-13 text-ink-muted">Checking your session…</p>
                 ) : (
                   <SignInForms redirectNext={`/${firm.slug}/book?resume=1`} />
                 )}
@@ -550,12 +550,12 @@ export function BookingWizard({
             )}
 
             {firm.policies.cancellation?.text ? (
-              <p className="text-[11.5px] leading-relaxed text-ink-muted">{String(firm.policies.cancellation.text)}</p>
+              <p className="text-11 leading-relaxed text-ink-muted">{String(firm.policies.cancellation.text)}</p>
             ) : null}
             {firm.policies.disclaimer?.text ? (
-              <p className="text-[11.5px] leading-relaxed text-ink-muted">{String(firm.policies.disclaimer.text)}</p>
+              <p className="text-11 leading-relaxed text-ink-muted">{String(firm.policies.disclaimer.text)}</p>
             ) : (
-              <p className="text-[11.5px] leading-relaxed text-ink-muted">
+              <p className="text-11 leading-relaxed text-ink-muted">
                 Submitting an inquiry or booking a consultation does not create a lawyer-client
                 relationship. Formal legal advice and representation begin only on a signed engagement.
               </p>
@@ -594,7 +594,7 @@ export function BookingWizard({
 
 function StepTitle({ children }: { children: ReactNode }) {
   return (
-    <h2 className="font-heading text-[20px] font-semibold leading-tight tracking-[-0.01em] text-brand">
+    <h2 className="font-heading text-21 font-semibold leading-tight tracking-[-0.01em] text-brand">
       {children}
     </h2>
   );
@@ -627,9 +627,9 @@ function IntakeField({
   if (q.type === "longtext") {
     return (
       <div className="space-y-1.5">
-        <label htmlFor={id} className="block text-[12.5px] font-semibold text-ink">{q.label}</label>
+        <label htmlFor={id} className="block text-13 font-semibold text-ink">{q.label}</label>
         <textarea id={id} rows={4} maxLength={q.max_length} required={q.required} className={cn(fieldClasses, "min-h-[76px] leading-relaxed")} value={typeof value === "string" ? value : ""} onChange={(e) => onChange(e.target.value)} />
-        {q.help && <p className="text-[11.5px] text-ink-muted">{q.help}</p>}
+        {q.help && <p className="text-11 text-ink-muted">{q.help}</p>}
       </div>
     );
   }
@@ -644,7 +644,7 @@ function IntakeField({
     };
     return (
       <fieldset className="space-y-2">
-        <legend className="mb-1 text-[12.5px] font-semibold text-ink">{q.label}</legend>
+        <legend className="mb-1 text-13 font-semibold text-ink">{q.label}</legend>
         <div className="flex flex-wrap gap-[7px]">
           {(q.options ?? []).map((opt) => (
             <button
@@ -659,7 +659,7 @@ function IntakeField({
             </button>
           ))}
         </div>
-        {q.help && <p className="text-[11.5px] text-ink-muted">{q.help}</p>}
+        {q.help && <p className="text-11 text-ink-muted">{q.help}</p>}
       </fieldset>
     );
   }
@@ -667,9 +667,9 @@ function IntakeField({
     const selected = Array.isArray(value) ? value : [];
     return (
       <fieldset className="space-y-2">
-        <legend className="text-[12.5px] font-semibold text-ink">{q.label}</legend>
+        <legend className="text-13 font-semibold text-ink">{q.label}</legend>
         {(q.options ?? []).map((opt) => (
-          <label key={opt} className="flex items-center gap-2 text-[13.5px] text-ink">
+          <label key={opt} className="flex items-center gap-2 text-13 text-ink">
             <input
               type="checkbox"
               className="size-4"
@@ -694,10 +694,10 @@ function IntakeField({
   }
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-[12.5px] font-semibold text-ink">{q.label}</label>
+      <label htmlFor={id} className="block text-13 font-semibold text-ink">{q.label}</label>
       <label
         htmlFor={id}
-        className="flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[9px] border border-dashed border-edge bg-raised text-[13px] font-semibold text-brand"
+        className="flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[9px] border border-dashed border-edge bg-raised text-13 font-semibold text-brand"
       >
         <Icon name="upload" size={17} />
         Choose files
@@ -710,8 +710,8 @@ function IntakeField({
         className="sr-only"
         onChange={(e) => onFiles(Array.from<File>(e.target.files ?? []).slice(0, q.max_files ?? 1))}
       />
-      {files.length > 0 && <p className="text-[11.5px] text-ink-muted">{files.map((f) => f.name).join(", ")}</p>}
-      <p className="text-[11.5px] text-ink-muted">PDF or images, up to 25 MB each. Uploaded securely after you sign in.</p>
+      {files.length > 0 && <p className="text-11 text-ink-muted">{files.map((f) => f.name).join(", ")}</p>}
+      <p className="text-11 text-ink-muted">PDF or images, up to 25 MB each. Uploaded securely after you sign in.</p>
     </div>
   );
 }

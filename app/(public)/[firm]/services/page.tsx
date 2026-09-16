@@ -29,8 +29,8 @@ export default async function ServicesPage({ params }: { params: Promise<{ firm:
               <Card className="h-full transition hover:shadow-md">
                 <CardBody className="space-y-2">
                   <h2 className="font-heading text-base font-semibold text-ink">{s.name}</h2>
-                  {s.description && <p className="text-sm text-ink-muted">{s.description}</p>}
-                  <p className="text-sm font-medium text-brand">
+                  {s.description && <p className="text-15 text-ink-muted">{s.description}</p>}
+                  <p className="text-15 font-medium text-brand">
                     {formatMoneyMinor(s.price_minor, s.currency)} · {s.duration_min} minutes
                   </p>
                 </CardBody>

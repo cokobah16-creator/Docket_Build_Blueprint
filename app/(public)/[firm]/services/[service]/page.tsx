@@ -27,22 +27,22 @@ export default async function ServiceDetailPage({ params }: { params: Params }) 
     <PageShell title={row.name} intro={row.description ?? undefined}>
       <dl className="grid gap-4 rounded-card border border-hairline bg-raised p-5 sm:grid-cols-3">
         <div>
-          <dt className="text-xs uppercase tracking-wide text-ink-muted">Fee</dt>
+          <dt className="text-13 uppercase tracking-wide text-ink-muted">Fee</dt>
           <dd className="mt-1 font-medium text-ink">{formatMoneyMinor(row.price_minor, row.currency)}</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-ink-muted">Duration</dt>
+          <dt className="text-13 uppercase tracking-wide text-ink-muted">Duration</dt>
           <dd className="mt-1 font-medium text-ink">{row.duration_min} minutes</dd>
         </div>
         <div>
-          <dt className="text-xs uppercase tracking-wide text-ink-muted">Format</dt>
+          <dt className="text-13 uppercase tracking-wide text-ink-muted">Format</dt>
           <dd className="mt-1 font-medium text-ink">
             {row.virtual_available ? "Virtual or in person" : "In person"}
           </dd>
         </div>
       </dl>
       {firm.policies.cancellation?.text ? (
-        <p className="mt-4 text-sm text-ink-muted">{String(firm.policies.cancellation.text)}</p>
+        <p className="mt-4 text-15 text-ink-muted">{String(firm.policies.cancellation.text)}</p>
       ) : null}
       <div className="mt-8">
         <Link

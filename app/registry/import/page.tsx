@@ -21,8 +21,8 @@ export default async function RegistryImportPage({ searchParams }: { searchParam
   return (
     <div className="flex flex-col gap-3.5">
       <div>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Stage a cause list</h1>
-        <p className="text-sm text-[#57534E]">{ctx.courtName} · {ctx.registry.name}</p>
+        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Stage a cause list</h1>
+        <p className="text-15 text-[#57534E]">{ctx.courtName} · {ctx.registry.name}</p>
       </div>
       <StageForm registryId={ctx.registry.id} />
     </div>

@@ -47,7 +47,7 @@ export default async function DocumentTextPage({ searchParams }: { searchParams:
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Documents</h1>
+      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Documents</h1>
 
       {error && (
         <Alert kind="error" title="The figures did not load">
@@ -57,7 +57,7 @@ export default async function DocumentTextPage({ searchParams }: { searchParams:
 
       <Card>
         <CardHeader title="What a search can look inside" />
-        <CardBody className="text-[12.5px] leading-[1.55] text-[#57534E]">
+        <CardBody className="text-13 leading-[1.55] text-[#57534E]">
           <p>
             <Link href="/firm/search" className="underline">Search</Link> matches the words inside a
             document as well as its name — a clause in an agreement, a name in a witness statement.
@@ -80,14 +80,14 @@ export default async function DocumentTextPage({ searchParams }: { searchParams:
             {rows.map((r) => (
               <li key={r.label} className="flex items-start justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0">
                 <span className="min-w-0">
-                  <span className="block text-[13.5px] font-semibold text-[#141414]">{r.label}</span>
-                  <span className="mt-0.5 block text-[11.5px] text-[#57534E]">{r.hint}</span>
+                  <span className="block text-13 font-semibold text-[#141414]">{r.label}</span>
+                  <span className="mt-0.5 block text-11 text-[#57534E]">{r.hint}</span>
                 </span>
                 <span
                   className={
                     r.warn && r.value > 0
-                      ? "grid h-[26px] min-w-[26px] shrink-0 place-items-center rounded-full bg-[#FFFAEB] px-2 text-[12px] font-bold text-[#92400E]"
-                      : "grid h-[26px] min-w-[26px] shrink-0 place-items-center rounded-full bg-[#F0EEEA] px-2 text-[12px] font-bold text-[#57534E]"
+                      ? "grid h-[26px] min-w-[26px] shrink-0 place-items-center rounded-full bg-[#FFFAEB] px-2 text-13 font-bold text-[#92400E]"
+                      : "grid h-[26px] min-w-[26px] shrink-0 place-items-center rounded-full bg-[#F0EEEA] px-2 text-13 font-bold text-[#57534E]"
                   }
                 >
                   {r.value}
@@ -95,7 +95,7 @@ export default async function DocumentTextPage({ searchParams }: { searchParams:
               </li>
             ))}
           </ul>
-          <CardBody className="border-t border-[#F0EEEA] text-[11.5px] text-[#57534E]">
+          <CardBody className="border-t border-[#F0EEEA] text-11 text-[#57534E]">
             {h.last_extracted_at
               ? `Last read ${formatWhen(h.last_extracted_at, timezone)}.`
               : "Nothing has been read yet. If this does not change, the reader is not running — tell whoever runs this Docket."}

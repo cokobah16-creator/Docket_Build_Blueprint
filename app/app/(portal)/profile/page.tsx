@@ -40,7 +40,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const firmNames = await firmNamesFor(consents.map((c) => c.firm_id ?? "").filter(Boolean));
   const tz = profile?.timezone ?? "Africa/Lagos";
   const tzOptions = TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES];
-  const label = "block text-[12.5px] font-semibold text-ink";
+  const label = "block text-13 font-semibold text-ink";
   // 16px so iOS Safari does not zoom the page on focus.
   const field = "mt-1.5 w-full rounded-[9px] border border-edge px-3 py-[11px] text-base text-ink focus:border-brand focus:outline-none";
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });
@@ -70,8 +70,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
             </div>
             <div>
               <p className={label}>Phone</p>
-              <p className="mt-1 text-[13.5px] text-ink">{profile?.phone ?? user.phone ?? "—"}</p>
-              <p className="mt-0.5 text-[11.5px] text-ink-muted">Sign-in number — contact your firm to change it.</p>
+              <p className="mt-1 text-13 text-ink">{profile?.phone ?? user.phone ?? "—"}</p>
+              <p className="mt-0.5 text-11 text-ink-muted">Sign-in number — contact your firm to change it.</p>
             </div>
             <div>
               <label htmlFor="email" className={label}>
@@ -106,7 +106,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
                 <input id="quietEnd" name="quietEnd" type="time" defaultValue={profile?.quiet_hours_end?.slice(0, 5) ?? ""} className={`${field} font-mono`} />
               </div>
             </div>
-            <p className="text-[11.5px] leading-relaxed text-ink-muted">During quiet hours, push, SMS and email wait until the hours end. In-app notifications and 10-minute consultation reminders are never held.</p>
+            <p className="text-11 leading-relaxed text-ink-muted">During quiet hours, push, SMS and email wait until the hours end. In-app notifications and 10-minute consultation reminders are never held.</p>
             <Button type="submit">Save</Button>
           </form>
         </CardBody>
@@ -115,7 +115,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       <Card>
         <CardHeader
           title="Notifications & data"
-          action={<Link href="/app/notifications/preferences" className="text-[12.5px] font-medium text-brand underline underline-offset-2">Preferences</Link>}
+          action={<Link href="/app/notifications/preferences" className="text-13 font-medium text-brand underline underline-offset-2">Preferences</Link>}
         />
         <CardBody className="space-y-[15px]">
           <PushOptIn />
@@ -134,7 +134,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
               </li>
             ))}
           </ul>
-          <p className="border-t border-hairline px-[17px] py-3 text-[11.5px] leading-relaxed text-ink-muted">
+          <p className="border-t border-hairline px-[17px] py-3 text-11 leading-relaxed text-ink-muted">
             One sign-in, whichever firms act for you. The app takes the colours and name of the firm you are reading.
           </p>
         </Card>
@@ -143,8 +143,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       <Card>
         <CardHeader title="Consent history" />
         <CardBody>
-          {consents.length === 0 ? <p className="text-[13px] text-ink-muted">No consents recorded yet.</p> : (
-            <ul className="divide-y divide-hairline text-[13px]">
+          {consents.length === 0 ? <p className="text-13 text-ink-muted">No consents recorded yet.</p> : (
+            <ul className="divide-y divide-hairline text-13">
               {consents.map((c) => (
                 <li key={c.id} className="flex justify-between gap-3 py-2.5">
                   <span className="text-ink">{c.kind} <span className="text-ink-muted">v{c.version}</span>{c.firm_id ? <span className="text-ink-muted"> · {firmNames[c.firm_id] ?? "firm"}</span> : null}</span>

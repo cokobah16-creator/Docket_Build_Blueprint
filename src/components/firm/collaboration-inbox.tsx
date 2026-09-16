@@ -79,19 +79,19 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
           return (
             <li key={r.id} className="border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <p className="text-[13.5px] font-semibold text-[#141414]">
+                <p className="text-13 font-semibold text-[#141414]">
                   {r.case_title ?? "A matter"}
                   <span className="font-normal text-[#57534E]"> · {KIND_LABEL.get(r.kind) ?? r.kind}</span>
                 </p>
-                <span className={live(r) ? "text-xs font-medium text-[#15803D]" : "text-xs text-[#57534E]"}>{stateOf(r)}</span>
+                <span className={live(r) ? "text-13 font-medium text-[#15803D]" : "text-13 text-[#57534E]"}>{stateOf(r)}</span>
               </div>
-              <p className="mt-0.5 text-xs text-[#57534E]">
+              <p className="mt-0.5 text-13 text-[#57534E]">
                 {side === "receiving" ? `From ${r.from_firm_name}` : `With another firm`}
                 {r.suit_number ? ` · ${r.suit_number}` : ""}
                 {r.court_name ? ` · ${r.court_name}` : ""}
               </p>
-              <p className="mt-1 text-[12.5px] leading-[1.5] text-ink">{r.scope_note}</p>
-              <p className="mt-1 text-xs text-[#57534E]">
+              <p className="mt-1 text-13 leading-[1.5] text-ink">{r.scope_note}</p>
+              <p className="mt-1 text-13 text-[#57534E]">
                 {r.shared_documents} document{r.shared_documents === 1 ? "" : "s"} shared ·
                 {" "}{r.share_updates ? "their client-facing updates are shared" : "no updates shared"}
               </p>
@@ -118,11 +118,11 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
               {openNotes === r.id && (
                 <div className="mt-2 rounded-lg bg-sunken p-3">
                   {mine.length === 0 ? (
-                    <p className="text-xs text-[#57534E]">Nothing said yet.</p>
+                    <p className="text-13 text-[#57534E]">Nothing said yet.</p>
                   ) : (
                     <ul className="space-y-2">
                       {mine.map((n) => (
-                        <li key={n.id} className="text-[12.5px] text-ink">
+                        <li key={n.id} className="text-13 text-ink">
                           <span className="font-medium">{n.firm_id === firmId ? "Us" : "Them"}:</span> {n.body}
                         </li>
                       ))}

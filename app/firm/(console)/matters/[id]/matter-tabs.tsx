@@ -45,7 +45,7 @@ export function MatterTabs({
                 href={`${basePath}?tab=${t.key}${extraQuery}`}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex min-h-[44px] shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-sm font-medium",
+                  "flex min-h-[44px] shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-15 font-medium",
                   current
                     ? "border-brand bg-brand text-brand-on"
                     : "border-edge bg-raised text-ink hover:border-brand",
@@ -97,7 +97,7 @@ export function CopyButton({
       <button
         type="button"
         onClick={copy}
-        className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-sm font-medium text-brand hover:bg-hover"
+        className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover"
       >
         {state === "copied" ? "Copied" : label}
       </button>

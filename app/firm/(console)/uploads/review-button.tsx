@@ -34,7 +34,7 @@ export function ReviewButton({ documentId, userId }: { documentId: string; userI
       >
         {busy ? "Marking…" : "Mark as reviewed"}
       </Button>
-      {error && <span className="text-[11px] text-[#B42318]">{error}</span>}
+      {error && <span className="text-11 text-[#B42318]">{error}</span>}
     </span>
   );
 }

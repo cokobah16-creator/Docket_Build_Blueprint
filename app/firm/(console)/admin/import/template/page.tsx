@@ -31,16 +31,16 @@ const COLUMNS: Array<[string, string]> = [
 export default function ImportTemplatePage() {
   return (
     <div className="space-y-6">
-      <p className="text-sm"><Link href="/firm/admin/import" className="text-brand underline">← Import</Link></p>
+      <p className="text-15"><Link href="/firm/admin/import" className="text-brand underline">← Import</Link></p>
       <Card>
         <CardHeader title="The columns an import understands" action={<TemplateDownload columns={COLUMNS.map((c) => c[0])} />} />
         <CardBody>
-          <p className="text-sm text-ink-muted">Column names can be anything — you say what each means when you upload. These are the meanings. Only <strong>title</strong> is required.</p>
+          <p className="text-15 text-ink-muted">Column names can be anything — you say what each means when you upload. These are the meanings. Only <strong>title</strong> is required.</p>
           <dl className="mt-3 divide-y divide-hairline">
             {COLUMNS.map(([k, v]) => (
               <div key={k} className="grid gap-1 py-2 sm:grid-cols-[180px_1fr]">
-                <dt className="font-mono text-xs text-ink">{k}</dt>
-                <dd className="text-sm text-ink">{v}</dd>
+                <dt className="font-mono text-13 text-ink">{k}</dt>
+                <dd className="text-15 text-ink">{v}</dd>
               </div>
             ))}
           </dl>

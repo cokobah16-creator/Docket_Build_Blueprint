@@ -46,14 +46,14 @@ export function FirmRow({
       >
         <span
           aria-hidden="true"
-          className="grid size-10 shrink-0 place-items-center rounded-[9px] text-[17px] font-semibold text-white"
+          className="grid size-10 shrink-0 place-items-center rounded-[9px] text-17 font-semibold text-white"
           style={{ background: firm.primary, fontFamily: `${firm.heading}, Georgia, serif` }}
         >
           {firm.initial}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold text-ink">{firm.name}</span>
-          <span className="mt-0.5 block text-xs text-ink-muted">{firm.meta}</span>
+          <span className="block text-15 font-semibold text-ink">{firm.name}</span>
+          <span className="mt-0.5 block text-13 text-ink-muted">{firm.meta}</span>
         </span>
         {selected ? (
           <span
@@ -134,8 +134,8 @@ export function FirmSwitcher({
           >
             <div aria-hidden="true" className="mx-auto mb-3 mt-1.5 h-1 w-[38px] rounded-full bg-hairline" />
             <div className="px-[18px] pb-2.5">
-              <h2 className="font-heading text-[17px] font-semibold text-brand">Your firms</h2>
-              <p className="mt-0.5 text-xs text-ink-muted">
+              <h2 className="font-heading text-17 font-semibold text-brand">Your firms</h2>
+              <p className="mt-0.5 text-13 text-ink-muted">
                 One sign-in. The app takes the name and colours of the firm you open.
               </p>
             </div>
@@ -151,7 +151,7 @@ export function FirmSwitcher({
                 ref={closeRef}
                 type="button"
                 onClick={() => setOpen(false)}
-                className="min-h-11 w-full rounded-[9px] border border-edge text-sm font-medium text-ink"
+                className="min-h-11 w-full rounded-[9px] border border-edge text-15 font-medium text-ink"
               >
                 Close
               </button>

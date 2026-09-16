@@ -85,9 +85,9 @@ export default async function RegistryLayout({ children }: { children: ReactNode
             {ctx.registry.status === "suspended" && <Badge tone="quiet">suspended</Badge>}
           </div>
           <nav aria-label="Registry console" className="flex items-center gap-1">
-            <Link href="/registry" className="min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-hover">Cause list</Link>
-            <Link href="/registry/import" className="min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-hover">Stage a list</Link>
-            <Link href="/firm/security/mfa" className="min-h-[44px] rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-hover">Security</Link>
+            <Link href="/registry" className="min-h-[44px] rounded-lg px-3 py-2.5 text-15 font-medium text-ink hover:bg-hover">Cause list</Link>
+            <Link href="/registry/import" className="min-h-[44px] rounded-lg px-3 py-2.5 text-15 font-medium text-ink hover:bg-hover">Stage a list</Link>
+            <Link href="/firm/security/mfa" className="min-h-[44px] rounded-lg px-3 py-2.5 text-15 font-medium text-ink hover:bg-hover">Security</Link>
           </nav>
         </div>
       </header>

@@ -19,20 +19,20 @@ export default async function AdminWorkflowPage() {
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-heading text-2xl font-semibold text-brand">Workflow packs</h1>
-        <p className="text-sm text-ink-muted">Stages and the work each starts, as versioned data. Publishing never changes a firm; a firm installs a version from its own Workflow screen.</p>
+        <h1 className="font-heading text-26 font-semibold text-brand">Workflow packs</h1>
+        <p className="text-15 text-ink-muted">Stages and the work each starts, as versioned data. Publishing never changes a firm; a firm installs a version from its own Workflow screen.</p>
       </header>
       {error && <Alert kind="error" title="The catalogue could not be read">{error.message}</Alert>}
       <Card>
         <CardHeader title="Published" />
         <CardBody>
-          {packs.length === 0 ? <p className="text-sm text-ink-muted">Nothing published yet.</p> : (
+          {packs.length === 0 ? <p className="text-15 text-ink-muted">Nothing published yet.</p> : (
             <ul className="divide-y divide-hairline">
               {packs.map((p) => (
-                <li key={`${p.key}-${p.version}`} className="py-2 text-sm">
-                  <span className="font-medium text-ink">{p.name}</span> <span className="font-mono text-xs text-ink-muted">{p.key} v{p.version}</span>
-                  <span className="text-xs text-ink-muted"> · {p.matter_types?.length ? p.matter_types.join(", ") : "every type"} · {p.definition.statuses.length} stages · {(p.definition.task_templates ?? []).length} templates · {formatWhen(p.published_at, ctx.timezone)}</span>
-                  {p.note && <span className="block text-xs text-ink-muted">{p.note}</span>}
+                <li key={`${p.key}-${p.version}`} className="py-2 text-15">
+                  <span className="font-medium text-ink">{p.name}</span> <span className="font-mono text-13 text-ink-muted">{p.key} v{p.version}</span>
+                  <span className="text-13 text-ink-muted"> · {p.matter_types?.length ? p.matter_types.join(", ") : "every type"} · {p.definition.statuses.length} stages · {(p.definition.task_templates ?? []).length} templates · {formatWhen(p.published_at, ctx.timezone)}</span>
+                  {p.note && <span className="block text-13 text-ink-muted">{p.note}</span>}
                 </li>
               ))}
             </ul>

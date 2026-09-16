@@ -123,22 +123,22 @@ export function CourtPicker({
 
   return (
     <div>
-      <p className="text-sm font-medium text-ink">{label}</p>
+      <p className="text-15 font-medium text-ink">{label}</p>
 
       {selected && !open && (
         <div className="mt-1 flex flex-wrap items-start justify-between gap-2 rounded-lg border border-hairline bg-sunken px-3 py-2">
           <div className="min-w-0">
-            <p className="text-sm text-ink">{courtLine(selected)}</p>
-            <p className="text-xs text-ink-muted">
+            <p className="text-15 text-ink">{courtLine(selected)}</p>
+            <p className="text-13 text-ink-muted">
               {COURT_LEVEL_LABELS[selected.level] ?? selected.level}
               {selected.state_code ? ` · ${NG_STATES[selected.state_code] ?? selected.state_code}` : ""}
               {selected.firm_id ? " · your firm's own entry" : ""}
             </p>
             {selected.suit_number_hint && (
-              <p className="mt-1 text-xs text-ink-muted">Suit numbers here read like <span className="font-medium">{selected.suit_number_hint}</span></p>
+              <p className="mt-1 text-13 text-ink-muted">Suit numbers here read like <span className="font-medium">{selected.suit_number_hint}</span></p>
             )}
           </div>
-          <button type="button" onClick={() => setOpen(true)} className="shrink-0 text-sm font-medium text-brand underline">
+          <button type="button" onClick={() => setOpen(true)} className="shrink-0 text-15 font-medium text-brand underline">
             Change
           </button>
         </div>
@@ -146,8 +146,8 @@ export function CourtPicker({
 
       {value && !selected && !open && (
         <div className="mt-1 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hairline bg-sunken px-3 py-2">
-          <p className="text-sm text-ink">A court is on this matter but it is not in the directory you can read.</p>
-          <button type="button" onClick={() => setOpen(true)} className="text-sm font-medium text-brand underline">Change</button>
+          <p className="text-15 text-ink">A court is on this matter but it is not in the directory you can read.</p>
+          <button type="button" onClick={() => setOpen(true)} className="text-15 font-medium text-brand underline">Change</button>
         </div>
       )}
 
@@ -155,14 +155,14 @@ export function CourtPicker({
         <div className="mt-1 space-y-2 rounded-lg border border-hairline p-3">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <div>
-              <label htmlFor={`${uid}_level`} className="text-xs font-medium text-ink">Level</label>
+              <label htmlFor={`${uid}_level`} className="text-13 font-medium text-ink">Level</label>
               <select id={`${uid}_level`} value={level} onChange={(e) => { setLevel(e.target.value); setState(""); }} className={field}>
                 <option value="">Every level</option>
                 {levels.map(([key, text]) => <option key={key} value={key}>{text}</option>)}
               </select>
             </div>
             <div>
-              <label htmlFor={`${uid}_state`} className="text-xs font-medium text-ink">State</label>
+              <label htmlFor={`${uid}_state`} className="text-13 font-medium text-ink">State</label>
               <select id={`${uid}_state`} value={state} onChange={(e) => setState(e.target.value)} className={field}>
                 <option value="">Every state</option>
                 {states.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
@@ -170,7 +170,7 @@ export function CourtPicker({
             </div>
           </div>
           <div>
-            <label htmlFor={`${uid}_q`} className="text-xs font-medium text-ink">Division or name</label>
+            <label htmlFor={`${uid}_q`} className="text-13 font-medium text-ink">Division or name</label>
             <input
               id={`${uid}_q`} type="search" inputMode="search" value={query} onChange={(e) => setQuery(e.target.value)}
               placeholder="Ikeja, Lagos Judicial Division, FHC…" className={field}
@@ -178,7 +178,7 @@ export function CourtPicker({
           </div>
 
           {matches.length === 0 ? (
-            <p className="px-1 py-2 text-sm text-ink-muted">
+            <p className="px-1 py-2 text-15 text-ink-muted">
               No court matches that. Widen the filters, or add the court yourself below.
             </p>
           ) : (
@@ -193,8 +193,8 @@ export function CourtPicker({
                       c.id === value ? "border-brand bg-brand text-brand-on" : "border-hairline bg-raised hover:border-brand",
                     )}
                   >
-                    <span className="text-sm font-medium">{courtLine(c)}</span>
-                    <span className={cn("text-xs", c.id === value ? "text-white/80" : "text-ink-muted")}>
+                    <span className="text-15 font-medium">{courtLine(c)}</span>
+                    <span className={cn("text-13", c.id === value ? "text-white/80" : "text-ink-muted")}>
                       {COURT_LEVEL_LABELS[c.level] ?? c.level}
                       {c.state_code ? ` · ${NG_STATES[c.state_code] ?? c.state_code}` : ""}
                       {c.firm_id ? " · your firm's own entry" : ""}
@@ -205,20 +205,20 @@ export function CourtPicker({
             </ul>
           )}
           {matches.length > MAX_SHOWN && (
-            <p className="text-xs text-ink-muted">{matches.length - MAX_SHOWN} more — narrow the search to see them.</p>
+            <p className="text-13 text-ink-muted">{matches.length - MAX_SHOWN} more — narrow the search to see them.</p>
           )}
 
           <div className="flex flex-wrap items-center gap-3 border-t border-hairline pt-2">
-            <button type="button" onClick={() => setAdding((v) => !v)} className="text-sm font-medium text-brand underline">
+            <button type="button" onClick={() => setAdding((v) => !v)} className="text-15 font-medium text-brand underline">
               {adding ? "Cancel" : "Add our own court"}
             </button>
             {value && (
-              <button type="button" onClick={() => choose(null)} className="text-sm text-ink-muted underline">
+              <button type="button" onClick={() => choose(null)} className="text-15 text-ink-muted underline">
                 Clear the court
               </button>
             )}
             {selected && (
-              <button type="button" onClick={() => setOpen(false)} className="ml-auto text-sm text-ink-muted underline">
+              <button type="button" onClick={() => setOpen(false)} className="ml-auto text-15 text-ink-muted underline">
                 Done
               </button>
             )}
@@ -226,44 +226,44 @@ export function CourtPicker({
 
           {adding && (
             <div className="space-y-2 rounded-lg bg-sunken p-3">
-              <p className="text-xs text-ink-muted">
+              <p className="text-13 text-ink-muted">
                 Added courts are private to your firm and available on every matter here.
               </p>
               {error && <Alert kind="error">{error}</Alert>}
               <div>
-                <label htmlFor={`${uid}_new_level`} className="text-xs font-medium text-ink">Level</label>
+                <label htmlFor={`${uid}_new_level`} className="text-13 font-medium text-ink">Level</label>
                 <select id={`${uid}_new_level`} value={draft.level} onChange={(e) => setDraft({ ...draft, level: e.target.value })} className={field}>
                   <option value="">Choose a level</option>
                   {Object.entries(COURT_LEVEL_LABELS).map(([key, text]) => <option key={key} value={key}>{text}</option>)}
                 </select>
               </div>
               <div>
-                <label htmlFor={`${uid}_new_name`} className="text-xs font-medium text-ink">Full name, as the registry writes it</label>
+                <label htmlFor={`${uid}_new_name`} className="text-13 font-medium text-ink">Full name, as the registry writes it</label>
                 <input id={`${uid}_new_name`} type="text" maxLength={200} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} className={field} />
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <div>
-                  <label htmlFor={`${uid}_new_state`} className="text-xs font-medium text-ink">State</label>
+                  <label htmlFor={`${uid}_new_state`} className="text-13 font-medium text-ink">State</label>
                   <select id={`${uid}_new_state`} value={draft.state_code} onChange={(e) => setDraft({ ...draft, state_code: e.target.value })} className={field}>
                     <option value="">Not tied to a state</option>
                     {NG_STATE_OPTIONS.map((s) => <option key={s.code} value={s.code}>{s.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label htmlFor={`${uid}_new_division`} className="text-xs font-medium text-ink">Judicial division / district</label>
+                  <label htmlFor={`${uid}_new_division`} className="text-13 font-medium text-ink">Judicial division / district</label>
                   <input id={`${uid}_new_division`} type="text" maxLength={120} value={draft.division} onChange={(e) => setDraft({ ...draft, division: e.target.value })} className={field} />
                 </div>
                 <div>
-                  <label htmlFor={`${uid}_new_city`} className="text-xs font-medium text-ink">Town</label>
+                  <label htmlFor={`${uid}_new_city`} className="text-13 font-medium text-ink">Town</label>
                   <input id={`${uid}_new_city`} type="text" maxLength={120} value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} className={field} />
                 </div>
                 <div>
-                  <label htmlFor={`${uid}_new_short`} className="text-xs font-medium text-ink">Short name</label>
+                  <label htmlFor={`${uid}_new_short`} className="text-13 font-medium text-ink">Short name</label>
                   <input id={`${uid}_new_short`} type="text" maxLength={40} value={draft.short_name} onChange={(e) => setDraft({ ...draft, short_name: e.target.value })} className={field} />
                 </div>
               </div>
               <div>
-                <label htmlFor={`${uid}_new_hint`} className="text-xs font-medium text-ink">Suit number format (optional)</label>
+                <label htmlFor={`${uid}_new_hint`} className="text-13 font-medium text-ink">Suit number format (optional)</label>
                 <input
                   id={`${uid}_new_hint`} type="text" maxLength={80} value={draft.suit_number_hint}
                   onChange={(e) => setDraft({ ...draft, suit_number_hint: e.target.value })}
@@ -279,7 +279,7 @@ export function CourtPicker({
       {!open && !value && (
         <button
           type="button" onClick={() => setOpen(true)}
-          className="mt-1 flex min-h-[44px] w-full items-center rounded-lg border border-dashed border-edge px-3 text-sm text-ink-muted hover:border-brand"
+          className="mt-1 flex min-h-[44px] w-full items-center rounded-lg border border-dashed border-edge px-3 text-15 text-ink-muted hover:border-brand"
         >
           Choose the court
         </button>

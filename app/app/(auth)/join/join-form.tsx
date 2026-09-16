@@ -38,7 +38,7 @@ export function JoinMatterForm({
     const next = `/app/join?token=${encodeURIComponent(token)}`;
     return (
       <div className="space-y-4">
-        <p className="text-sm text-ink">
+        <p className="text-15 text-ink">
           Sign in with the phone number or email address your firm has for you. You will come straight back here.
         </p>
         <SignInForms redirectNext={next} onSignedIn={() => router.refresh()} />
@@ -54,7 +54,7 @@ export function JoinMatterForm({
           {state.error} Ask the firm to send you a fresh link.
         </Alert>
       )}
-      <p className="text-sm text-ink">
+      <p className="text-15 text-ink">
         {identity ? `Signed in as ${identity}. ` : ""}
         Accepting adds you to the file, so you can follow what happens on it, read what the firm shares with you,
         message them and see any invoice they raise. Nothing the firm keeps to itself is shared.
@@ -62,7 +62,7 @@ export function JoinMatterForm({
       <Button type="submit" size="lg" className="w-full" disabled={pending}>
         {pending ? "Joining…" : "Accept and open the file"}
       </Button>
-      <p className="text-xs text-ink-muted">
+      <p className="text-13 text-ink-muted">
         Invited by mistake? Close this page and tell the firm — an invitation nobody accepts expires on its own.
       </p>
     </form>

@@ -84,25 +84,25 @@ export function TemplatesEditor({ firmId, templates, canWrite, timezone }: { fir
       <Card>
         <CardHeader title="Templates" action={canWrite && editing === null ? <Button size="sm" onClick={() => start(null)}>New template</Button> : undefined} />
         <CardBody>
-          <p className="mb-3 text-xs text-ink-muted">A document is generated from one of these on a matter&apos;s Documents tab.</p>
+          <p className="mb-3 text-13 text-ink-muted">A document is generated from one of these on a matter&apos;s Documents tab.</p>
           {templates.length === 0 ? (
-            <p className="text-sm text-ink-muted">No templates yet. An engagement letter is the usual first one.</p>
+            <p className="text-15 text-ink-muted">No templates yet. An engagement letter is the usual first one.</p>
           ) : (
             <ul className="divide-y divide-hairline">
               {templates.map((t) => (
                 <li key={t.id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-ink">
-                      {t.name} <span className="text-xs font-normal text-ink-muted">· version {t.version}</span>
-                      {t.retired_at && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-xs text-ink-muted">retired</span>}
+                    <p className="text-15 font-medium text-ink">
+                      {t.name} <span className="text-13 font-normal text-ink-muted">· version {t.version}</span>
+                      {t.retired_at && <span className="ml-2 rounded bg-sunken px-1.5 py-0.5 text-13 text-ink-muted">retired</span>}
                     </p>
-                    <p className="text-xs text-ink-muted">
+                    <p className="text-13 text-ink-muted">
                       {EXECUTION.find((x) => x.value === t.execution)?.label ?? t.execution}
                       {" · "}{t.matter_types?.length ? t.matter_types.map((m) => m.replace(/_/g, " ")).join(", ") : "any matter type"}
                       {" · "}{keysIn(t.body).length} placeholder{keysIn(t.body).length === 1 ? "" : "s"}
                       {" · changed "}{fmt.format(new Date(t.updated_at))}
                     </p>
-                    {t.note && <p className="mt-0.5 text-xs text-ink-muted">{t.note}</p>}
+                    {t.note && <p className="mt-0.5 text-13 text-ink-muted">{t.note}</p>}
                   </div>
                   {canWrite && (
                     <span className="flex gap-2">
@@ -121,20 +121,20 @@ export function TemplatesEditor({ firmId, templates, canWrite, timezone }: { fir
         <Card>
           <CardHeader title={editing === "new" ? "New template" : "Edit template"} />
           <CardBody>
-            <p className="mb-3 text-xs text-ink-muted">Placeholders in braces are filled from the matter when a document is generated. A matter with no value for one stops the generation — nothing is guessed.</p>
+            <p className="mb-3 text-13 text-ink-muted">Placeholders in braces are filled from the matter when a document is generated. A matter with no value for one stops the generation — nothing is guessed.</p>
             <form onSubmit={save} className="space-y-4">
-              <label className="block text-sm">
+              <label className="block text-15">
                 <span className="font-medium text-ink">Name</span>
                 <input className={field} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} required minLength={2} maxLength={120} placeholder="Engagement letter" />
               </label>
               <fieldset>
-                <legend className="text-sm font-medium text-ink">Matter types</legend>
-                <p className="text-xs text-ink-muted">Leave every box clear for a template that fits any matter.</p>
+                <legend className="text-15 font-medium text-ink">Matter types</legend>
+                <p className="text-13 text-ink-muted">Leave every box clear for a template that fits any matter.</p>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {MATTER_TYPES.map((m) => {
                     const on = draft.matterTypes.includes(m);
                     return (
-                      <label key={m} className={`inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-xs ${on ? "border-brand bg-hover text-brand" : "border-edge text-ink"}`}>
+                      <label key={m} className={`inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-13 ${on ? "border-brand bg-hover text-brand" : "border-edge text-ink"}`}>
                         <input type="checkbox" checked={on} onChange={() => setDraft({ ...draft, matterTypes: on ? draft.matterTypes.filter((x) => x !== m) : [...draft.matterTypes, m] })} />
                         {m.replace(/_/g, " ")}
                       </label>
@@ -143,27 +143,27 @@ export function TemplatesEditor({ firmId, templates, canWrite, timezone }: { fir
                 </div>
               </fieldset>
               <fieldset>
-                <legend className="text-sm font-medium text-ink">How it is executed</legend>
+                <legend className="text-15 font-medium text-ink">How it is executed</legend>
                 <div className="mt-1 space-y-1.5">
                   {EXECUTION.map((x) => (
-                    <label key={x.value} className="flex items-start gap-2 text-sm">
+                    <label key={x.value} className="flex items-start gap-2 text-15">
                       <input type="radio" name="execution" className="mt-1" checked={draft.execution === x.value} onChange={() => setDraft({ ...draft, execution: x.value })} />
-                      <span><span className="font-medium text-ink">{x.label}</span> <span className="text-xs text-ink-muted">— {x.help}</span></span>
+                      <span><span className="font-medium text-ink">{x.label}</span> <span className="text-13 text-ink-muted">— {x.help}</span></span>
                     </label>
                   ))}
                 </div>
               </fieldset>
-              <label className="block text-sm">
+              <label className="block text-15">
                 <span className="font-medium text-ink">The words</span>
                 <textarea className={`${field} min-h-[260px] font-mono text-base`} value={draft.body} onChange={(e) => setDraft({ ...draft, body: e.target.value })} required maxLength={60000} placeholder={"Dear {client.name},\n\nWe refer to {matter.title} ({matter.reference}) …\n\nOur fee is {extra.fee}.\n\n{lawyer.name}\n{firm.name}"} />
               </label>
               {unknown.length > 0 && <Alert kind="warning">Not on the list, so the database will refuse this template: {unknown.map((k) => `{${k}}`).join(", ")}. Use a placeholder below, or {"{extra.name}"} for a value typed at generation.</Alert>}
-              {typed.length > 0 && <p className="text-xs text-ink-muted">Typed at generation, each time: {typed.map((k) => `{${k}}`).join(", ")}.</p>}
-              <label className="block text-sm">
+              {typed.length > 0 && <p className="text-13 text-ink-muted">Typed at generation, each time: {typed.map((k) => `{${k}}`).join(", ")}.</p>}
+              <label className="block text-15">
                 <span className="font-medium text-ink">Note for colleagues</span>
                 <input className={field} value={draft.note} onChange={(e) => setDraft({ ...draft, note: e.target.value })} maxLength={1000} placeholder="When to use it, what to check first" />
               </label>
-              <details className="rounded-lg bg-sunken p-3 text-xs text-ink">
+              <details className="rounded-lg bg-sunken p-3 text-13 text-ink">
                 <summary className="cursor-pointer font-medium">Placeholders the matter can fill</summary>
                 <p className="mt-2">Each is taken from the matter, its client, the handling lawyer or the firm at the moment of generation, and the source is recorded with the document.</p>
                 <ul className="mt-2 grid gap-x-4 gap-y-1 sm:grid-cols-3">

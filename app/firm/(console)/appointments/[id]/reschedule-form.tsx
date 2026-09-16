@@ -50,7 +50,7 @@ export function RescheduleForm({
     router.refresh();
   }
 
-  if (!lawyerId || !serviceId) return <p className="text-sm text-ink-muted">This appointment has no lawyer or service, so it cannot be moved here.</p>;
+  if (!lawyerId || !serviceId) return <p className="text-15 text-ink-muted">This appointment has no lawyer or service, so it cannot be moved here.</p>;
   if (done) return <Alert kind="success">Moved. The client has been notified and reminders were reset.</Alert>;
 
   const fmt = new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: timezone });
@@ -60,11 +60,11 @@ export function RescheduleForm({
     <form onSubmit={onSubmit} className="space-y-3">
       {error && <Alert kind="error">{error}</Alert>}
       <div>
-        <label htmlFor="rs_date" className="text-sm font-medium text-ink">New date</label>
+        <label htmlFor="rs_date" className="text-15 font-medium text-ink">New date</label>
         <input id="rs_date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
       </div>
       <div>
-        <label htmlFor="rs_slot" className="text-sm font-medium text-ink">Time ({timezone})</label>
+        <label htmlFor="rs_slot" className="text-15 font-medium text-ink">Time ({timezone})</label>
         <select id="rs_slot" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} className={field} disabled={!date || loading}>
           <option value="">{loading ? "Loading slots…" : slots.length ? "Choose a time" : date ? "No free slots that day" : "Pick a date first"}</option>
           {slots.map((s) => (
@@ -73,11 +73,11 @@ export function RescheduleForm({
         </select>
       </div>
       <div>
-        <label htmlFor="rs_reason" className="text-sm font-medium text-ink">Reason (audit only)</label>
+        <label htmlFor="rs_reason" className="text-15 font-medium text-ink">Reason (audit only)</label>
         <input id="rs_reason" type="text" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} className={field} />
       </div>
       <Button type="submit" variant="ghost" disabled={!startsAt || busy}>{busy ? "Moving…" : "Move appointment"}</Button>
-      <p className="text-xs text-ink-muted">Only slots the booking engine would offer are shown. The client is notified and reminders start again.</p>
+      <p className="text-13 text-ink-muted">Only slots the booking engine would offer are shown. The client is notified and reminders start again.</p>
     </form>
   );
 }

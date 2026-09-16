@@ -87,7 +87,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
     return qs ? `/firm/messages?${qs}` : "/firm/messages";
   };
   const chip = (active: boolean) =>
-    cn("flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm", active ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink");
+    cn("flex min-h-[44px] shrink-0 items-center gap-1.5 rounded-full border px-4 text-15", active ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink");
 
   const target = (t: FirmThread) =>
     t.matter_id ? `/firm/matters/${t.matter_id}?tab=messages` : `/firm/appointments/${t.appointment_id}`;
@@ -149,17 +149,17 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
                   )}
                 >
                   <span className="min-w-0">
-                    <span className="block truncate text-[13.5px] font-semibold text-[#141414]">{title(t)}</span>
-                    <span className="mt-0.5 block truncate text-[12.5px] text-[#57534E]">
+                    <span className="block truncate text-13 font-semibold text-[#141414]">{title(t)}</span>
+                    <span className="mt-0.5 block truncate text-13 text-[#57534E]">
                       <span className="font-medium text-[#141414]">{senderName(last?.sender_id ?? null)}:</span> {preview}
                     </span>
-                    <span className="mt-1 flex flex-wrap items-center gap-1.5 text-[11.5px] text-[#57534E]">
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5 text-11 text-[#57534E]">
                       {relativeLabel(t.last_message_at, nowMs)}
                       {!t.last_from_firm && <Badge tone="waiting" icon="clock">Awaiting reply</Badge>}
                     </span>
                   </span>
                   {t.unread_for_me > 0 && (
-                    <span aria-label={`${t.unread_for_me} unread`} className="grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded-full bg-[#141414] px-1.5 text-[11px] font-bold text-white">
+                    <span aria-label={`${t.unread_for_me} unread`} className="grid h-[22px] min-w-[22px] shrink-0 place-items-center rounded-full bg-[#141414] px-1.5 text-11 font-bold text-white">
                       {t.unread_for_me}
                     </span>
                   )}
@@ -170,7 +170,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
         </ul>
       )}
       {all.length === LIMIT && (
-        <p className="border-t border-[#F0EEEA] px-[15px] py-3 text-[12px] text-[#57534E]">
+        <p className="border-t border-[#F0EEEA] px-[15px] py-3 text-13 text-[#57534E]">
           Showing the {LIMIT} threads with the most recent activity.
         </p>
       )}
@@ -182,7 +182,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
       <CardHeader
         title={title(open)}
         action={
-          <Link href={target(open)} className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">
+          <Link href={target(open)} className="text-13 font-medium text-[#141414] underline underline-offset-2">
             Open the {open.matter_id ? "matter" : "consultation"}
           </Link>
         }
@@ -202,10 +202,10 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
     <Card className="grid min-h-[320px] place-items-center p-8 text-center">
       <div className="max-w-xs">
         <Icon name="mail" size={28} className="mx-auto text-ink-disabled" />
-        <p className="mt-3 text-sm font-semibold text-[#141414]">
+        <p className="mt-3 text-15 font-semibold text-[#141414]">
           {threads.length > 0 ? "Choose a conversation" : "No conversations yet"}
         </p>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-[#57534E]">
+        <p className="mt-1 text-13 leading-relaxed text-[#57534E]">
           Every thread belongs to a matter or a consultation, and opens beside this list.
         </p>
       </div>
@@ -224,7 +224,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
             back={backHref}
             backLabel="All messages"
             actions={
-              <Link href={target(open)} className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">
+              <Link href={target(open)} className="text-13 font-medium text-[#141414] underline underline-offset-2">
                 Open the {open.matter_id ? "matter" : "consultation"}
               </Link>
             }
@@ -253,7 +253,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
       {/* Said plainly, because the two are not the same thing and must not be
           read as one: process served on the firm is a record with its own
           acknowledgement, not a conversation anyone replies to. */}
-      <p className={cn("text-[11.5px] leading-relaxed text-[#57534E]", open && "hidden lg:block")}>
+      <p className={cn("text-11 leading-relaxed text-[#57534E]", open && "hidden lg:block")}>
         These are client conversations. Process served on this firm is kept apart, in the{" "}
         <Link href="/firm/inbox" className="font-medium text-[#141414] underline underline-offset-2">service inbox</Link>.
       </p>

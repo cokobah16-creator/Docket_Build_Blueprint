@@ -77,8 +77,8 @@ interface SavedVerification {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-ink-muted">{label}</dt>
-      <dd className="text-sm text-ink">{children}</dd>
+      <dt className="text-13 uppercase tracking-wide text-ink-muted">{label}</dt>
+      <dd className="text-15 text-ink">{children}</dd>
     </div>
   );
 }
@@ -118,20 +118,20 @@ export default async function AdminFirmsPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="font-heading text-2xl font-semibold text-brand">Firms and domains</h1>
-        <p className="text-sm text-ink-muted">
+        <h1 className="font-heading text-26 font-semibold text-brand">Firms and domains</h1>
+        <p className="text-15 text-ink-muted">
           {firms.length} firm{firms.length === 1 ? "" : "s"} · {pendingCount} awaiting verification ·{" "}
           {suspendedCount} suspended · no access to matter content
         </p>
         {open.length > 0 && (
-          <p className="text-sm">
+          <p className="text-15">
             <Link href="#domains" className="font-medium text-brand underline">
               {open.length} domain request{open.length === 1 ? "" : "s"} waiting
             </Link>
           </p>
         )}
         {firms.length === FIRM_LIMIT && (
-          <p className="text-xs text-ink-muted">
+          <p className="text-13 text-ink-muted">
             Showing the {FIRM_LIMIT} most recently created firms. Older ones are not on this page.
           </p>
         )}
@@ -139,7 +139,7 @@ export default async function AdminFirmsPage() {
 
       {/* ============================================================ firms */}
       <section id="firms" className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-ink">Firms</h2>
+        <h2 className="font-heading text-17 font-semibold text-ink">Firms</h2>
 
         {firmsRead.error ? (
           <Alert kind="error" title="This screen could not read the firm list">
@@ -225,11 +225,11 @@ export default async function AdminFirmsPage() {
                       </dl>
 
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-ink-muted">
+                        <p className="text-13 uppercase tracking-wide text-ink-muted">
                           Owners and enrolment numbers
                         </p>
                         {owners.length === 0 ? (
-                          <p className="text-sm text-amber-700">
+                          <p className="text-15 text-amber-700">
                             No owner on record. Do not activate this firm — add an owner first.
                           </p>
                         ) : (
@@ -237,14 +237,14 @@ export default async function AdminFirmsPage() {
                             {owners.map((o) => (
                               <li
                                 key={o}
-                                className={`text-sm ${o.includes("no SCN") ? "text-amber-700" : "text-ink"}`}
+                                className={`text-15 ${o.includes("no SCN") ? "text-amber-700" : "text-ink"}`}
                               >
                                 {o}
                               </li>
                             ))}
                           </ul>
                         )}
-                        <p className="mt-1 text-xs text-ink-muted">
+                        <p className="mt-1 text-13 text-ink-muted">
                           Check each number against the Roll, and the RC/BN number against the CAC
                           register, before setting a firm active.
                         </p>
@@ -270,7 +270,7 @@ export default async function AdminFirmsPage() {
 
       {/* ============================================================ domains */}
       <section id="domains" className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-ink">Domain requests</h2>
+        <h2 className="font-heading text-17 font-semibold text-ink">Domain requests</h2>
 
         <Alert kind="info" title="How a custom domain goes live">
           Vercel is asked first and the firm is written second. That order matters: Postgres cannot
@@ -345,12 +345,12 @@ export default async function AdminFirmsPage() {
 
                       {records.length > 0 && (
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-ink-muted">
+                          <p className="text-13 uppercase tracking-wide text-ink-muted">
                             Records the firm must add at its registrar
                           </p>
                           <ul className="mt-1 space-y-1">
                             {records.map((rec, i) => (
-                              <li key={`${rec.type}-${rec.domain}-${i}`} className="break-all text-sm text-ink">
+                              <li key={`${rec.type}-${rec.domain}-${i}`} className="break-all text-15 text-ink">
                                 <span className="font-medium">{rec.type}</span> {rec.domain} →{" "}
                                 <code className="break-all">{rec.value}</code>
                                 {rec.reason && <span className="text-ink-muted"> ({rec.reason})</span>}
@@ -377,7 +377,7 @@ export default async function AdminFirmsPage() {
             <CardBody>
               <ul className="space-y-2">
                 {decided.map((r) => (
-                  <li key={r.id} className="text-sm text-ink">
+                  <li key={r.id} className="text-15 text-ink">
                     <span className="break-all font-medium text-ink">{r.hostname}</span> —{" "}
                     {REQUEST_STATUS_LABEL[r.status] ?? r.status}
                     {firmName(r) ? ` · ${firmName(r)}` : ""} ·{" "}
@@ -387,7 +387,7 @@ export default async function AdminFirmsPage() {
                 ))}
               </ul>
               {requests.length === REQUEST_LIMIT && (
-                <p className="mt-3 text-xs text-ink-muted">
+                <p className="mt-3 text-13 text-ink-muted">
                   Showing the {REQUEST_LIMIT} most recent requests. Older ones are not on this page.
                 </p>
               )}
@@ -398,7 +398,7 @@ export default async function AdminFirmsPage() {
 
       {/* ============================================================ create */}
       <section className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-ink">Create a firm for an owner</h2>
+        <h2 className="font-heading text-17 font-semibold text-ink">Create a firm for an owner</h2>
         <Card>
           <CardBody>
             <AdminCreateFirm />

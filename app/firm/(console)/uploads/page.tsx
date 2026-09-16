@@ -58,8 +58,8 @@ export default async function FirmUploads({ searchParams }: { searchParams: Prom
   return (
     <div className="flex flex-col gap-3.5">
       <div>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Uploads to review</h1>
-        <p className="mt-0.5 text-[12.5px] text-[#57534E]">
+        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Uploads to review</h1>
+        <p className="mt-0.5 text-13 text-[#57534E]">
           {ctx.firmName} · {docs.length === 0 ? "nothing waiting" : `${docs.length}${docs.length === LIMIT ? "+" : ""} waiting, oldest first`}
         </p>
       </div>
@@ -74,12 +74,12 @@ export default async function FirmUploads({ searchParams }: { searchParams: Prom
             {docs.map((d) => (
               <li key={d.id} className="flex items-start justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0">
                 <span className="min-w-0">
-                  <Link href={target(d)} className="block truncate text-[13.5px] font-semibold text-[#141414] underline underline-offset-2">{d.name}</Link>
-                  <span className="mt-0.5 block truncate text-[12.5px] text-[#57534E]">
+                  <Link href={target(d)} className="block truncate text-13 font-semibold text-[#141414] underline underline-offset-2">{d.name}</Link>
+                  <span className="mt-0.5 block truncate text-13 text-[#57534E]">
                     From {d.uploaded_by ? personName.get(d.uploaded_by) ?? "a client" : "a client"}
                     {d.matter_id && <> · {matterTitle.get(d.matter_id) ?? "a matter"}</>}
                   </span>
-                  <span className="mt-1 block text-[11.5px] text-[#92400E]">
+                  <span className="mt-1 block text-11 text-[#92400E]">
                     Waiting {relativeLabel(d.created_at, nowMs).replace(/^just now$/, "since just now")} · {fmt.format(new Date(d.created_at))}
                   </span>
                 </span>

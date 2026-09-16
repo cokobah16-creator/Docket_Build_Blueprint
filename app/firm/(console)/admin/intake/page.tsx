@@ -144,8 +144,8 @@ export default async function IntakePage({
   return (
     <div className="space-y-5">
       <header className="min-w-0">
-        <h2 className="font-heading text-2xl font-semibold text-brand">Intake questions</h2>
-        <p className="text-sm text-ink-muted">
+        <h2 className="font-heading text-26 font-semibold text-brand">Intake questions</h2>
+        <p className="text-15 text-ink-muted">
           {firmName} · what a client is asked before the consultation is booked
         </p>
       </header>
@@ -179,7 +179,7 @@ export default async function IntakePage({
 
       <Card>
         <CardHeader title="How a client meets these questions" />
-        <CardBody className="space-y-2 text-sm text-ink-muted">
+        <CardBody className="space-y-2 text-15 text-ink-muted">
           <p>
             After the client has picked a time and before they sign in, the wizard asks the form that belongs to the
             service they chose. If that service has none, it asks the firm-wide form. If there is neither, it asks

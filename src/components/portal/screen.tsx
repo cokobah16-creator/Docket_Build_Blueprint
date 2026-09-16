@@ -25,7 +25,7 @@ export function Screen({
 /** The big screen title — Appointments, Matters, Messages, Profile. */
 export function ScreenTitle({ children }: { children: ReactNode }) {
   return (
-    <h1 className="font-heading text-[23px] font-semibold leading-tight tracking-[-0.015em] text-brand md:text-[26px]">
+    <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand md:text-26">
       {children}
     </h1>
   );
@@ -78,15 +78,15 @@ export function ScreenHeader({
             <Title
               className={cn(
                 "truncate",
-                titleAs === "heading" && "font-heading text-[17px] font-semibold text-brand",
-                titleAs === "mono" && "font-mono text-[13px] text-ink-muted",
-                titleAs === "plain" && "text-[13px] font-semibold text-ink",
+                titleAs === "heading" && "font-heading text-17 font-semibold text-brand",
+                titleAs === "mono" && "font-mono text-13 text-ink-muted",
+                titleAs === "plain" && "text-13 font-semibold text-ink",
               )}
             >
               {title}
             </Title>
           )}
-          {subtitle && <p className="mt-px truncate text-[11px] text-ink-muted">{subtitle}</p>}
+          {subtitle && <p className="mt-px truncate text-11 text-ink-muted">{subtitle}</p>}
         </div>
       )}
       {children}
@@ -103,7 +103,7 @@ export function FactRow({
   children: ReactNode;
 }) {
   return (
-    <div className="flex justify-between gap-4 text-[13.5px]">
+    <div className="flex justify-between gap-4 text-13">
       <dt className="shrink-0 text-ink-muted">{label}</dt>
       <dd className="text-right font-semibold text-ink">{children}</dd>
     </div>

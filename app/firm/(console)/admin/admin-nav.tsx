@@ -42,7 +42,7 @@ export function AdminNav() {
                 href={`${item.href}${suffix}`}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium",
+                  "block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-15 font-medium",
                   current ? "bg-hover text-brand" : "text-ink hover:bg-hover hover:text-brand",
                 )}
               >

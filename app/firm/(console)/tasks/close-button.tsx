@@ -28,7 +28,7 @@ export function CloseTaskButton({ taskId }: { taskId: string }) {
       >
         {busy ? "Closing…" : "Done"}
       </Button>
-      {error && <span className="text-[11px] text-[#B42318]">{error}</span>}
+      {error && <span className="text-11 text-[#B42318]">{error}</span>}
     </span>
   );
 }

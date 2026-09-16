@@ -45,7 +45,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ kind: s
           on screen beside this one. */}
       <div className="lg:hidden">
         <ScreenHeader back="/app/messages" backLabel="Back to messages" title={`Consultation ${appt.reference}`}>
-          <Link href={`/app/appointments/${appt.id}`} className="shrink-0 text-[12.5px] font-medium text-brand underline underline-offset-2">Details</Link>
+          <Link href={`/app/appointments/${appt.id}`} className="shrink-0 text-13 font-medium text-brand underline underline-offset-2">Details</Link>
         </ScreenHeader>
       </div>
       <Screen>
@@ -58,7 +58,7 @@ export default async function ThreadPage({ params }: { params: Promise<{ kind: s
                 <CardHeader
                   title={`Consultation ${appt.reference}`}
                   action={
-                    <Link href={`/app/appointments/${appt.id}`} className="text-[12.5px] font-medium text-brand underline underline-offset-2">
+                    <Link href={`/app/appointments/${appt.id}`} className="text-13 font-medium text-brand underline underline-offset-2">
                       Details
                     </Link>
                   }

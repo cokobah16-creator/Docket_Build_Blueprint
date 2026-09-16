@@ -33,9 +33,9 @@ export function PreferencesForm({ initial }: { initial: NotificationPreference[]
     <div className="space-y-4">
       {msg && <Alert kind={msg.kind}>{msg.text}</Alert>}
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-15">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-ink-muted">
+            <tr className="text-left text-13 uppercase tracking-wide text-ink-muted">
               <th className="py-2 pr-2">Event</th>
               {PREFERENCE_CHANNELS.map((c) => <th key={c.channel} className="py-2 text-center">{c.label}</th>)}
             </tr>

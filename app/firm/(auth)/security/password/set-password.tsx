@@ -144,7 +144,7 @@ export function SetPassword() {
   }
 
   if (stage === "checking") {
-    return <p className="text-sm text-ink-muted">Checking your link…</p>;
+    return <p className="text-15 text-ink-muted">Checking your link…</p>;
   }
 
   if (stage === "dead") {
@@ -155,7 +155,7 @@ export function SetPassword() {
         </Alert>
         <a
           href="/firm/forgot"
-          className="block rounded-lg bg-brand px-4 py-2.5 text-center text-sm font-medium text-brand-on"
+          className="block rounded-lg bg-brand px-4 py-2.5 text-center text-15 font-medium text-brand-on"
         >
           Ask for a new link
         </a>
@@ -214,7 +214,7 @@ export function SetPassword() {
           <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
             {busy ? "Saving…" : "Set the new password"}
           </Button>
-          <p className="text-[11.5px] leading-relaxed text-ink-muted">
+          <p className="text-11 leading-relaxed text-ink-muted">
             Your authenticator app is not affected. The console will still ask for its code.
           </p>
         </form>

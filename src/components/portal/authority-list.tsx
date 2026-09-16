@@ -43,7 +43,7 @@ export function AuthorityList({ rows, firms, today }: {
         {rows.map((r) => (
           <li key={r.id} className="px-4 py-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="text-sm font-medium text-ink">
+              <p className="text-15 font-medium text-ink">
                 {/* Who, before what. An authority you cannot put a name to is one you cannot check. */}
                 {r.representative_name ?? r.invited_email ?? r.invited_phone ?? "Somebody"}
                 <span className="font-normal text-ink-muted">
@@ -51,7 +51,7 @@ export function AuthorityList({ rows, firms, today }: {
                   {r.organisation_name ? ` for ${r.organisation_name}` : ""}
                 </span>
               </p>
-              <span className={live(r) ? "text-xs font-medium text-emerald-700" : "text-xs text-ink-muted"}>
+              <span className={live(r) ? "text-13 font-medium text-emerald-700" : "text-13 text-ink-muted"}>
                 {r.revoked_at ? "Ended"
                   : !r.accepted_at ? "Not yet taken up"
                   : r.expires_on && r.expires_on < today ? `Expired ${formatDay(r.expires_on)}`
@@ -59,11 +59,11 @@ export function AuthorityList({ rows, firms, today }: {
               </span>
             </div>
             {r.representative_name && (r.invited_email || r.invited_phone) && (
-              <p className="text-xs text-ink-muted">
+              <p className="text-13 text-ink-muted">
                 Invited as {r.invited_email ?? r.invited_phone}
               </p>
             )}
-            <p className="mt-0.5 text-xs text-ink-muted">
+            <p className="mt-0.5 text-13 text-ink-muted">
               {firms[r.firm_id] ?? "Your firm"} · {r.scope === "all_matters" ? "all your unrestricted matters there" : "one matter"} ·
               {" "}{r.can_view_docs ? "may read your documents" : "no documents"} ·
               {" "}{r.can_pay ? "may pay on your behalf" : "no payments"} · cannot sign anything for you

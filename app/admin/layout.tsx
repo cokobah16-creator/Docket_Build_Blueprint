@@ -106,10 +106,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <Badge>platform admin</Badge>
           </div>
           <div className="flex shrink-0 items-center gap-4">
-            <Link href="/firm" className="text-sm font-medium text-ink-muted hover:text-docket-link">
+            <Link href="/firm" className="text-15 font-medium text-ink-muted hover:text-docket-link">
               Firm console
             </Link>
-            <Link href="/firm/security/mfa" className="text-sm font-medium text-ink-muted hover:text-docket-link">
+            <Link href="/firm/security/mfa" className="text-15 font-medium text-ink-muted hover:text-docket-link">
               Security
             </Link>
           </div>
@@ -121,7 +121,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium text-ink hover:bg-hover hover:text-docket-link"
+                  className="block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-15 font-medium text-ink hover:bg-hover hover:text-docket-link"
                 >
                   {item.label}
                 </Link>

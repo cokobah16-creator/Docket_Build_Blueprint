@@ -67,7 +67,7 @@ interface Draft {
 
 const field =
   "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
-const labelClass = "block text-sm font-medium text-ink";
+const labelClass = "block text-15 font-medium text-ink";
 const AMOUNT_RE = /^\d+(\.\d{1,2})?$/;
 const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 
@@ -320,7 +320,7 @@ export function ServicesEditor({
             patch(openId === "new" && (draft.slug === "" || draft.slug === slugify(draft.name)) ? { name, slug: slugify(name) } : { name });
           }}
         />
-        <p className="mt-1 text-sm text-ink-muted">What a client sees first on the booking page.</p>
+        <p className="mt-1 text-15 text-ink-muted">What a client sees first on the booking page.</p>
       </div>
 
       <div>
@@ -333,7 +333,7 @@ export function ServicesEditor({
           inputMode="url"
           onChange={(e) => patch({ slug: e.target.value.toLowerCase() })}
         />
-        <p className="mt-1 break-words text-sm text-ink-muted">
+        <p className="mt-1 break-words text-15 text-ink-muted">
           {firmSlug ? `/${firmSlug}/book?service=${draft.slug || "…"}` : "Used in the link that opens the booking page straight on this service."}
           {openId !== "new" && " Changing it breaks any link already shared with a client."}
         </p>
@@ -365,7 +365,7 @@ export function ServicesEditor({
             placeholder={draft.currency === "NGN" ? "25,000" : "250.00"}
             onChange={(e) => patch({ priceText: e.target.value })}
           />
-          <p className="mt-1 text-sm text-ink-muted">
+          <p className="mt-1 text-15 text-ink-muted">
             Type it as you would write it on a bill. 0 means the consultation is free.
           </p>
         </div>
@@ -380,7 +380,7 @@ export function ServicesEditor({
             <option value="NGN">Naira (NGN)</option>
             <option value="USD">Dollars (USD)</option>
           </select>
-          <p className="mt-1 text-sm text-ink-muted">
+          <p className="mt-1 text-15 text-ink-muted">
             {defaultCurrency === draft.currency
               ? "The firm's own currency."
               : `The firm bills in ${defaultCurrency} by default. A service in another currency is invoiced and settled in that currency on its own.`}
@@ -395,7 +395,7 @@ export function ServicesEditor({
             inputMode="numeric"
             onChange={(e) => patch({ durationMin: e.target.value.replace(/[^0-9]/g, "") })}
           />
-          <p className="mt-1 text-sm text-ink-muted">The diary blocks exactly this much time.</p>
+          <p className="mt-1 text-15 text-ink-muted">The diary blocks exactly this much time.</p>
         </div>
         <div>
           <label className={labelClass} htmlFor="svc-sort">Order on the page</label>
@@ -406,7 +406,7 @@ export function ServicesEditor({
             inputMode="numeric"
             onChange={(e) => patch({ sort: e.target.value.replace(/[^0-9]/g, "") })}
           />
-          <p className="mt-1 text-sm text-ink-muted">Smaller numbers come first.</p>
+          <p className="mt-1 text-15 text-ink-muted">Smaller numbers come first.</p>
         </div>
       </div>
 
@@ -426,7 +426,7 @@ export function ServicesEditor({
             <option key={c} value={c} />
           ))}
         </datalist>
-        <p className="mt-1 text-sm text-ink-muted">
+        <p className="mt-1 text-15 text-ink-muted">
           A note of the kind of counsel this service needs. The booking engine does not read it — it offers whichever
           lawyer the client picks — so treat it as a label for your own people, not a filter.
         </p>
@@ -461,16 +461,16 @@ export function ServicesEditor({
               checked={row.value}
               onChange={(e) => row.set(e.target.checked)}
             />
-            <span className="text-sm text-ink">{row.label}</span>
+            <span className="text-15 text-ink">{row.label}</span>
           </label>
         ))}
       </fieldset>
 
       <div className="rounded-lg border border-hairline bg-sunken px-4 py-3">
-        <p className="text-sm font-medium text-ink">What this does to a client</p>
+        <p className="text-15 font-medium text-ink">What this does to a client</p>
         <ul className="mt-2 space-y-1.5">
           {consequences(draft).map((c) => (
-            <li key={c.text} className="flex gap-2 text-sm">
+            <li key={c.text} className="flex gap-2 text-15">
               <span aria-hidden="true" className={c.tone === "good" ? "text-emerald-700" : "text-amber-700"}>
                 {c.tone === "good" ? "✓" : "!"}
               </span>
@@ -519,7 +519,7 @@ export function ServicesEditor({
       {openId === "new" && (
         <CardBody className="border-b border-hairline bg-raised">
           <h3 className="font-heading text-base font-semibold text-ink">A new service</h3>
-          <p className="mb-4 mt-1 text-sm text-ink-muted">
+          <p className="mb-4 mt-1 text-15 text-ink-muted">
             It starts switched off, so nothing goes live while you are still deciding. Switch it on below when the fee
             and the length are right.
           </p>
@@ -555,7 +555,7 @@ export function ServicesEditor({
                       <p className="font-medium text-ink">{s.name}</p>
                       <span
                         className={cn(
-                          "rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                          "rounded-full border px-2.5 py-0.5 text-13 font-medium",
                           s.isActive
                             ? "border-emerald-200 bg-emerald-50 text-emerald-900"
                             : "border-hairline bg-sunken text-ink-muted",
@@ -564,23 +564,23 @@ export function ServicesEditor({
                         {s.isActive ? "on the booking page" : "switched off"}
                       </span>
                       {s.priceMinor === 0 && (
-                        <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-900">
+                        <span className="rounded-full border border-sky-200 bg-sky-50 px-2.5 py-0.5 text-13 font-medium text-sky-900">
                           free
                         </span>
                       )}
                     </div>
-                    <p className="mt-1 text-sm text-ink">
+                    <p className="mt-1 text-15 text-ink">
                       {s.feeLabel} · {s.durationMin} minutes
                       {s.vatLabel ? ` · plus VAT ${s.vatLabel}, so the invoice reads ${s.totalLabel}` : ""}
                       {s.priceMinor > 0 ? ` · held as ${s.minorLabel}` : ""}
                     </p>
-                    <p className="mt-0.5 break-words text-xs text-ink-muted">
+                    <p className="mt-0.5 break-words text-13 text-ink-muted">
                       /{s.slug}
                       {s.lawyerCategory ? ` · ${s.lawyerCategory}` : ""}
                       {s.virtualAvailable ? " · video allowed" : " · no video"}
                       {s.priceMinor > 0 ? (s.requiresPrepayment ? " · paid first" : " · invoiced after") : ""}
                     </p>
-                    <p className="mt-0.5 text-xs text-ink-muted">
+                    <p className="mt-0.5 text-13 text-ink-muted">
                       {s.totalAppointments === 0
                         ? "Never booked."
                         : `${s.totalAppointments} consultation${s.totalAppointments === 1 ? "" : "s"} booked${s.upcomingAppointments > 0 ? `, ${s.upcomingAppointments} still to come` : ""}.`}
@@ -615,14 +615,14 @@ export function ServicesEditor({
                     {s.isActive && firmSlug && (
                       <Link
                         href={`/${firmSlug}/book?service=${s.slug}`}
-                        className="flex min-h-[44px] items-center text-sm font-medium text-brand underline"
+                        className="flex min-h-[44px] items-center text-15 font-medium text-brand underline"
                       >
                         Open it on the booking page
                       </Link>
                     )}
                     {!canWrite ? null : confirmDelete === s.id ? (
                       <div className="w-full rounded-lg border border-red-200 bg-red-50 px-3 py-3">
-                        <p className="text-sm text-red-900">
+                        <p className="text-15 text-red-900">
                           Delete “{s.name}” for good?{" "}
                           {s.totalAppointments > 0
                             ? `${s.totalAppointments} consultation${s.totalAppointments === 1 ? " has" : "s have"} been booked on it, so the database will refuse — switching it off is what you want.`
@@ -640,7 +640,7 @@ export function ServicesEditor({
                     ) : (
                       <button
                         type="button"
-                        className="min-h-[44px] text-sm font-medium text-red-700 underline"
+                        className="min-h-[44px] text-15 font-medium text-red-700 underline"
                         onClick={() => {
                           setRowError(null);
                           setConfirmDelete(s.id);

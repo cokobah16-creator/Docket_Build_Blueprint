@@ -115,7 +115,7 @@ export function ForgotPasswordForm() {
         </Alert>
         <Card>
           <CardBody className="space-y-3">
-            <p className="text-sm text-ink">
+            <p className="text-15 text-ink">
               Two-factor authentication is unchanged. Setting a new password does not switch it off, and
               you will still be asked for your authenticator code before the console opens.
             </p>
@@ -128,7 +128,7 @@ export function ForgotPasswordForm() {
             >
               {wait > 0 ? `Send it again in ${wait}s` : "Send it again"}
             </Button>
-            <a href="/firm/login" className="block text-center text-sm font-medium text-brand underline">
+            <a href="/firm/login" className="block text-center text-15 font-medium text-brand underline">
               Back to sign-in
             </a>
           </CardBody>
@@ -157,7 +157,7 @@ export function ForgotPasswordForm() {
           <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
             {busy ? "Sending…" : "Email me a password link"}
           </Button>
-          <a href="/firm/login" className="block text-center text-sm font-medium text-brand underline">
+          <a href="/firm/login" className="block text-center text-15 font-medium text-brand underline">
             Back to sign-in
           </a>
         </form>

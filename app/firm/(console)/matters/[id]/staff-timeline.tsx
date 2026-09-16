@@ -215,7 +215,7 @@ export function StaffTimeline({
     <div>
       <section id="post-update" className="scroll-mt-24 border-b border-hairline px-4 py-5 sm:px-5">
         <h3 className="font-heading text-base font-semibold text-ink">Post what happened in court</h3>
-        <p className="mt-0.5 text-sm text-ink-muted">
+        <p className="mt-0.5 text-15 text-ink-muted">
           The client is told within a minute. The internal note beside it stays with the firm.
         </p>
         <div className="mt-4">
@@ -234,7 +234,7 @@ export function StaffTimeline({
 
       <section className="border-b border-hairline px-4 py-5 sm:px-5">
         <details>
-          <summary className="cursor-pointer text-sm font-medium text-brand marker:text-brand">
+          <summary className="cursor-pointer text-15 font-medium text-brand marker:text-brand">
             Add a note to the file
           </summary>
           <form onSubmit={addNote} className="mt-3 space-y-3">
@@ -242,7 +242,7 @@ export function StaffTimeline({
             {noted === "client" && <Alert kind="success">Note added. Your client can see it.</Alert>}
             {noted === "internal" && <Alert kind="success">Internal note added. Your client cannot see it.</Alert>}
             <div>
-              <label htmlFor="note-title" className="text-sm font-medium text-ink">Heading <span className="text-red-700">*</span></label>
+              <label htmlFor="note-title" className="text-15 font-medium text-ink">Heading <span className="text-red-700">*</span></label>
               <input
                 id="note-title"
                 defaultValue=""
@@ -254,36 +254,36 @@ export function StaffTimeline({
               />
             </div>
             <div>
-              <label htmlFor="note-body" className="text-sm font-medium text-ink">Detail</label>
+              <label htmlFor="note-body" className="text-15 font-medium text-ink">Detail</label>
               <textarea id="note-body" rows={3} maxLength={4000} defaultValue="" onChange={(e) => setBody(e.target.value)} className={field} />
             </div>
             {visibility === "client" && <ClientUpdateFields idPrefix="note" value={shape} onChange={setShape} />}
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium text-ink">Who may read this?</legend>
-              <label className="flex items-start gap-2 rounded-lg border border-hairline p-3 text-sm">
+              <legend className="text-15 font-medium text-ink">Who may read this?</legend>
+              <label className="flex items-start gap-2 rounded-lg border border-hairline p-3 text-15">
                 <input type="radio" name="note-visibility" className="mt-0.5 h-4 w-4" checked={visibility === "client"} onChange={() => setVisibility("client")} />
                 <span>
                   <span className="font-medium text-ink">Your client and the firm</span>
-                  <span className="block text-xs text-ink-muted">It appears in the client&rsquo;s app straight away.</span>
+                  <span className="block text-13 text-ink-muted">It appears in the client&rsquo;s app straight away.</span>
                 </span>
               </label>
-              <label className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">
+              <label className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-15">
                 <input type="radio" name="note-visibility" className="mt-0.5 h-4 w-4" checked={visibility === "internal"} onChange={() => setVisibility("internal")} />
                 <span>
                   <span className="font-medium text-amber-900">Internal — the firm only</span>
-                  <span className="block text-xs text-amber-800">Never shown to your client, in the app or in any notification.</span>
+                  <span className="block text-13 text-amber-800">Never shown to your client, in the app or in any notification.</span>
                 </span>
               </label>
             </fieldset>
             <Button type="submit" disabled={busy || !online}>{busy ? "Saving…" : "Add to the timeline"}</Button>
-            {draft.restored && <p className="text-xs text-ink-muted">Draft restored — not posted yet.</p>}
+            {draft.restored && <p className="text-13 text-ink-muted">Draft restored — not posted yet.</p>}
             <OfflineNote />
           </form>
         </details>
       </section>
 
       {items.length === 0 ? (
-        <p className="px-5 py-10 text-center text-sm text-ink-muted">
+        <p className="px-5 py-10 text-center text-15 text-ink-muted">
           Nothing on this file yet. Post what happened in court above, or add a note — the client sees everything that is not marked internal.
         </p>
       ) : (
@@ -303,16 +303,16 @@ export function StaffTimeline({
                 <div className="min-w-0 flex-1">
                   {internal && (
                     <p className="mb-1">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-amber-900">
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-100 px-2 py-0.5 text-11 font-semibold uppercase tracking-wide text-amber-900">
                         <span aria-hidden="true">🔒</span> Internal — not shown to your client
                       </span>
                     </p>
                   )}
-                  <p className="text-sm font-medium text-ink">{u.title}</p>
-                  {u.body && <p className="mt-1 whitespace-pre-wrap text-sm text-ink">{u.body}</p>}
+                  <p className="text-15 font-medium text-ink">{u.title}</p>
+                  {u.body && <p className="mt-1 whitespace-pre-wrap text-15 text-ink">{u.body}</p>}
                   {!internal && <UpdateStructure update={u} compact />}
                   {u.kind === "court_sitting" && (
-                    <dl className="mt-2 grid gap-1 text-xs text-ink-muted sm:grid-cols-2">
+                    <dl className="mt-2 grid gap-1 text-13 text-ink-muted sm:grid-cols-2">
                       {outcome && (
                         <div><dt className="inline text-ink-muted">Outcome: </dt><dd className="inline">{OUTCOME_LABELS[outcome] ?? outcome.replace(/_/g, " ")}</dd></div>
                       )}
@@ -336,7 +336,7 @@ export function StaffTimeline({
                       )}
                     </dl>
                   )}
-                  <p className="mt-1 text-xs text-ink-muted">
+                  <p className="mt-1 text-13 text-ink-muted">
                     {fmt.format(new Date(u.occurred_at))}{poster ? ` · ${poster}` : ""}
                   </p>
                 </div>

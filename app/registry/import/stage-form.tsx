@@ -120,11 +120,11 @@ export function StageForm({ registryId }: { registryId: string }) {
       {error && <Alert kind="error" title="That was refused">{error}</Alert>}
       {result && (
         <Alert kind={result.rejected.length > 0 ? "warning" : "success"} title={`${result.staged} ${result.staged === 1 ? "listing" : "listings"} staged as drafts`}>
-          <p className="text-sm">
+          <p className="text-15">
             Nothing is published yet. <Link href="/registry" className="underline">Open the cause list</Link> to look them over; a registrar publishes.
           </p>
           {result.rejected.length > 0 && (
-            <ul className="mt-2 list-disc pl-5 text-xs">
+            <ul className="mt-2 list-disc pl-5 text-13">
               {result.rejected.map((r) => <li key={r.row}>Row {r.row}{r.suit_number ? ` (${r.suit_number})` : ""}: {r.reason}</li>)}
             </ul>
           )}
@@ -139,9 +139,9 @@ export function StageForm({ registryId }: { registryId: string }) {
       <Card>
         <CardHeader title="What this is from" />
         <CardBody>
-          <label className="block text-sm text-ink">Source
+          <label className="block text-15 text-ink">Source
             <input type="text" maxLength={300} value={sourceNote} onChange={(e) => setSourceNote(e.target.value)} placeholder="Cause list of 14 Sep 2026, page 3" className={field} />
-            <span className="mt-1 block text-xs text-ink-muted">Kept with every listing, and shown to the firm beside the date it confirms.</span>
+            <span className="mt-1 block text-13 text-ink-muted">Kept with every listing, and shown to the firm beside the date it confirms.</span>
           </label>
         </CardBody>
       </Card>
@@ -150,28 +150,28 @@ export function StageForm({ registryId }: { registryId: string }) {
         <Card>
           <CardHeader title="The file" />
           <CardBody className="space-y-3">
-            <label className="block text-sm text-ink">CSV
-              <input type="file" accept=".csv,text/csv" onChange={onFile} className="mt-1 block w-full text-sm" />
+            <label className="block text-15 text-ink">CSV
+              <input type="file" accept=".csv,text/csv" onChange={onFile} className="mt-1 block w-full text-15" />
             </label>
             {table && (
               <>
-                <p className="text-xs text-ink-muted">{fileName}: {table.rows.length} rows{table.rows.length >= 500 ? " (the first 500 — stage the rest as another file)" : ""}. Say what each column is:</p>
+                <p className="text-13 text-ink-muted">{fileName}: {table.rows.length} rows{table.rows.length >= 500 ? " (the first 500 — stage the rest as another file)" : ""}. Say what each column is:</p>
                 {table.warnings.length > 0 && <Alert kind="warning">{table.warnings.slice(0, 3).join(" ")}</Alert>}
                 <div className="grid gap-2 sm:grid-cols-2">
                   {FIELDS.map((f) => (
-                    <label key={f.key} className="block text-sm text-ink">
+                    <label key={f.key} className="block text-15 text-ink">
                       {f.label}{f.required ? " *" : ""}
                       <select value={mapping[f.key] ?? ""} onChange={(e) => setMapping({ ...mapping, [f.key]: e.target.value === "" ? undefined : Number(e.target.value) })} className={field}>
                         <option value="">— not in the file —</option>
                         {table.headers.map((h, i) => <option key={i} value={i}>{h || `column ${i + 1}`}</option>)}
                       </select>
-                      {f.hint && <span className="mt-0.5 block text-xs text-ink-muted">{f.hint}</span>}
+                      {f.hint && <span className="mt-0.5 block text-13 text-ink-muted">{f.hint}</span>}
                     </label>
                   ))}
                 </div>
                 {rows.length > 0 && (
                   <div className="overflow-x-auto rounded-lg border border-hairline">
-                    <table className="w-full text-left text-xs">
+                    <table className="w-full text-left text-13">
                       <thead className="bg-sunken text-ink-muted"><tr><th className="px-2 py-1">Suit</th><th className="px-2 py-1">Day</th><th className="px-2 py-1">Time</th><th className="px-2 py-1">Purpose</th></tr></thead>
                       <tbody>
                         {rows.slice(0, 8).map((r, i) => (
@@ -179,13 +179,13 @@ export function StageForm({ registryId }: { registryId: string }) {
                         ))}
                       </tbody>
                     </table>
-                    {rows.length > 8 && <p className="px-2 py-1 text-xs text-ink-muted">…and {rows.length - 8} more</p>}
+                    {rows.length > 8 && <p className="px-2 py-1 text-13 text-ink-muted">…and {rows.length - 8} more</p>}
                   </div>
                 )}
                 <Button disabled={busy || !mappedRequired || rows.length === 0} onClick={() => void stage(rows)}>
                   {busy ? "Staging…" : `Stage ${rows.length} as drafts`}
                 </Button>
-                {!mappedRequired && <p className="text-xs text-ink-muted">Map the suit number and the day first.</p>}
+                {!mappedRequired && <p className="text-13 text-ink-muted">Map the suit number and the day first.</p>}
               </>
             )}
           </CardBody>
@@ -196,11 +196,11 @@ export function StageForm({ registryId }: { registryId: string }) {
           <CardBody>
             <form onSubmit={submitOne} className="grid gap-3 sm:grid-cols-2">
               {FIELDS.map((f) => (
-                <label key={f.key} className="block text-sm text-ink">
+                <label key={f.key} className="block text-15 text-ink">
                   {f.label}{f.required ? " *" : ""}
                   <input type={f.key === "listed_on" ? "date" : f.key === "listed_time" ? "time" : "text"} required={f.required}
                          value={(one[f.key] ?? "") as string} onChange={(e) => setOne({ ...one, [f.key]: e.target.value })} className={field} />
-                  {f.hint && <span className="mt-0.5 block text-xs text-ink-muted">{f.hint}</span>}
+                  {f.hint && <span className="mt-0.5 block text-13 text-ink-muted">{f.hint}</span>}
                 </label>
               ))}
               <div className="sm:col-span-2">

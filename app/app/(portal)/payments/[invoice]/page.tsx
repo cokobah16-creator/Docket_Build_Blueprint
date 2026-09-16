@@ -60,8 +60,8 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     <Screen>
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">{inv.status === "paid" ? "Receipt" : "Invoice"} {inv.number}</h1>
-          <p className="mt-1 text-[13px] text-ink-muted">{firm?.legal_name ?? firm?.name ?? "Your firm"}</p>
+          <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand">{inv.status === "paid" ? "Receipt" : "Invoice"} {inv.number}</h1>
+          <p className="mt-1 text-13 text-ink-muted">{firm?.legal_name ?? firm?.name ?? "Your firm"}</p>
         </div>
         <StatusPill status={inv.status as Status} />
       </header>
@@ -81,7 +81,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
       <Card>
         <CardHeader title="Items" />
         <CardBody>
-          <table className="w-full text-sm">
+          <table className="w-full text-15">
             <tbody className="divide-y divide-hairline">
               {items.map((it) => (
                 <tr key={it.id}>
@@ -102,9 +102,9 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
         <CardHeader title="Payments" />
         <CardBody>
           {payments.length === 0 ? (
-            <p className="text-sm text-ink-muted">No payments recorded yet.</p>
+            <p className="text-15 text-ink-muted">No payments recorded yet.</p>
           ) : (
-            <ul className="divide-y divide-hairline text-sm">
+            <ul className="divide-y divide-hairline text-15">
               {payments.map((p) => (
                 <li key={p.id} className="flex justify-between gap-4 py-2">
                   <span className="text-ink">{p.provider} · {p.provider_ref}{p.paid_at ? ` · ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(p.paid_at))}` : ""}</span>
@@ -117,8 +117,8 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Download PDF</a>
-        <Link href="/app/payments" className="rounded-lg border border-edge px-4 py-2.5 text-sm font-medium text-brand hover:bg-hover">All payments</Link>
+        <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-brand-on hover:opacity-90">Download PDF</a>
+        <Link href="/app/payments" className="rounded-lg border border-edge px-4 py-2.5 text-15 font-medium text-brand hover:bg-hover">All payments</Link>
       </div>
     </Screen>
   );

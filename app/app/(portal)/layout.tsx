@@ -114,11 +114,11 @@ export default async function PortalLayout({ children }: { children: ReactNode }
               <div className="min-w-0">
                 <Link
                   href="/app"
-                  className="block truncate font-heading text-[15px] font-semibold tracking-[-0.015em] text-brand"
+                  className="block truncate font-heading text-15 font-semibold tracking-[-0.015em] text-brand"
                 >
                   {firm?.name ?? "Docket"}
                 </Link>
-                <p className="mt-0.5 text-[11.5px] text-ink-muted">Your client portal</p>
+                <p className="mt-0.5 text-11 text-ink-muted">Your client portal</p>
                 <div className="mt-2 empty:hidden"><ConnectionBadge /></div>
               </div>
             }

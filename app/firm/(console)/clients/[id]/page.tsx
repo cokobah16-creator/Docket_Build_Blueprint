@@ -160,7 +160,7 @@ function StatusChip({ status }: { status: MatterStatus }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-13 font-medium",
         hex ? "bg-raised" : TONES[colour.toLowerCase()] ?? "border-edge bg-sunken text-ink",
       )}
       style={hex ? { borderColor: colour, color: colour } : undefined}
@@ -338,20 +338,20 @@ export default async function FirmClientPage({
 
   return (
     <div className="space-y-5">
-      <p className="text-sm"><Link href={backHref} className="text-brand underline">← Clients</Link></p>
+      <p className="text-15"><Link href={backHref} className="text-brand underline">← Clients</Link></p>
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">
+          <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">
             {name}
             {profile?.client_type === "business" && <Badge className="ml-2 align-middle">business</Badge>}
           </h1>
-          <p className="text-sm text-ink-muted">
+          <p className="text-15 text-ink-muted">
             {ctx.firmName} · {matters.length} {matters.length === 1 ? "matter" : "matters"}
             {openMatters > 0 ? ` (${openMatters} open)` : ""} ·{" "}
             {appointments.length} {appointments.length === 1 ? "consultation" : "consultations"} · times in {tz}
           </p>
-          <p className="mt-1 text-sm text-ink-muted">
+          <p className="mt-1 text-15 text-ink-muted">
             {lastSeen
               ? `Last seen ${formatWhen(lastSeen, tz, { dateStyle: "full", timeStyle: "short" })}`
               : "Not seen yet — no consultation has taken place and nothing has been posted on their matters."}
@@ -360,8 +360,8 @@ export default async function FirmClientPage({
         </div>
         {owedLabel && (
           <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-right">
-            <p className="text-xs uppercase tracking-wide text-amber-900">Outstanding</p>
-            <p className="font-heading text-xl font-semibold text-amber-900">{owedLabel}</p>
+            <p className="text-13 uppercase tracking-wide text-amber-900">Outstanding</p>
+            <p className="font-heading text-21 font-semibold text-amber-900">{owedLabel}</p>
           </div>
         )}
       </header>
@@ -397,13 +397,13 @@ export default async function FirmClientPage({
           <Card>
             <CardHeader
               title="Consultations"
-              action={<Link href="/firm/appointments" className="text-sm text-brand underline">All consultations →</Link>}
+              action={<Link href="/firm/appointments" className="text-15 text-brand underline">All consultations →</Link>}
             />
             {appointments.length === 0 ? (
               <EmptyState
                 title="No consultation booked"
                 hint="This person came to the firm through a matter, not a booking. They can book a consultation on your public site, or you can add a court date and updates to their matter."
-                action={<Link href="/firm/appointments" className="text-sm text-brand underline">Go to consultations</Link>}
+                action={<Link href="/firm/appointments" className="text-15 text-brand underline">Go to consultations</Link>}
               />
             ) : (
               <ul className="divide-y divide-hairline">
@@ -412,12 +412,12 @@ export default async function FirmClientPage({
                     <Link href={`/firm/appointments/${a.id}`} className="block px-5 py-4 hover:bg-sunken">
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-ink">
+                          <p className="text-15 font-medium text-ink">
                             {formatWhen(a.starts_at, tz, { dateStyle: "medium", timeStyle: "short" })}
                             {" · "}
                             {a.service_id ? services.get(a.service_id) ?? "Consultation" : "Consultation"}
                           </p>
-                          <p className="mt-0.5 text-xs text-ink-muted">
+                          <p className="mt-0.5 text-13 text-ink-muted">
                             {a.reference} · {a.mode.replace("_", " ")} ·{" "}
                             {Math.max(1, Math.round((new Date(a.ends_at).getTime() - new Date(a.starts_at).getTime()) / 60000))} min
                           </p>
@@ -425,7 +425,7 @@ export default async function FirmClientPage({
                         <StatusPill status={a.status as Status} />
                       </div>
                       {a.cancellation_reason && (
-                        <p className="mt-1 text-xs text-ink-muted">Cancelled: {a.cancellation_reason}</p>
+                        <p className="mt-1 text-13 text-ink-muted">Cancelled: {a.cancellation_reason}</p>
                       )}
                     </Link>
                   </li>
@@ -437,7 +437,7 @@ export default async function FirmClientPage({
           <Card>
             <CardHeader
               title="Matters"
-              action={<Link href="/firm/matters/new" className="text-sm text-brand underline">Open a matter →</Link>}
+              action={<Link href="/firm/matters/new" className="text-15 text-brand underline">Open a matter →</Link>}
             />
             {matters.length === 0 ? (
               <EmptyState
@@ -450,7 +450,7 @@ export default async function FirmClientPage({
                 action={
                   <Link
                     href="/firm/matters/new"
-                    className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+                    className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
                   >
                     Open a matter
                   </Link>
@@ -468,32 +468,32 @@ export default async function FirmClientPage({
                       <Link href={`/firm/matters/${m.id}`} className="block px-5 py-4 hover:bg-sunken">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-ink">{m.title}</p>
-                            {causeDiffers && <p className="mt-0.5 text-xs italic text-ink-muted">{m.cause_title}</p>}
+                            <p className="text-15 font-medium text-ink">{m.title}</p>
+                            {causeDiffers && <p className="mt-0.5 text-13 italic text-ink-muted">{m.cause_title}</p>}
                           </div>
                           <div className="flex shrink-0 flex-wrap items-center gap-2">
                             {status && <StatusChip status={status} />}
                             {m.closed_at && (
-                              <span className="inline-flex items-center rounded-full border border-edge bg-sunken px-2.5 py-0.5 text-xs font-medium text-ink">
+                              <span className="inline-flex items-center rounded-full border border-edge bg-sunken px-2.5 py-0.5 text-13 font-medium text-ink">
                                 Closed
                               </span>
                             )}
                           </div>
                         </div>
-                        <p className="mt-1 text-xs text-ink-muted">
+                        <p className="mt-1 text-13 text-ink-muted">
                           {m.reference}
                           {party ? ` · ${PARTY_ROLE_LABELS[party.role] ?? party.role} on this file` : ""}
                           {party && !party.can_view_docs ? " · cannot see documents" : ""}
                           {` · opened ${dayLabel(m.opened_at)}`}
                         </p>
                         {(m.court_name || m.suit_number) && (
-                          <p className="mt-1 text-xs text-ink-muted">
+                          <p className="mt-1 text-13 text-ink-muted">
                             {m.court_name ?? "Court not recorded"}
                             {m.suit_number ? ` · ${m.suit_number}` : ""}
                           </p>
                         )}
                         {m.next_event_at && (
-                          <p className={cn("mt-1 text-xs", nextDatePassed ? "text-amber-800" : "text-ink")}>
+                          <p className={cn("mt-1 text-13", nextDatePassed ? "text-amber-800" : "text-ink")}>
                             {nextDatePassed ? "Court date has passed: " : "Next court date: "}
                             <strong>{formatWhen(m.next_event_at, tz, { dateStyle: "medium", timeStyle: "short" })}</strong>
                             {m.next_event_note ? ` · ${m.next_event_note}` : ""}
@@ -510,13 +510,13 @@ export default async function FirmClientPage({
           <Card>
             <CardHeader
               title="Invoices"
-              action={<Link href="/firm/invoices" className="text-sm text-brand underline">All invoices →</Link>}
+              action={<Link href="/firm/invoices" className="text-15 text-brand underline">All invoices →</Link>}
             />
             {invoices.length === 0 ? (
               <EmptyState
                 title="Nothing billed yet"
                 hint="Raise an invoice against this client from Invoices — consultation fees raised at booking appear here automatically."
-                action={<Link href="/firm/invoices" className="text-sm text-brand underline">Go to invoices</Link>}
+                action={<Link href="/firm/invoices" className="text-15 text-brand underline">Go to invoices</Link>}
               />
             ) : (
               <>
@@ -529,10 +529,10 @@ export default async function FirmClientPage({
                       <li key={inv.id} className="px-5 py-4">
                         <div className="flex flex-wrap items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-ink">
+                            <p className="text-15 font-medium text-ink">
                               {inv.number} · {formatMoneyMinor(Number(inv.total_minor), inv.currency)}
                             </p>
-                            <p className="mt-0.5 text-xs text-ink-muted">
+                            <p className="mt-0.5 text-13 text-ink-muted">
                               {inv.issued_at ? `Issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium" })}` : "Not issued"}
                               {inv.due_at ? ` · due ${dayLabel(inv.due_at)}` : ""}
                               {Number(inv.paid_minor) > 0 ? ` · paid ${formatMoneyMinor(Number(inv.paid_minor), inv.currency)}` : ""}
@@ -541,7 +541,7 @@ export default async function FirmClientPage({
                                 : ""}
                             </p>
                             {inv.matter_id && (
-                              <p className="mt-0.5 text-xs">
+                              <p className="mt-0.5 text-13">
                                 <Link href={`/firm/matters/${inv.matter_id}`} className="text-brand underline">
                                   On this client&rsquo;s matter
                                 </Link>
@@ -552,23 +552,23 @@ export default async function FirmClientPage({
                         </div>
 
                         {payable ? (
-                          <p className="mt-2 break-all text-xs text-ink-muted">
+                          <p className="mt-2 break-all text-13 text-ink-muted">
                             {due > 0 ? "Payment link to send them: " : "Receipt link: "}
                             <Link href={`/app/payments/${inv.id}`} className="text-brand underline">{link}</Link>
                           </p>
                         ) : inv.status === "draft" ? (
-                          <p className="mt-2 text-xs text-ink-muted">
+                          <p className="mt-2 text-13 text-ink-muted">
                             A draft is invisible to the client — the database refuses them a draft invoice. Issue it from
                             Invoices and the payment link appears here.
                           </p>
                         ) : (
-                          <p className="mt-2 text-xs text-ink-muted">Cancelled — nothing to collect.</p>
+                          <p className="mt-2 text-13 text-ink-muted">Cancelled — nothing to collect.</p>
                         )}
                       </li>
                     );
                   })}
                 </ul>
-                <CardBody className="border-t border-hairline text-xs text-ink-muted">
+                <CardBody className="border-t border-hairline text-13 text-ink-muted">
                   {billed.size > 0 && (
                     <>
                       Billed {moneyLabel(billed)} in all, {moneyLabel(paid) || formatMoneyMinor(0, invoices[0].currency)} received.{" "}
@@ -587,7 +587,7 @@ export default async function FirmClientPage({
           <Card>
             <CardHeader title="Profile" />
             <CardBody>
-              <dl className="space-y-2 text-sm">
+              <dl className="space-y-2 text-15">
                 <div>
                   <dt className="text-ink-muted">Name</dt>
                   <dd className="font-medium text-ink">{profile?.full_name ?? "—"}</dd>
@@ -646,7 +646,7 @@ export default async function FirmClientPage({
                 )}
               </dl>
             </CardBody>
-            <CardBody className="border-t border-hairline text-xs text-ink-muted">
+            <CardBody className="border-t border-hairline text-13 text-ink-muted">
               A profile belongs to the person, not to the firm: the database lets someone edit their own details and
               nobody else&rsquo;s, so there is no form here that would work. If something is wrong, ask {name} to correct
               it in their own app, and record what they told you as an internal note on the matter.
@@ -666,14 +666,14 @@ export default async function FirmClientPage({
                   {consents.map((c) => (
                     <li key={c.id} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-ink">{CONSENT_LABELS[c.kind] ?? c.kind}</p>
-                        <p className="text-xs text-ink-muted">Version {c.version}</p>
+                        <p className="text-15 font-medium text-ink">{CONSENT_LABELS[c.kind] ?? c.kind}</p>
+                        <p className="text-13 text-ink-muted">Version {c.version}</p>
                       </div>
-                      <p className="text-xs text-ink-muted">{formatWhen(c.accepted_at, tz)}</p>
+                      <p className="text-13 text-ink-muted">{formatWhen(c.accepted_at, tz)}</p>
                     </li>
                   ))}
                 </ul>
-                <CardBody className="border-t border-hairline text-xs text-ink-muted">
+                <CardBody className="border-t border-hairline text-13 text-ink-muted">
                   Only consents given to {ctx.firmName} are shown. Consents this person gave to another firm, or to
                   Docket itself, are theirs and are not readable here.
                 </CardBody>
@@ -683,7 +683,7 @@ export default async function FirmClientPage({
         </div>
       </div>
 
-      <p className="text-xs text-ink-muted">
+      <p className="text-13 text-ink-muted">
         Everything on this screen is read as you, from {ctx.firmName}&rsquo;s own records: consultations and matters
         belonging to another firm this person also instructs are not shown. &ldquo;Last seen&rdquo; is the later of their
         most recent consultation that had already begun and the most recent entry posted on one of their matters.

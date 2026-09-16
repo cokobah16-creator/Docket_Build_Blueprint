@@ -36,8 +36,8 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-3.5">
       <div>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">{ctx.courtName}</h1>
-        <p className="text-sm text-[#57534E]">{registry.name} · {members.length} {members.length === 1 ? "person" : "people"} · times in {timezone}</p>
+        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">{ctx.courtName}</h1>
+        <p className="text-15 text-[#57534E]">{registry.name} · {members.length} {members.length === 1 ? "person" : "people"} · times in {timezone}</p>
       </div>
 
       {registry.status === "suspended" && (
@@ -47,7 +47,7 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
       )}
 
       <Card>
-        <CardBody className="text-[12.5px] leading-[1.55] text-[#57534E]">
+        <CardBody className="text-13 leading-[1.55] text-[#57534E]">
           <p>
             A notice you publish here reaches only the firms whose matter already carries that suit number at this
             court, on their own Sittings screen, where a lawyer confirms it into their diary or says it is not theirs.
@@ -58,7 +58,7 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
       </Card>
 
       <Card>
-        <CardHeader title={`Staged, not yet published (${drafts.length})`} action={<Link href="/registry/import" className="text-sm underline">Stage a list</Link>} />
+        <CardHeader title={`Staged, not yet published (${drafts.length})`} action={<Link href="/registry/import" className="text-15 underline">Stage a list</Link>} />
         {drafts.length === 0 ? (
           <EmptyState title="Nothing staged" hint="Stage a cause list from a CSV, or one listing at a time. It is a draft until a registrar publishes it." />
         ) : (
@@ -66,13 +66,13 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
             {draftBatches.map((b) => (
               <div key={b.id} className="border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-[13px] font-semibold text-[#141414]">
+                  <p className="text-13 font-semibold text-[#141414]">
                     {b.source_note ?? "Untitled batch"} <span className="font-normal text-[#57534E]">· staged {formatWhen(b.staged_at, timezone)}</span>
                   </p>
                   {isRegistrar && <BatchControls batchId={b.id} count={draftCounts[b.id] ?? drafts.filter((n) => n.batch_id === b.id).length} />}
                 </div>
                 {(draftCounts[b.id] ?? 0) > drafts.filter((n) => n.batch_id === b.id).length && (
-                  <p className="mt-1 text-[11.5px] font-medium text-amber-800">
+                  <p className="mt-1 text-11 font-medium text-amber-800">
                     This batch holds {draftCounts[b.id]} drafts and only {drafts.filter((n) => n.batch_id === b.id).length} are
                     listed here. Publishing publishes all {draftCounts[b.id]} — read the file you staged, or stage it in smaller batches.
                   </p>
@@ -80,9 +80,9 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
                 <ul className="mt-2 divide-y divide-[#F0EEEA]">
                   {drafts.filter((n) => n.batch_id === b.id).map((n) => (
                     <li key={n.id} className="flex flex-wrap items-start justify-between gap-2 py-2">
-                      <div className="min-w-0 text-[12.5px] text-[#141414]">
+                      <div className="min-w-0 text-13 text-[#141414]">
                         <span className="font-mono">{n.suit_number}</span>{n.cause_title ? ` · ${n.cause_title}` : ""}
-                        <span className="block text-[11.5px] text-[#57534E]">
+                        <span className="block text-11 text-[#57534E]">
                           {formatDay(n.listed_on)}{n.listed_time ? ` ${n.listed_time.slice(0, 5)}` : ""}
                           {n.purpose ? ` · ${n.purpose}` : n.purpose_kind ? ` · ${n.purpose_kind.replace(/_/g, " ")}` : ""}
                           {n.judge ? ` · ${n.judge}` : ""}{n.courtroom ? ` · ${n.courtroom}` : ""}
@@ -106,9 +106,9 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
           <ul>
             {published.map((n) => (
               <li key={n.id} className="flex flex-wrap items-start justify-between gap-2 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0">
-                <div className="min-w-0 text-[12.5px] text-[#141414]">
+                <div className="min-w-0 text-13 text-[#141414]">
                   <span className="font-mono">{n.suit_number}</span>{n.cause_title ? ` · ${n.cause_title}` : ""}
-                  <span className="block text-[11.5px] text-[#57534E]">
+                  <span className="block text-11 text-[#57534E]">
                     {formatDay(n.listed_on)}{n.listed_time ? ` ${n.listed_time.slice(0, 5)}` : ""}
                     {n.purpose ? ` · ${n.purpose}` : n.purpose_kind ? ` · ${n.purpose_kind.replace(/_/g, " ")}` : ""}
                     {n.judge ? ` · ${n.judge}` : ""}{n.courtroom ? ` · ${n.courtroom}` : ""}
@@ -128,9 +128,9 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
           <CardHeader title={`Withdrawn (${withdrawn.length})`} />
           <ul>
             {withdrawn.map((n) => (
-              <li key={n.id} className="border-t border-[#F0EEEA] px-[15px] py-3 text-[12.5px] text-[#57534E] first:border-t-0">
+              <li key={n.id} className="border-t border-[#F0EEEA] px-[15px] py-3 text-13 text-[#57534E] first:border-t-0">
                 <span className="font-mono">{n.suit_number}</span> · {formatDay(n.listed_on)}
-                <span className="block text-[11.5px]">Withdrawn {n.withdrawn_at ? formatWhen(n.withdrawn_at, timezone) : ""}{n.withdrawn_reason ? ` — ${n.withdrawn_reason}` : ""}</span>
+                <span className="block text-11">Withdrawn {n.withdrawn_at ? formatWhen(n.withdrawn_at, timezone) : ""}{n.withdrawn_reason ? ` — ${n.withdrawn_reason}` : ""}</span>
               </li>
             ))}
           </ul>
@@ -141,14 +141,14 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
         <CardHeader title="Who acts for this registry" />
         <ul>
           {members.map((m) => (
-            <li key={m.user_id} className="border-t border-[#F0EEEA] px-[15px] py-2.5 text-[12.5px] first:border-t-0">
+            <li key={m.user_id} className="border-t border-[#F0EEEA] px-[15px] py-2.5 text-13 first:border-t-0">
               <span className="font-medium text-[#141414]">{m.full_name ?? m.email ?? "Somebody"}</span>
               <span className="text-[#57534E]"> · {m.role}{m.email && m.full_name ? ` · ${m.email}` : ""}</span>
             </li>
           ))}
         </ul>
         {isRegistrar && (
-          <CardBody className="border-t border-[#F0EEEA] text-[11.5px] text-[#57534E]">
+          <CardBody className="border-t border-[#F0EEEA] text-11 text-[#57534E]">
             The Docket platform adds a clerk or another registrar for you — ask them, with the email the person signed up to Docket with. A registrar can remove a member here or through the platform. That is deliberate: a registry is an outside body, and looking people up by email is not something Docket lets an outside body do.
           </CardBody>
         )}

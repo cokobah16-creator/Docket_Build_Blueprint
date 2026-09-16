@@ -281,12 +281,12 @@ export function ImportWizard({
               Each matter will come in; its client will not be linked until a check on that matter is cleared. The result page says so per row.
             </Alert>
           )}
-          <p className="text-sm text-ink-muted">
+          <p className="text-15 text-ink-muted">
             A CSV export from your spreadsheet, one matter per row, with a header row. You say what each column means next.
             Dates are calendar days (YYYY-MM-DD or DD/MM/YYYY). Every client is invited by phone or email — even one already on Docket — and never linked by a number in a file.{" "}
             <Link href="/firm/admin/import/template" className="text-brand underline">See the columns and download a template</Link>.
           </p>
-          <label className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">
+          <label className="inline-flex cursor-pointer items-center rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-brand-on hover:opacity-90">
             Choose a CSV file
             <input type="file" accept=".csv,text/csv" className="sr-only" onChange={onFile} />
           </label>
@@ -302,14 +302,14 @@ export function ImportWizard({
         <CardBody className="space-y-4">
           {error && <Alert kind="error">{error}</Alert>}
           {table.warnings.map((w) => <Alert key={w} kind="warning">{w}</Alert>)}
-          <p className="text-sm text-ink-muted">{table.rows.length} rows, {table.headers.length} columns. Columns left as “not imported” are ignored.</p>
+          <p className="text-15 text-ink-muted">{table.rows.length} rows, {table.headers.length} columns. Columns left as “not imported” are ignored.</p>
           <div className="grid gap-3 sm:grid-cols-2">
             {IMPORT_FIELDS.map((f) => (
               <div key={f}>
-                <label htmlFor={`map-${f}`} className="text-sm font-medium text-ink">
+                <label htmlFor={`map-${f}`} className="text-15 font-medium text-ink">
                   {FIELD_LABELS[f].label}{FIELD_LABELS[f].required && <span className="text-red-700"> *</span>}
                 </label>
-                {FIELD_LABELS[f].hint && <p className="text-xs text-ink-muted">{FIELD_LABELS[f].hint}</p>}
+                {FIELD_LABELS[f].hint && <p className="text-13 text-ink-muted">{FIELD_LABELS[f].hint}</p>}
                 <select id={`map-${f}`} value={mapping[f] === undefined ? "" : String(mapping[f])} onChange={(e) => setMapping((m) => ({ ...m, [f]: e.target.value === "" ? undefined : Number(e.target.value) }))} className={field}>
                   <option value="">Not imported</option>
                   {table.headers.map((h, i) => h && <option key={`${h}-${i}`} value={String(i)}>{h}{table.headers.filter((x) => x === h).length > 1 ? ` (column ${i + 1})` : ""}</option>)}
@@ -335,7 +335,7 @@ export function ImportWizard({
         <CardHeader title={`What will happen — ${fileName}`} />
         <CardBody className="space-y-4">
           {error && <Alert kind="error">{error}</Alert>}
-          <p className="text-sm text-ink">
+          <p className="text-15 text-ink">
             <strong>{inCount}</strong> of {rows.length} rows will be filed{dupes.size > 0 ? `; ${dupes.size} ticked out because they already look like a matter on the books` : ""}
             {warned > 0 ? `; ${warned} carry a warning — the database checks the same things and refuses such a row with its reason recorded, unless you tick it out` : ""}.
             Each row is filed on its own: one bad row never stops the rest.
@@ -352,8 +352,8 @@ export function ImportWizard({
             </Alert>
           )}
           <div className="max-h-[60vh] overflow-auto rounded-lg border border-hairline">
-            <table className="w-full text-left text-sm">
-              <thead className="sticky top-0 bg-sunken text-xs uppercase tracking-wide text-ink-muted">
+            <table className="w-full text-left text-15">
+              <thead className="sticky top-0 bg-sunken text-13 uppercase tracking-wide text-ink-muted">
                 <tr>
                   <th className="px-2 py-2">In</th><th className="px-2 py-2">#</th><th className="px-2 py-2">Title</th><th className="px-2 py-2">Client</th><th className="px-2 py-2">Status</th><th className="px-2 py-2">Opened</th><th className="px-2 py-2">Notes</th>
                 </tr>
@@ -365,12 +365,12 @@ export function ImportWizard({
                       <input type="checkbox" aria-label={`Include row ${r.row_no}`} checked={!skips.has(r.row_no)} disabled={phase === "running"}
                         onChange={(e) => setSkips((s) => { const n = new Set(s); if (e.target.checked) n.delete(r.row_no); else n.add(r.row_no); return n; })} className="h-5 w-5" />
                     </td>
-                    <td className="px-2 py-1.5 font-mono text-xs">{r.row_no}</td>
-                    <td className="px-2 py-1.5">{r.raw.title ?? <em className="text-red-700">no title</em>}{r.raw.legacy_reference ? <span className="ml-1 text-xs text-ink-muted">({r.raw.legacy_reference})</span> : null}</td>
-                    <td className="px-2 py-1.5 text-xs">{[r.raw.client_name, r.raw.client_phone, r.raw.client_email].filter(Boolean).join(" · ")}</td>
-                    <td className="px-2 py-1.5 text-xs">{r.raw.status ?? "new inquiry"}</td>
-                    <td className="px-2 py-1.5 text-xs">{r.raw.opened_on ?? "today"}</td>
-                    <td className="px-2 py-1.5 text-xs">
+                    <td className="px-2 py-1.5 font-mono text-13">{r.row_no}</td>
+                    <td className="px-2 py-1.5">{r.raw.title ?? <em className="text-red-700">no title</em>}{r.raw.legacy_reference ? <span className="ml-1 text-13 text-ink-muted">({r.raw.legacy_reference})</span> : null}</td>
+                    <td className="px-2 py-1.5 text-13">{[r.raw.client_name, r.raw.client_phone, r.raw.client_email].filter(Boolean).join(" · ")}</td>
+                    <td className="px-2 py-1.5 text-13">{r.raw.status ?? "new inquiry"}</td>
+                    <td className="px-2 py-1.5 text-13">{r.raw.opened_on ?? "today"}</td>
+                    <td className="px-2 py-1.5 text-13">
                       {r.dupe && <span className="block text-amber-900">{r.dupe.reason} ({r.dupe.reference})</span>}
                       {r.issues.map((i) => <span key={i} className="block text-amber-900">{i}</span>)}
                     </td>

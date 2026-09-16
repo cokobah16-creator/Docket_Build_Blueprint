@@ -29,13 +29,13 @@ function AudienceLabel({
   tone: "client" | "internal";
 }) {
   return (
-    <label htmlFor={htmlFor} className="flex flex-wrap items-center gap-2 text-xs font-semibold text-ink">
+    <label htmlFor={htmlFor} className="flex flex-wrap items-center gap-2 text-13 font-semibold text-ink">
       {children}
       <span
         className={
           tone === "client"
-            ? "rounded border border-[#A7D8BE] bg-[#ECFDF3] px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.03em] text-[#05603A]"
-            : "rounded border border-[#E5C4C4] bg-[#FEF3F2] px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.03em] text-[#912018]"
+            ? "rounded border border-[#A7D8BE] bg-[#ECFDF3] px-1.5 py-px text-11 font-bold uppercase tracking-[0.03em] text-[#05603A]"
+            : "rounded border border-[#E5C4C4] bg-[#FEF3F2] px-1.5 py-px text-11 font-bold uppercase tracking-[0.03em] text-[#912018]"
         }
       >
         {badge}
@@ -79,7 +79,7 @@ export function NotesForm({
         <AudienceLabel htmlFor="client_summary" badge="Client sees" tone="client">
           Summary for the client <span className="font-normal text-[#B42318]">*</span>
         </AudienceLabel>
-        <p className="mt-1 text-[11.5px] text-[#57534E]">Plain language. This is what the client reads in their app.</p>
+        <p className="mt-1 text-11 text-[#57534E]">Plain language. This is what the client reads in their app.</p>
         <textarea id="client_summary" required rows={5} maxLength={4000} value={clientSummary} onChange={(e) => setClientSummary(e.target.value)} className={field} />
       </div>
 
@@ -95,14 +95,14 @@ export function NotesForm({
 
       <div className="border-t border-[#F0EEEA] pt-3.5">
         <AudienceLabel htmlFor="internal_notes" badge="Never reaches the client" tone="internal">Internal note</AudienceLabel>
-        <p className="mt-1 text-[11.5px] text-[#57534E]">
+        <p className="mt-1 text-11 text-[#57534E]">
           For the file and for colleagues. It has no client-facing path at all.
         </p>
         <textarea id="internal_notes" rows={4} maxLength={8000} value={internalNotes} onChange={(e) => setInternalNotes(e.target.value)} className={field} />
       </div>
 
       {canComplete && (
-        <label className="flex items-center gap-2.5 text-[13px] text-[#141414]">
+        <label className="flex items-center gap-2.5 text-13 text-[#141414]">
           <input type="checkbox" checked={markCompleted} onChange={(e) => setMarkCompleted(e.target.checked)} className="size-4" />
           Mark the consultation as completed
         </label>

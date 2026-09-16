@@ -23,27 +23,27 @@ export default async function ContactPage({ params }: { params: Promise<{ firm: 
       <dl className="mt-6 space-y-3 rounded-card border border-hairline bg-raised p-5">
         {c.phone && (
           <div>
-            <dt className="text-xs uppercase tracking-wide text-ink-muted">Phone</dt>
+            <dt className="text-13 uppercase tracking-wide text-ink-muted">Phone</dt>
             <dd><a className="font-medium text-brand underline" href={`tel:${c.phone}`}>{c.phone}</a></dd>
           </div>
         )}
         {c.email && (
           <div>
-            <dt className="text-xs uppercase tracking-wide text-ink-muted">Email</dt>
+            <dt className="text-13 uppercase tracking-wide text-ink-muted">Email</dt>
             <dd><a className="font-medium text-brand underline" href={`mailto:${c.email}`}>{c.email}</a></dd>
           </div>
         )}
         {c.address && (
           <div>
-            <dt className="text-xs uppercase tracking-wide text-ink-muted">Address</dt>
+            <dt className="text-13 uppercase tracking-wide text-ink-muted">Address</dt>
             <dd className="text-ink">{c.address}</dd>
           </div>
         )}
         {!c.phone && !c.email && !c.address && (
-          <p className="text-sm text-ink-muted">Contact details will appear here once the firm completes its profile.</p>
+          <p className="text-15 text-ink-muted">Contact details will appear here once the firm completes its profile.</p>
         )}
         <div>
-          <dt className="text-xs uppercase tracking-wide text-ink-muted">Hours</dt>
+          <dt className="text-13 uppercase tracking-wide text-ink-muted">Hours</dt>
           <dd className="text-ink">Consultations are booked online, in the {firm.timezone} timezone.</dd>
         </div>
       </dl>

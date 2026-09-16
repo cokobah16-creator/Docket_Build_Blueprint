@@ -61,10 +61,10 @@ export function PayPanel({
     <div className="flex flex-col gap-3.5">
       {holdExpiresAt && (
         <div className="flex items-center justify-between gap-2.5">
-          <p className="text-[13px] font-semibold text-ink">Pay to confirm</p>
+          <p className="text-13 font-semibold text-ink">Pay to confirm</p>
           <span
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11.5px] font-semibold",
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-11 font-semibold",
               expired
                 ? "border-[#E5C4C4] bg-[#FEF3F2] text-[#912018]"
                 : "border-[#F3DDA4] bg-[#FFFAEB] text-[#92400E]",
@@ -78,15 +78,15 @@ export function PayPanel({
       )}
 
       <div className="flex flex-col gap-1 rounded-card border border-hairline bg-raised p-4">
-        <p className="text-xs uppercase tracking-[0.07em] text-ink-muted">Amount due</p>
-        <p className="font-heading text-[34px] font-semibold leading-none tracking-[-0.02em] text-brand">{amount}</p>
-        <p className="mt-1.5 text-[12.5px] text-ink-muted">
+        <p className="text-13 uppercase tracking-[0.07em] text-ink-muted">Amount due</p>
+        <p className="font-heading text-32 font-semibold leading-none tracking-[-0.02em] text-brand">{amount}</p>
+        <p className="mt-1.5 text-13 text-ink-muted">
           <span className="font-mono">{invoiceNumber}</span> · {description}
         </p>
       </div>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-xs uppercase tracking-[0.07em] text-ink-muted">
+        <legend className="mb-1 text-13 uppercase tracking-[0.07em] text-ink-muted">
           How would you like to pay?
         </legend>
         {METHODS.map((m) => {
@@ -113,8 +113,8 @@ export function PayPanel({
                   <Icon name={m.icon} size={18} />
                 </span>
                 <span className="min-w-0 text-left">
-                  <span className="block text-sm font-semibold text-ink">{m.label}</span>
-                  <span className="mt-0.5 block text-xs text-ink-muted">{m.hint}</span>
+                  <span className="block text-15 font-semibold text-ink">{m.label}</span>
+                  <span className="mt-0.5 block text-13 text-ink-muted">{m.hint}</span>
                 </span>
               </span>
               <span
@@ -151,7 +151,7 @@ export function PayPanel({
         {pending ? "Taking payment…" : `Pay ${amount}`}
       </Button>
 
-      <p className="flex items-start gap-2.5 text-[11.5px] leading-relaxed text-ink-muted">
+      <p className="flex items-start gap-2.5 text-11 leading-relaxed text-ink-muted">
         <Icon name="shield" size={15} className="mt-px shrink-0 text-ink-muted" />
         Paystack takes the payment and settles it to {firmName}&apos;s own subaccount. Docket never
         holds client money.

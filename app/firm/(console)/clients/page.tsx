@@ -324,7 +324,7 @@ export default async function FirmClientsPage({
 
   const chipClass = (active: boolean) =>
     cn(
-      "flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-[12.5px] font-medium",
+      "flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-13 font-medium",
       active ? "border-[#141414] bg-[#141414] text-white" : "border-[#D6D3CE] bg-raised text-[#57534E]",
     );
 
@@ -333,8 +333,8 @@ export default async function FirmClientsPage({
   return (
     <div className="flex flex-col gap-3">
       <header>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Clients</h1>
-        <p className="mt-0.5 text-[12.5px] text-[#57534E]">
+        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Clients</h1>
+        <p className="mt-0.5 text-13 text-[#57534E]">
           {ctx.firmName} · {everyone.length} {everyone.length === 1 ? "person" : "people"} the firm acts for
         </p>
       </header>
@@ -348,7 +348,7 @@ export default async function FirmClientsPage({
           placeholder="Name, company, phone or email" aria-label="Search clients"
           className={field}
         />
-        {filtered && <Link href="/firm/clients" className="shrink-0 text-[11.5px] font-medium text-[#57534E] underline underline-offset-2">Clear</Link>}
+        {filtered && <Link href="/firm/clients" className="shrink-0 text-11 font-medium text-[#57534E] underline underline-offset-2">Clear</Link>}
       </form>
 
       <nav aria-label="Filter clients" className="-mx-4 flex gap-[7px] overflow-x-auto px-4 pb-0.5">
@@ -375,14 +375,14 @@ export default async function FirmClientsPage({
       <Card>
         <CardHeader
           title={filtered ? `Matching clients (${matched.length})` : `All clients (${matched.length})`}
-          action={<Link href="/firm/matters/new" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Open a matter</Link>}
+          action={<Link href="/firm/matters/new" className="text-13 font-medium text-[#141414] underline underline-offset-2">Open a matter</Link>}
         />
         {shown.length === 0 ? (
           filtered ? (
             <EmptyState
               title="Nobody matches"
               hint="Try part of a name, a company, an email address, or the last few digits of a phone number."
-              action={<Link href="/firm/clients" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Clear the search</Link>}
+              action={<Link href="/firm/clients" className="text-13 font-medium text-[#141414] underline underline-offset-2">Clear the search</Link>}
             />
           ) : (
             <EmptyState
@@ -397,14 +397,14 @@ export default async function FirmClientsPage({
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <Link
                       href={bookingHref}
-                      className="flex min-h-11 items-center rounded-[9px] bg-[#141414] px-5 text-sm font-semibold text-white"
+                      className="flex min-h-11 items-center rounded-[9px] bg-[#141414] px-5 text-15 font-semibold text-white"
                     >
                       Open the booking page
                     </Link>
-                    <Link href="/firm/matters/new" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Open a matter instead</Link>
+                    <Link href="/firm/matters/new" className="text-13 font-medium text-[#141414] underline underline-offset-2">Open a matter instead</Link>
                   </div>
                 ) : (
-                  <Link href="/firm/matters/new" className="text-[12.5px] font-medium text-[#141414] underline underline-offset-2">Open a matter</Link>
+                  <Link href="/firm/matters/new" className="text-13 font-medium text-[#141414] underline underline-offset-2">Open a matter</Link>
                 )
               }
             />
@@ -424,29 +424,29 @@ export default async function FirmClientsPage({
                   >
                     <div className="flex items-start justify-between gap-2.5">
                       <div className="flex min-w-0 items-center gap-2">
-                        <p className="truncate text-[13.5px] font-semibold text-[#141414]">{c.name}</p>
+                        <p className="truncate text-13 font-semibold text-[#141414]">{c.name}</p>
                         {c.clientType === "business" && (
-                          <span className="shrink-0 rounded bg-[#F0EEEA] px-1.5 py-px text-[10px] font-bold uppercase tracking-[0.03em] text-[#57534E]">
+                          <span className="shrink-0 rounded bg-[#F0EEEA] px-1.5 py-px text-11 font-bold uppercase tracking-[0.03em] text-[#57534E]">
                             business
                           </span>
                         )}
                       </div>
                       {owed && (
-                        <p className="shrink-0 whitespace-nowrap text-[12.5px] font-bold text-[#92400E]">{owed} due</p>
+                        <p className="shrink-0 whitespace-nowrap text-13 font-bold text-[#92400E]">{owed} due</p>
                       )}
                     </div>
 
                     {c.company && c.company.trim() !== c.name && (
-                      <p className="mt-0.5 text-[11.5px] text-[#57534E]">{c.company}</p>
+                      <p className="mt-0.5 text-11 text-[#57534E]">{c.company}</p>
                     )}
 
-                    <p className={cn("mt-1 text-[11.5px] leading-[1.45]", noEmail ? "text-[#92400E]" : "text-[#57534E]")}>
+                    <p className={cn("mt-1 text-11 leading-[1.45]", noEmail ? "text-[#92400E]" : "text-[#57534E]")}>
                       {c.phone ?? "no phone on file"}
                       {" · "}
                       {c.email ?? "no email — receipts cannot be sent"}
                     </p>
 
-                    <p className="mt-0.5 text-[11.5px] leading-[1.45] text-[#57534E]">
+                    <p className="mt-0.5 text-11 leading-[1.45] text-[#57534E]">
                       {c.matters === 0
                         ? "No matter"
                         : `${c.matters} ${c.matters === 1 ? "matter" : "matters"}${c.openMatters > 0 ? ` (${c.openMatters} open)` : ""}`}
@@ -459,7 +459,7 @@ export default async function FirmClientsPage({
                     </p>
 
                     {c.nextAt && (
-                      <p className="mt-1 text-[11.5px] font-semibold text-[#141414]">
+                      <p className="mt-1 text-11 font-semibold text-[#141414]">
                         Next consultation {formatWhen(c.nextAt, tz, { dateStyle: "medium", timeStyle: "short" })}
                       </p>
                     )}
@@ -471,7 +471,7 @@ export default async function FirmClientsPage({
         )}
       </Card>
 
-      <p className="text-[11px] leading-[1.5] text-[#57534E]">
+      <p className="text-11 leading-[1.5] text-[#57534E]">
         &ldquo;Last seen&rdquo; is the later of the most recent consultation that had already begun and was not cancelled,
         and the most recent entry posted on one of their matters. Outstanding is what is left on invoices that are issued,
         part-paid or overdue, in the currency each was billed in.

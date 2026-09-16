@@ -115,8 +115,8 @@ function verbOf(action: string): string | null {
 function Field({ name, children }: { name: string; children: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5 border-t border-hairline py-1.5 first:border-0 sm:flex-row sm:gap-3">
-      <code className="shrink-0 text-xs text-ink-muted sm:w-48">{name}</code>
-      <span className="break-words text-sm text-ink">{children}</span>
+      <code className="shrink-0 text-13 text-ink-muted sm:w-48">{name}</code>
+      <span className="break-words text-15 text-ink">{children}</span>
     </div>
   );
 }
@@ -199,8 +199,8 @@ export default async function AuditPage({
   return (
     <div className="space-y-5">
       <header className="min-w-0">
-        <h2 className="font-heading text-2xl font-semibold text-brand">Audit trail</h2>
-        <p className="text-sm text-ink-muted">
+        <h2 className="font-heading text-26 font-semibold text-brand">Audit trail</h2>
+        <p className="text-15 text-ink-muted">
           {firmName} · what has been done, in the order it happened, shown in your own time zone ({tz})
         </p>
       </header>
@@ -293,21 +293,21 @@ export default async function AuditPage({
                 <article key={row.id} className="rounded-lg border border-hairline p-4">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <p className="font-medium text-ink">
-                      <code className="text-sm">{row.action}</code>
-                      {verb && <span className="ml-2 text-sm font-normal text-ink-muted">({verb})</span>}
+                      <code className="text-15">{row.action}</code>
+                      {verb && <span className="ml-2 text-15 font-normal text-ink-muted">({verb})</span>}
                     </p>
-                    <time dateTime={row.at} className="text-sm text-ink-muted">
+                    <time dateTime={row.at} className="text-15 text-ink-muted">
                       {formatWhen(row.at, tz, { dateStyle: "medium", timeStyle: "medium" })}
                     </time>
                   </div>
 
-                  <p className="mt-1 text-sm text-ink-muted">
+                  <p className="mt-1 text-15 text-ink-muted">
                     {row.actor_id
                       ? actor
                         ? `By ${actor}.`
                         : "By an account this firm can no longer read — profiles_select only shows people you still share a firm, a consultation or a matter with, so somebody removed from the firm stops resolving to a name."
                       : "By the database itself, with nobody signed in — a scheduled job or a provider webhook."}{" "}
-                    On <code className="text-xs">{row.entity}</code>
+                    On <code className="text-13">{row.entity}</code>
                     {row.entity_id ? (
                       <>
                         {" "}
@@ -319,7 +319,7 @@ export default async function AuditPage({
 
                   {changedEntries.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">
+                      <p className="text-13 font-semibold uppercase tracking-wide text-ink-muted">
                         Columns this write changed
                       </p>
                       <div className="mt-1">
@@ -329,7 +329,7 @@ export default async function AuditPage({
                           </Field>
                         ))}
                       </div>
-                      <p className="mt-2 text-xs text-ink-muted">
+                      <p className="mt-2 text-13 text-ink-muted">
                         These are the values the row was changed <span className="font-medium">to</span>. The row
                         trigger records what a column became, not what it was before, so there is no earlier value to
                         show here. Where the database wrote the line itself — a role change, a plan, a domain — it
@@ -340,7 +340,7 @@ export default async function AuditPage({
 
                   {hasFromTo && (
                     <div className="mt-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Before and after</p>
+                      <p className="text-13 font-semibold uppercase tracking-wide text-ink-muted">Before and after</p>
                       <div className="mt-1">
                         <Field name="before">{describeValue(meta.from, tz)}</Field>
                         <Field name="after">{describeValue(meta.to, tz)}</Field>
@@ -350,7 +350,7 @@ export default async function AuditPage({
 
                   {otherKeys.length > 0 && (
                     <div className="mt-3">
-                      <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Recorded with it</p>
+                      <p className="text-13 font-semibold uppercase tracking-wide text-ink-muted">Recorded with it</p>
                       <div className="mt-1">
                         {otherKeys.map((k) => (
                           <Field key={k} name={k}>
@@ -362,7 +362,7 @@ export default async function AuditPage({
                   )}
 
                   {changedEntries.length === 0 && !hasFromTo && otherKeys.length === 0 && (
-                    <p className="mt-2 text-sm text-ink-muted">
+                    <p className="mt-2 text-15 text-ink-muted">
                       {changed
                         ? "This write moved no column: the row was saved with the values it already had, and the trigger recorded that nothing differed."
                         : "No detail was recorded with this line. A row that was added or deleted writes the fact and the row's id; only a change records the columns that moved."}
@@ -380,7 +380,7 @@ export default async function AuditPage({
           {olderHref && (
             <Link
               href={olderHref}
-              className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:bg-hover"
+              className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:bg-hover"
             >
               Older entries
             </Link>
@@ -388,7 +388,7 @@ export default async function AuditPage({
           {cursor && (
             <Link
               href={base()}
-              className="inline-flex min-h-[44px] items-center rounded-lg px-4 text-sm font-medium text-brand underline"
+              className="inline-flex min-h-[44px] items-center rounded-lg px-4 text-15 font-medium text-brand underline"
             >
               Back to the newest
             </Link>
@@ -398,7 +398,7 @@ export default async function AuditPage({
 
       <Card>
         <CardHeader title="What this log does and does not cover" />
-        <CardBody className="space-y-3 text-sm text-ink-muted">
+        <CardBody className="space-y-3 text-15 text-ink-muted">
           <p>
             Every line is written by the database as the work happens, and nothing can change one
             afterwards. The names are the database's own: <code>matters.update</code> is a row that

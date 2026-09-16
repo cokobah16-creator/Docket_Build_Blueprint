@@ -59,8 +59,8 @@ export function StaffLoginForm({
   return (
     <>
       <DraftSweeper />
-      <h1 className="font-heading text-2xl font-semibold text-brand">Staff console</h1>
-      <p className="mt-1 text-sm text-ink-muted">
+      <h1 className="font-heading text-26 font-semibold text-brand">Staff console</h1>
+      <p className="mt-1 text-15 text-ink-muted">
         Sign in with your firm email. Two-factor authentication is required.
       </p>
       {problem && (
@@ -94,7 +94,7 @@ export function StaffLoginForm({
             {/* The only way out of a forgotten password that does not involve ringing somebody.
                 Below the button rather than beside the field: it is the escape hatch, not a
                 competing action. */}
-            <a href="/firm/forgot" className="block text-center text-sm font-medium text-brand underline">
+            <a href="/firm/forgot" className="block text-center text-15 font-medium text-brand underline">
               Forgotten your password?
             </a>
           </form>

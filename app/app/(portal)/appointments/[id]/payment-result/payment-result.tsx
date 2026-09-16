@@ -68,27 +68,27 @@ export function PaymentResult({
           <span className="grid size-[62px] place-items-center rounded-full border border-[#A7D8BE] bg-[#ECFDF3] text-[#05603A]">
             <Icon name="check" size={30} strokeWidth={2.4} />
           </span>
-          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">
+          <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand">
             Booked and paid
           </h1>
-          <p className="max-w-[280px] text-[13.5px] leading-relaxed text-ink-muted">
+          <p className="max-w-[280px] text-13 leading-relaxed text-ink-muted">
             {when} ({timezone}). A receipt is on its way to your email.
           </p>
         </div>
         <Card>
           <dl>
-            <div className="flex justify-between gap-3 border-b border-hairline px-4 py-3 text-[13px]">
+            <div className="flex justify-between gap-3 border-b border-hairline px-4 py-3 text-13">
               <dt className="text-ink-muted">Reference</dt>
               <dd className="font-mono font-semibold text-ink">{reference}</dd>
             </div>
             {invoiceNumber && (
-              <div className="flex justify-between gap-3 border-b border-hairline px-4 py-3 text-[13px]">
+              <div className="flex justify-between gap-3 border-b border-hairline px-4 py-3 text-13">
                 <dt className="text-ink-muted">Invoice</dt>
                 <dd className="font-mono font-semibold text-ink">{invoiceNumber}</dd>
               </div>
             )}
             {amount && (
-              <div className="flex justify-between gap-3 px-4 py-3 text-[13px]">
+              <div className="flex justify-between gap-3 px-4 py-3 text-13">
                 <dt className="text-ink-muted">Paid</dt>
                 <dd className="font-bold text-ink">{amount}</dd>
               </div>
@@ -124,11 +124,11 @@ export function PaymentResult({
     <Card>
       <CardHeader title="Confirming your payment…" />
       <CardBody className="space-y-3.5">
-        <p className="text-[13.5px] leading-relaxed text-ink">
+        <p className="text-13 leading-relaxed text-ink">
           We&apos;re waiting for the payment provider to confirm. This page updates by itself — no need to refresh.
         </p>
         {expiresAt && remainingMs > 0 && (
-          <p className="text-[13px] text-ink-muted">
+          <p className="text-13 text-ink-muted">
             Slot held for <span className="font-mono font-semibold text-ink">{mm}:{String(ss).padStart(2, "0")}</span>
           </p>
         )}

@@ -124,11 +124,11 @@ export function MfaSetup({ next }: { next?: string | null }) {
       <CardBody className="space-y-4">
         {error && <Alert kind="error">{error}</Alert>}
 
-        {stage === "loading" && <p className="text-sm text-ink-muted">Preparing…</p>}
+        {stage === "loading" && <p className="text-15 text-ink-muted">Preparing…</p>}
 
         {stage === "enrol" && (
           <>
-            <p className="text-sm text-ink">
+            <p className="text-15 text-ink">
               Scan this QR code with an authenticator app (Google
               Authenticator, 1Password, Authy…), then enter the 6-digit code.
             </p>
@@ -140,7 +140,7 @@ export function MfaSetup({ next }: { next?: string | null }) {
               </div>
             )}
             {secret && (
-              <p className="break-all text-xs text-ink-muted">
+              <p className="break-all text-13 text-ink-muted">
                 Can&apos;t scan? Enter this secret manually: <code>{secret}</code>
               </p>
             )}

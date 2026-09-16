@@ -21,7 +21,7 @@ export function NotificationsList({ rows, firmNames, timezone, compact = false }
     markNotificationsRead([id]).catch(() => undefined);
   }
 
-  if (items.length === 0) return <p className="px-5 py-8 text-center text-sm text-ink-muted">Nothing yet. Reminders, updates and messages land here.</p>;
+  if (items.length === 0) return <p className="px-5 py-8 text-center text-15 text-ink-muted">Nothing yet. Reminders, updates and messages land here.</p>;
   return (
     <div>
       {!compact && unread > 0 && (
@@ -46,9 +46,9 @@ export function NotificationsList({ rows, firmNames, timezone, compact = false }
                 />
                 <span className="min-w-0 flex-1">
                   {!n.read_at && <span className="sr-only">Unread. </span>}
-                  <span className="block text-[13.5px] font-semibold leading-snug text-ink">{c.title}</span>
-                  {c.body && <span className="mt-0.5 block text-[12.5px] leading-[1.4] text-ink-muted">{c.body}</span>}
-                  <span className="mt-0.5 block text-[11px] text-ink-muted">{fmt.format(new Date(n.created_at))}</span>
+                  <span className="block text-13 font-semibold leading-snug text-ink">{c.title}</span>
+                  {c.body && <span className="mt-0.5 block text-13 leading-[1.4] text-ink-muted">{c.body}</span>}
+                  <span className="mt-0.5 block text-11 text-ink-muted">{fmt.format(new Date(n.created_at))}</span>
                 </span>
               </Link>
             </li>

@@ -140,7 +140,7 @@ function Section({ title, hint, children }: { title: string; hint?: ReactNode; c
     <Card>
       <CardHeader title={title} />
       <CardBody className="space-y-4">
-        {hint && <div className="text-sm text-ink-muted">{hint}</div>}
+        {hint && <div className="text-15 text-ink-muted">{hint}</div>}
         {children}
       </CardBody>
     </Card>
@@ -166,14 +166,14 @@ function Labelled({
   return (
     <div className="space-y-1.5">
       {htmlFor ? (
-        <label htmlFor={htmlFor} className="block text-sm font-medium text-ink">
+        <label htmlFor={htmlFor} className="block text-15 font-medium text-ink">
           {label}
         </label>
       ) : (
-        <span className="block text-sm font-medium text-ink">{label}</span>
+        <span className="block text-15 font-medium text-ink">{label}</span>
       )}
       {children}
-      {hint && <p className="text-sm text-ink-muted">{hint}</p>}
+      {hint && <p className="text-15 text-ink-muted">{hint}</p>}
     </div>
   );
 }
@@ -189,8 +189,8 @@ function SaveButton({ pending, children = "Save" }: { pending: boolean; children
 function Row({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex flex-col gap-0.5 border-b border-hairline py-2.5 last:border-0 sm:flex-row sm:gap-4">
-      <dt className="text-sm text-ink-muted sm:w-56 sm:shrink-0">{label}</dt>
-      <dd className="break-words text-sm font-medium text-ink">{value || <span className="font-normal text-ink-muted">Not set</span>}</dd>
+      <dt className="text-15 text-ink-muted sm:w-56 sm:shrink-0">{label}</dt>
+      <dd className="break-words text-15 font-medium text-ink">{value || <span className="font-normal text-ink-muted">Not set</span>}</dd>
     </div>
   );
 }
@@ -356,7 +356,7 @@ function OperationsSection({ firmId, operations, timezones }: FirmSettingsProps)
             </option>
           ))}
         </Select>
-        <p className="-mt-2 text-sm text-ink-muted">
+        <p className="-mt-2 text-15 text-ink-muted">
           A lawyer whose own profile names a zone keeps it — the booking engine reads the lawyer's
           zone first and falls back to this one.
         </p>
@@ -365,7 +365,7 @@ function OperationsSection({ firmId, operations, timezones }: FirmSettingsProps)
           <option value="NGN">Naira (NGN)</option>
           <option value="USD">US dollars (USD)</option>
         </Select>
-        <p className="-mt-2 text-sm text-ink-muted">
+        <p className="-mt-2 text-15 text-ink-muted">
           This is the currency a new service and a new invoice start in. Money already recorded keeps
           the currency it was recorded in, and Docket never adds two currencies together.
         </p>
@@ -465,7 +465,7 @@ function ConflictsSection({ firmId, conflictChecksRequired }: FirmSettingsProps)
       >
         <label className="flex min-h-[44px] items-start gap-3 rounded-lg border border-hairline px-3.5 py-3">
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />
-          <span className="text-sm text-ink">
+          <span className="text-15 text-ink">
             <span className="font-medium">Require a cleared conflict check before a client is joined to a matter.</span>
             <span className="mt-1 block text-ink-muted">
               With this on, the database refuses to put a client on a matter — when the matter is opened, by
@@ -503,7 +503,7 @@ function CheckinSection({ firmId, checkinBeforeConfirm }: FirmSettingsProps) {
       >
         <label className="flex min-h-[44px] items-start gap-3 rounded-lg border border-hairline px-3.5 py-3">
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />
-          <span className="text-sm text-ink">
+          <span className="text-15 text-ink">
             <span className="font-medium">Hold every booking until the firm confirms it.</span>
             <span className="mt-1 block text-ink-muted">
               The client is told the booking is held and shown what is still missing: the fee, the questions your form requires,
@@ -538,7 +538,7 @@ function WallsSection({ firmId, matterWalls }: FirmSettingsProps) {
       >
         <label className="flex min-h-[44px] items-start gap-3 rounded-lg border border-hairline px-3.5 py-3">
           <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} className="mt-1 h-5 w-5 shrink-0" />
-          <span className="text-sm text-ink">
+          <span className="text-15 text-ink">
             <span className="font-medium">Members of a matter's team may restrict that matter to the team.</span>
             <span className="mt-1 block text-ink-muted">
               A restricted matter — its documents, messages, timeline, tasks, court dates, parties and invoices — is
@@ -588,7 +588,7 @@ function ServiceSection({ firmId, serviceOfProcess, colleagues, status }: FirmSe
             onChange={(e) => setAccepts(e.target.checked)}
             className="mt-1 h-5 w-5 shrink-0"
           />
-          <span className="text-sm text-ink">
+          <span className="text-15 text-ink">
             <span className="font-medium">This firm undertakes to accept service of non-originating processes through Docket.</span>
             <span className="mt-1 block text-ink-muted">
               An originating process is never served through Docket. Turning this on puts your firm
@@ -748,7 +748,7 @@ function BrandSection({ firmId, firmName, firmSlug, brand }: FirmSettingsProps) 
           <ColourField label="Accent" value={accent} onChange={setAccent} />
           <ColourField label="Background" value={surface} onChange={setSurface} />
         </div>
-        <p className="-mt-2 text-sm text-ink-muted">
+        <p className="-mt-2 text-15 text-ink-muted">
           Six-digit hex, such as #1c2b3a. The database stores it lowercase and drops anything that is
           not six hex digits.
         </p>
@@ -769,7 +769,7 @@ function BrandSection({ firmId, firmName, firmSlug, brand }: FirmSettingsProps) 
         >
           <Switch label="Let your public site follow a visitor's dark mode" checked={darkMode} onChange={setDarkMode} />
         </SettingRow>
-        <p className="-mt-2 text-sm text-ink-muted">
+        <p className="-mt-2 text-15 text-ink-muted">
           On, a visitor whose phone is set to dark reads your site on a dark page, and your colours
           are adjusted there so they stay legible on it — a deep navy comes back a lighter navy, and
           the wording on top of it is picked to stay readable. Off, your site is light for everyone,
@@ -795,20 +795,20 @@ function BrandSection({ firmId, firmName, firmSlug, brand }: FirmSettingsProps) 
               id="brand-logo-file"
               type="file"
               accept={LOGO_TYPES.join(",")}
-              className="block w-full text-sm text-ink file:mr-3 file:min-h-[44px] file:rounded-lg file:border-0 file:bg-brand file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-white"
+              className="block w-full text-15 text-ink file:mr-3 file:min-h-[44px] file:rounded-lg file:border-0 file:bg-brand file:px-4 file:py-2.5 file:text-15 file:font-medium file:text-white"
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) void uploadLogo(file);
               }}
             />
-            {uploading && <p className="text-sm text-ink-muted">Uploading…</p>}
+            {uploading && <p className="text-15 text-ink-muted">Uploading…</p>}
             {uploadError && (
               <Alert kind="error" title="The upload was refused">
                 {uploadError}
               </Alert>
             )}
             {logoPath && (
-              <p className="text-sm text-ink-muted">
+              <p className="text-15 text-ink-muted">
                 Stored at <code className="break-all">{logoPath}</code>. Press Save to keep it on the
                 firm — until you do, the path is only in this browser.
               </p>
@@ -864,12 +864,12 @@ function BrandSection({ firmId, firmName, firmSlug, brand }: FirmSettingsProps) 
             style={brandStyle(preview, { allowDark: tenantAllowsDark(preview) })}
             className="rounded-card border border-hairline bg-brand-surface p-4"
           >
-            <p className="font-heading text-lg font-semibold text-brand">{firmName}</p>
-            {tagline && <p className="mt-1 font-body text-sm text-ink-muted">{tagline}</p>}
-            <span className="mt-3 inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on">
+            <p className="font-heading text-17 font-semibold text-brand">{firmName}</p>
+            {tagline && <p className="mt-1 font-body text-15 text-ink-muted">{tagline}</p>}
+            <span className="mt-3 inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-brand-on">
               {cta || "Book a consultation"}
             </span>
-            <span className="ml-2 inline-flex min-h-[44px] items-center rounded-lg bg-brand-accent px-4 py-2.5 text-sm font-medium text-brand-on-accent">
+            <span className="ml-2 inline-flex min-h-[44px] items-center rounded-lg bg-brand-accent px-4 py-2.5 text-15 font-medium text-brand-on-accent">
               Our services
             </span>
           </div>
@@ -904,7 +904,7 @@ function ColourField({ label, value, onChange }: { label: string; value: string;
           aria-label={label}
         />
       </div>
-      {!valid && value !== "" && <p className="text-sm text-red-700">Six hex digits after a #, or the database drops it.</p>}
+      {!valid && value !== "" && <p className="text-15 text-red-700">Six hex digits after a #, or the database drops it.</p>}
     </Labelled>
   );
 }
@@ -987,7 +987,7 @@ function PoliciesSection({ firmId, policies, policyDocumentsAtRisk }: FirmSettin
         )}
 
         <SaveButton pending={pending}>{draft ? "Publish" : "Save"}</SaveButton>
-        {blocked && !badVersion && <p className="text-sm text-ink-muted">Tick the box above to save.</p>}
+        {blocked && !badVersion && <p className="text-15 text-ink-muted">Tick the box above to save.</p>}
       </form>
       <Outcome result={result} />
     </Section>
@@ -1008,7 +1008,7 @@ function PolicyFields({
   const set = (patch: Partial<PolicyDoc>) => onChange({ ...doc, ...patch });
   return (
     <fieldset className="space-y-4 rounded-card border border-hairline p-4">
-      <legend className="px-1 font-heading text-sm font-semibold text-ink">{title}</legend>
+      <legend className="px-1 font-heading text-15 font-semibold text-ink">{title}</legend>
       <div className="flex items-center gap-2">
         <Badge className={doc.version && !doc.version.startsWith("0-") ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}>
           {doc.version ? (doc.version.startsWith("0-") ? "not published" : `version ${doc.version}`) : "no version"}
@@ -1082,8 +1082,8 @@ function DomainSection({ firmId, firmSlug, customDomain, openRequest, decidedReq
           </Alert>
           {records.length > 0 ? (
             <div className="overflow-x-auto rounded-lg border border-hairline">
-              <table className="w-full min-w-[24rem] text-left text-sm">
-                <thead className="bg-sunken text-xs uppercase tracking-wide text-ink-muted">
+              <table className="w-full min-w-[24rem] text-left text-15">
+                <thead className="bg-sunken text-13 uppercase tracking-wide text-ink-muted">
                   <tr>
                     <th scope="col" className="px-3 py-2">Type</th>
                     <th scope="col" className="px-3 py-2">Name</th>
@@ -1097,7 +1097,7 @@ function DomainSection({ firmId, firmSlug, customDomain, openRequest, decidedReq
                       <td className="break-all px-3 py-2 text-ink"><code>{text(r.domain) || "—"}</code></td>
                       <td className="break-all px-3 py-2 text-ink">
                         <code>{text(r.value) || "—"}</code>
-                        {text(r.reason) && <p className="mt-1 text-xs text-ink-muted">{text(r.reason)}</p>}
+                        {text(r.reason) && <p className="mt-1 text-13 text-ink-muted">{text(r.reason)}</p>}
                       </td>
                     </tr>
                   ))}
@@ -1105,7 +1105,7 @@ function DomainSection({ firmId, firmSlug, customDomain, openRequest, decidedReq
               </table>
             </div>
           ) : (
-            <p className="text-sm text-ink-muted">
+            <p className="text-15 text-ink-muted">
               No DNS records to add yet. When Docket starts verifying, the records appear here. In
               most cases the record points at <code className="break-all">{deploymentHost || "this deployment"}</code>.
             </p>
@@ -1150,8 +1150,8 @@ function DomainSection({ firmId, firmSlug, customDomain, openRequest, decidedReq
 
       {decidedRequests.length > 0 && (
         <div className="pt-2">
-          <h3 className="text-sm font-medium text-ink">Earlier requests, five most recent</h3>
-          <ul className="mt-2 space-y-1 text-sm text-ink-muted">
+          <h3 className="text-15 font-medium text-ink">Earlier requests, five most recent</h3>
+          <ul className="mt-2 space-y-1 text-15 text-ink-muted">
             {decidedRequests.map((r) => (
               <li key={r.id} className="break-words">
                 <span className="font-medium text-ink">{r.hostname}</span> — {r.status}
@@ -1236,14 +1236,14 @@ function TemplatesSection({ firmId, firmName, timezone, templates }: FirmSetting
           const docket = docketSentence(row.event, firmName, timezone);
           return (
             <details key={row.event} className="rounded-card border border-hairline" open={openAtFirst.has(row.event)}>
-              <summary className="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 px-4 py-3 text-sm font-medium text-ink">
+              <summary className="flex min-h-[44px] cursor-pointer items-center justify-between gap-3 px-4 py-3 text-15 font-medium text-ink">
                 <span>{row.label}</span>
                 <Badge className={row.text.trim() ? "bg-emerald-100 text-emerald-900" : ""}>
                   {row.text.trim() ? "your words" : "Docket's words"}
                 </Badge>
               </summary>
               <div className="space-y-3 border-t border-hairline px-4 py-3">
-                <p className="text-sm text-ink-muted">
+                <p className="text-15 text-ink-muted">
                   Docket says: <span className="font-medium text-ink">{docket.title}</span>
                   {docket.body ? ` — ${docket.body}` : ""}
                 </p>
@@ -1271,7 +1271,7 @@ function TemplatesSection({ firmId, firmName, timezone, templates }: FirmSetting
           );
         })}
 
-        <p className="text-sm text-ink-muted">
+        <p className="text-15 text-ink-muted">
           {overridden === 0
             ? "Nothing is overridden: every message goes out in Docket's words."
             : `${overridden} of ${rows.length} events would go out in your words.`}

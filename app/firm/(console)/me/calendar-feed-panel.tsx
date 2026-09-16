@@ -54,18 +54,18 @@ export function CalendarFeedPanel({ firmId, feed, feedBase, timezone }: {
   return (
     <Card>
       <CardHeader title="My diary in my own calendar" />
-      <CardBody className="flex flex-col gap-3 text-[12.5px] leading-[1.55] text-[#57534E]">
+      <CardBody className="flex flex-col gap-3 text-13 leading-[1.55] text-[#57534E]">
         {error && <Alert kind="error" title="That was refused">{error}</Alert>}
 
         {url && (
           <Alert kind="success" title="Copy the address now — it is not shown again">
-            <p className="text-sm">
+            <p className="text-15">
               Add it in your calendar as a <strong>subscribed calendar</strong> (Google: Other calendars →
               From URL; Apple: File → New Calendar Subscription; Outlook: Add calendar → Subscribe from web).
               It refreshes itself.
             </p>
-            <code className="mt-2 block break-all rounded-lg bg-raised px-2 py-1.5 font-mono text-[11.5px] text-ink">{url}</code>
-            <p className="mt-2 text-xs">
+            <code className="mt-2 block break-all rounded-lg bg-raised px-2 py-1.5 font-mono text-11 text-ink">{url}</code>
+            <p className="mt-2 text-13">
               Anyone holding this address reads your diary, so treat it as a password. Only its hash is
               stored here; if you lose the phone it is on, come back and replace it — the old one stops
               working that second.
@@ -85,29 +85,29 @@ export function CalendarFeedPanel({ firmId, feed, feedBase, timezone }: {
 
         {feed ? (
           <div className="rounded-lg border border-[#DDD9D2] bg-[#FAFAF9] px-3 py-2.5">
-            <p className="text-[13px] font-semibold text-[#141414]">A calendar URL is live</p>
-            <p className="mt-0.5 text-xs">
+            <p className="text-13 font-semibold text-[#141414]">A calendar URL is live</p>
+            <p className="mt-0.5 text-13">
               Issued {formatWhen(feed.created_at, timezone)} ·{" "}
               {feed.last_used_at ? `last fetched ${formatWhen(feed.last_used_at, timezone)}` : "never fetched yet"}
             </p>
-            <p className="mt-0.5 text-xs">
+            <p className="mt-0.5 text-13">
               Client names are <strong>{feed.include_client_names ? "included" : "not included"}</strong>.
             </p>
             <Button size="sm" variant="ghost" className="mt-2" disabled={busy !== null} onClick={() => void end(feed.id)}>
               {busy === "revoke" ? "Ending…" : "Turn it off"}
             </Button>
-            <p className="mt-1.5 text-[11px]">
+            <p className="mt-1.5 text-11">
               To change the client-names setting, or to cut off a lost phone, issue a new address below:
               the one you are using now stops working the same second.
             </p>
           </div>
         ) : null}
 
-        <label className="flex items-start gap-2 text-[12.5px] text-[#141414]">
+        <label className="flex items-start gap-2 text-13 text-[#141414]">
           <input type="checkbox" className="mt-1" checked={names} onChange={(e) => setNames(e.target.checked)} />
           <span>
             <span className="font-medium">Include client names</span>
-            <span className="mt-0.5 block text-xs text-[#57534E]">
+            <span className="mt-0.5 block text-13 text-[#57534E]">
               Off by default, deliberately. A feed address ends up in a phone&rsquo;s settings and in a
               calendar provider&rsquo;s fetchers, and a client&rsquo;s name on a stolen phone says more than
               the matter reference does. The reference, the court and the time are enough to work from.

@@ -48,16 +48,16 @@ export default async function FirmStartPage() {
 
   return (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-12">
-      <p className="text-xs font-semibold uppercase tracking-wide text-brand-accent">Docket</p>
-      <h1 className="mt-1 font-heading text-2xl font-semibold text-brand">Register your firm</h1>
-      <p className="mt-1 text-sm text-ink-muted">
+      <p className="text-13 font-semibold uppercase tracking-wide text-brand-accent">Docket</p>
+      <h1 className="mt-1 font-heading text-26 font-semibold text-brand">Register your firm</h1>
+      <p className="mt-1 text-15 text-ink-muted">
         Two steps: your account, then your firm. You become the firm’s owner and
         set up two-factor authentication before the console opens. Your public
         site and bookings go live once Docket has verified the firm (RC/BN number
         and the owner’s enrolment number); the console is yours right away.
       </p>
       {ownedCount > 0 && (
-        <p className="mt-2 text-sm text-ink-muted">
+        <p className="mt-2 text-15 text-ink-muted">
           You already own {ownedCount} firm{ownedCount === 1 ? "" : "s"} on Docket —{" "}
           <a href="/firm" className="font-medium text-brand underline">open the console</a> or register another (up to three).
         </p>

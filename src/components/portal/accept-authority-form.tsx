@@ -28,7 +28,7 @@ export function AcceptAuthorityForm({ token }: { token: string }) {
   return (
     <form onSubmit={submit} className="space-y-3">
       {error && <Alert kind="error" title="That was refused">{error}</Alert>}
-      <label className="block text-sm text-ink">
+      <label className="block text-15 text-ink">
         The code from your link
         <input
           value={value} onChange={(e) => setValue(e.target.value)} required

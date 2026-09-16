@@ -168,16 +168,16 @@ export default async function FirmInvoicePage({
 
   return (
     <div className="space-y-5">
-      <p className="text-sm">
+      <p className="text-15">
         <Link href={listHref} className="text-brand underline">← Invoices</Link>
       </p>
 
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">
+          <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">
             {isPaid ? "Receipt" : "Invoice"} {inv.number}
           </h1>
-          <p className="text-sm text-ink-muted">
+          <p className="text-15 text-ink-muted">
             {clientName} · {firmName}
             {matter ? " · " : ""}
             {matter && (
@@ -213,7 +213,7 @@ export default async function FirmInvoicePage({
             <CardHeader title="What was billed" />
             <CardBody>
               {items.length === 0 ? (
-                <p className="text-sm text-ink-muted">
+                <p className="text-15 text-ink-muted">
                   No lines are recorded against this invoice. Its totals below are the ones the database holds.
                 </p>
               ) : (
@@ -224,21 +224,21 @@ export default async function FirmInvoicePage({
                     return (
                       <li key={item.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm text-ink">{item.description}</p>
+                          <p className="text-15 text-ink">{item.description}</p>
                           {quantity !== 1 && (
-                            <p className="text-xs text-ink-muted">
+                            <p className="text-13 text-ink-muted">
                               {quantity} × {money(Number(item.unit_minor))}
                             </p>
                           )}
                         </div>
-                        <p className="shrink-0 text-sm font-medium text-ink">{money(lineMinor)}</p>
+                        <p className="shrink-0 text-15 font-medium text-ink">{money(lineMinor)}</p>
                       </li>
                     );
                   })}
                 </ul>
               )}
 
-              <dl className="mt-4 space-y-2 border-t border-hairline pt-4 text-sm">
+              <dl className="mt-4 space-y-2 border-t border-hairline pt-4 text-15">
                 <div className="flex items-baseline justify-between gap-4">
                   <dt className="text-ink-muted">Subtotal</dt>
                   <dd className="text-ink">{money(Number(inv.subtotal_minor))}</dd>
@@ -266,9 +266,9 @@ export default async function FirmInvoicePage({
               </dl>
 
               {Number(inv.vat_minor) > 0 && firm?.tin && (
-                <p className="mt-3 text-xs text-ink-muted">VAT charged under TIN {firm.tin}.</p>
+                <p className="mt-3 text-13 text-ink-muted">VAT charged under TIN {firm.tin}.</p>
               )}
-              <p className="mt-3 text-xs text-ink-muted">
+              <p className="mt-3 text-13 text-ink-muted">
                 Raised {formatWhen(inv.created_at, tz, { dateStyle: "medium", timeStyle: "short" })}
                 {inv.issued_at ? ` · issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium", timeStyle: "short" })}` : " · not issued yet"}
                 {inv.due_at ? ` · falls due ${dayLabel(inv.due_at)}` : " · no due date set"} · times in {tz}.
@@ -281,8 +281,8 @@ export default async function FirmInvoicePage({
             <CardBody>
               {payments.length === 0 ? (
                 <div className="space-y-2">
-                  <p className="text-sm text-ink">Nothing has been paid against this invoice yet.</p>
-                  <p className="text-sm text-ink-muted">
+                  <p className="text-15 text-ink">Nothing has been paid against this invoice yet.</p>
+                  <p className="text-15 text-ink-muted">
                     {isDraft
                       ? "Issue it and the client can pay from their app; the payment is recorded here the moment the provider confirms it."
                       : isCancelled
@@ -295,14 +295,14 @@ export default async function FirmInvoicePage({
                   {payments.map((p) => (
                     <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-2 py-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm text-ink">
+                        <p className="text-15 text-ink">
                           {formatMoneyMinor(Number(p.amount_minor), p.currency)} · {p.status.replace(/_/g, " ")}
                         </p>
-                        <p className="break-all text-xs text-ink-muted">
+                        <p className="break-all text-13 text-ink-muted">
                           {p.provider} · {p.provider_ref}
                         </p>
                       </div>
-                      <p className="shrink-0 text-xs text-ink-muted">
+                      <p className="shrink-0 text-13 text-ink-muted">
                         {p.paid_at ? formatWhen(p.paid_at, tz, { dateStyle: "medium", timeStyle: "short" }) : "not settled"}
                       </p>
                     </li>
@@ -318,16 +318,16 @@ export default async function FirmInvoicePage({
             <CardHeader title={isPaid ? "The client's receipt" : "The client's pay link"} />
             <CardBody className="space-y-3">
               {isDraft ? (
-                <p className="text-sm text-ink-muted">
+                <p className="text-15 text-ink-muted">
                   The link works once the invoice is issued. Until then the client&rsquo;s app shows them nothing.
                 </p>
               ) : isCancelled ? (
-                <p className="text-sm text-ink-muted">
+                <p className="text-15 text-ink-muted">
                   This invoice was cancelled, so the link only tells the client it can no longer be paid.
                 </p>
               ) : (
                 <>
-                  <p className="text-sm text-ink-muted">
+                  <p className="text-15 text-ink-muted">
                     {isPaid
                       ? "This opens the receipt in the client's own app."
                       : `This signs ${clientName} in to their own app on this invoice. Anyone holding it can see the invoice, so send it only to the client.`}
@@ -339,7 +339,7 @@ export default async function FirmInvoicePage({
                         href={whatsappHref}
                         target="_blank"
                         rel="noreferrer"
-                        className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+                        className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
                       >
                         Send on WhatsApp
                       </a>
@@ -347,14 +347,14 @@ export default async function FirmInvoicePage({
                     {mailHref && (
                       <a
                         href={mailHref}
-                        className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:bg-hover"
+                        className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:bg-hover"
                       >
                         Send by email
                       </a>
                     )}
                   </div>
                   {!whatsappHref && !mailHref && (
-                    <p className="text-xs text-amber-800">
+                    <p className="text-13 text-amber-800">
                       {clientName} has neither a phone number nor an email address on file, so copy the link and send
                       it however they prefer.
                     </p>
@@ -365,7 +365,7 @@ export default async function FirmInvoicePage({
                 href={`/app/payments/${inv.id}/pdf`}
                 target="_blank"
                 rel="noreferrer"
-                className="flex min-h-[44px] items-center justify-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:bg-hover"
+                className="flex min-h-[44px] items-center justify-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:bg-hover"
               >
                 Open the PDF {isPaid ? "receipt" : "invoice"}
               </a>
@@ -375,7 +375,7 @@ export default async function FirmInvoicePage({
           <Card>
             <CardHeader title="Billed to" />
             <CardBody>
-              <dl className="space-y-2 text-sm">
+              <dl className="space-y-2 text-15">
                 <div>
                   <dt className="text-ink-muted">Client</dt>
                   <dd className="font-medium text-ink">
@@ -414,13 +414,13 @@ export default async function FirmInvoicePage({
               <CardBody className="space-y-3">
                 <form action={issue} className="space-y-3">
                   <div>
-                    <label htmlFor="dueOn" className="text-sm font-medium text-ink">Falls due on</label>
-                    <p className="text-xs text-ink-muted">
+                    <label htmlFor="dueOn" className="text-15 font-medium text-ink">Falls due on</label>
+                    <p className="text-13 text-ink-muted">
                       Optional. {inv.due_at ? `Currently ${dayLabel(inv.due_at)}; leave it empty to keep that day.` : "Leave it empty for no due date."}
                     </p>
                     <input id="dueOn" name="dueOn" type="date" defaultValue="" className={field} />
                   </div>
-                  <p className="text-sm text-ink-muted">
+                  <p className="text-15 text-ink-muted">
                     Issuing tells {clientName} straight away and lets them pay {money(Number(inv.total_minor))} from
                     their app.
                   </p>
@@ -435,27 +435,27 @@ export default async function FirmInvoicePage({
               <CardHeader title="Cancel it" />
               <CardBody className="space-y-3">
                 {inv.appointment_id ? (
-                  <p className="text-sm text-ink-muted">
+                  <p className="text-15 text-ink-muted">
                     This is a consultation fee. Cancel the appointment instead and its invoice follows — the database
                     refuses to cancel it on its own.
                   </p>
                 ) : isAdmin ? (
                   <form action={cancel} className="space-y-3">
                     <div>
-                      <label htmlFor="reason" className="text-sm font-medium text-ink">
+                      <label htmlFor="reason" className="text-15 font-medium text-ink">
                         Why <span className="text-red-700">*</span>
                       </label>
-                      <p className="text-xs text-ink-muted">Kept in the firm&rsquo;s audit trail. The client is not sent this.</p>
+                      <p className="text-13 text-ink-muted">Kept in the firm&rsquo;s audit trail. The client is not sent this.</p>
                       <textarea id="reason" name="reason" rows={3} required minLength={3} maxLength={500} className={field} />
                     </div>
-                    <p className="text-sm text-ink-muted">
+                    <p className="text-15 text-ink-muted">
                       Once cancelled the client cannot pay it. A part-paid or paid invoice can never be cancelled —
                       raise a credit note instead.
                     </p>
                     <Button type="submit" variant="danger">Cancel this invoice</Button>
                   </form>
                 ) : (
-                  <p className="text-sm text-ink-muted">
+                  <p className="text-15 text-ink-muted">
                     An owner or an admin of {firm?.name ?? ctx.firmName} can cancel an unpaid invoice. The database
                     allows nobody else, so ask one of them.
                   </p>
@@ -468,18 +468,18 @@ export default async function FirmInvoicePage({
             <Card>
               <CardHeader title="Chase it" />
               <CardBody className="space-y-2">
-                <p className="text-sm text-ink">
+                <p className="text-15 text-ink">
                   {money(outstanding)} is still owed
                   {inv.due_at ? `, due ${dayLabel(inv.due_at)}` : ""}.
                 </p>
-                <p className="text-sm text-ink-muted">
+                <p className="text-15 text-ink-muted">
                   Send the link above again, or open the matter and message the client on the file so the exchange is
                   kept with it.
                 </p>
                 {matter && (
                   <Link
                     href={`/firm/matters/${matter.id}?tab=messages`}
-                    className="flex min-h-[44px] items-center justify-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:bg-hover"
+                    className="flex min-h-[44px] items-center justify-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:bg-hover"
                   >
                     Message the client on the matter
                   </Link>

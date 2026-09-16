@@ -28,7 +28,7 @@ export function FirmStatusControl({ firmId, status }: { firmId: string; status: 
   return (
     <form action={action} className="space-y-2">
       <input type="hidden" name="firmId" value={firmId} />
-      <label className="block text-xs font-medium text-ink-muted" htmlFor={`status-${firmId}`}>
+      <label className="block text-13 font-medium text-ink-muted" htmlFor={`status-${firmId}`}>
         Status
       </label>
       <select
@@ -42,7 +42,7 @@ export function FirmStatusControl({ firmId, status }: { firmId: string; status: 
         <option value="active">Active</option>
         <option value="suspended">Suspended</option>
       </select>
-      <p className="text-xs text-ink-muted">{WHAT_IT_DOES[choice]}</p>
+      <p className="text-13 text-ink-muted">{WHAT_IT_DOES[choice]}</p>
       <input
         name="note"
         maxLength={500}
@@ -53,7 +53,7 @@ export function FirmStatusControl({ firmId, status }: { firmId: string; status: 
       <button
         type="submit"
         disabled={pending || choice === status}
-        className="min-h-[44px] w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+        className="min-h-[44px] w-full rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white disabled:opacity-50"
       >
         {pending ? "Saving…" : choice === status ? `Already ${status}` : `Set to ${choice}`}
       </button>

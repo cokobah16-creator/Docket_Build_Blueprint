@@ -24,7 +24,7 @@ export function UpdateStructure({ update, compact = false }: { update: Shaped; c
   if (u.next_update_by) rows.push(["Next update", `Expect to hear from us by ${formatDay(u.next_update_by)}.`]);
   if (rows.length === 0) return null;
   return (
-    <dl className={compact ? "mt-2 space-y-1.5 text-xs" : "mt-3 space-y-2 text-sm"}>
+    <dl className={compact ? "mt-2 space-y-1.5 text-13" : "mt-3 space-y-2 text-15"}>
       {rows.map(([label, text, kind]) => (
         <div
           key={label}
@@ -36,7 +36,7 @@ export function UpdateStructure({ update, compact = false }: { update: Shaped; c
                 : ""
           }
         >
-          <dt className={compact ? "text-[10.5px] uppercase tracking-[0.06em] text-ink-muted" : "text-[11px] uppercase tracking-[0.06em] text-ink-muted"}>{label}</dt>
+          <dt className={compact ? "text-11 uppercase tracking-[0.06em] text-ink-muted" : "text-11 uppercase tracking-[0.06em] text-ink-muted"}>{label}</dt>
           <dd className={kind === "action" ? "font-medium text-amber-900" : kind === "none" ? "text-green-900" : "text-ink"}>{text}</dd>
         </div>
       ))}

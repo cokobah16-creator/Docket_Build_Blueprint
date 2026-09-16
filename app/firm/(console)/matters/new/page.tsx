@@ -42,12 +42,12 @@ export default async function NewMatterPage({
 
   return (
     <div className="space-y-5">
-      <p className="text-sm">
+      <p className="text-15">
         <Link href="/firm/matters" className="text-brand underline">← Matters</Link>
       </p>
       <header>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Open a matter</h1>
-        <p className="text-sm text-ink-muted">
+        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Open a matter</h1>
+        <p className="text-15 text-ink-muted">
           {ctx.firmName} · the reference is issued by the database as the matter opens
         </p>
       </header>

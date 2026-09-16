@@ -55,7 +55,7 @@ export function JoinForm({ token, signedIn, email, invitedEmail }: { token: stri
       <form action={action} className="space-y-4">
         <input type="hidden" name="token" value={token} />
         {state.error && <Alert kind="error">{state.error}</Alert>}
-        <p className="text-sm text-ink">Signed in as {email}. Accepting joins you to the firm in the invited role; you then set up two-factor authentication.</p>
+        <p className="text-15 text-ink">Signed in as {email}. Accepting joins you to the firm in the invited role; you then set up two-factor authentication.</p>
         <Button type="submit" size="lg" className="w-full" disabled={pending}>{pending ? "Joining…" : "Accept and join the firm"}</Button>
       </form>
     );

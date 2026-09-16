@@ -32,7 +32,7 @@ export default async function MattersPage({ searchParams }: { searchParams: Prom
     <Screen>
       <ScreenTitle>{pick === "documents" ? "Upload to which matter?" : pick === "messages" ? "Message about which matter?" : "Matters"}</ScreenTitle>
       {pick && (
-        <p className="-mt-2 text-[13px] text-ink-muted">
+        <p className="-mt-2 text-13 text-ink-muted">
           {pick === "documents" ? "The document goes on the matter you choose, and your firm sees it there." : "Your message goes to the lawyers on the matter you choose."}
         </p>
       )}
@@ -45,42 +45,42 @@ export default async function MattersPage({ searchParams }: { searchParams: Prom
               <li key={m.id}>
                 <Link href={pick ? `/app/matters/${m.id}?tab=${pick}` : `/app/matters/${m.id}`} className="block border-t border-hairline px-4 py-3.5 first:border-t-0 hover:bg-sunken">
                   <div className="flex items-start justify-between gap-2.5">
-                    <p className="text-sm font-semibold leading-snug text-ink">{m.title}</p>
+                    <p className="text-15 font-semibold leading-snug text-ink">{m.title}</p>
                     {m.status && (
                       <span
-                        className="shrink-0 whitespace-nowrap rounded-full border border-brand-accent px-2.5 py-0.5 text-[11.5px] font-semibold text-brand-accent"
+                        className="shrink-0 whitespace-nowrap rounded-full border border-brand-accent px-2.5 py-0.5 text-11 font-semibold text-brand-accent"
                         style={m.status.colour ? { borderColor: m.status.colour, color: m.status.colour } : undefined}
                       >
                         {m.status.label}
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-xs text-ink-muted">
+                  <p className="mt-1 text-13 text-ink-muted">
                     <span className="font-mono">{m.reference}</span> · {m.firm_name}
                     {m.lawyer_names.length ? ` · ${m.lawyer_names.join(", ")}` : ""}
                   </p>
                   {/* Court, suit number and the next date read the same way on
                       every matter, so a client learns the shape once. */}
                   {m.last_update && (
-                    <p className="mt-1.5 truncate text-xs text-ink-muted">
+                    <p className="mt-1.5 truncate text-13 text-ink-muted">
                       Latest: {m.last_update.title} · {fmt.format(new Date(m.last_update.occurred_at))}
                     </p>
                   )}
                   {m.court_name ? (
-                    <p className="mt-0.5 text-xs text-ink-muted">
+                    <p className="mt-0.5 text-13 text-ink-muted">
                       {m.court_name}
                       {m.suit_number ? <> · <span className="font-mono">{m.suit_number}</span></> : null}
                     </p>
                   ) : (
-                    <p className="mt-0.5 text-xs text-ink-muted">No court — transactional</p>
+                    <p className="mt-0.5 text-13 text-ink-muted">No court — transactional</p>
                   )}
                   {m.next_event_at && (
-                    <p className="mt-1 text-xs font-semibold text-brand">
+                    <p className="mt-1 text-13 font-semibold text-brand">
                       Next court date: {fmt.format(new Date(m.next_event_at))}
                       {m.next_event_note ? ` · ${m.next_event_note}` : ""}
                     </p>
                   )}
-                  {m.next_action && <p className="mt-1 text-xs font-semibold text-brand">Next: {m.next_action}</p>}
+                  {m.next_action && <p className="mt-1 text-13 font-semibold text-brand">Next: {m.next_action}</p>}
                 </Link>
               </li>
             ))}
@@ -88,7 +88,7 @@ export default async function MattersPage({ searchParams }: { searchParams: Prom
         )}
       </Card>
       {!pick && (
-        <p className="text-[11.5px] leading-relaxed text-ink-muted">
+        <p className="text-11 leading-relaxed text-ink-muted">
           Timeline, documents, messages and invoices sit inside each matter. Court dates are
           also on <Link href="/app/court-dates" className="underline underline-offset-2">your phone calendar</Link>.
         </p>

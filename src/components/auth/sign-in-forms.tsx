@@ -679,7 +679,7 @@ export function SignInForms({
   // the button and never used to disable it. Not OfflineNote from connection.tsx: that one promises
   // what you typed is kept on this device, and this form keeps nothing.
   const offlineNote = offline ? (
-    <p className="text-xs text-amber-900">
+    <p className="text-13 text-amber-900">
       You are offline. The request cannot leave this device until it is back on the network.
     </p>
   ) : null;

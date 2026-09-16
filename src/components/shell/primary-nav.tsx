@@ -117,7 +117,7 @@ export function PrimaryNav({
           {model.sections.map((section, i) => (
             <div key={section.title ?? "main"} className={cn(i > 0 && "mt-5")}>
               {section.title && (
-                <h2 className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+                <h2 className="px-2.5 pb-1.5 text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">
                   {section.title}
                 </h2>
               )}
@@ -129,7 +129,7 @@ export function PrimaryNav({
                       data-dk-nav="destination"
                       aria-current={active === item.href ? "page" : undefined}
                       className={cn(
-                        "flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] transition-colors",
+                        "flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 text-13 transition-colors",
                         active === item.href
                           ? cn(activeFill, "font-semibold")
                           : cn("font-medium text-ink hover:bg-black/[0.04]", `hover:${ink}`),
@@ -165,7 +165,7 @@ export function PrimaryNav({
                 // The label is the accessible name and is shown under the icon
                 // at this size too — a rail of unexplained glyphs is a guess.
                 className={cn(
-                  "flex w-[58px] flex-col items-center gap-1 rounded-lg px-1 py-2 text-center text-[9.5px] font-medium leading-tight transition-colors",
+                  "flex w-[58px] flex-col items-center gap-1 rounded-lg px-1 py-2 text-center text-11 font-medium leading-tight transition-colors",
                   active === item.href ? activeFill : "text-ink-muted hover:bg-black/[0.04]",
                 )}
               >
@@ -196,7 +196,7 @@ export function PrimaryNav({
                 data-dk-nav="destination"
                 aria-current={active === item.href ? "page" : undefined}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-[3px] px-1 py-2 text-center text-[11.5px] leading-tight",
+                  "flex min-h-14 flex-col items-center justify-center gap-[3px] px-1 py-2 text-center text-11 leading-tight",
                   active === item.href ? cn("font-semibold", ink) : "text-ink-muted",
                 )}
               >
@@ -213,7 +213,7 @@ export function PrimaryNav({
                 aria-expanded={moreOpen}
                 aria-controls={sheetId}
                 className={cn(
-                  "flex min-h-14 w-full flex-col items-center justify-center gap-[3px] px-1 py-2 text-center text-[11.5px] leading-tight",
+                  "flex min-h-14 w-full flex-col items-center justify-center gap-[3px] px-1 py-2 text-center text-11 leading-tight",
                   inMore ? cn("font-semibold", ink) : "text-ink-muted",
                 )}
               >
@@ -246,7 +246,7 @@ export function PrimaryNav({
             {overflow.map((section) => (
               <div key={section.title ?? "more"} className="px-2 pb-1.5 pt-2">
                 {section.title && (
-                  <h2 className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
+                  <h2 className="px-3 pb-1 text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">
                     {section.title}
                   </h2>
                 )}
@@ -258,7 +258,7 @@ export function PrimaryNav({
                         data-dk-nav="destination"
                         aria-current={active === item.href ? "page" : undefined}
                         className={cn(
-                          "flex min-h-[52px] items-center gap-3 rounded-xl px-3 text-[15px]",
+                          "flex min-h-[52px] items-center gap-3 rounded-xl px-3 text-15",
                           active === item.href ? cn("font-semibold", ink) : "font-medium text-ink",
                         )}
                       >
@@ -275,7 +275,7 @@ export function PrimaryNav({
                 ref={closeRef}
                 type="button"
                 onClick={() => setMoreOpen(false)}
-                className="min-h-11 w-full rounded-[9px] border border-edge text-sm font-medium text-ink"
+                className="min-h-11 w-full rounded-[9px] border border-edge text-15 font-medium text-ink"
               >
                 Close
               </button>

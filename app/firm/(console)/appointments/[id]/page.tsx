@@ -91,16 +91,16 @@ export default async function FirmAppointmentPage({
   return (
     <div className="flex flex-col gap-3.5">
       <p>
-        <Link href="/firm/appointments" className="inline-flex items-center gap-1.5 text-[12.5px] font-medium text-[#141414]">
+        <Link href="/firm/appointments" className="inline-flex items-center gap-1.5 text-13 font-medium text-[#141414]">
           <Icon name="chevron-left" size={15} strokeWidth={2} />
           Consultations
         </Link>
       </p>
       <header>
-        <h1 className="font-heading text-xl font-bold leading-tight tracking-[-0.02em] text-[#141414]">
+        <h1 className="font-heading text-21 font-bold leading-tight tracking-[-0.02em] text-[#141414]">
           {cl?.full_name ?? "Client"}
         </h1>
-        <p className="mt-1 text-[12.5px] text-[#57534E]">
+        <p className="mt-1 text-13 text-[#57534E]">
           {svc?.name ?? "Consultation"} · {appt.mode.replace("_", " ")} · {svc?.duration_min ?? Math.round((endMs - startMs) / 60000)} minutes
         </p>
         <div className="mt-2.5 flex flex-wrap items-center gap-[7px]">
@@ -183,7 +183,7 @@ export default async function FirmAppointmentPage({
       <Card>
         <CardHeader title="Client" />
         <CardBody>
-          <dl className="space-y-2 text-sm">
+          <dl className="space-y-2 text-15">
             <div><dt className="text-ink-muted">Name</dt><dd className="font-medium text-ink">{cl?.full_name ?? "—"}</dd></div>
             <div><dt className="text-ink-muted">Phone</dt><dd className="font-medium text-ink">{cl?.phone ?? "—"}</dd></div>
             <div><dt className="text-ink-muted">Email</dt><dd className="font-medium text-ink">{cl?.email ?? "—"}</dd></div>
@@ -198,7 +198,7 @@ export default async function FirmAppointmentPage({
         <Card>
           <CardHeader title="Intake answers" />
           <CardBody>
-            <dl className="space-y-2 text-sm">
+            <dl className="space-y-2 text-15">
               {Object.entries(answers).map(([k, v]) => (
                 <div key={k}>
                   <dt className="text-ink-muted">{k.replace(/_/g, " ")}</dt>
@@ -216,7 +216,7 @@ export default async function FirmAppointmentPage({
         <Card>
           <CardHeader title="Session" />
           <CardBody>
-            <dl className="space-y-1 text-sm">
+            <dl className="space-y-1 text-15">
               <div className="flex justify-between gap-2"><dt className="text-ink-muted">Started</dt><dd>{session.started_at ? formatWhen(session.started_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
               <div className="flex justify-between gap-2"><dt className="text-ink-muted">Client admitted</dt><dd>{session.client_admitted_at ? formatWhen(session.client_admitted_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
               <div className="flex justify-between gap-2"><dt className="text-ink-muted">Ended</dt><dd>{session.ended_at ? formatWhen(session.ended_at, tz, { timeStyle: "short" }) : "—"}</dd></div>
@@ -238,7 +238,7 @@ export default async function FirmAppointmentPage({
         <Card>
           <CardHeader title="Client did not attend?" />
           <CardBody className="space-y-2">
-            <p className="text-sm text-ink-muted">Marks the appointment as a no-show. The client keeps their receipt; nothing is refunded automatically.</p>
+            <p className="text-15 text-ink-muted">Marks the appointment as a no-show. The client keeps their receipt; nothing is refunded automatically.</p>
             <form action={noShow}><Button type="submit" variant="ghost">Mark as no-show</Button></form>
           </CardBody>
         </Card>

@@ -165,8 +165,8 @@ export function EditPanel({
           worse than none. */}
       {wallsEnabled && (
         <section className="rounded-lg border border-hairline p-4">
-          <h3 className="text-sm font-semibold text-ink">Access</h3>
-          <p className="mt-1 text-xs text-ink-muted">
+          <h3 className="text-15 font-semibold text-ink">Access</h3>
+          <p className="mt-1 text-13 text-ink-muted">
             {access === "team"
               ? "Restricted to the team on this matter. Owners and admins outside the team cannot open it either."
               : "Every member of the firm can open this matter — the firm's default."}
@@ -190,52 +190,52 @@ export function EditPanel({
         {saved && <Alert kind="success">Saved. Your client sees the new details on their next look.</Alert>}
 
         <div>
-          <label htmlFor="matter-title" className="text-sm font-medium text-ink">Working title <span className="text-red-700">*</span></label>
-          <p className="text-xs text-ink-muted">What the firm calls this file. The reference {initial.reference} never changes.</p>
+          <label htmlFor="matter-title" className="text-15 font-medium text-ink">Working title <span className="text-red-700">*</span></label>
+          <p className="text-13 text-ink-muted">What the firm calls this file. The reference {initial.reference} never changes.</p>
           <input id="matter-title" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={200} className={field} />
         </div>
 
         <div>
-          <label htmlFor="matter-cause-title" className="text-sm font-medium text-ink">Cause title</label>
-          <p className="text-xs text-ink-muted">The caption as it appears on the face of the process, e.g. Okonkwo v Eze &amp; 3 Ors.</p>
+          <label htmlFor="matter-cause-title" className="text-15 font-medium text-ink">Cause title</label>
+          <p className="text-13 text-ink-muted">The caption as it appears on the face of the process, e.g. Okonkwo v Eze &amp; 3 Ors.</p>
           <input id="matter-cause-title" value={causeTitle} onChange={(e) => setCauseTitle(e.target.value)} maxLength={300} className={field} />
         </div>
 
         <div>
-          <label htmlFor="matter-status" className="text-sm font-medium text-ink">Status</label>
+          <label htmlFor="matter-status" className="text-15 font-medium text-ink">Status</label>
           <select id="matter-status" value={statusId} onChange={(e) => setStatusId(e.target.value)} className={field}>
             <option value="">No status</option>
             {statuses.filter((s) => statusFitsType(s, matterType) || s.id === initial.statusId).map((s) => (
               <option key={s.id} value={s.id}>{s.label}{s.is_terminal ? " (closes the file)" : ""}</option>
             ))}
           </select>
-          <p className="text-xs text-ink-muted">Changing the stage tells the client, closes or reopens the file for a closing stage, and starts the stage&apos;s tasks from your installed packs.</p>
+          <p className="text-13 text-ink-muted">Changing the stage tells the client, closes or reopens the file for a closing stage, and starts the stage&apos;s tasks from your installed packs.</p>
         </div>
 
         <div>
-          <label htmlFor="matter-next-action" className="text-sm font-medium text-ink">Next action</label>
-          <p className="text-xs text-ink-muted">One line, in plain language — your client reads this in their app.</p>
+          <label htmlFor="matter-next-action" className="text-15 font-medium text-ink">Next action</label>
+          <p className="text-13 text-ink-muted">One line, in plain language — your client reads this in their app.</p>
           <input id="matter-next-action" value={nextAction} onChange={(e) => setNextAction(e.target.value)} maxLength={500} className={field} />
           {/* A next action with nobody on it and no day is a note, not work. Both are optional,
               because a matter can be waiting on the court — but the queue and Today count only
               the ones with a day. */}
           <div className="mt-2 grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="matter-next-owner" className="text-sm font-medium text-ink">Who is on it</label>
+              <label htmlFor="matter-next-owner" className="text-15 font-medium text-ink">Who is on it</label>
               <select id="matter-next-owner" value={nextActionOwnerId} onChange={(e) => setNextActionOwnerId(e.target.value)} className={field}>
                 <option value="">Nobody yet</option>
                 {staff.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
               </select>
             </div>
             <div>
-              <label htmlFor="matter-next-due" className="text-sm font-medium text-ink">Due by</label>
+              <label htmlFor="matter-next-due" className="text-15 font-medium text-ink">Due by</label>
               <input id="matter-next-due" type="date" value={nextActionDue} onChange={(e) => setNextActionDue(e.target.value)} className={field} />
             </div>
           </div>
         </div>
 
         <div>
-          <label htmlFor="matter-description" className="text-sm font-medium text-ink">What the matter is about</label>
+          <label htmlFor="matter-description" className="text-15 font-medium text-ink">What the matter is about</label>
           <textarea id="matter-description" rows={4} maxLength={8000} value={description} onChange={(e) => setDescription(e.target.value)} className={field} />
         </div>
 
@@ -252,7 +252,7 @@ export function EditPanel({
           />
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="matter-suit-number" className="text-sm font-medium text-ink">Suit number</label>
+              <label htmlFor="matter-suit-number" className="text-15 font-medium text-ink">Suit number</label>
               <input
                 id="matter-suit-number"
                 value={suitNumber}
@@ -262,33 +262,33 @@ export function EditPanel({
                 className={field}
               />
               {selectedCourt?.suit_number_hint && (
-                <p className="mt-1 text-xs text-ink-muted">This registry writes them like {selectedCourt.suit_number_hint}.</p>
+                <p className="mt-1 text-13 text-ink-muted">This registry writes them like {selectedCourt.suit_number_hint}.</p>
               )}
             </div>
             <div>
-              <label htmlFor="matter-division" className="text-sm font-medium text-ink">Judicial division</label>
+              <label htmlFor="matter-division" className="text-15 font-medium text-ink">Judicial division</label>
               <input id="matter-division" value={division} onChange={(e) => setDivision(e.target.value)} maxLength={120} placeholder="Ikeja" className={field} />
             </div>
           </div>
           <div className="mt-3">
-            <label htmlFor="matter-court-name" className="text-sm font-medium text-ink">Court, as it should read</label>
-            <p className="text-xs text-ink-muted">What your client and every cause list see. Choosing a court above fills this in.</p>
+            <label htmlFor="matter-court-name" className="text-15 font-medium text-ink">Court, as it should read</label>
+            <p className="text-13 text-ink-muted">What your client and every cause list see. Choosing a court above fills this in.</p>
             <input id="matter-court-name" value={courtName} onChange={(e) => setCourtName(e.target.value)} maxLength={200} className={field} />
           </div>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label htmlFor="matter-handling" className="text-sm font-medium text-ink">Handling lawyer</label>
-            <p className="text-xs text-ink-muted">Who is doing the work.</p>
+            <label htmlFor="matter-handling" className="text-15 font-medium text-ink">Handling lawyer</label>
+            <p className="text-13 text-ink-muted">Who is doing the work.</p>
             <select id="matter-handling" value={handling} onChange={(e) => setHandling(e.target.value)} className={field}>
               <option value="">Not recorded</option>
               {staff.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
           </div>
           <div>
-            <label htmlFor="matter-originating" className="text-sm font-medium text-ink">Originating lawyer</label>
-            <p className="text-xs text-ink-muted">Who brought the client in — this drives partner attribution.</p>
+            <label htmlFor="matter-originating" className="text-15 font-medium text-ink">Originating lawyer</label>
+            <p className="text-13 text-ink-muted">Who brought the client in — this drives partner attribution.</p>
             <select id="matter-originating" value={originating} onChange={(e) => setOriginating(e.target.value)} className={field}>
               <option value="">Not recorded</option>
               {staff.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
@@ -297,20 +297,20 @@ export function EditPanel({
         </div>
 
         <fieldset className="rounded-lg border border-hairline p-3">
-          <legend className="px-1 text-sm font-medium text-ink">Who is on the file</legend>
+          <legend className="px-1 text-15 font-medium text-ink">Who is on the file</legend>
           <div>
-            <label htmlFor="matter-lead" className="text-sm font-medium text-ink">Conduct of the matter</label>
+            <label htmlFor="matter-lead" className="text-15 font-medium text-ink">Conduct of the matter</label>
             <select id="matter-lead" value={lead} onChange={(e) => setLead(e.target.value)} className={field}>
               <option value="">Not recorded</option>
               {staff.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
             </select>
-            {!lead && <p className="mt-1 text-xs text-ink-muted">Choose a lawyer here to record who else is on the file.</p>}
+            {!lead && <p className="mt-1 text-13 text-ink-muted">Choose a lawyer here to record who else is on the file.</p>}
           </div>
           {staff.length > 1 && (
             <div className="mt-3 space-y-2">
-              <p className="text-sm font-medium text-ink">Also on the file</p>
+              <p className="text-15 font-medium text-ink">Also on the file</p>
               {staff.filter((m) => m.id !== lead).map((m) => (
-                <label key={m.id} className="flex min-h-[44px] items-center gap-2 text-sm text-ink">
+                <label key={m.id} className="flex min-h-[44px] items-center gap-2 text-15 text-ink">
                   <input type="checkbox" className="h-5 w-5" checked={alsoOn.includes(m.id)} onChange={() => toggleAlsoOn(m.id)} />
                   {m.label}
                 </label>
@@ -326,7 +326,7 @@ export function EditPanel({
         <h3 className="font-heading text-base font-semibold text-ink">{initial.closedAt ? "This matter is closed" : "Close the matter"}</h3>
         {initial.closedAt ? (
           <>
-            <p className="mt-1 text-sm text-ink-muted">
+            <p className="mt-1 text-15 text-ink-muted">
               Closed on {new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${initial.closedAt}T00:00:00Z`))}.
               Everything on it stays readable to your client; nothing is deleted.
             </p>
@@ -336,7 +336,7 @@ export function EditPanel({
           </>
         ) : (
           <>
-            <p className="mt-1 text-sm text-ink-muted">
+            <p className="mt-1 text-15 text-ink-muted">
               Closing takes the file off the open list and out of the firm&rsquo;s open-matter count. The client keeps the timeline, the documents you shared and their invoices.
             </p>
             {confirmClose ? (

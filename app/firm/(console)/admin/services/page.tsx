@@ -247,15 +247,15 @@ export default async function ServicesPage({
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 className="font-heading text-2xl font-semibold text-brand">Services</h2>
-          <p className="text-sm text-ink-muted">
+          <h2 className="font-heading text-26 font-semibold text-brand">Services</h2>
+          <p className="text-15 text-ink-muted">
             {firmName} · what a client can book, how long it takes and what it costs
           </p>
         </div>
         {firm?.slug && (
           <Link
             href={`/${firm.slug}/book`}
-            className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-sm font-medium text-brand hover:border-brand"
+            className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:border-brand"
           >
             See the booking page
           </Link>
@@ -293,23 +293,23 @@ export default async function ServicesPage({
                   aria-hidden="true"
                   className={
                     c.ok
-                      ? "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-sm font-semibold text-emerald-800"
-                      : "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-50 text-sm font-semibold text-amber-900"
+                      ? "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-15 font-semibold text-emerald-800"
+                      : "mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-50 text-15 font-semibold text-amber-900"
                   }
                 >
                   {c.ok ? "✓" : "!"}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink">
+                  <p className="text-15 font-medium text-ink">
                     {c.label}
                     <span className="sr-only">{c.ok ? " — done" : " — not yet"}</span>
                   </p>
-                  <p className="text-sm text-ink-muted">{c.detail}</p>
+                  <p className="text-15 text-ink-muted">{c.detail}</p>
                 </div>
                 {c.href && (
                   <Link
                     href={c.href}
-                    className="flex min-h-[44px] items-center text-sm font-medium text-brand underline"
+                    className="flex min-h-[44px] items-center text-15 font-medium text-brand underline"
                   >
                     {c.hrefLabel ?? "Open"}
                   </Link>
@@ -335,7 +335,7 @@ export default async function ServicesPage({
 
       <Card>
         <CardHeader title="What the booking page does with these" />
-        <CardBody className="space-y-2 text-sm text-ink-muted">
+        <CardBody className="space-y-2 text-15 text-ink-muted">
           <p>
             A service switched <span className="font-medium text-ink">off</span> is not on the booking page at
             all, and book_appointment() refuses it with “service unavailable”. Consultations already in the diary are

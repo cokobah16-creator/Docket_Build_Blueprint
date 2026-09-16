@@ -103,7 +103,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
     <>
       <Link
         href="/firm"
-        className="block truncate font-heading text-[15px] font-bold tracking-[-0.02em] text-[#141414]"
+        className="block truncate font-heading text-15 font-bold tracking-[-0.02em] text-[#141414]"
       >
         {firmName}
       </Link>
@@ -127,7 +127,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
    * in the console where the whole document has to be built again, so it is.
    */
   const switcher = others.length > 0 && (
-    <nav aria-label="Switch firm" className="text-[12px] leading-relaxed text-[#57534E]">
+    <nav aria-label="Switch firm" className="text-13 leading-relaxed text-[#57534E]">
       <span className="block">Switch to</span>
       {others.map((f) => (
         <a
@@ -188,7 +188,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
             <div className="flex min-w-0 items-center gap-2">
               <Link
                 href="/firm"
-                className="flex min-h-11 min-w-0 items-center truncate font-heading text-[15px] font-bold tracking-[-0.02em] text-[#141414]"
+                className="flex min-h-11 min-w-0 items-center truncate font-heading text-15 font-bold tracking-[-0.02em] text-[#141414]"
               >
                 {firmName}
               </Link>
@@ -214,7 +214,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
             {others.length > 0 && (
               <nav
                 aria-label="Switch firm"
-                className="border-b border-[#E6E2DB] bg-[#FAF9F7] px-4 py-2 text-[12px] text-[#57534E] md:hidden"
+                className="border-b border-[#E6E2DB] bg-[#FAF9F7] px-4 py-2 text-13 text-[#57534E] md:hidden"
               >
                 Showing <span className="font-semibold text-[#141414]">{ctx.firmName}</span>
                 {" · switch to "}
