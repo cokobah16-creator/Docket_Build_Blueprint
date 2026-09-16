@@ -161,7 +161,7 @@ export default async function ClientDashboard() {
           <Link
             key={a.label}
             href={a.href}
-            className="flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-[9px] border border-hairline bg-raised px-0.5 py-2.5 text-center text-11 font-semibold leading-tight text-brand hover:bg-hover md:min-h-[72px] md:rounded-xl md:text-13"
+            className="flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-control border border-hairline bg-raised px-0.5 py-2.5 text-center text-11 font-semibold leading-tight text-brand hover:bg-hover md:min-h-[72px] md:rounded-xl md:text-13"
           >
             <Icon name={a.icon} size={21} strokeWidth={1.6} className="md:size-6" />
             {a.label}

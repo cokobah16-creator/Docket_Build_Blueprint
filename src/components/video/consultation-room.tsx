@@ -472,7 +472,7 @@ export function ConsultationRoom({
         )}
 
         {role === "owner" && waitingCount > 0 && (
-          <div className="mx-4 mb-3 flex shrink-0 items-center justify-between gap-3 rounded-[11px] border border-white/15 bg-white/[0.08] p-3.5">
+          <div className="mx-4 mb-3 flex shrink-0 items-center justify-between gap-3 rounded-control border border-white/15 bg-white/[0.08] p-3.5">
             <p className="min-w-0 text-13 font-semibold text-white">
               {waitingCount === 1 ? `${counterpartLabel} is waiting` : `${waitingCount} people are waiting`}
               <span className="mt-0.5 block text-11 font-normal text-white/55">Admit when you are ready — nothing is recorded.</span>
@@ -508,7 +508,7 @@ export function ConsultationRoom({
         </div>
 
         {showWarning && (
-          <div className="mx-4 mt-2.5 flex shrink-0 items-start gap-2.5 rounded-[10px] border border-amber-300/30 bg-amber-700/20 p-3.5">
+          <div className="mx-4 mt-2.5 flex shrink-0 items-start gap-2.5 rounded-control border border-amber-300/30 bg-amber-700/20 p-3.5">
             <Icon name="warning" size={16} strokeWidth={1.8} className="mt-px shrink-0 text-amber-300" />
             <div className="text-13 leading-[1.45] text-amber-100">
               <span className="font-semibold">Your connection is weak.</span> Turn the camera off to keep the audio clear.

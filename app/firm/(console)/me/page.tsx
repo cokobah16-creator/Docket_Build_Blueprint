@@ -92,7 +92,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
       <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Me &amp; the firm</h1>
 
       <div className="flex items-center gap-3.5 rounded-card border border-[#DDD9D2] bg-raised p-[15px]">
-        <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-[10px] bg-[#141414] font-heading text-17 font-bold text-white">
+        <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-control bg-[#141414] font-heading text-17 font-bold text-white">
           {initials}
         </span>
         <div className="min-w-0">

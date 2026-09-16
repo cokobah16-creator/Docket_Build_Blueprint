@@ -53,7 +53,7 @@ const MODES: Record<Mode, { label: string; hint: string; icon: IconName }> = {
 };
 
 const fieldClasses =
-  "w-full rounded-[9px] border border-edge bg-raised px-3 py-[11px] text-base text-ink " +
+  "w-full rounded-control border border-edge bg-raised px-3 py-[11px] text-base text-ink " +
   "placeholder:text-ink-muted focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 function isoDateInTz(d: Date, tz: string): string {
@@ -427,7 +427,7 @@ export function BookingWizard({
                     aria-pressed={on}
                     onClick={() => { setDate(d.iso); setSlot(null); }}
                     className={cn(
-                      "min-h-14 w-[62px] rounded-[9px] border",
+                      "min-h-14 w-[62px] rounded-control border",
                       on ? "border-brand bg-brand text-brand-on" : "border-hairline bg-raised text-ink",
                     )}
                   >
@@ -455,7 +455,7 @@ export function BookingWizard({
                       aria-pressed={on}
                       onClick={() => setSlot(s)}
                       className={cn(
-                        "min-h-[46px] rounded-[9px] border text-13 font-semibold",
+                        "min-h-[46px] rounded-control border text-13 font-semibold",
                         on ? "border-brand bg-brand text-brand-on" : "border-hairline bg-raised text-ink",
                       )}
                     >
@@ -697,7 +697,7 @@ function IntakeField({
       <label htmlFor={id} className="block text-13 font-semibold text-ink">{q.label}</label>
       <label
         htmlFor={id}
-        className="flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-[9px] border border-dashed border-edge bg-raised text-13 font-semibold text-brand"
+        className="flex min-h-[46px] cursor-pointer items-center justify-center gap-2 rounded-control border border-dashed border-edge bg-raised text-13 font-semibold text-brand"
       >
         <Icon name="upload" size={17} />
         Choose files

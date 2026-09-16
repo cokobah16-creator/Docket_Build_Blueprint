@@ -27,7 +27,7 @@ export function MatterSearch({
         const query = q.trim();
         router.push(query ? `${action}?q=${encodeURIComponent(query)}` : action);
       }}
-      className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-[#DDD9D2] bg-raised px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]"
+      className="flex min-h-[46px] items-center gap-2.5 rounded-control border border-[#DDD9D2] bg-raised px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]"
     >
       <Icon name="search" size={17} strokeWidth={1.8} className="shrink-0 text-[#57534E]" />
       <input

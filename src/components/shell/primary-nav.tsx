@@ -240,7 +240,7 @@ export function PrimaryNav({
             aria-modal="true"
             aria-label="More destinations"
             tabIndex={-1}
-            className="absolute inset-x-0 bottom-0 mx-auto max-h-[80dvh] max-w-lg animate-[dkRise_.22s_ease-out] overflow-y-auto rounded-t-[18px] bg-raised pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(0,0,0,0.18)] focus:outline-none"
+            className="absolute inset-x-0 bottom-0 mx-auto max-h-[80dvh] max-w-lg animate-[dkRise_.22s_ease-out] overflow-y-auto rounded-t-sheet bg-raised pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(0,0,0,0.18)] focus:outline-none"
           >
             <div aria-hidden="true" className="mx-auto mb-2 mt-2.5 h-1 w-[38px] rounded-full bg-hairline" />
             {overflow.map((section) => (
@@ -275,7 +275,7 @@ export function PrimaryNav({
                 ref={closeRef}
                 type="button"
                 onClick={() => setMoreOpen(false)}
-                className="min-h-11 w-full rounded-[9px] border border-edge text-15 font-medium text-ink"
+                className="min-h-11 w-full rounded-control border border-edge text-15 font-medium text-ink"
               >
                 Close
               </button>

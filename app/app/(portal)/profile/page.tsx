@@ -42,7 +42,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const tzOptions = TIMEZONES.includes(tz) ? TIMEZONES : [tz, ...TIMEZONES];
   const label = "block text-13 font-semibold text-ink";
   // 16px so iOS Safari does not zoom the page on focus.
-  const field = "mt-1.5 w-full rounded-[9px] border border-edge px-3 py-[11px] text-base text-ink focus:border-brand focus:outline-none";
+  const field = "mt-1.5 w-full rounded-control border border-edge px-3 py-[11px] text-base text-ink focus:border-brand focus:outline-none";
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });
 
   const choices: FirmChoice[] = firms.map((f) => ({

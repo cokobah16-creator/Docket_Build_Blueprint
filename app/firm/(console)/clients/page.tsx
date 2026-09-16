@@ -339,7 +339,7 @@ export default async function FirmClientsPage({
         </p>
       </header>
 
-      <form method="get" action="/firm/clients" className="flex min-h-[46px] items-center gap-2.5 rounded-[10px] border border-[#DDD9D2] bg-raised px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]">
+      <form method="get" action="/firm/clients" className="flex min-h-[46px] items-center gap-2.5 rounded-control border border-[#DDD9D2] bg-raised px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]">
         {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
         {filter !== "all" && <input type="hidden" name="filter" value={filter} />}
         <Icon name="search" size={17} strokeWidth={1.8} className="shrink-0 text-[#57534E]" />
@@ -397,7 +397,7 @@ export default async function FirmClientsPage({
                   <div className="flex flex-wrap items-center justify-center gap-3">
                     <Link
                       href={bookingHref}
-                      className="flex min-h-11 items-center rounded-[9px] bg-[#141414] px-5 text-15 font-semibold text-white"
+                      className="flex min-h-11 items-center rounded-control bg-[#141414] px-5 text-15 font-semibold text-white"
                     >
                       Open the booking page
                     </Link>

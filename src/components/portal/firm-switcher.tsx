@@ -46,7 +46,7 @@ export function FirmRow({
       >
         <span
           aria-hidden="true"
-          className="grid size-10 shrink-0 place-items-center rounded-[9px] text-17 font-semibold text-white"
+          className="grid size-10 shrink-0 place-items-center rounded-control text-17 font-semibold text-white"
           style={{ background: firm.primary, fontFamily: `${firm.heading}, Georgia, serif` }}
         >
           {firm.initial}
@@ -130,7 +130,7 @@ export function FirmSwitcher({
             role="dialog"
             aria-modal="true"
             aria-label="Your firms"
-            className="absolute inset-x-0 bottom-0 mx-auto max-w-lg animate-[dkRise_.22s_ease-out] rounded-t-[18px] bg-raised pb-[calc(18px+env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_32px_rgba(0,0,0,0.18)]"
+            className="absolute inset-x-0 bottom-0 mx-auto max-w-lg animate-[dkRise_.22s_ease-out] rounded-t-sheet bg-raised pb-[calc(18px+env(safe-area-inset-bottom))] pt-2 shadow-[0_-8px_32px_rgba(0,0,0,0.18)]"
           >
             <div aria-hidden="true" className="mx-auto mb-3 mt-1.5 h-1 w-[38px] rounded-full bg-hairline" />
             <div className="px-[18px] pb-2.5">
@@ -151,7 +151,7 @@ export function FirmSwitcher({
                 ref={closeRef}
                 type="button"
                 onClick={() => setOpen(false)}
-                className="min-h-11 w-full rounded-[9px] border border-edge text-15 font-medium text-ink"
+                className="min-h-11 w-full rounded-control border border-edge text-15 font-medium text-ink"
               >
                 Close
               </button>

@@ -99,7 +99,7 @@ export function PayPanel({
               aria-checked={on}
               onClick={() => setChannel(m.key)}
               className={cn(
-                "flex w-full items-center justify-between gap-3 rounded-[11px] border bg-raised px-[15px] py-3.5",
+                "flex w-full items-center justify-between gap-3 rounded-control border bg-raised px-[15px] py-3.5",
                 on ? "border-brand" : "border-hairline",
               )}
             >

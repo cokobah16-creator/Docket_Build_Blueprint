@@ -119,7 +119,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
             <Link
               key={c.label}
               href={c.href}
-              className="rounded-[11px] border border-[#DDD9D2] bg-raised p-3.5 hover:border-[#141414]"
+              className="rounded-control border border-[#DDD9D2] bg-raised p-3.5 hover:border-[#141414]"
             >
               <p className="text-11 uppercase leading-snug tracking-[0.06em] text-[#57534E]">{c.label}</p>
               {/* Red and amber are the only colour here, and only for a number
@@ -132,7 +132,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
       </section>
       <Link
         href="/firm/invoices"
-        className="flex items-center justify-between gap-3 rounded-[11px] border border-[#DDD9D2] bg-raised px-[15px] py-3.5 hover:border-[#141414]"
+        className="flex items-center justify-between gap-3 rounded-control border border-[#DDD9D2] bg-raised px-[15px] py-3.5 hover:border-[#141414]"
       >
         <span className="min-w-0">
           <span className="block text-11 uppercase tracking-[0.06em] text-[#57534E]">Outstanding</span>

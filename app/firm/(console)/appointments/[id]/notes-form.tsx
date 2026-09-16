@@ -15,7 +15,7 @@ import { Alert } from "@/components/ui/alert";
 
 const field =
   // 16px so iOS Safari does not zoom the page when the field takes focus.
-  "mt-1.5 w-full rounded-[9px] border border-[#D6D3CE] bg-raised px-3 py-[11px] text-base leading-relaxed text-[#3F3B36] focus:border-[#141414] focus:outline-none";
+  "mt-1.5 w-full rounded-control border border-[#D6D3CE] bg-raised px-3 py-[11px] text-base leading-relaxed text-[#3F3B36] focus:border-[#141414] focus:outline-none";
 
 function AudienceLabel({
   htmlFor,

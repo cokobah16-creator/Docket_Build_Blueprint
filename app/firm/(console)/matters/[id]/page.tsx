@@ -258,7 +258,7 @@ export default async function MatterWorkbench({
             },
           ];
           return tiles.map((t) => (
-            <Link key={t.label} href={t.href} className="rounded-[11px] border border-[#DDD9D2] bg-raised p-3 hover:border-[#141414]">
+            <Link key={t.label} href={t.href} className="rounded-control border border-[#DDD9D2] bg-raised p-3 hover:border-[#141414]">
               <p className="text-11 uppercase leading-snug tracking-[0.06em] text-[#57534E]">{t.label}</p>
               <p className={cn("mt-1 line-clamp-2 text-13 font-semibold leading-snug", t.ink ?? "text-[#141414]")}>{t.value}</p>
               <p className="mt-1 line-clamp-2 text-11 leading-snug text-[#57534E]">{t.hint}</p>
