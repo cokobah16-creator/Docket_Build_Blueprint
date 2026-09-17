@@ -34,6 +34,11 @@ on:
   push:
     branches: ["**"]
   pull_request:
+  # By hand, from the Actions tab. The journeys read repository secrets at run time, so a
+  # secret changed after the last push — a rotated TOTP secret, a re-seeded fixture — needs a
+  # run without a commit to carry it. Re-running failed jobs needs write access an integration
+  # may not hold; a dispatch needs only the button.
+  workflow_dispatch:
 
 permissions:
   contents: read
