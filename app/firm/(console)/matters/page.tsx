@@ -21,6 +21,7 @@ import { formatDay, isPastDay } from "@/lib/days";
 import type { MatterStatus } from "@/lib/db/types";
 import { PageHeader } from "@/components/shell/layout";
 import { buttonClasses } from "@/components/ui/button";
+import { StatusChip } from "@/components/firm/status-chip";
 
 export const metadata = { title: "Matters" };
 
@@ -28,39 +29,6 @@ const LIMIT = 200;
 const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 /** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
-const TONES: Record<string, string> = {
-  slate: "border-slate-300 bg-slate-50 text-slate-800",
-  gray: "border-edge bg-sunken text-ink",
-  grey: "border-edge bg-sunken text-ink",
-  blue: "border-blue-300 bg-blue-50 text-blue-900",
-  sky: "border-sky-300 bg-sky-50 text-sky-900",
-  indigo: "border-indigo-300 bg-indigo-50 text-indigo-900",
-  violet: "border-violet-300 bg-violet-50 text-violet-900",
-  purple: "border-purple-300 bg-purple-50 text-purple-900",
-  green: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  emerald: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  teal: "border-teal-300 bg-teal-50 text-teal-900",
-  amber: "border-amber-300 bg-amber-50 text-amber-900",
-  orange: "border-orange-300 bg-orange-50 text-orange-900",
-  red: "border-red-300 bg-red-50 text-red-900",
-  rose: "border-rose-300 bg-rose-50 text-rose-900",
-};
-
-function StatusChip({ status }: { status: MatterStatus }) {
-  const colour = (status.colour ?? "").trim();
-  const hex = colour.startsWith("#");
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-13 font-medium",
-        hex ? "bg-raised" : TONES[colour.toLowerCase()] ?? "border-edge bg-sunken text-ink",
-      )}
-      style={hex ? { borderColor: colour, color: colour } : undefined}
-    >
-      {status.label}
-    </span>
-  );
-}
 
 /** PostgREST's or() takes a comma-separated list, so those characters cannot travel in a search. */
 function safeSearch(raw: string): string {
@@ -185,7 +153,7 @@ export default async function FirmMattersPage({
             </select>
           </div>
           <div className="flex items-center gap-3">
-            <button type="submit" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90">
+            <button type="submit" className={buttonClasses("neutral", "md")}>
               Apply
             </button>
             {filtered && <Link href="/firm/matters" className="text-15 text-brand underline">Clear</Link>}
@@ -210,7 +178,7 @@ export default async function FirmMattersPage({
               title="No matters yet"
               hint="Open the first one: give it a title and a type, point it at a court, and invite the client so they can follow it in their app."
               action={
-                <Link href="/firm/matters/new" className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90">
+                <Link href="/firm/matters/new" className={buttonClasses("neutral", "md")}>
                   Open a matter
                 </Link>
               }

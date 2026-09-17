@@ -29,7 +29,7 @@ import {
   revokeStaffInvite,
 } from "@/lib/actions/people";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { FIRM_ROLES } from "@/lib/db/types";
@@ -102,7 +102,7 @@ function CopyLink({ url, label = "Copy the link" }: { url: string; label?: strin
       <button
         type="button"
         onClick={copy}
-        className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover"
+        className={buttonClasses("ghost", "sm")}
       >
         {state === "copied" ? "Copied" : label}
       </button>
@@ -661,7 +661,7 @@ export function PeoplePanel({
                           )}&body=${encodeURIComponent(
                             `${firmName} has invited you to join its Docket console as ${roleLabel(i.role).toLowerCase()}. Open this link, sign in with ${i.email}, and accept: ${url}`,
                           )}`}
-                          className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover"
+                          className={buttonClasses("ghost", "sm")}
                         >
                           Open in your email app
                         </a>

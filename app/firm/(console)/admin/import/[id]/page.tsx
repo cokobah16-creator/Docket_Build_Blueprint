@@ -16,6 +16,7 @@ import type { ImportBatchRow, ImportRowRecord } from "@/lib/db/types";
 import { CopyButton } from "../../../matters/[id]/matter-tabs";
 import { ContinueImport, DiscardImport, ResultsDownload } from "./results-actions";
 import { PageHeader } from "@/components/shell/layout";
+import { buttonClasses } from "@/components/ui/button";
 
 export const metadata = { title: "Import results" };
 
@@ -141,7 +142,7 @@ export default async function ImportResultPage({ params, searchParams }: { param
                       <div className="flex flex-wrap items-center gap-2">
                         <CopyButton path={`/app/join?token=${encodeURIComponent(inv.token)}`} label="Copy the link" />
                         {digits && (
-                          <a href={`https://wa.me/${digits}?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover">WhatsApp</a>
+                          <a href={`https://wa.me/${digits}?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer" className={buttonClasses("ghost", "sm")}>WhatsApp</a>
                         )}
                       </div>
                     )}

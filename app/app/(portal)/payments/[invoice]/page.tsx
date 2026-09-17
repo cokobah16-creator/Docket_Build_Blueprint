@@ -11,6 +11,7 @@ import { startInvoicePayment } from "@/lib/actions/portal";
 import { Screen, ScreenTitle } from "@/components/portal/screen";
 import { PayPanel } from "@/components/portal/pay-panel";
 import type { PaymentChannel } from "@/lib/providers/payments";
+import { buttonClasses } from "@/components/ui/button";
 
 export const metadata = { title: "Invoice" };
 
@@ -117,8 +118,8 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-brand-on hover:opacity-90">Download PDF</a>
-        <Link href="/app/payments" className="rounded-lg border border-edge px-4 py-2.5 text-15 font-medium text-brand hover:bg-hover">All payments</Link>
+        <a href={`/app/payments/${inv.id}/pdf`} className={buttonClasses("primary", "md")}>Download PDF</a>
+        <Link href="/app/payments" className={buttonClasses("ghost", "md")}>All payments</Link>
       </div>
     </Screen>
   );

@@ -12,6 +12,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { buttonClasses } from "@/components/ui/button";
 
 export interface TabSpec {
   key: string;
@@ -97,7 +98,7 @@ export function CopyButton({
       <button
         type="button"
         onClick={copy}
-        className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover"
+        className={buttonClasses("ghost", "sm")}
       >
         {state === "copied" ? "Copied" : label}
       </button>

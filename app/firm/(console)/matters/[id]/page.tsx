@@ -26,10 +26,11 @@ import { formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
 import { issueInvoice } from "@/lib/actions/invoices";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
 import { CounselRoster } from "@/components/firm/counsel-roster";
+import { StatusChip } from "@/components/firm/status-chip";
 import { MessagesThread } from "@/components/portal/messages-thread";
 import { cn } from "@/lib/cn";
 import { formatDay, todayIn } from "@/lib/days";
@@ -68,24 +69,6 @@ const TABS: TabSpec[] = [
 ];
 
 /** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
-const TONES: Record<string, string> = {
-  slate: "border-slate-300 bg-slate-50 text-slate-800",
-  gray: "border-edge bg-sunken text-ink",
-  grey: "border-edge bg-sunken text-ink",
-  blue: "border-blue-300 bg-blue-50 text-blue-900",
-  sky: "border-sky-300 bg-sky-50 text-sky-900",
-  indigo: "border-indigo-300 bg-indigo-50 text-indigo-900",
-  violet: "border-violet-300 bg-violet-50 text-violet-900",
-  purple: "border-purple-300 bg-purple-50 text-purple-900",
-  green: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  emerald: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  teal: "border-teal-300 bg-teal-50 text-teal-900",
-  amber: "border-amber-300 bg-amber-50 text-amber-900",
-  orange: "border-orange-300 bg-orange-50 text-orange-900",
-  red: "border-red-300 bg-red-50 text-red-900",
-  rose: "border-rose-300 bg-rose-50 text-rose-900",
-};
-
 const TYPE_LABELS: Record<string, string> = { ip: "Intellectual property", debt_recovery: "Debt recovery" };
 function typeLabel(type: string): string {
   const label = TYPE_LABELS[type] ?? type.replace(/_/g, " ");
@@ -366,22 +349,6 @@ export default async function MatterWorkbench({
   );
 }
 
-function StatusChip({ status }: { status: MatterStatus }) {
-  const colour = (status.colour ?? "").trim();
-  const hex = colour.startsWith("#");
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-13 font-medium",
-        hex ? "bg-raised" : TONES[colour.toLowerCase()] ?? "border-edge bg-sunken text-ink",
-      )}
-      style={hex ? { borderColor: colour, color: colour } : undefined}
-    >
-      {status.label}
-    </span>
-  );
-}
-
 // ---------------------------------------------------------------- timeline
 async function TimelineSection({ ctx, matter, names }: { ctx: StaffContext; matter: MatterDetail; names: Record<string, string> }) {
   const [{ data: updateRows }, courts] = await Promise.all([
@@ -563,7 +530,7 @@ async function InvoicesSection({
         <EmptyState
           title="Nothing billed on this matter yet"
           hint="Raise an invoice with your own items and VAT; issue it and the client can pay from their app."
-          action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90">Raise an invoice</Link>}
+          action={<Link href={raiseHref} className={buttonClasses("neutral", "md")}>Raise an invoice</Link>}
         />
       </>
     );
@@ -573,7 +540,7 @@ async function InvoicesSection({
     <>
       <CardHeader
         title={outstandingLabel ? `Invoices · ${outstandingLabel} outstanding` : "Invoices"}
-        action={<Link href={raiseHref} className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90">Raise an invoice</Link>}
+        action={<Link href={raiseHref} className={buttonClasses("neutral", "md")}>Raise an invoice</Link>}
       />
       <ul className="divide-y divide-hairline">
         {invoices.map((inv) => {

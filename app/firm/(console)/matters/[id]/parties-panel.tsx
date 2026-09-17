@@ -17,7 +17,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { inviteMatterParty, removeMatterParty, revokeMatterInvite } from "@/lib/actions/matters";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { CopyButton } from "./matter-tabs";
 import { isE164, normalizeNigerianPhone } from "@/lib/nigeria";
 
@@ -241,7 +241,7 @@ export function PartiesPanel({
                   </a>
                   <a
                     href={`sms:${invited.phone ?? ""}?&body=${encodeURIComponent(messageFor(invited.token))}`}
-                    className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover"
+                    className={buttonClasses("ghost", "sm")}
                   >
                     Send by SMS
                   </a>
@@ -278,7 +278,7 @@ export function PartiesPanel({
                       href={`https://wa.me/${digitsOf(i.phone)}?text=${encodeURIComponent(messageFor(i.token))}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover"
+                      className={buttonClasses("ghost", "sm")}
                     >
                       WhatsApp
                     </a>

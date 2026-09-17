@@ -29,7 +29,7 @@ import { supabaseBrowser } from "@/lib/supabase/browser";
 import { recordDocumentOpen } from "@/lib/document-open";
 import { isLowData } from "@/lib/low-data";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { cn } from "@/lib/cn";
 import type { DocumentRequestRow, DocumentRow, DocumentVersionRow } from "@/lib/db/types";
@@ -632,7 +632,7 @@ export function StaffDocuments({
         ) : (
           <div className="space-y-3">
             <p className="text-15 text-ink">This file type has no in-app preview.</p>
-            <a href={preview.url} className="inline-flex rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-brand-on" download={preview.doc.name}>Download</a>
+            <a href={preview.url} className={buttonClasses("neutral", "md")} download={preview.doc.name}>Download</a>
           </div>
         ))}
         <p className="mt-3 text-13 text-ink-muted">Links expire after two minutes.</p>
