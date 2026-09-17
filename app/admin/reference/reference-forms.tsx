@@ -26,6 +26,7 @@ import {
   type ReferenceResult,
 } from "@/lib/actions/reference";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { COURT_LEVEL_LABELS, NG_STATES, NG_STATE_OPTIONS } from "@/lib/nigeria";
@@ -71,12 +72,6 @@ const field =
   "mt-1 min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink " +
   "focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 const labelClass = "block text-15 font-medium text-ink";
-const primaryButton =
-  "min-h-[44px] w-full rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white disabled:opacity-50 sm:w-auto";
-const ghostButton =
-  "min-h-[44px] w-full rounded-lg border border-edge px-4 py-2.5 text-15 font-medium text-brand hover:bg-hover disabled:opacity-50 sm:w-auto";
-const dangerButton =
-  "min-h-[44px] w-full rounded-lg border border-red-300 px-4 py-2.5 text-15 font-medium text-red-800 hover:bg-red-50 disabled:opacity-50 sm:w-auto";
 
 const COURT_LEVEL_OPTIONS = Object.entries(COURT_LEVEL_LABELS).map(([value, label]) => ({ value, label }));
 
@@ -335,18 +330,18 @@ export function CourtVacationEditor({ vacations }: { vacations: VacationView[] }
             )}
 
             <div className="flex flex-col gap-2 sm:flex-row">
-              <button type="button" onClick={save} disabled={busy} className={primaryButton}>
-                {busy ? "Saving…" : draft.id ? "Save this window" : "Add this window"}
-              </button>
-              <button type="button" onClick={() => setDraft(null)} disabled={busy} className={ghostButton}>
+              <Button type="button" onClick={save} pending={busy} className="w-full sm:w-auto">
+                {draft.id ? "Save this window" : "Add this window"}
+              </Button>
+              <Button type="button" onClick={() => setDraft(null)} pending={busy} variant="ghost" className="w-full sm:w-auto">
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <button type="button" onClick={() => open(emptyVacation())} className={primaryButton}>
+          <Button type="button" onClick={() => open(emptyVacation())} className="w-full sm:w-auto">
             Add a vacation window
-          </button>
+          </Button>
         )}
 
         {vacations.length === 0 ? (
@@ -377,37 +372,40 @@ export function CourtVacationEditor({ vacations }: { vacations: VacationView[] }
                   </div>
 
                   <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => open(vacationDraft(v))}
-                      disabled={busy}
-                      className={ghostButton}
+                      pending={busy}
+                      variant="ghost"
+                      className="w-full sm:w-auto"
                     >
                       Correct this
-                    </button>
+                    </Button>
                     {confirmId === v.id ? (
                       <>
-                        <button type="button" onClick={() => remove(v.id)} disabled={busy} className={dangerButton}>
-                          {busy ? "Removing…" : "Yes, remove it"}
-                        </button>
-                        <button
+                        <Button type="button" onClick={() => remove(v.id)} pending={busy} variant="danger" className="w-full sm:w-auto">
+                          Yes, remove it
+                        </Button>
+                        <Button
                           type="button"
                           onClick={() => setConfirmId(null)}
-                          disabled={busy}
-                          className={ghostButton}
+                          pending={busy}
+                          variant="ghost"
+                          className="w-full sm:w-auto"
                         >
                           Keep it
-                        </button>
+                        </Button>
                       </>
                     ) : (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setConfirmId(v.id)}
-                        disabled={busy}
-                        className={dangerButton}
+                        pending={busy}
+                        variant="danger"
+                        className="w-full sm:w-auto"
                       >
                         Remove
-                      </button>
+                      </Button>
                     )}
                   </div>
                   {confirmId === v.id && (
@@ -614,25 +612,25 @@ export function PublicHolidayEditor({ holidays }: { holidays: HolidayView[] }) {
             )}
 
             <div className="flex flex-col gap-2 sm:flex-row">
-              <button type="button" onClick={save} disabled={busy} className={primaryButton}>
-                {busy ? "Saving…" : "Save this holiday"}
-              </button>
-              <button type="button" onClick={() => setDraft(null)} disabled={busy} className={ghostButton}>
+              <Button type="button" onClick={save} pending={busy} className="w-full sm:w-auto">
+                Save this holiday
+              </Button>
+              <Button type="button" onClick={() => setDraft(null)} pending={busy} variant="ghost" className="w-full sm:w-auto">
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <button
+          <Button
             type="button"
             onClick={() => {
               setDraft(emptyHoliday());
               setResult(null);
             }}
-            className={primaryButton}
+            className="w-full sm:w-auto"
           >
             Add or correct a holiday
-          </button>
+          </Button>
         )}
 
         {holidays.length === 0 ? (
@@ -662,40 +660,43 @@ export function PublicHolidayEditor({ holidays }: { holidays: HolidayView[] }) {
                     {h.isMovable && <Badge className="bg-sky-100 text-sky-900">movable</Badge>}
                   </div>
                   <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         setDraft(holidayDraft(h));
                         setResult(null);
                       }}
-                      disabled={busy}
-                      className={ghostButton}
+                      pending={busy}
+                      variant="ghost"
+                      className="w-full sm:w-auto"
                     >
                       Correct this
-                    </button>
+                    </Button>
                     {confirmId === h.id ? (
                       <>
-                        <button type="button" onClick={() => remove(h.id)} disabled={busy} className={dangerButton}>
-                          {busy ? "Removing…" : "Yes, remove it"}
-                        </button>
-                        <button
+                        <Button type="button" onClick={() => remove(h.id)} pending={busy} variant="danger" className="w-full sm:w-auto">
+                          Yes, remove it
+                        </Button>
+                        <Button
                           type="button"
                           onClick={() => setConfirmId(null)}
-                          disabled={busy}
-                          className={ghostButton}
+                          pending={busy}
+                          variant="ghost"
+                          className="w-full sm:w-auto"
                         >
                           Keep it
-                        </button>
+                        </Button>
                       </>
                     ) : (
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setConfirmId(h.id)}
-                        disabled={busy}
-                        className={dangerButton}
+                        pending={busy}
+                        variant="danger"
+                        className="w-full sm:w-auto"
                       >
                         Remove
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </li>
@@ -791,9 +792,9 @@ export function PlatformCourtEditor({
               className="mt-1 min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
             />
           </div>
-          <button type="submit" className="min-h-[44px] rounded-lg border border-edge bg-raised px-4 text-15 font-medium text-ink">
+          <Button type="submit" variant="ghost">
             Search
-          </button>
+          </Button>
           {search && (
             <a href="/admin/reference" className="min-h-[44px] px-2 py-2.5 text-15 text-brand underline">
               Clear
@@ -928,25 +929,25 @@ export function PlatformCourtEditor({
             </label>
 
             <div className="flex flex-col gap-2 sm:flex-row">
-              <button type="button" onClick={save} disabled={busy} className={primaryButton}>
-                {busy ? "Saving…" : draft.id ? "Save this court" : "Add this court"}
-              </button>
-              <button type="button" onClick={() => setDraft(null)} disabled={busy} className={ghostButton}>
+              <Button type="button" onClick={save} pending={busy} className="w-full sm:w-auto">
+                {draft.id ? "Save this court" : "Add this court"}
+              </Button>
+              <Button type="button" onClick={() => setDraft(null)} pending={busy} variant="ghost" className="w-full sm:w-auto">
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         ) : (
-          <button
+          <Button
             type="button"
             onClick={() => {
               setDraft(emptyCourt());
               setResult(null);
             }}
-            className={primaryButton}
+            className="w-full sm:w-auto"
           >
             Add a court
-          </button>
+          </Button>
         )}
 
         {courts.length === 0 ? (
@@ -973,17 +974,18 @@ export function PlatformCourtEditor({
                     {!c.isActive && <Badge className="bg-hairline text-ink">closed</Badge>}
                   </div>
                   <div className="mt-2">
-                    <button
+                    <Button
                       type="button"
                       onClick={() => {
                         setDraft(courtDraft(c));
                         setResult(null);
                       }}
-                      disabled={busy}
-                      className={ghostButton}
+                      pending={busy}
+                      variant="ghost"
+                      className="w-full sm:w-auto"
                     >
                       Correct this
-                    </button>
+                    </Button>
                   </div>
                 </li>
               ))}

@@ -139,7 +139,7 @@ export function Checklist({ firmId, readiness, canWrite }: { firmId: string; rea
                 {sk && !s.done && (
                   <p className="mt-0.5 text-13 text-ink-muted">
                     Set aside{sk.note ? `: ${sk.note}` : ""}.
-                    {canWrite && <button type="button" className="ml-2 underline" disabled={pending} onClick={() => resume(s.key)}>Put it back</button>}
+                    {canWrite && <Button type="button" variant="ghost" size="sm" pending={pending} onClick={() => resume(s.key)} className="ml-2">Put it back</Button>}
                   </p>
                 )}
               </div>

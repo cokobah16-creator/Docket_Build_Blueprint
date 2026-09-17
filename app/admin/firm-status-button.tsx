@@ -10,6 +10,7 @@
 
 import { useActionState, useState } from "react";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { setFirmStatus, type FirmWriteState } from "./actions";
 
 const WHAT_IT_DOES: Record<string, string> = {
@@ -50,13 +51,9 @@ export function FirmStatusControl({ firmId, status }: { firmId: string; status: 
         aria-label="Why this status is changing"
         className="min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink"
       />
-      <button
-        type="submit"
-        disabled={pending || choice === status}
-        className="min-h-[44px] w-full rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white disabled:opacity-50"
-      >
-        {pending ? "Saving…" : choice === status ? `Already ${status}` : `Set to ${choice}`}
-      </button>
+      <Button type="submit" pending={pending} disabled={choice === status} fullWidth>
+        {choice === status ? `Already ${status}` : `Set to ${choice}`}
+      </Button>
       {state.error && <Alert kind="error">{state.error}</Alert>}
       {state.done && <Alert kind="success">{state.done}</Alert>}
     </form>

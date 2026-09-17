@@ -7,6 +7,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { publishWorkflowPack } from "@/lib/actions/workflow";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { MATTER_TYPES, type WorkflowPackRow } from "@/lib/db/types";
 
 const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
@@ -85,7 +86,7 @@ export function PackPublisher({ packs }: { packs: WorkflowPackRow[] }) {
         <textarea value={definition} onChange={(e) => setDefinition(e.target.value)} rows={18} className={`${field} font-mono text-base`} />
       </label>
       <label className="block text-15 text-ink">Note<input type="text" maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What changed in this version" className={field} /></label>
-      <button type="button" disabled={busy || !key || !name} onClick={() => void publish()} className="min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white disabled:opacity-50">{busy ? "Publishing…" : "Publish this version"}</button>
+      <Button type="button" pending={busy} disabled={!key || !name} onClick={() => void publish()}>Publish this version</Button>
     </div>
   );
 }

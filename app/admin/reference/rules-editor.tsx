@@ -9,6 +9,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { deleteRuleProvision, retireCourtRule, saveCourtRule, saveRuleProvision, type ReferenceResult } from "@/lib/actions/reference";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { COURT_LEVEL_LABELS, NG_STATES, NG_STATE_OPTIONS } from "@/lib/nigeria";
 import { DEADLINE_TRIGGER_LABELS, DEADLINE_TRIGGERS, type CourtRuleRow, type RuleProvisionRow } from "@/lib/db/types";
@@ -17,8 +18,6 @@ export interface RuleView extends CourtRuleRow { provisions: RuleProvisionRow[] 
 
 const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 const labelClass = "block text-15 font-medium text-ink";
-const primaryButton = "min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white disabled:opacity-50";
-const quietButton = "min-h-[44px] rounded-lg border border-edge px-4 py-2.5 text-15 font-medium text-ink hover:bg-hover disabled:opacity-50";
 
 const EMPTY_RULE = { level: "", stateCode: "", name: "", citation: "", version: "", effectiveFrom: "", note: "" };
 const EMPTY_PROVISION: { key: string; label: string; citation: string; triggerKind: string; period: number; unit: "days" | "months"; countMode: "calendar" | "clear" | "working"; excludesVacation: boolean; rollsForward: boolean; note: string } =
@@ -43,7 +42,7 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
     <Card>
       <CardHeader
         title="Rules of court"
-        action={!ruleDraft ? <button type="button" className={quietButton} onClick={() => { setRuleDraft(EMPTY_RULE); setResult(null); }}>Enter a set of rules</button> : undefined}
+        action={!ruleDraft ? <Button type="button" variant="ghost" onClick={() => { setRuleDraft(EMPTY_RULE); setResult(null); }}>Enter a set of rules</Button> : undefined}
       />
       <CardBody className="space-y-4">
         <p className="text-15 text-ink-muted">
@@ -95,8 +94,8 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
               <input id="rule-note" type="text" maxLength={1000} value={ruleDraft.note} onChange={(e) => setRuleDraft({ ...ruleDraft, note: e.target.value })} className={field} />
             </div>
             <div className="flex flex-wrap gap-2 sm:col-span-2">
-              <button type="submit" disabled={busy} className={primaryButton}>{busy ? "Saving…" : "Save the rules"}</button>
-              <button type="button" className={quietButton} onClick={() => setRuleDraft(null)}>Cancel</button>
+              <Button type="submit" pending={busy}>Save the rules</Button>
+              <Button type="button" variant="ghost" onClick={() => setRuleDraft(null)}>Cancel</Button>
             </div>
           </form>
         )}
@@ -125,7 +124,7 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
                           <span className="text-ink-muted"> — {p.period} {p.unit === "months" ? "calendar months" : `${p.count_mode} days`} from {DEADLINE_TRIGGER_LABELS[p.trigger_kind].toLowerCase()}{p.excludes_vacation ? ", time stopped in vacation" : ""}{!p.rolls_forward ? ", no rolling forward" : ""}{p.citation ? ` · ${p.citation}` : ""}</span>
                           <span className="ml-1 font-mono text-13 text-ink-muted">{p.key}</span>
                         </span>
-                        <button type="button" className="text-13 text-red-800 underline" disabled={busy} onClick={() => start(async () => done(await deleteRuleProvision(p.id)))}>Remove</button>
+                        <Button type="button" variant="danger" size="sm" pending={busy} onClick={() => start(async () => done(await deleteRuleProvision(p.id)))}>Remove</Button>
                       </li>
                     ))}
                   </ul>
@@ -133,8 +132,8 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
                   <p className="mt-2 text-13 text-amber-800">No provision yet — this set counts nothing until one is entered.</p>
                 )}
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {provisionFor !== r.id && <button type="button" className={quietButton} onClick={() => { setProvisionFor(r.id); setProvisionDraft(EMPTY_PROVISION); setResult(null); }}>Add a provision</button>}
-                  {!r.retired_on && retireFor !== r.id && <button type="button" className={quietButton} onClick={() => { setRetireFor(r.id); setRetireOn(""); setResult(null); }}>Retire…</button>}
+                  {provisionFor !== r.id && <Button type="button" variant="ghost" onClick={() => { setProvisionFor(r.id); setProvisionDraft(EMPTY_PROVISION); setResult(null); }}>Add a provision</Button>}
+                  {!r.retired_on && retireFor !== r.id && <Button type="button" variant="ghost" onClick={() => { setRetireFor(r.id); setRetireOn(""); setResult(null); }}>Retire…</Button>}
                 </div>
                 {retireFor === r.id && (
                   <form className="mt-2 flex flex-wrap items-end gap-2" onSubmit={(e) => { e.preventDefault(); start(async () => done(await retireCourtRule(r.id, retireOn))); }}>
@@ -142,8 +141,8 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
                       <label htmlFor={`retire-${r.id}`} className={labelClass}>Retired from</label>
                       <input id={`retire-${r.id}`} type="date" required value={retireOn} onChange={(e) => setRetireOn(e.target.value)} className={field} />
                     </div>
-                    <button type="submit" disabled={busy} className={primaryButton}>Retire</button>
-                    <button type="button" className={quietButton} onClick={() => setRetireFor(null)}>Cancel</button>
+                    <Button type="submit" pending={busy}>Retire</Button>
+                    <Button type="button" variant="ghost" onClick={() => setRetireFor(null)}>Cancel</Button>
                   </form>
                 )}
                 {provisionFor === r.id && (
@@ -199,8 +198,8 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
                       <input id={`pn-${r.id}`} type="text" maxLength={1000} value={provisionDraft.note} onChange={(e) => setProvisionDraft({ ...provisionDraft, note: e.target.value })} className={field} />
                     </div>
                     <div className="flex flex-wrap gap-2 sm:col-span-3">
-                      <button type="submit" disabled={busy} className={primaryButton}>{busy ? "Saving…" : "Save the provision"}</button>
-                      <button type="button" className={quietButton} onClick={() => setProvisionFor(null)}>Cancel</button>
+                      <Button type="submit" pending={busy}>Save the provision</Button>
+                      <Button type="button" variant="ghost" onClick={() => setProvisionFor(null)}>Cancel</Button>
                     </div>
                   </form>
                 )}

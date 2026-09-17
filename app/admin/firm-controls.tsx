@@ -13,6 +13,7 @@
 
 import { useActionState } from "react";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   completeDomainRequest,
   rejectDomainRequest,
@@ -24,10 +25,7 @@ import {
 } from "./actions";
 
 const fieldClass =
-  "min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-15 text-ink";
-const buttonClass =
-  "min-h-[44px] w-full rounded-lg px-4 py-2.5 text-15 font-medium disabled:opacity-50";
-
+  "min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink";
 function Result({ state }: { state: FirmWriteState | DomainRequestState }) {
   return (
     <>
@@ -59,9 +57,9 @@ export function FirmPlanControl({ firmId, plan }: { firmId: string; plan: string
         aria-label="Why this plan is changing"
         className={fieldClass}
       />
-      <button type="submit" disabled={pending} className={`${buttonClass} bg-brand text-white`}>
-        {pending ? "Saving…" : "Set plan"}
-      </button>
+      <Button type="submit" pending={pending} fullWidth>
+        Set plan
+      </Button>
       <Result state={state} />
     </form>
   );
@@ -114,9 +112,9 @@ export function FirmDomainControl({
             : "Map it anyway. Vercel is not configured on this deployment, so nothing will check that the host is served."}
         </span>
       </label>
-      <button type="submit" disabled={pending} className={`${buttonClass} bg-brand text-white`}>
-        {pending ? "Working…" : currentDomain ? "Update domain" : "Map domain"}
-      </button>
+      <Button type="submit" pending={pending} fullWidth>
+        {currentDomain ? "Update domain" : "Map domain"}
+      </Button>
       <Result state={state} />
     </form>
   );
@@ -154,13 +152,9 @@ export function DomainRequestControls({
           Nothing about the firm changes yet. Vercel returns the records the firm has to add at
           its registrar, and they are saved here so you can pass them on.
         </p>
-        <button
-          type="submit"
-          disabled={starting}
-          className={`${buttonClass} border border-edge bg-raised text-brand`}
-        >
-          {starting ? "Asking Vercel…" : status === "verifying" ? `Ask Vercel about ${hostname} again` : `Add ${hostname} to Vercel`}
-        </button>
+        <Button type="submit" variant="ghost" pending={starting} fullWidth>
+          {status === "verifying" ? `Ask Vercel about ${hostname} again` : `Add ${hostname} to Vercel`}
+        </Button>
         <Result state={startState} />
       </form>
 
@@ -185,9 +179,9 @@ export function DomainRequestControls({
             configured on this deployment at all.
           </span>
         </label>
-        <button type="submit" disabled={going} className={`${buttonClass} bg-brand text-white`}>
-          {going ? "Mapping…" : "Map it and go live"}
-        </button>
+        <Button type="submit" pending={going} fullWidth>
+          Map it and go live
+        </Button>
         <Result state={liveState} />
       </form>
 
@@ -202,13 +196,9 @@ export function DomainRequestControls({
           aria-label="Why this request is being turned down"
           className={fieldClass}
         />
-        <button
-          type="submit"
-          disabled={rejecting}
-          className={`${buttonClass} border border-red-200 bg-raised text-red-700`}
-        >
-          {rejecting ? "Working…" : "Turn it down"}
-        </button>
+        <Button type="submit" variant="danger" pending={rejecting} fullWidth>
+          Turn it down
+        </Button>
         <Result state={rejectState} />
       </form>
     </div>
