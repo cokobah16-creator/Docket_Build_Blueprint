@@ -40,7 +40,7 @@ export function ConsentGate({
             <input type="hidden" name="termsVersion" value={termsVersion} />
             <input type="hidden" name="privacyVersion" value={privacyVersion} />
 
-            <label className="flex items-start gap-3 text-sm text-gray-700">
+            <label className="flex items-start gap-3 text-15 text-ink">
               <input type="checkbox" required className="mt-1 h-4 w-4" />
               <span>
                 I accept the{" "}
@@ -55,7 +55,7 @@ export function ConsentGate({
               </span>
             </label>
 
-            <label className="flex items-start gap-3 text-sm text-gray-700">
+            <label className="flex items-start gap-3 text-15 text-ink">
               <input type="checkbox" required className="mt-1 h-4 w-4" />
               <span>
                 I have read the{" "}

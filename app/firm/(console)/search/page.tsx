@@ -113,27 +113,27 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Search</h1>
+      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Search</h1>
 
       <Card>
         <form method="GET" action="/firm/search" className="flex flex-col gap-2 p-[15px]">
           {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
           {kind && <input type="hidden" name="kind" value={kind} />}
-          <label className="text-[13px] font-semibold text-[#141414]" htmlFor="q">
+          <label className="text-13 font-semibold text-[#141414]" htmlFor="q">
             A name, a word, a suit number, a reference
           </label>
           <div className="flex gap-2">
             <input
               id="q" name="q" type="search" defaultValue={q} autoFocus minLength={2} maxLength={200}
               placeholder="Okonkwo · LD/4521/2026 · quicksilver covenant"
-              className="min-h-11 w-full rounded-lg border border-gray-300 px-3 text-[15px] text-gray-900 focus:border-[#141414] focus:outline-none"
+              className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline-none"
             />
-            <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-[#141414] px-4 text-[14px] font-medium text-white">
+            <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-[#141414] px-4 text-15 font-medium text-white">
               Search
             </button>
           </div>
           {/* Said here rather than discovered later. */}
-          <p className="text-[11.5px] leading-[1.45] text-[#57534E]">
+          <p className="text-11 leading-[1.45] text-[#57534E]">
             Docket searches what it holds as text — matters, updates, messages, notes, the names of
             documents, and the words <em>inside</em> a document where it could read them. It cannot
             read a <strong>scan</strong>: a photographed or scanned page is a picture of words, not
@@ -158,8 +158,8 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
           <div className="flex flex-wrap gap-2">
             <Link
               href={keep({ kind: null })}
-              className={cn("min-h-9 rounded-full border px-3 py-1.5 text-[12.5px]",
-                kind === null ? "border-[#141414] bg-[#141414] text-white" : "border-gray-300 bg-white text-gray-700 hover:border-[#141414]")}
+              className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
+                kind === null ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink hover:border-[#141414]")}
             >
               Everything
             </Link>
@@ -167,8 +167,8 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
               <Link
                 key={k}
                 href={keep({ kind: k })}
-                className={cn("min-h-9 rounded-full border px-3 py-1.5 text-[12.5px]",
-                  kind === k ? "border-[#141414] bg-[#141414] text-white" : "border-gray-300 bg-white text-gray-700 hover:border-[#141414]")}
+                className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
+                  kind === k ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink hover:border-[#141414]")}
               >
                 {label}
               </Link>
@@ -192,16 +192,16 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
                   <li key={`${hit.kind}:${hit.id}`}>
                     <Link
                       href={hrefFor(hit)}
-                      className="flex flex-col gap-1 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-gray-50"
+                      className="flex flex-col gap-1 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 hover:bg-sunken"
                     >
                       <span className="flex items-baseline justify-between gap-3">
-                        <span className="min-w-0 text-[13.5px] font-semibold text-[#141414]">{hit.title}</span>
-                        <span className="shrink-0 text-[11px] uppercase tracking-wide text-[#57534E]">
+                        <span className="min-w-0 text-13 font-semibold text-[#141414]">{hit.title}</span>
+                        <span className="shrink-0 text-11 uppercase tracking-wide text-[#57534E]">
                           {KIND_LABEL.get(hit.kind) ?? hit.kind}
                         </span>
                       </span>
                       {hit.snippet && (
-                        <span className="text-[12.5px] leading-[1.5] text-[#57534E]">
+                        <span className="text-13 leading-[1.5] text-[#57534E]">
                           <Snippet text={hit.snippet} />
                         </span>
                       )}
@@ -213,7 +213,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
           </Card>
 
           {hits.length === LIMIT && (
-            <p className="px-1 text-[11.5px] text-[#57534E]">
+            <p className="px-1 text-11 text-[#57534E]">
               The first {LIMIT} are shown, best match first. Narrow it with a kind above, or add a word.
             </p>
           )}

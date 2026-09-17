@@ -60,8 +60,8 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     <Screen>
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">{inv.status === "paid" ? "Receipt" : "Invoice"} {inv.number}</h1>
-          <p className="mt-1 text-[13px] text-gray-600">{firm?.legal_name ?? firm?.name ?? "Your firm"}</p>
+          <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand">{inv.status === "paid" ? "Receipt" : "Invoice"} {inv.number}</h1>
+          <p className="mt-1 text-13 text-ink-muted">{firm?.legal_name ?? firm?.name ?? "Your firm"}</p>
         </div>
         <StatusPill status={inv.status as Status} />
       </header>
@@ -81,18 +81,18 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
       <Card>
         <CardHeader title="Items" />
         <CardBody>
-          <table className="w-full text-sm">
-            <tbody className="divide-y divide-gray-100">
+          <table className="w-full text-15">
+            <tbody className="divide-y divide-hairline">
               {items.map((it) => (
                 <tr key={it.id}>
-                  <td className="py-2 pr-4 text-gray-800">{it.description}{Number(it.quantity) !== 1 ? ` × ${it.quantity}` : ""}</td>
-                  <td className="py-2 text-right font-medium text-gray-900">{fmt(Math.round(it.unit_minor * Number(it.quantity)))}</td>
+                  <td className="py-2 pr-4 text-ink">{it.description}{Number(it.quantity) !== 1 ? ` × ${it.quantity}` : ""}</td>
+                  <td className="py-2 text-right font-medium text-ink">{fmt(Math.round(it.unit_minor * Number(it.quantity)))}</td>
                 </tr>
               ))}
-              <tr><td className="pt-3 text-gray-500">Subtotal</td><td className="pt-3 text-right text-gray-900">{fmt(inv.subtotal_minor)}</td></tr>
-              <tr><td className="py-1 text-gray-500">VAT</td><td className="py-1 text-right text-gray-900">{fmt(inv.vat_minor)}</td></tr>
-              <tr><td className="py-1 font-semibold text-gray-900">Total</td><td className="py-1 text-right font-semibold text-gray-900">{fmt(inv.total_minor)}</td></tr>
-              <tr><td className="py-1 text-gray-500">Paid</td><td className="py-1 text-right text-gray-900">{fmt(inv.paid_minor)}</td></tr>
+              <tr><td className="pt-3 text-ink-muted">Subtotal</td><td className="pt-3 text-right text-ink">{fmt(inv.subtotal_minor)}</td></tr>
+              <tr><td className="py-1 text-ink-muted">VAT</td><td className="py-1 text-right text-ink">{fmt(inv.vat_minor)}</td></tr>
+              <tr><td className="py-1 font-semibold text-ink">Total</td><td className="py-1 text-right font-semibold text-ink">{fmt(inv.total_minor)}</td></tr>
+              <tr><td className="py-1 text-ink-muted">Paid</td><td className="py-1 text-right text-ink">{fmt(inv.paid_minor)}</td></tr>
             </tbody>
           </table>
         </CardBody>
@@ -102,13 +102,13 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
         <CardHeader title="Payments" />
         <CardBody>
           {payments.length === 0 ? (
-            <p className="text-sm text-gray-600">No payments recorded yet.</p>
+            <p className="text-15 text-ink-muted">No payments recorded yet.</p>
           ) : (
-            <ul className="divide-y divide-gray-100 text-sm">
+            <ul className="divide-y divide-hairline text-15">
               {payments.map((p) => (
                 <li key={p.id} className="flex justify-between gap-4 py-2">
-                  <span className="text-gray-700">{p.provider} · {p.provider_ref}{p.paid_at ? ` · ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(p.paid_at))}` : ""}</span>
-                  <span className="font-medium text-gray-900">{fmt(p.amount_minor)} · {p.status}</span>
+                  <span className="text-ink">{p.provider} · {p.provider_ref}{p.paid_at ? ` · ${new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short" }).format(new Date(p.paid_at))}` : ""}</span>
+                  <span className="font-medium text-ink">{fmt(p.amount_minor)} · {p.status}</span>
                 </li>
               ))}
             </ul>
@@ -117,8 +117,8 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
       </Card>
 
       <div className="flex flex-wrap gap-3">
-        <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90">Download PDF</a>
-        <Link href="/app/payments" className="rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5">All payments</Link>
+        <a href={`/app/payments/${inv.id}/pdf`} className="rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-brand-on hover:opacity-90">Download PDF</a>
+        <Link href="/app/payments" className="rounded-lg border border-edge px-4 py-2.5 text-15 font-medium text-brand hover:bg-hover">All payments</Link>
       </div>
     </Screen>
   );

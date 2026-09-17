@@ -94,7 +94,7 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
               <Button type="submit" size="lg" className="w-full" disabled={busy}>
                 {busy ? "Creating account…" : "Create account"}
               </Button>
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-center text-15 text-ink-muted">
                 Already have an account?{" "}
                 <a href="/firm/login" className="font-medium text-brand underline">Sign in</a>
               </p>
@@ -109,7 +109,7 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
     <Card>
       <CardHeader title="Step 2 — your firm" />
       <CardBody>
-        {email && <p className="mb-4 text-sm text-gray-600">Signed in as {email}.</p>}
+        {email && <p className="mb-4 text-15 text-ink-muted">Signed in as {email}.</p>}
         <form action={formAction} className="space-y-4">
           {state.error && <Alert kind="error">{state.error}</Alert>}
           <Input
@@ -154,7 +154,7 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
           <Button type="submit" size="lg" className="w-full" disabled={pending}>
             {pending ? "Creating your firm…" : "Create firm and set up two-factor"}
           </Button>
-          <p className="text-sm text-gray-500">
+          <p className="text-15 text-ink-muted">
             No card at sign-up, and every firm is on the free plan while Docket is in
             build. By continuing you accept the Docket firm terms and act as the data
             controller for your clients’ information. Fees you charge settle to your

@@ -88,8 +88,16 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   }
 
   return (
-    <div className="min-h-screen bg-docket-paper">
-      <header className="border-b border-black/5 bg-white">
+    // Pinned light, and it has to be said out loud. This shell paints a light
+    // literal on its own wrapper, and the body behind it follows the reader's
+    // theme (app/globals.css) — so without this the gutter would be dark behind a
+    // cream console, which is the seam the body rule exists to close. The pin also
+    // keeps the theme's own neutrals light inside here, so an `ink` or a `hairline`
+    // in a console screen still reads against this cream rather than against a dark
+    // page that is not there. Docket's own consoles get a dark palette of their
+    // own; this is the honest statement that they have not got one yet.
+    <div data-theme-scope="light" className="min-h-screen bg-docket-paper">
+      <header className="border-b border-black/5 bg-raised">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="flex min-w-0 items-center gap-3">
             <Link href="/admin" className="truncate font-heading text-base font-semibold text-docket-hunter">
@@ -98,10 +106,10 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             <Badge>platform admin</Badge>
           </div>
           <div className="flex shrink-0 items-center gap-4">
-            <Link href="/firm" className="text-sm font-medium text-gray-600 hover:text-docket-link">
+            <Link href="/firm" className="text-15 font-medium text-ink-muted hover:text-docket-link">
               Firm console
             </Link>
-            <Link href="/firm/security/mfa" className="text-sm font-medium text-gray-600 hover:text-docket-link">
+            <Link href="/firm/security/mfa" className="text-15 font-medium text-ink-muted hover:text-docket-link">
               Security
             </Link>
           </div>
@@ -113,7 +121,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
               <li key={item.href}>
                 <Link
                   href={item.href}
-                  className="block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-black/5 hover:text-docket-link"
+                  className="block min-h-[44px] whitespace-nowrap rounded-lg px-3 py-2.5 text-15 font-medium text-ink hover:bg-hover hover:text-docket-link"
                 >
                   {item.label}
                 </Link>

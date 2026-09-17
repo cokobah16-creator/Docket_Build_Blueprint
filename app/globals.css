@@ -80,29 +80,6 @@
   /* Danger, for a destructive control rather than a status. */
   --l-danger: 180 35 24;
   --l-on-danger: 255 255 255;
-  /* The gray bridge. Tailwind's own gray-* redefined warm, so the 1,959 */
-  /* `text-gray-500`-style utilities already spread across 159 files pick up the */
-  /* new palette with no screen edited — and flip for dark mode, because these */
-  /* resolve through variables rather than literal hex. Three WCAG failures are */
-  /* corrected on the way through: */
-  /*   gray-300, the field border (150 uses)  1.35:1 -> 3.36:1  (SC 1.4.11) */
-  /*   gray-400, the placeholder colour       2.33:1 -> 5.22:1 */
-  /*   gray-500, secondary text (459 uses)    4.43:1 -> 6.57:1 */
-  /* A bridge, not a destination: gray-500 cannot say whether it means muted */
-  /* prose or a placeholder, so a later pass rewrites these to the semantic */
-  /* names above and deletes this block, leaving any straggler a dead class. */
-  --l-g50: 240 238 234;
-  --l-g100: 232 229 223;
-  --l-g200: 221 217 210;
-  --l-g300: 138 133 125;
-  --l-g400: 107 102 95;
-  --l-g500: 92 87 79;
-  --l-g600: 74 69 63;
-  --l-g700: 55 52 47;
-  --l-g800: 42 39 36;
-  --l-g900: 32 30 29;
-  /* Elevation. In dark mode a shadow is nearly invisible, so the surface ramp */
-  /* above does the lifting and these stay subtle. */
   --l-shadow-e1: 0 1px 2px rgb(16 24 40 / 0.04);
   --l-shadow-e2: 0 1px 3px rgb(16 24 40 / 0.08);
   --l-shadow-e3: 0 -8px 32px rgb(0 0 0 / 0.18);
@@ -146,29 +123,6 @@
   /* Danger, for a destructive control rather than a status. */
   --d-danger: 240 130 120;
   --d-on-danger: 26 25 24;
-  /* The gray bridge. Tailwind's own gray-* redefined warm, so the 1,959 */
-  /* `text-gray-500`-style utilities already spread across 159 files pick up the */
-  /* new palette with no screen edited — and flip for dark mode, because these */
-  /* resolve through variables rather than literal hex. Three WCAG failures are */
-  /* corrected on the way through: */
-  /*   gray-300, the field border (150 uses)  1.35:1 -> 3.36:1  (SC 1.4.11) */
-  /*   gray-400, the placeholder colour       2.33:1 -> 5.22:1 */
-  /*   gray-500, secondary text (459 uses)    4.43:1 -> 6.57:1 */
-  /* A bridge, not a destination: gray-500 cannot say whether it means muted */
-  /* prose or a placeholder, so a later pass rewrites these to the semantic */
-  /* names above and deletes this block, leaving any straggler a dead class. */
-  --d-g50: 19 18 17;
-  --d-g100: 31 30 28;
-  --d-g200: 58 53 46;
-  --d-g300: 139 133 124;
-  --d-g400: 168 162 153;
-  --d-g500: 181 175 165;
-  --d-g600: 200 194 184;
-  --d-g700: 219 214 205;
-  --d-g800: 234 230 224;
-  --d-g900: 242 240 236;
-  /* Elevation. In dark mode a shadow is nearly invisible, so the surface ramp */
-  /* above does the lifting and these stay subtle. */
   --d-shadow-e1: 0 1px 2px rgb(0 0 0 / 0.4);
   --d-shadow-e2: 0 1px 3px rgb(0 0 0 / 0.5);
   --d-shadow-e3: 0 -8px 32px rgb(0 0 0 / 0.6);
@@ -203,16 +157,6 @@
   --t-informing-ink: var(--l-informing-ink);
   --t-danger: var(--l-danger);
   --t-on-danger: var(--l-on-danger);
-  --t-g50: var(--l-g50);
-  --t-g100: var(--l-g100);
-  --t-g200: var(--l-g200);
-  --t-g300: var(--l-g300);
-  --t-g400: var(--l-g400);
-  --t-g500: var(--l-g500);
-  --t-g600: var(--l-g600);
-  --t-g700: var(--l-g700);
-  --t-g800: var(--l-g800);
-  --t-g900: var(--l-g900);
   --t-shadow-e1: var(--l-shadow-e1);
   --t-shadow-e2: var(--l-shadow-e2);
   --t-shadow-e3: var(--l-shadow-e3);
@@ -250,16 +194,6 @@
     --t-informing-ink: var(--d-informing-ink);
     --t-danger: var(--d-danger);
     --t-on-danger: var(--d-on-danger);
-    --t-g50: var(--d-g50);
-    --t-g100: var(--d-g100);
-    --t-g200: var(--d-g200);
-    --t-g300: var(--d-g300);
-    --t-g400: var(--d-g400);
-    --t-g500: var(--d-g500);
-    --t-g600: var(--d-g600);
-    --t-g700: var(--d-g700);
-    --t-g800: var(--d-g800);
-    --t-g900: var(--d-g900);
     --t-shadow-e1: var(--d-shadow-e1);
     --t-shadow-e2: var(--d-shadow-e2);
     --t-shadow-e3: var(--d-shadow-e3);
@@ -297,16 +231,6 @@
   --t-informing-ink: var(--d-informing-ink);
   --t-danger: var(--d-danger);
   --t-on-danger: var(--d-on-danger);
-  --t-g50: var(--d-g50);
-  --t-g100: var(--d-g100);
-  --t-g200: var(--d-g200);
-  --t-g300: var(--d-g300);
-  --t-g400: var(--d-g400);
-  --t-g500: var(--d-g500);
-  --t-g600: var(--d-g600);
-  --t-g700: var(--d-g700);
-  --t-g800: var(--d-g800);
-  --t-g900: var(--d-g900);
   --t-shadow-e1: var(--d-shadow-e1);
   --t-shadow-e2: var(--d-shadow-e2);
   --t-shadow-e3: var(--d-shadow-e3);
@@ -346,19 +270,20 @@
   --t-informing-ink: var(--l-informing-ink);
   --t-danger: var(--l-danger);
   --t-on-danger: var(--l-on-danger);
-  --t-g50: var(--l-g50);
-  --t-g100: var(--l-g100);
-  --t-g200: var(--l-g200);
-  --t-g300: var(--l-g300);
-  --t-g400: var(--l-g400);
-  --t-g500: var(--l-g500);
-  --t-g600: var(--l-g600);
-  --t-g700: var(--l-g700);
-  --t-g800: var(--l-g800);
-  --t-g900: var(--l-g900);
   --t-shadow-e1: var(--l-shadow-e1);
   --t-shadow-e2: var(--l-shadow-e2);
   --t-shadow-e3: var(--l-shadow-e3);
+  /* The brand too, not only the theme. The root <body> carries Docket's own
+     data-brand so that a page with no firm behind it follows the reader's
+     theme, and a subtree pinned to light sits INSIDE that body — so it would
+     inherit the dark alias from above and paint a lifted navy on a cream page.
+     The rule further down handles a branded element inside a pinned one; this
+     is the other way round, and it only needs the light half re-stated. */
+  --dk-primary: var(--dk-primary-l);
+  --dk-accent: var(--dk-accent-l);
+  --dk-surface: var(--dk-surface-l);
+  --dk-on-primary: var(--dk-on-primary-l);
+  --dk-on-accent: var(--dk-on-accent-l);
 }
 
 /* Tell the browser which form controls and scrollbars to draw. */
@@ -367,10 +292,81 @@
 :root[data-theme="dark"] { color-scheme: dark; }
 [data-theme-scope="light"] { color-scheme: light; }
 
+/* THE GUTTER — the ground behind everything, and the one element no branded
+   subtree contains. A browser propagates body's background to the canvas, so this
+   is what fills the iOS rubber-band overscroll and any strip a screen's own wrapper
+   does not reach.
+
+   IT CANNOT BE var(--dk-surface), which is what it used to read. body sits OUTSIDE
+   every [data-brand] subtree, so that variable resolves here from :root and is a
+   fixed cream in every theme. It agreed with the page for as long as the branded
+   wrapper was light too; brandStyle() now hands that wrapper a dark value in dark
+   mode, and the cream band left showing behind it is the bug this rule fixes. It
+   shows most in the overscroll at the top of a portal screen, which is a gesture a
+   phone user makes constantly.
+
+   IT CANNOT BE rgb(var(--t-paper)) ALONE EITHER, because the light pin runs the
+   wrong way up the tree. The pages that pin themselves to light do it with
+   data-theme-scope on their OWN wrapper, and a wrapper cannot reach its ancestor,
+   so a theme-aware body would paint a dark band behind a deliberately light page.
+   That is not the two-page cost it looks like: app/page.tsx and app/not-found.tsx
+   are two, but app/(public)/[firm]/layout.tsx pins the same way whenever the firm
+   has not turned colours.dark_mode on — which is every firm that has never been
+   asked — so it is most of the tenant surface as well, and those are the pages a
+   client reaches first. Weighed the other way a cream band is wrong on every
+   signed-in screen in dark, which is where a lawyer spends the day. Neither cost is
+   worth accepting, so the body asks a question instead.
+
+   THE QUESTION IS "IS THE PAGE I AM HOLDING PINNED LIGHT?", and the child
+   combinator is what keeps it that narrow. A whole-page pin is a DIRECT CHILD of
+   body — Next.js puts a route's outermost element straight into the layout with no
+   wrapper of its own, which holds for all three pins above. A pinned SUBTREE is not:
+   the brand preview panel in firm/(console)/admin/settings/settings-forms.tsx is
+   pinned light several levels down inside a console page, deliberately, so that a
+   firm can see its own colours before its clients do. Without the `>` that one panel
+   would turn the whole console's gutter cream underneath a dark screen, which is the
+   same defect again with a longer fuse. DO NOT DROP THE `>`.
+
+   IT IS ALSO THE HOOK FOR THE THREE SHELLS THIS RULE LEAVES BEHIND, and they are
+   left behind today rather than in theory. app/firm/(console)/layout.tsx,
+   app/registry/layout.tsx and app/admin/layout.tsx each paint a light literal
+   (#F5F4F1, #F5F4F1 and docket-paper) onto their own wrapper and pin nothing, so a
+   dark-OS reader now gets a dark band in the overscroll behind a still-cream
+   console — the same seam this rule takes off the portal, moved onto the surface a
+   lawyer works in all day. The remedy is one attribute on each of those three
+   outermost elements, every one of which is a direct child of body:
+   data-theme-scope="light", the way the landing declares it, until they move onto
+   the token grounds and stop needing it. A second mechanism here instead would be
+   a list of light-only routes that nobody updates.
+
+   :has() IS THE ONE THING HERE AN OLD PHONE MAY NOT HAVE — Chrome 105, Safari 15.4,
+   Firefox 121 — so its failure mode is chosen rather than discovered. A browser
+   without it keeps the theme-aware declaration and loses only the pinned-light
+   correction, so the landing, the root 404 and a light-pinned firm site get the dark
+   band in overscroll: the same band in the wrong colour, on a minority of browsers,
+   never a broken screen. That degradation is already guaranteed by the cascade —
+   an unsupported :has() invalidates the rule it appears in and nothing else — and
+   the @supports wrapper does not add to it. It is there to put the dependency
+   somewhere a reader will trip over it, and to make it awkward to fold the
+   declaration back into the rule above.
+
+   It costs nothing at runtime: the argument is a direct child of the subject, the
+   cheapest shape of :has() a browser can be asked to invalidate on, and nothing
+   under body changes after the first paint. */
 body {
   margin: 0;
-  background-color: var(--dk-surface);
+  background-color: rgb(var(--t-paper));
   font-family: var(--dk-font-body), system-ui, sans-serif;
+}
+
+@supports selector(:has(*)) {
+  /* --l-paper rather than a hex, because it is the same value data-theme-scope
+     hands --t-paper inside the subtree and the two must not be able to drift. It is
+     also exactly what the body painted before this fix, so nothing about the
+     landing, the root 404 or a light-pinned firm site looks any different. */
+  body:has(> [data-theme-scope="light"]) {
+    background-color: rgb(var(--l-paper));
+  }
 }
 
 /* Screens rise a few pixels as they arrive, so a tap reads as a move rather
@@ -460,4 +456,70 @@ body {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   The tenant's colours, per theme.
+
+   brandStyle() (src/lib/brand.ts) cannot choose the theme for itself. Its values
+   arrive as a style ATTRIBUTE, an attribute holds one value per variable, and an
+   attribute outranks every selector in this file — so a single --dk-primary set
+   there could never be re-pointed by the rules below. It therefore emits both
+   sets, as --dk-*-l and --dk-*-d, and these four rules alias the real variable
+   onto one of them. The choice is static CSS, so the first paint is already
+   right: no tenant page flashes its light colours on a dark ground.
+
+   THE ELEMENT CARRYING brandStyle() MUST ALSO CARRY data-brand. Without it these
+   rules never match; the suffixed variables sit there unread and --dk-primary
+   inherits the :root defaults at the top of this file.
+
+   The four selectors answer the same four questions as the --t-* ones above, and
+   for the same reason: the OS preference, the explicit toggle and a pinned subtree
+   must not be able to drift apart. The last of them is the one that is easy to
+   leave out — a subtree pinned to light with data-theme-scope keeps the theme's
+   light neutrals, so a branded element inside it that had gone on reading
+   --dk-primary-d would be setting a colour toned for a dark card on a cream one.
+   It is written as two selectors because the pin and data-brand land on the same
+   element on a firm's public site, where they are the same decision.
+
+   The fonts are not aliased: a firm's typefaces are its typefaces in both themes,
+   so brandStyle() emits --dk-font-heading and --dk-font-body once and unsuffixed.
+   --------------------------------------------------------------------------- */
+[data-brand] {
+  --dk-primary: var(--dk-primary-l);
+  --dk-accent: var(--dk-accent-l);
+  --dk-surface: var(--dk-surface-l);
+  --dk-on-primary: var(--dk-on-primary-l);
+  --dk-on-accent: var(--dk-on-accent-l);
+}
+
+/* The viewer's OS asks for dark and they have not explicitly chosen light. */
+@media (prefers-color-scheme: dark) {
+  [data-brand]:not([data-theme="light"] *) {
+    --dk-primary: var(--dk-primary-d);
+    --dk-accent: var(--dk-accent-d);
+    --dk-surface: var(--dk-surface-d);
+    --dk-on-primary: var(--dk-on-primary-d);
+    --dk-on-accent: var(--dk-on-accent-d);
+  }
+}
+
+/* The viewer explicitly chose dark. */
+[data-theme="dark"] [data-brand] {
+  --dk-primary: var(--dk-primary-d);
+  --dk-accent: var(--dk-accent-d);
+  --dk-surface: var(--dk-surface-d);
+  --dk-on-primary: var(--dk-on-primary-d);
+  --dk-on-accent: var(--dk-on-accent-d);
+}
+
+/* A subtree pinned to light, whatever the viewer's theme. Last, and at the same
+   specificity as the two dark rules, so it is source order that settles it. */
+[data-brand][data-theme-scope="light"],
+[data-theme-scope="light"] [data-brand] {
+  --dk-primary: var(--dk-primary-l);
+  --dk-accent: var(--dk-accent-l);
+  --dk-surface: var(--dk-surface-l);
+  --dk-on-primary: var(--dk-on-primary-l);
+  --dk-on-accent: var(--dk-on-accent-l);
 }

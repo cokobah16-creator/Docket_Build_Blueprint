@@ -9,6 +9,11 @@ serves; this is where its argument and its typography get worked out first.
     canvas.json    frame size and launch view for the design canvas
     verify.mjs     renders it and fails on the rules below
 
+`verify.mjs` gets its colour arithmetic from `tests/fixtures/contrast.mjs`, which
+`tests/fixtures/design.mjs` — the same rules applied to the running app — imports
+too. Two copies of "what 4.5:1 means" is how the two gates would come to disagree,
+so there is one copy and both read it.
+
 `.dc.html` is a Claude Design artboard. The `./support.js` line in the head and
 the `<x-dc>` / `<helmet>` wrapper are the canvas runtime and must stay verbatim;
 `verify.mjs` strips them to render the file as an ordinary page.
@@ -49,6 +54,17 @@ than white, there are no symmetric green-white-green thirds, no green-and-gold
 crest or card object, the layout is asymmetric, and the footer disclaims
 affiliation with any court, the Nigerian Bar Association or any government
 agency. Keep all six.
+
+Only about half of the six are machine-checkable, and a green `verify.mjs` must
+not be read as covering them. The capped chroma, the warm ground and gold never
+being text off green are arithmetic, and the linters hold them. **"No
+green-and-gold crest object", "the layout is asymmetric" and "no symmetric
+green-white-green thirds" are judgement calls** — a program cannot recognise a
+crest, or tell deliberate asymmetry from a mistake, or say whether an
+arrangement reads as the flag. Those three are reviewed by a person, or they are
+not reviewed at all. The same caveat is repeated in `tests/fixtures/README.md`
+and in the header of `tests/fixtures/design.mjs`, because a reader arriving at a
+green run from any of the three should meet it there.
 
 **Light only.** The app has a dark theme; this page does not, and opts out
 explicitly with `data-theme-scope="light"` on its root element. Four of the six

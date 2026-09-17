@@ -31,7 +31,7 @@ export default async function PreferencesPage() {
         <Card>
           <CardHeader title="What to send, and how" />
           <CardBody>
-            <p className="mb-3 text-[13px] text-gray-600">
+            <p className="mb-3 text-13 text-ink-muted">
               In-app notifications are always on. Your preferred channel is <strong>{p?.preferred_channel ?? "sms"}</strong>
               {p?.quiet_hours_start && p?.quiet_hours_end ? <> and quiet hours are <strong>{p.quiet_hours_start.slice(0, 5)}–{p.quiet_hours_end.slice(0, 5)}</strong></> : null}. Change both on your <Link href="/app/profile" className="underline underline-offset-2">profile</Link>.
             </p>

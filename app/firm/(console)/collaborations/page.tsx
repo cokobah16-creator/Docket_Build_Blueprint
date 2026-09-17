@@ -47,7 +47,7 @@ export default async function FirmCollaborations({ searchParams }: { searchParam
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Work from other firms</h1>
+      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Work from other firms</h1>
 
       {error && (
         <Alert kind="error" title="This did not load">
@@ -86,7 +86,7 @@ export default async function FirmCollaborations({ searchParams }: { searchParam
       )}
 
       <Card>
-        <CardBody className="text-xs text-[#57534E]">
+        <CardBody className="text-13 text-[#57534E]">
           <p>
             What you can see of another firm&rsquo;s matter is what they handed over and nothing else: named versions of
             named documents, and — only where they switched it on — the updates they write for their own client. You

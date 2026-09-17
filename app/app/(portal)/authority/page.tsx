@@ -56,7 +56,7 @@ export default async function PortalAuthority() {
         ) : (
           <AuthorityList rows={reps} firms={Object.fromEntries(firms)} today={todayIn(tz)} />
         )}
-        <CardBody className="border-t border-gray-100 text-xs text-gray-500">
+        <CardBody className="border-t border-hairline text-13 text-ink-muted">
           Ending an authority stops it at once. It cannot un-read a page or recall a document already
           downloaded. If you did not ask for one of these, end it and tell the firm.
         </CardBody>
@@ -65,24 +65,24 @@ export default async function PortalAuthority() {
       {events.length > 0 && (
         <Card>
           <CardHeader title="Changes to how you are reached" />
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {events.map((e) => (
-              <li key={e.id} className="px-4 py-3 text-sm text-gray-800">
+              <li key={e.id} className="px-4 py-3 text-15 text-ink">
                 Your {e.field === "phone" ? "phone number" : "email address"} was changed
-                {e.old_value ? <> from <span className="font-mono text-xs">{e.old_value}</span></> : null}
-                {e.new_value ? <> to <span className="font-mono text-xs">{e.new_value}</span></> : null}
+                {e.old_value ? <> from <span className="font-mono text-13">{e.old_value}</span></> : null}
+                {e.new_value ? <> to <span className="font-mono text-13">{e.new_value}</span></> : null}
                 {" "}on {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz }).format(new Date(e.changed_at))}.
               </li>
             ))}
           </ul>
-          <CardBody className="border-t border-gray-100 text-xs text-gray-500">
+          <CardBody className="border-t border-hairline text-13 text-ink-muted">
             Your firms are told when this happens, and the old details are kept here. If one of these was not you,
             contact your firm on a number you already trust — not one shown on this screen.
           </CardBody>
         </Card>
       )}
 
-      <p className="px-1 text-xs text-gray-500">
+      <p className="px-1 text-13 text-ink-muted">
         <Link href="/app/profile" className="underline underline-offset-2">Your profile</Link> ·{" "}
         <Link href="/app" className="underline underline-offset-2">Home</Link>
       </p>

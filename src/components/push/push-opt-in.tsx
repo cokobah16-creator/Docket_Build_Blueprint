@@ -92,13 +92,13 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
     return (
       <div className="flex items-center gap-3">
         {state === "denied" ? (
-          <p className="text-[12.5px] text-[#92400E]">Notifications are blocked for this site. Allow them in your browser settings to turn them on.</p>
+          <p className="text-13 text-[#92400E]">Notifications are blocked for this site. Allow them in your browser settings to turn them on.</p>
         ) : (
           <Button size="sm" variant="ghost" onClick={enable} disabled={state === "busy"}>
             {state === "busy" ? "Turning on…" : "Turn on notifications"}
           </Button>
         )}
-        {message && <p className="text-[12.5px] text-red-800">{message}</p>}
+        {message && <p className="text-13 text-red-800">{message}</p>}
       </div>
     );
   }
@@ -117,11 +117,11 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
           </Button>
         )}
         {state === "denied" && (
-          <p className="max-w-[180px] text-right text-[11px] leading-[1.4] text-gray-500">
+          <p className="max-w-[180px] text-right text-11 leading-[1.4] text-ink-muted">
             Allow notifications for this site in your browser settings.
           </p>
         )}
-        {message && <p className="max-w-[180px] text-right text-[11px] text-red-800">{message}</p>}
+        {message && <p className="max-w-[180px] text-right text-11 text-red-800">{message}</p>}
       </div>
     </SettingRow>
   );

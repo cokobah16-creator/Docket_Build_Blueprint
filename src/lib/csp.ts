@@ -55,12 +55,21 @@ export const CSP_NONCE_HEADER = "x-nonce";
  * All three now carry `export const dynamic = "force-dynamic"`, which is the right answer for
  * them on their own merits: each decides what to show from the caller's session.
  *
- * THE ONE ○ ROUTE THAT CANNOT BE MATCHED HERE is /_not-found. A 404 is served for whatever
- * path was actually asked for, so the pathname this function is given is never "/_not-found"
- * and no entry could match it. It is left as it is on purpose: Next's built-in 404 is a
- * paragraph of static text with no control on it, so a blocked hydration costs a console
- * violation and nothing a visitor can see. Give Docket its own not-found screen and that
- * stops being true — make it dynamic at the same time.
+ * /_not-found CAN NEVER BE MATCHED HERE, WHICH IS WHY IT IS NOT ON THE LIST AND MUST NOT BE
+ * PUT ON IT. A 404 is served for whatever path was actually asked for, so the pathname this
+ * function is given is the address the visitor typed and never "/_not-found": no entry could
+ * match, and the relaxation is unreachable for this route by construction.
+ *
+ * That was survivable while the 404 was Next's built-in paragraph of static text with no
+ * control on it — a hydration blocked by the nonce policy cost a console violation and
+ * nothing a visitor could see. It stopped being survivable when Docket gave the route its own
+ * screen: app/not-found.tsx has five links on it, three ways out plus the two in its header,
+ * and it is also what a visitor who mistypes a firm's address lands on. Dead HTML there is a
+ * person stranded on a page whose every way off is inert.
+ *
+ * So the screen carries `export const dynamic = "force-dynamic"`. That is the whole fix, and
+ * it had to be: the relaxation above was never available to it. The route is rendered per
+ * request, it is no longer prerendered, and it gets a nonce like everything else.
  *
  * PREFER force-dynamic ON THE PAGE over another entry in this set. A new page that reads no
  * cookies, headers or uncached data will be prerendered too, and will break under the nonce

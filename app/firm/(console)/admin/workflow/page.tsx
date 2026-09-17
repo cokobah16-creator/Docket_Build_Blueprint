@@ -32,8 +32,8 @@ export default async function WorkflowPage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Workflow</h1>
-        <p className="text-sm text-gray-600">{ctx.firmName} · the stages a matter moves through, and the work each starts</p>
+        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Workflow</h1>
+        <p className="text-15 text-ink-muted">{ctx.firmName} · the stages a matter moves through, and the work each starts</p>
       </header>
       {packError && <Alert kind="error" title="The catalogue could not be read">{packError.message}. That is a failed read, not an empty catalogue.</Alert>}
       {!ctx.isAdmin && <Alert kind="info">You are {ctx.role} here: the stages are shown, and an owner or administrator installs packs and edits the wording.</Alert>}

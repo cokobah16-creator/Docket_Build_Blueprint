@@ -24,7 +24,7 @@ import { recordDocumentOpen } from "@/lib/document-open";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 export interface FileableMatter {
   id: string;
@@ -58,7 +58,7 @@ export function FileServiceForm({
           {filedMatterId ? "Change the filing or the response date" : "File it into a matter"}
         </Button>
         {!filedMatterId && (
-          <p className="text-xs text-gray-500">Filing puts it on your own matter&apos;s timeline, for your firm only.</p>
+          <p className="text-13 text-ink-muted">Filing puts it on your own matter&apos;s timeline, for your firm only.</p>
         )}
       </div>
     );
@@ -73,7 +73,7 @@ export function FileServiceForm({
         <div className="flex flex-wrap gap-2">
           <Link
             href="/firm/matters/new"
-            className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+            className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
           >
             Open a matter
           </Link>
@@ -95,10 +95,10 @@ export function FileServiceForm({
   }
 
   return (
-    <div className="space-y-3 rounded-lg border border-gray-200 bg-gray-50 p-3">
+    <div className="space-y-3 rounded-lg border border-hairline bg-sunken p-3">
       {error && <Alert kind="error" title="The database refused this">{error}</Alert>}
       <div>
-        <label htmlFor={`file_matter_${serviceId}`} className="text-sm font-medium text-gray-900">
+        <label htmlFor={`file_matter_${serviceId}`} className="text-15 font-medium text-ink">
           Our matter <span className="text-red-700">*</span>
         </label>
         <select
@@ -114,23 +114,23 @@ export function FileServiceForm({
         </select>
       </div>
       <div>
-        <label htmlFor={`file_due_${serviceId}`} className="text-sm font-medium text-gray-900">Response falls due</label>
+        <label htmlFor={`file_due_${serviceId}`} className="text-15 font-medium text-ink">Response falls due</label>
         <input
           id={`file_due_${serviceId}`} type="date" value={dueOn}
           onChange={(e) => setDueOn(e.target.value)} className={field}
         />
-        <p className="mt-1 text-xs text-gray-500">
+        <p className="mt-1 text-13 text-ink-muted">
           The day your reply, counter-affidavit or defence is due. It goes into the diary below, and turns red when it passes.
         </p>
       </div>
       <div>
-        <label htmlFor={`file_note_${serviceId}`} className="text-sm font-medium text-gray-900">Note for the file</label>
+        <label htmlFor={`file_note_${serviceId}`} className="text-15 font-medium text-ink">Note for the file</label>
         <textarea
           id={`file_note_${serviceId}`} rows={2} maxLength={2000} value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Counter-affidavit and written address to be settled by the SAN." className={field}
         />
-        <p className="mt-1 text-xs text-gray-500">Filed as an internal entry on your matter. The firm that served it never sees this.</p>
+        <p className="mt-1 text-13 text-ink-muted">Filed as an internal entry on your matter. The firm that served it never sees this.</p>
       </div>
       <div className="flex flex-wrap gap-2">
         <Button size="md" disabled={pending} onClick={submit}>{pending ? "Filing…" : "File it"}</Button>
@@ -152,7 +152,7 @@ export function OpenProcessButton({
   const [busy, setBusy] = useState(false);
 
   if (!versionId) {
-    return <p className="text-xs text-gray-500">No file was attached to this service record.</p>;
+    return <p className="text-13 text-ink-muted">No file was attached to this service record.</p>;
   }
 
   async function open() {
@@ -189,14 +189,14 @@ export function OpenProcessButton({
         {busy ? "Opening…" : "Open the process"}
       </Button>
       {url && (
-        <p className="text-sm">
+        <p className="text-15">
           <a href={url} target="_blank" rel="noopener noreferrer" className="text-brand underline">
             Open {documentName} ↗
           </a>{" "}
-          <span className="text-xs text-gray-500">— the link lasts two minutes.</span>
+          <span className="text-13 text-ink-muted">— the link lasts two minutes.</span>
         </p>
       )}
-      {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
+      {error && <p role="alert" className="text-15 text-red-700">{error}</p>}
     </div>
   );
 }
@@ -231,7 +231,7 @@ export function RevokeServiceForm({ serviceId }: { serviceId: string }) {
   return (
     <div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3">
       {error && <Alert kind="error" title="The database refused this">{error}</Alert>}
-      <label htmlFor={`revoke_${serviceId}`} className="text-sm font-medium text-red-900">
+      <label htmlFor={`revoke_${serviceId}`} className="text-15 font-medium text-red-900">
         Why is it being withdrawn? <span className="text-red-700">*</span>
       </label>
       <textarea
@@ -239,7 +239,7 @@ export function RevokeServiceForm({ serviceId }: { serviceId: string }) {
         onChange={(e) => setReason(e.target.value)}
         placeholder="Served on the wrong counsel — the correct process follows." className={field}
       />
-      <p className="text-xs text-red-900">
+      <p className="text-13 text-red-900">
         The other firm loses sight of the process at once and it leaves its inbox. The withdrawal is recorded on your
         matter as an internal entry, with your reason.
       </p>

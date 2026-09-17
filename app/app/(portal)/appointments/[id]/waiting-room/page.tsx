@@ -45,11 +45,11 @@ export default async function WaitingRoomPage({ params }: { params: Promise<{ id
       <ScreenHeader back={`/app/appointments/${appt.id}`} backLabel={`Back to appointment ${appt.reference}`} title="Waiting room" />
       <Screen>
         <header>
-          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">{svc?.name ?? "Consultation"}</h1>
-          <dl className="mt-2.5 space-y-1.5 text-[13px]">
-            <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-gray-500">With</dt><dd className="font-semibold text-gray-900">{lawyerName}{law?.title ? ` · ${law.title}` : ""}</dd></div>
-            <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-gray-500">When</dt><dd className="font-semibold text-gray-900">{when} <span className="font-normal text-gray-500">({tz})</span></dd></div>
-            {svc && <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-gray-500">Length</dt><dd className="font-semibold text-gray-900">{svc.duration_min} minutes</dd></div>}
+          <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand">{svc?.name ?? "Consultation"}</h1>
+          <dl className="mt-2.5 space-y-1.5 text-13">
+            <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-ink-muted">With</dt><dd className="font-semibold text-ink">{lawyerName}{law?.title ? ` · ${law.title}` : ""}</dd></div>
+            <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-ink-muted">When</dt><dd className="font-semibold text-ink">{when} <span className="font-normal text-ink-muted">({tz})</span></dd></div>
+            {svc && <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-ink-muted">Length</dt><dd className="font-semibold text-ink">{svc.duration_min} minutes</dd></div>}
           </dl>
         </header>
 
@@ -69,7 +69,7 @@ export default async function WaitingRoomPage({ params }: { params: Promise<{ id
             doneHref={`/app/appointments/${appt.id}`}
           />
         )}
-        <p className="text-[11.5px] leading-relaxed text-gray-500">
+        <p className="text-11 leading-relaxed text-ink-muted">
           Consultations are private and are not recorded. Use headphones in a quiet place if you can.
         </p>
       </Screen>

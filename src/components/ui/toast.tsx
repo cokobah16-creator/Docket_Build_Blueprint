@@ -65,7 +65,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               PILL_TONES[TOAST_TONES[t.kind].tone],
             )}
           >
-            <Icon name={TOAST_TONES[t.kind].icon} size={16} strokeWidth={2.2} className="shrink-0" />
+            <Icon name={TOAST_TONES[t.kind].icon} size={17} strokeWidth={2.2} className="shrink-0" />
             {t.message}
           </div>
         ))}

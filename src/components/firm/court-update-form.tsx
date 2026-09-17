@@ -30,7 +30,7 @@ import { cn } from "@/lib/cn";
 import { ADJOURNMENT_INSTANCES } from "@/lib/nigeria";
 import { COURT_OUTCOMES, PURPOSE_KINDS, type CourtRow } from "@/lib/db/types";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const PURPOSE_LABELS: Record<string, string> = {
   mention: "Mention",
@@ -83,8 +83,8 @@ function dayLabel(ymd: string): string {
 
 function chipClass(active: boolean): string {
   return cn(
-    "min-h-[44px] rounded-xl border px-3 py-2 text-sm font-medium transition",
-    active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-800 hover:border-brand",
+    "min-h-[44px] rounded-xl border px-3 py-2 text-15 font-medium transition",
+    active ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink hover:border-brand",
   );
 }
 
@@ -340,7 +340,7 @@ export function CourtUpdateForm({
       )}
 
       <fieldset>
-        <legend className="text-sm font-medium text-gray-900">What happened in court?</legend>
+        <legend className="text-15 font-medium text-ink">What happened in court?</legend>
         <div className="mt-2 grid grid-cols-2 gap-2">
           {COURT_OUTCOMES.map((o, i) => (
             <button
@@ -359,18 +359,18 @@ export function CourtUpdateForm({
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[10rem] flex-1">
-          <label htmlFor={`cu_sat_${uid}`} className="text-sm font-medium text-gray-900">Date of the sitting</label>
+          <label htmlFor={`cu_sat_${uid}`} className="text-15 font-medium text-ink">Date of the sitting</label>
           <input
             id={`cu_sat_${uid}`} type="date" value={satOn} max={today}
             onChange={(e) => setSatOn(e.target.value)} className={field}
           />
         </div>
-        <p className="pb-2 text-xs text-gray-500">Times in {timezone}</p>
+        <p className="pb-2 text-13 text-ink-muted">Times in {timezone}</p>
       </div>
 
       {outcome === "adjourned" && (
         <fieldset>
-          <legend className="text-sm font-medium text-gray-900">At whose instance?</legend>
+          <legend className="text-15 font-medium text-ink">At whose instance?</legend>
           <div className="mt-2 flex flex-wrap gap-2">
             {ADJOURNMENT_INSTANCES.map((who) => (
               <button
@@ -401,10 +401,10 @@ export function CourtUpdateForm({
         </fieldset>
       )}
 
-      <div className="space-y-2 rounded-lg border border-gray-200 p-3">
+      <div className="space-y-2 rounded-lg border border-hairline p-3">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[9rem] flex-1">
-            <label htmlFor={`cu_next_${uid}`} className="text-sm font-medium text-gray-900">
+            <label htmlFor={`cu_next_${uid}`} className="text-15 font-medium text-ink">
               Next date {needsNextDate && <span className="text-red-700">*</span>}
             </label>
             <input
@@ -413,7 +413,7 @@ export function CourtUpdateForm({
             />
           </div>
           <div className="w-28">
-            <label htmlFor={`cu_time_${uid}`} className="text-sm font-medium text-gray-900">Time</label>
+            <label htmlFor={`cu_time_${uid}`} className="text-15 font-medium text-ink">Time</label>
             <input
               id={`cu_time_${uid}`} type="time" value={nextTime}
               onChange={(e) => setNextTime(e.target.value)} className={field}
@@ -422,11 +422,11 @@ export function CourtUpdateForm({
         </div>
 
         {missingNextDate && (
-          <p role="alert" className="text-sm text-red-700">A hearing notice fixes a date — give the next date before you post.</p>
+          <p role="alert" className="text-15 text-red-700">A hearing notice fixes a date — give the next date before you post.</p>
         )}
-        {checking && <p className="text-xs text-gray-500">Checking the court calendar…</p>}
+        {checking && <p className="text-13 text-ink-muted">Checking the court calendar…</p>}
         {check?.error && !checking && (
-          <p className="text-xs text-gray-500">
+          <p className="text-13 text-ink-muted">
             The court calendar could not be read here. The database still refuses a non-sitting date when you post.
           </p>
         )}
@@ -441,13 +441,13 @@ export function CourtUpdateForm({
               />
               The vacation judge will sit on this date
             </label>
-            {blockedByCalendar && <p className="mt-1 text-xs">Until you confirm that, the database will refuse this date.</p>}
+            {blockedByCalendar && <p className="mt-1 text-13">Until you confirm that, the database will refuse this date.</p>}
           </Alert>
         )}
 
         {nextDate && (
           <>
-            <p className="text-sm font-medium text-gray-900">Fixed for</p>
+            <p className="text-15 font-medium text-ink">Fixed for</p>
             <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
               {PURPOSE_KINDS.map((kind) => (
                 <button
@@ -473,8 +473,8 @@ export function CourtUpdateForm({
       </div>
 
       <div>
-        <label htmlFor={`cu_note_${uid}`} className="text-sm font-medium text-gray-900">Note to the client</label>
-        <p className="text-xs text-gray-500">Plain language. This is what your client reads in their app.</p>
+        <label htmlFor={`cu_note_${uid}`} className="text-15 font-medium text-ink">Note to the client</label>
+        <p className="text-13 text-ink-muted">Plain language. This is what your client reads in their app.</p>
         <textarea
           id={`cu_note_${uid}`} rows={3} maxLength={4000} value={noteToClient}
           onChange={(e) => setNoteToClient(e.target.value)} className={field}
@@ -484,10 +484,10 @@ export function CourtUpdateForm({
       <ClientUpdateFields idPrefix={`cu_${uid}`} value={shape} onChange={setShape} />
 
       <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
-        <label htmlFor={`cu_internal_${uid}`} className="text-sm font-medium text-amber-900">
+        <label htmlFor={`cu_internal_${uid}`} className="text-15 font-medium text-amber-900">
           Internal note (never shown to the client)
         </label>
-        <p className="text-xs text-amber-800">Filed as an internal timeline entry. Clients never see internal entries.</p>
+        <p className="text-13 text-amber-800">Filed as an internal timeline entry. Clients never see internal entries.</p>
         <textarea
           id={`cu_internal_${uid}`} rows={3} maxLength={8000} value={internalNote}
           onChange={(e) => setInternalNote(e.target.value)} className={field}
@@ -499,15 +499,15 @@ export function CourtUpdateForm({
           type="button"
           onClick={() => setShowMore((v) => !v)}
           aria-expanded={showMore}
-          className="min-h-[44px] text-sm font-medium text-brand underline"
+          className="min-h-[44px] text-15 font-medium text-brand underline"
         >
           {showMore ? "Hide court, judge and courtroom" : "More — court, judge, courtroom"}
         </button>
         {!showMore && currentCourtName && (
-          <p className="text-xs text-gray-500">Filed against {currentCourtName}{judicialDivision ? `, ${judicialDivision}` : ""}.</p>
+          <p className="text-13 text-ink-muted">Filed against {currentCourtName}{judicialDivision ? `, ${judicialDivision}` : ""}.</p>
         )}
         {showMore && (
-          <div className="mt-3 space-y-3 rounded-lg border border-gray-200 p-3">
+          <div className="mt-3 space-y-3 rounded-lg border border-hairline p-3">
             <CourtPicker
               courts={courts}
               firmId={firmId}
@@ -516,14 +516,14 @@ export function CourtUpdateForm({
               label="Court"
             />
             <div>
-              <label htmlFor={`cu_division_${uid}`} className="text-sm font-medium text-gray-900">Judicial division</label>
+              <label htmlFor={`cu_division_${uid}`} className="text-15 font-medium text-ink">Judicial division</label>
               <input
                 id={`cu_division_${uid}`} type="text" maxLength={120} value={division}
                 onChange={(e) => setDivision(e.target.value)} placeholder="Ikeja" className={field}
               />
             </div>
             <div>
-              <label htmlFor={`cu_courtname_${uid}`} className="text-sm font-medium text-gray-900">
+              <label htmlFor={`cu_courtname_${uid}`} className="text-15 font-medium text-ink">
                 Court, as it should read on the update
               </label>
               <input
@@ -534,14 +534,14 @@ export function CourtUpdateForm({
             </div>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label htmlFor={`cu_judge_${uid}`} className="text-sm font-medium text-gray-900">Judge</label>
+                <label htmlFor={`cu_judge_${uid}`} className="text-15 font-medium text-ink">Judge</label>
                 <input
                   id={`cu_judge_${uid}`} type="text" maxLength={160} value={judge}
                   onChange={(e) => setJudge(e.target.value)} placeholder="Hon. Justice…" className={field}
                 />
               </div>
               <div>
-                <label htmlFor={`cu_room_${uid}`} className="text-sm font-medium text-gray-900">Courtroom</label>
+                <label htmlFor={`cu_room_${uid}`} className="text-15 font-medium text-ink">Courtroom</label>
                 <input
                   id={`cu_room_${uid}`} type="text" maxLength={80} value={courtroom}
                   onChange={(e) => setCourtroom(e.target.value)} placeholder="Court 4" className={field}
@@ -556,9 +556,9 @@ export function CourtUpdateForm({
         <Button type="submit" size="lg" className="w-full" disabled={!canSubmit}>
           {pending ? "Posting…" : "Post the update"}
         </Button>
-        {!outcome && <p className="text-center text-xs text-gray-500">Tap what happened in court to begin.</p>}
+        {!outcome && <p className="text-center text-13 text-ink-muted">Tap what happened in court to begin.</p>}
         {outcome && (
-          <p className="text-center text-xs text-gray-500">
+          <p className="text-center text-13 text-ink-muted">
             The client sees the update and your note to them, never the internal note.
           </p>
         )}

@@ -19,8 +19,8 @@ export const metadata = { title: "Set a new password" };
 export default function SetPasswordPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
-      <h1 className="font-heading text-2xl font-semibold text-brand">Set a new password</h1>
-      <p className="mt-1 text-sm text-gray-600">
+      <h1 className="font-heading text-26 font-semibold text-brand">Set a new password</h1>
+      <p className="mt-1 text-15 text-ink-muted">
         This link signed you in once. Choose a password and it will be replaced.
       </p>
       <div className="mt-4">

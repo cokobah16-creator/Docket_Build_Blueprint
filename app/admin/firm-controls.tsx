@@ -24,9 +24,9 @@ import {
 } from "./actions";
 
 const fieldClass =
-  "min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900";
+  "min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-15 text-ink";
 const buttonClass =
-  "min-h-[44px] w-full rounded-lg px-4 py-2.5 text-sm font-medium disabled:opacity-50";
+  "min-h-[44px] w-full rounded-lg px-4 py-2.5 text-15 font-medium disabled:opacity-50";
 
 function Result({ state }: { state: FirmWriteState | DomainRequestState }) {
   return (
@@ -44,7 +44,7 @@ export function FirmPlanControl({ firmId, plan }: { firmId: string; plan: string
   return (
     <form action={action} className="space-y-2">
       <input type="hidden" name="firmId" value={firmId} />
-      <label className="block text-xs font-medium text-gray-600" htmlFor={`plan-${firmId}`}>
+      <label className="block text-13 font-medium text-ink-muted" htmlFor={`plan-${firmId}`}>
         Plan
       </label>
       <select id={`plan-${firmId}`} name="plan" defaultValue={plan} className={fieldClass}>
@@ -82,7 +82,7 @@ export function FirmDomainControl({
     <form action={action} className="space-y-2">
       <input type="hidden" name="firmId" value={firmId} />
       <input type="hidden" name="currentDomain" value={currentDomain ?? ""} />
-      <label className="block text-xs font-medium text-gray-600" htmlFor={`domain-${firmId}`}>
+      <label className="block text-13 font-medium text-ink-muted" htmlFor={`domain-${firmId}`}>
         Custom domain
       </label>
       <input
@@ -95,7 +95,7 @@ export function FirmDomainControl({
         placeholder="chambers.example.ng"
         className={fieldClass}
       />
-      <p className="text-xs text-gray-500">
+      <p className="text-13 text-ink-muted">
         Vercel is asked to serve it first; only then is it written to the firm. Clear the box to
         unmap — the firm falls back to its Docket address.
       </p>
@@ -106,7 +106,7 @@ export function FirmDomainControl({
         aria-label="Why this domain is changing"
         className={fieldClass}
       />
-      <label className="flex items-start gap-2 text-xs text-gray-600">
+      <label className="flex items-start gap-2 text-13 text-ink-muted">
         <input type="checkbox" name="force" value="on" className="mt-1 h-4 w-4" />
         <span>
           {providerConfigured
@@ -149,15 +149,15 @@ export function DomainRequestControls({
     <div className="space-y-4">
       <form action={startAction} className="space-y-2">
         <input type="hidden" name="requestId" value={requestId} />
-        <p className="text-xs font-medium text-gray-600">Step 1 — ask Vercel to serve it</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-13 font-medium text-ink-muted">Step 1 — ask Vercel to serve it</p>
+        <p className="text-13 text-ink-muted">
           Nothing about the firm changes yet. Vercel returns the records the firm has to add at
           its registrar, and they are saved here so you can pass them on.
         </p>
         <button
           type="submit"
           disabled={starting}
-          className={`${buttonClass} border border-gray-300 bg-white text-brand`}
+          className={`${buttonClass} border border-edge bg-raised text-brand`}
         >
           {starting ? "Asking Vercel…" : status === "verifying" ? `Ask Vercel about ${hostname} again` : `Add ${hostname} to Vercel`}
         </button>
@@ -166,8 +166,8 @@ export function DomainRequestControls({
 
       <form action={liveAction} className="space-y-2">
         <input type="hidden" name="requestId" value={requestId} />
-        <p className="text-xs font-medium text-gray-600">Step 2 — map it and go live</p>
-        <p className="text-xs text-gray-500">
+        <p className="text-13 font-medium text-ink-muted">Step 2 — map it and go live</p>
+        <p className="text-13 text-ink-muted">
           Vercel is checked again. Only if it confirms the host is written to the firm, and only
           then is the request marked live.
         </p>
@@ -178,7 +178,7 @@ export function DomainRequestControls({
           aria-label="Note for the firm"
           className={fieldClass}
         />
-        <label className="flex items-start gap-2 text-xs text-gray-600">
+        <label className="flex items-start gap-2 text-13 text-ink-muted">
           <input type="checkbox" name="force" value="on" className="mt-1 h-4 w-4" />
           <span>
             Go live anyway — Vercel has not verified it, DNS has not moved yet, or Vercel is not
@@ -193,7 +193,7 @@ export function DomainRequestControls({
 
       <form action={rejectAction} className="space-y-2">
         <input type="hidden" name="requestId" value={requestId} />
-        <p className="text-xs font-medium text-gray-600">Or turn it down</p>
+        <p className="text-13 font-medium text-ink-muted">Or turn it down</p>
         <input
           name="note"
           maxLength={500}
@@ -205,7 +205,7 @@ export function DomainRequestControls({
         <button
           type="submit"
           disabled={rejecting}
-          className={`${buttonClass} border border-red-200 bg-white text-red-700`}
+          className={`${buttonClass} border border-red-200 bg-raised text-red-700`}
         >
           {rejecting ? "Working…" : "Turn it down"}
         </button>

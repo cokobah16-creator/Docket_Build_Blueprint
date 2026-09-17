@@ -89,18 +89,18 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Me &amp; the firm</h1>
+      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Me &amp; the firm</h1>
 
-      <div className="flex items-center gap-3.5 rounded-card border border-[#DDD9D2] bg-white p-[15px]">
-        <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-[10px] bg-[#141414] font-heading text-[17px] font-bold text-white">
+      <div className="flex items-center gap-3.5 rounded-card border border-[#DDD9D2] bg-raised p-[15px]">
+        <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-control bg-[#141414] font-heading text-17 font-bold text-white">
           {initials}
         </span>
         <div className="min-w-0">
-          <p className="text-[15px] font-bold text-[#141414]">{name}</p>
-          <p className="mt-0.5 text-xs text-[#57534E]">
+          <p className="text-15 font-bold text-[#141414]">{name}</p>
+          <p className="mt-0.5 text-13 text-[#57534E]">
             {me?.title ?? ctx.role} · {ctx.firmName}
           </p>
-          {me?.scn && <p className="mt-0.5 font-mono text-[11.5px] text-[#57534E]">{me.scn}</p>}
+          {me?.scn && <p className="mt-0.5 font-mono text-11 text-[#57534E]">{me.scn}</p>}
         </div>
       </div>
 
@@ -109,8 +109,8 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
         <div className="flex flex-col gap-3 px-[15px] py-3.5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-[#141414]">Two-factor</p>
-              <p className="mt-0.5 text-[11.5px] leading-[1.45] text-[#57534E]">
+              <p className="text-13 font-semibold text-[#141414]">Two-factor</p>
+              <p className="mt-0.5 text-11 leading-[1.45] text-[#57534E]">
                 Required before any write. You would not be reading this screen without it.
               </p>
             </div>
@@ -137,25 +137,25 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
             <li key={l.href}>
               <Link
                 href={l.href}
-                className="flex items-center justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0 hover:bg-gray-50"
+                className="flex items-center justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0 hover:bg-sunken"
               >
                 <span className="min-w-0">
-                  <span className="block text-[13.5px] font-semibold text-[#141414]">{l.label}</span>
-                  <span className="mt-0.5 block text-[11.5px] text-[#57534E]">{l.hint}</span>
+                  <span className="block text-13 font-semibold text-[#141414]">{l.label}</span>
+                  <span className="mt-0.5 block text-11 text-[#57534E]">{l.hint}</span>
                 </span>
                 <span className="flex shrink-0 items-center gap-2.5">
                   {l.count !== null && l.count > 0 && (
                     <span
                       className={
                         l.urgent
-                          ? "grid h-[22px] min-w-[22px] place-items-center rounded-full bg-[#FFFAEB] px-1.5 text-[11px] font-bold text-[#92400E]"
-                          : "grid h-[22px] min-w-[22px] place-items-center rounded-full bg-[#F0EEEA] px-1.5 text-[11px] font-bold text-[#57534E]"
+                          ? "grid h-[22px] min-w-[22px] place-items-center rounded-full bg-[#FFFAEB] px-1.5 text-11 font-bold text-[#92400E]"
+                          : "grid h-[22px] min-w-[22px] place-items-center rounded-full bg-[#F0EEEA] px-1.5 text-11 font-bold text-[#57534E]"
                       }
                     >
                       {l.count}
                     </span>
                   )}
-                  <Icon name="chevron-right" size={16} strokeWidth={2} className="text-gray-500" />
+                  <Icon name="chevron-right" size={16} strokeWidth={2} className="text-ink-muted" />
                 </span>
               </Link>
             </li>
@@ -163,9 +163,9 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
         </ul>
       </Card>
 
-      <div className="rounded-card border border-[#DDD9D2] bg-white px-[15px] py-3.5">
-        <p className="text-[11px] uppercase tracking-[0.06em] text-[#57534E]">This phone is a working tool</p>
-        <p className="mt-1.5 text-xs leading-[1.55] text-[#57534E]">
+      <div className="rounded-card border border-[#DDD9D2] bg-raised px-[15px] py-3.5">
+        <p className="text-11 uppercase tracking-[0.06em] text-[#57534E]">This phone is a working tool</p>
+        <p className="mt-1.5 text-13 leading-[1.55] text-[#57534E]">
           The console wears no firm&apos;s colours — those belong to the client app. Colour here means
           one thing: something is late, unpaid, or waiting on you.
         </p>

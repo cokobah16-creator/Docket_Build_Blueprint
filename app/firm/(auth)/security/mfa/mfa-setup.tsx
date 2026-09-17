@@ -124,23 +124,23 @@ export function MfaSetup({ next }: { next?: string | null }) {
       <CardBody className="space-y-4">
         {error && <Alert kind="error">{error}</Alert>}
 
-        {stage === "loading" && <p className="text-sm text-gray-600">Preparing…</p>}
+        {stage === "loading" && <p className="text-15 text-ink-muted">Preparing…</p>}
 
         {stage === "enrol" && (
           <>
-            <p className="text-sm text-gray-700">
+            <p className="text-15 text-ink">
               Scan this QR code with an authenticator app (Google
               Authenticator, 1Password, Authy…), then enter the 6-digit code.
             </p>
             {qrCode && (
-              <div className="flex justify-center rounded-lg border border-gray-200 bg-white p-4">
+              <div className="flex justify-center rounded-lg border border-hairline bg-raised p-4">
                 {/* Supabase returns the QR as an inline SVG data URI */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={qrCode} alt="TOTP enrolment QR code" width={176} height={176} />
               </div>
             )}
             {secret && (
-              <p className="break-all text-xs text-gray-500">
+              <p className="break-all text-13 text-ink-muted">
                 Can&apos;t scan? Enter this secret manually: <code>{secret}</code>
               </p>
             )}

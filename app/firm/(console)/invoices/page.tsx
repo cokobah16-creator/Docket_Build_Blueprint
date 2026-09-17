@@ -191,8 +191,8 @@ export default async function FirmInvoicesPage({
 
   const chipClass = (active: boolean) =>
     cn(
-      "flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-sm",
-      active ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+      "flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-15",
+      active ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink hover:border-brand",
     );
 
   const tiles = overview
@@ -208,14 +208,14 @@ export default async function FirmInvoicesPage({
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Invoices</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Invoices</h1>
+          <p className="text-15 text-ink-muted">
             {ctx.firmName} · fees settle straight to the firm&rsquo;s own account · times in {tz}
           </p>
         </div>
         <Link
           href={raiseHref}
-          className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+          className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
         >
           Raise an invoice
         </Link>
@@ -224,10 +224,10 @@ export default async function FirmInvoicesPage({
       {overview ? (
         <section aria-label="Money totals" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {tiles.map((t) => (
-            <div key={t.label} className="rounded-card border border-gray-200 bg-white p-4 shadow-sm">
-              <p className="text-xs uppercase tracking-wide text-gray-500">{t.label}</p>
-              <p className="mt-1 font-heading text-xl font-semibold text-brand">{t.value}</p>
-              <p className="mt-1 text-xs text-gray-500">{t.hint}</p>
+            <div key={t.label} className="rounded-card border border-hairline bg-raised p-4 shadow-sm">
+              <p className="text-13 uppercase tracking-wide text-ink-muted">{t.label}</p>
+              <p className="mt-1 font-heading text-21 font-semibold text-brand">{t.value}</p>
+              <p className="mt-1 text-13 text-ink-muted">{t.hint}</p>
             </div>
           ))}
         </section>
@@ -261,7 +261,7 @@ export default async function FirmInvoicesPage({
       <Card>
         <CardHeader
           title={view === "all" ? `All invoices (${matching.length})` : `${VIEWS.find((v) => v[0] === view)?.[1]} (${matching.length})`}
-          action={<Link href={raiseHref} className="text-sm text-brand underline">Raise an invoice →</Link>}
+          action={<Link href={raiseHref} className="text-15 text-brand underline">Raise an invoice →</Link>}
         />
 
         {shown.length === 0 ? (
@@ -272,7 +272,7 @@ export default async function FirmInvoicesPage({
               action={
                 <Link
                   href={raiseHref}
-                  className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+                  className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
                 >
                   Raise an invoice
                 </Link>
@@ -294,24 +294,24 @@ export default async function FirmInvoicesPage({
                   ? "A paid invoice becomes the client's receipt, and its PDF is theirs to download."
                   : "Every invoice the firm has raised is under All."
               }
-              action={<Link href={query({ view: null })} className="text-sm text-brand underline">Show all invoices</Link>}
+              action={<Link href={query({ view: null })} className="text-15 text-brand underline">Show all invoices</Link>}
             />
           )
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {shown.map((inv) => {
               const outstanding = outstandingOf(inv);
               const overdue = isOverdue(inv);
               const owing = isOwing(inv);
               return (
                 <li key={inv.id}>
-                  <Link href={detailHref(inv.id)} className="block px-5 py-4 hover:bg-gray-50">
+                  <Link href={detailHref(inv.id)} className="block px-5 py-4 hover:bg-sunken">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-900">
+                        <p className="text-15 font-medium text-ink">
                           {inv.number} · {inv.client_name ?? "Client"}
                         </p>
-                        <p className="mt-0.5 text-xs text-gray-600">
+                        <p className="mt-0.5 text-13 text-ink-muted">
                           {inv.matter_reference
                             ? `${inv.matter_reference}${inv.matter_title ? ` · ${inv.matter_title}` : ""}`
                             : inv.appointment_id
@@ -320,34 +320,34 @@ export default async function FirmInvoicesPage({
                         </p>
                       </div>
                       <div className="shrink-0 text-right">
-                        <p className="text-sm font-semibold text-gray-900">
+                        <p className="text-15 font-semibold text-ink">
                           {formatMoneyMinor(Number(inv.total_minor), inv.currency)}
                         </p>
                         {owing && (
-                          <p className={cn("text-xs font-medium", overdue ? "text-red-700" : "text-amber-800")}>
+                          <p className={cn("text-13 font-medium", overdue ? "text-red-700" : "text-amber-800")}>
                             {formatMoneyMinor(outstanding, inv.currency)} outstanding
                           </p>
                         )}
                         {inv.status === "paid" && (
-                          <p className="text-xs text-emerald-800">Paid in full</p>
+                          <p className="text-13 text-emerald-800">Paid in full</p>
                         )}
                       </div>
                     </div>
 
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <StatusPill status={inv.status as Status} />
-                      <span className="text-xs text-gray-600">
+                      <span className="text-13 text-ink-muted">
                         {inv.issued_at
                           ? `Issued ${formatWhen(inv.issued_at, tz, { dateStyle: "medium" })}`
                           : `Raised ${formatWhen(inv.created_at, tz, { dateStyle: "medium" })} · not issued`}
                       </span>
                       {inv.due_at && (
-                        <span className={cn("text-xs", overdue ? "font-semibold text-red-700" : "text-gray-600")}>
+                        <span className={cn("text-13", overdue ? "font-semibold text-red-700" : "text-ink-muted")}>
                           {overdue ? "was due " : "due "}
                           {dayLabel(inv.due_at)}
                         </span>
                       )}
-                      {!inv.due_at && owing && <span className="text-xs text-gray-500">no due date</span>}
+                      {!inv.due_at && owing && <span className="text-13 text-ink-muted">no due date</span>}
                     </div>
                   </Link>
                 </li>
@@ -357,7 +357,7 @@ export default async function FirmInvoicesPage({
         )}
 
         {shown.length > 0 && (
-          <CardBody className="border-t border-gray-100 text-xs text-gray-500">
+          <CardBody className="border-t border-hairline text-13 text-ink-muted">
             <p>
               Listed: {moneyLabel(shownTotals) || formatMoneyMinor(0, firmCurrency)} billed
               {shownOutstanding.size > 0 ? `, of which ${moneyLabel(shownOutstanding)} is outstanding` : ", none of it outstanding"}.

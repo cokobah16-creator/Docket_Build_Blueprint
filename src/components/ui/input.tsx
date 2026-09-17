@@ -137,7 +137,7 @@ const focusRing =
  */
 export function choiceCardClasses(selected: boolean, className?: string): string {
   return cn(
-    "block w-full cursor-pointer rounded-control border bg-raised px-[15px] py-3.5 text-left transition duration-fast",
+    "block w-full cursor-pointer rounded-card border bg-raised px-[15px] py-3.5 text-left transition duration-fast",
     focusRing,
     // The inset ring is the firm's own colour rather than an elevation token:
     // it is what marks the chosen card, so it must not flatten into the

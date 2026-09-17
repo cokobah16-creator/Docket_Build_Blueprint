@@ -28,7 +28,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { MATTER_TYPES, type CourtRow, type MatterStatus } from "@/lib/db/types";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const TYPE_LABELS: Record<string, string> = { ip: "Intellectual property", debt_recovery: "Debt recovery" };
 function typeLabel(type: string): string {
@@ -301,7 +301,7 @@ export function NewMatterForm({
           <Card>
             <CardHeader title="Send the client their link" />
             <CardBody className="space-y-3">
-              <p className="text-sm text-gray-600">
+              <p className="text-15 text-ink-muted">
                 This link signs the client in to their own app and puts them on this matter. It lasts until{" "}
                 {invite.expiresAt
                   ? new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone }).format(new Date(invite.expiresAt))
@@ -314,7 +314,7 @@ export function NewMatterForm({
                   value={link}
                   aria-label="Invitation link"
                   onFocus={(e) => e.currentTarget.select()}
-                  className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800"
+                  className="min-w-0 flex-1 rounded-lg border border-edge bg-sunken px-3 py-2 text-base text-ink"
                 />
                 <Button
                   type="button"
@@ -337,7 +337,7 @@ export function NewMatterForm({
                     href={whatsapp}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+                    className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
                   >
                     Send on WhatsApp
                   </a>
@@ -345,14 +345,14 @@ export function NewMatterForm({
                 {mail && (
                   <a
                     href={mail}
-                    className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
+                    className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:bg-hover"
                   >
                     Send by email
                   </a>
                 )}
               </div>
               {!whatsapp && !mail && (
-                <p className="text-sm text-gray-600">Copy the link and send it however the client prefers.</p>
+                <p className="text-15 text-ink-muted">Copy the link and send it however the client prefers.</p>
               )}
             </CardBody>
           </Card>
@@ -361,13 +361,13 @@ export function NewMatterForm({
         <div className="flex flex-wrap gap-3">
           <Link
             href={`/firm/matters/${opened.matterId}`}
-            className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+            className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
           >
             Open the matter
           </Link>
           <Link
             href="/firm/matters"
-            className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
+            className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:bg-hover"
           >
             Back to matters
           </Link>
@@ -385,10 +385,10 @@ export function NewMatterForm({
         <CardHeader title="The matter" />
         <CardBody className="space-y-4">
           <div>
-            <label htmlFor="title" className="text-sm font-medium text-gray-900">
+            <label htmlFor="title" className="text-15 font-medium text-ink">
               Working title <span className="text-red-700">*</span>
             </label>
-            <p className="text-xs text-gray-500">What your firm calls this file. The client sees it too.</p>
+            <p className="text-13 text-ink-muted">What your firm calls this file. The client sees it too.</p>
             <input
               id="title" type="text" required maxLength={200} value={title}
               onChange={(e) => setTitle(e.target.value)} className={field}
@@ -396,8 +396,8 @@ export function NewMatterForm({
           </div>
 
           <div>
-            <label htmlFor="cause_title" className="text-sm font-medium text-gray-900">Cause title</label>
-            <p className="text-xs text-gray-500">
+            <label htmlFor="cause_title" className="text-15 font-medium text-ink">Cause title</label>
+            <p className="text-13 text-ink-muted">
               The caption on the face of the process, for example <em>Okonkwo v Eze &amp; 3 Ors</em>. Leave it empty for non-contentious work.
             </p>
             <input
@@ -408,7 +408,7 @@ export function NewMatterForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="type" className="text-sm font-medium text-gray-900">
+              <label htmlFor="type" className="text-15 font-medium text-ink">
                 Type of matter <span className="text-red-700">*</span>
               </label>
               <select id="type" value={type} onChange={(e) => setType(e.target.value)} className={field}>
@@ -418,9 +418,9 @@ export function NewMatterForm({
               </select>
             </div>
             <div>
-              <label htmlFor="status" className="text-sm font-medium text-gray-900">Status</label>
+              <label htmlFor="status" className="text-15 font-medium text-ink">Status</label>
               {statuses.length === 0 ? (
-                <p className={cn(field, "text-gray-600")}>
+                <p className={cn(field, "text-ink-muted")}>
                   This firm has no matter statuses yet, so the matter opens without one.
                 </p>
               ) : (
@@ -434,8 +434,8 @@ export function NewMatterForm({
           </div>
 
           <div>
-            <label htmlFor="description" className="text-sm font-medium text-gray-900">What the matter is about</label>
-            <p className="text-xs text-gray-500">A short brief for whoever picks the file up. The client can read it.</p>
+            <label htmlFor="description" className="text-15 font-medium text-ink">What the matter is about</label>
+            <p className="text-13 text-ink-muted">A short brief for whoever picks the file up. The client can read it.</p>
             <textarea
               id="description" rows={4} maxLength={8000} value={description}
               onChange={(e) => setDescription(e.target.value)} className={field}
@@ -451,8 +451,8 @@ export function NewMatterForm({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="suit_number" className="text-sm font-medium text-gray-900">Suit number</label>
-              <p className="text-xs text-gray-500">
+              <label htmlFor="suit_number" className="text-15 font-medium text-ink">Suit number</label>
+              <p className="text-13 text-ink-muted">
                 {court?.suit_number_hint
                   ? `Suit numbers at this court read like ${court.suit_number_hint}.`
                   : "As the registry assigned it. Leave it empty until the process is filed."}
@@ -464,8 +464,8 @@ export function NewMatterForm({
               />
             </div>
             <div>
-              <label htmlFor="judicial_division" className="text-sm font-medium text-gray-900">Judicial division or district</label>
-              <p className="text-xs text-gray-500">Filled in from the court you chose; change it if the file sits elsewhere.</p>
+              <label htmlFor="judicial_division" className="text-15 font-medium text-ink">Judicial division or district</label>
+              <p className="text-13 text-ink-muted">Filled in from the court you chose; change it if the file sits elsewhere.</p>
               <input
                 id="judicial_division" type="text" maxLength={120} value={judicialDivision}
                 onChange={(e) => setJudicialDivision(e.target.value)} className={field}
@@ -485,8 +485,8 @@ export function NewMatterForm({
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label htmlFor="handling" className="text-sm font-medium text-gray-900">Conduct of the matter</label>
-                <p className="text-xs text-gray-500">Becomes the lead lawyer on the file.</p>
+                <label htmlFor="handling" className="text-15 font-medium text-ink">Conduct of the matter</label>
+                <p className="text-13 text-ink-muted">Becomes the lead lawyer on the file.</p>
                 <select id="handling" value={handlingLawyerId} onChange={(e) => setHandlingLawyerId(e.target.value)} className={field}>
                   <option value="">Me</option>
                   {staff.map((m) => (
@@ -495,8 +495,8 @@ export function NewMatterForm({
                 </select>
               </div>
               <div>
-                <label htmlFor="originating" className="text-sm font-medium text-gray-900">Originating lawyer</label>
-                <p className="text-xs text-gray-500">Who brought the client in. Feeds partner attribution.</p>
+                <label htmlFor="originating" className="text-15 font-medium text-ink">Originating lawyer</label>
+                <p className="text-13 text-ink-muted">Who brought the client in. Feeds partner attribution.</p>
                 <select id="originating" value={originatingLawyerId} onChange={(e) => setOriginatingLawyerId(e.target.value)} className={field}>
                   <option value="">Same as the lawyer with conduct</option>
                   {staff.map((m) => (
@@ -524,8 +524,8 @@ export function NewMatterForm({
                 onClick={() => { setClientMode(mode); setError(null); setCheck(null); }}
                 aria-pressed={clientMode === mode}
                 className={cn(
-                  "flex min-h-[44px] items-center rounded-full border px-4 text-sm",
-                  clientMode === mode ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700 hover:border-brand",
+                  "flex min-h-[44px] items-center rounded-full border px-4 text-15",
+                  clientMode === mode ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink hover:border-brand",
                 )}
               >
                 {label}
@@ -534,7 +534,7 @@ export function NewMatterForm({
           </div>
 
           {clientMode === "none" && (
-            <p className="text-sm text-gray-600">
+            <p className="text-15 text-ink-muted">
               The matter opens without a client. Nobody outside the firm can see it until you add one, and you can invite them at any time from the matter.
             </p>
           )}
@@ -542,8 +542,8 @@ export function NewMatterForm({
           {clientMode === "existing" && (
             <div className="space-y-3">
               <div>
-                <label htmlFor="client_query" className="text-sm font-medium text-gray-900">Find the client</label>
-                <p className="text-xs text-gray-500">
+                <label htmlFor="client_query" className="text-15 font-medium text-ink">Find the client</label>
+                <p className="text-13 text-ink-muted">
                   Searches the people your firm already deals with, by name, phone number or email address.
                 </p>
                 <div className="flex flex-wrap items-center gap-2">
@@ -562,12 +562,12 @@ export function NewMatterForm({
               {searchError && <Alert kind="error">{searchError}</Alert>}
 
               {client && (
-                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-hairline bg-sunken px-3 py-2">
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{client.full_name ?? "Client"}</p>
-                    <p className="text-xs text-gray-600">{[client.phone, client.email].filter(Boolean).join(" · ") || "No contact details on file"}</p>
+                    <p className="text-15 font-medium text-ink">{client.full_name ?? "Client"}</p>
+                    <p className="text-13 text-ink-muted">{[client.phone, client.email].filter(Boolean).join(" · ") || "No contact details on file"}</p>
                   </div>
-                  <button type="button" onClick={() => { setClient(null); setCheck(null); }} className="text-sm text-gray-600 underline">Change</button>
+                  <button type="button" onClick={() => { setClient(null); setCheck(null); }} className="text-15 text-ink-muted underline">Change</button>
                 </div>
               )}
 
@@ -578,10 +578,10 @@ export function NewMatterForm({
                       <button
                         type="button"
                         onClick={() => { setClient(p); setHits([]); setCheck(null); }}
-                        className="flex min-h-[44px] w-full flex-col justify-center rounded-lg border border-gray-200 px-3 py-2 text-left hover:border-brand"
+                        className="flex min-h-[44px] w-full flex-col justify-center rounded-lg border border-hairline px-3 py-2 text-left hover:border-brand"
                       >
-                        <span className="text-sm font-medium text-gray-900">{p.full_name ?? "Client"}</span>
-                        <span className="text-xs text-gray-500">{[p.phone, p.email].filter(Boolean).join(" · ") || "No contact details on file"}</span>
+                        <span className="text-15 font-medium text-ink">{p.full_name ?? "Client"}</span>
+                        <span className="text-13 text-ink-muted">{[p.phone, p.email].filter(Boolean).join(" · ") || "No contact details on file"}</span>
                       </button>
                     </li>
                   ))}
@@ -589,11 +589,11 @@ export function NewMatterForm({
               )}
 
               {!client && searched && hits.length === 0 && !searchError && (
-                <div className="rounded-lg border border-dashed border-gray-300 px-3 py-3">
-                  <p className="text-sm text-gray-700">
+                <div className="rounded-lg border border-dashed border-edge px-3 py-3">
+                  <p className="text-15 text-ink">
                     Nobody on your firm&rsquo;s books matches that. Only people who have booked a consultation or are already on a matter here can be found.
                   </p>
-                  <button type="button" onClick={() => setClientMode("invite")} className="mt-1 text-sm font-medium text-brand underline">
+                  <button type="button" onClick={() => setClientMode("invite")} className="mt-1 text-15 font-medium text-brand underline">
                     Invite them instead
                   </button>
                 </div>
@@ -601,8 +601,8 @@ export function NewMatterForm({
 
               {client && (
                 <div>
-                  <label htmlFor="note_to_client" className="text-sm font-medium text-gray-900">First update for the client</label>
-                  <p className="text-xs text-gray-500">
+                  <label htmlFor="note_to_client" className="text-15 font-medium text-ink">First update for the client</label>
+                  <p className="text-13 text-ink-muted">
                     Posted to their timeline as the matter opens. Leave it empty to send the standard wording.
                   </p>
                   <textarea
@@ -616,19 +616,19 @@ export function NewMatterForm({
 
           {clientMode === "invite" && (
             <div className="space-y-3">
-              <p className="text-sm text-gray-600">
+              <p className="text-15 text-ink-muted">
                 The invitation is created the moment the matter is opened. You then get a link to send over WhatsApp, SMS or email — nothing is sent automatically.
               </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
-                  <label htmlFor="invite_phone" className="text-sm font-medium text-gray-900">Phone number</label>
+                  <label htmlFor="invite_phone" className="text-15 font-medium text-ink">Phone number</label>
                   <input
                     id="invite_phone" type="tel" inputMode="tel" maxLength={40} value={invitePhone}
                     onChange={(e) => setInvitePhone(e.target.value)} placeholder="0803 000 0000" className={field}
                   />
                 </div>
                 <div>
-                  <label htmlFor="invite_email" className="text-sm font-medium text-gray-900">Email address</label>
+                  <label htmlFor="invite_email" className="text-15 font-medium text-ink">Email address</label>
                   <input
                     id="invite_email" type="email" inputMode="email" maxLength={200} value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)} className={field}
@@ -636,7 +636,7 @@ export function NewMatterForm({
                 </div>
               </div>
               <div>
-                <label htmlFor="invite_role" className="text-sm font-medium text-gray-900">They join as</label>
+                <label htmlFor="invite_role" className="text-15 font-medium text-ink">They join as</label>
                 <select
                   id="invite_role" value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value === "contact" ? "contact" : "client")}
@@ -655,8 +655,8 @@ export function NewMatterForm({
         <CardHeader title="The other side, and conflicts" />
         <CardBody className="space-y-4">
           <div>
-            <label htmlFor="other_side" className="text-sm font-medium text-gray-900">Who is on the other side</label>
-            <p className="text-xs text-gray-500">
+            <label htmlFor="other_side" className="text-15 font-medium text-ink">Who is on the other side</label>
+            <p className="text-13 text-ink-muted">
               One per line, as on the process. Other spellings after a slash, separated by commas:{" "}
               <em>Emeka Eze / E. Eze, Chief Eze</em>. Recorded on the matter; never shown to the client. Changing
               this, or the client, discards a check already run: the database admits only the names it searched.
@@ -664,8 +664,8 @@ export function NewMatterForm({
             <textarea id="other_side" rows={3} maxLength={4000} value={otherSide} onChange={(e) => { setOtherSide(e.target.value); setCheck(null); }} className={field} />
           </div>
           <div>
-            <label htmlFor="extra_names" className="text-sm font-medium text-gray-900">Also check</label>
-            <p className="text-xs text-gray-500">
+            <label htmlFor="extra_names" className="text-15 font-medium text-ink">Also check</label>
+            <p className="text-13 text-ink-muted">
               Anyone else the check should look for — a director, a spouse, a trading name — separated by commas.
               {clientMode === "invite" ? " The client you are inviting has no name on file yet, so type it here." : ""}
             </p>
@@ -673,12 +673,12 @@ export function NewMatterForm({
           </div>
 
           {conflictChecksRequired ? (
-            <p className="text-sm text-gray-700">
+            <p className="text-15 text-ink">
               This firm requires a cleared conflict check before a client is joined to a matter. Run it here and record your
               decision; the matter then opens on the client with the check attached.
             </p>
           ) : (
-            <p className="text-sm text-gray-600">
+            <p className="text-15 text-ink-muted">
               A check searches your firm&rsquo;s own register — its clients, the other sides it has recorded, cause titles — and
               records what it found and what you decided. It is optional for this firm, and it is never decided for you.
             </p>
@@ -689,7 +689,7 @@ export function NewMatterForm({
               {checking ? "Searching…" : check ? "Run the check again" : "Run the conflict check"}
             </Button>
             {check?.outcome && (
-              <span className="text-sm text-emerald-800">
+              <span className="text-15 text-emerald-800">
                 Recorded as {check.outcome === "clear" ? "clear" : check.outcome === "waived" ? "waived" : "a conflict"}.
               </span>
             )}
@@ -715,9 +715,9 @@ export function NewMatterForm({
         <Button type="submit" size="lg" disabled={busy} className="w-full sm:w-auto">
           {busy ? "Opening…" : "Open the matter"}
         </Button>
-        <Link href="/firm/matters" className="text-sm text-brand underline">Cancel</Link>
+        <Link href="/firm/matters" className="text-15 text-brand underline">Cancel</Link>
       </div>
-      <p className="text-xs text-gray-500">
+      <p className="text-13 text-ink-muted">
         The reference is minted by the database when the matter opens, so it always follows this firm&rsquo;s own numbering.
       </p>
     </form>

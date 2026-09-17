@@ -103,7 +103,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
     <>
       <Link
         href="/firm"
-        className="block truncate font-heading text-[15px] font-bold tracking-[-0.02em] text-[#141414]"
+        className="block truncate font-heading text-15 font-bold tracking-[-0.02em] text-[#141414]"
       >
         {firmName}
       </Link>
@@ -127,7 +127,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
    * in the console where the whole document has to be built again, so it is.
    */
   const switcher = others.length > 0 && (
-    <nav aria-label="Switch firm" className="text-[12px] leading-relaxed text-[#57534E]">
+    <nav aria-label="Switch firm" className="text-13 leading-relaxed text-[#57534E]">
       <span className="block">Switch to</span>
       {others.map((f) => (
         <a
@@ -142,7 +142,15 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
   );
 
   return (
-    <div style={CONSOLE_TOKENS} className="min-h-[100dvh] bg-brand-surface">
+    // Pinned light, and it has to be said out loud. This shell paints a light
+    // literal on its own wrapper, and the body behind it follows the reader's
+    // theme (app/globals.css) — so without this the gutter would be dark behind a
+    // cream console, which is the seam the body rule exists to close. The pin also
+    // keeps the theme's own neutrals light inside here, so an `ink` or a `hairline`
+    // in a console screen still reads against this cream rather than against a dark
+    // page that is not there. Docket's own consoles get a dark palette of their
+    // own; this is the honest statement that they have not got one yet.
+    <div data-theme-scope="light" style={CONSOLE_TOKENS} className="min-h-[100dvh] bg-brand-surface">
       <link rel="stylesheet" href={CONSOLE_FONTS} />
       {/* The offline shell for the console too: without it a dropped connection shows the browser's own error page. */}
       <ServiceWorkerRegistrar />
@@ -176,11 +184,11 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
           // The two links here are a name and a badge — small things to read,
           // but each is given the full 44px of height the bar can spare, so
           // they are ordinary targets rather than precision work.
-          <header className="sticky top-0 z-20 flex min-h-[52px] items-center justify-between gap-3 border-b border-[#E6E2DB] bg-white/[0.94] px-4 py-1 backdrop-blur-xl md:hidden">
+          <header className="sticky top-0 z-20 flex min-h-[52px] items-center justify-between gap-3 border-b border-[#E6E2DB] bg-raised/[0.94] px-4 py-1 backdrop-blur-xl md:hidden">
             <div className="flex min-w-0 items-center gap-2">
               <Link
                 href="/firm"
-                className="flex min-h-11 min-w-0 items-center truncate font-heading text-[15px] font-bold tracking-[-0.02em] text-[#141414]"
+                className="flex min-h-11 min-w-0 items-center truncate font-heading text-15 font-bold tracking-[-0.02em] text-[#141414]"
               >
                 {firmName}
               </Link>
@@ -206,7 +214,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
             {others.length > 0 && (
               <nav
                 aria-label="Switch firm"
-                className="border-b border-[#E6E2DB] bg-[#FAF9F7] px-4 py-2 text-[12px] text-[#57534E] md:hidden"
+                className="border-b border-[#E6E2DB] bg-[#FAF9F7] px-4 py-2 text-13 text-[#57534E] md:hidden"
               >
                 Showing <span className="font-semibold text-[#141414]">{ctx.firmName}</span>
                 {" · switch to "}

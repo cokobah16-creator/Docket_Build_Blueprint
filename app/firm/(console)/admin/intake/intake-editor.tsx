@@ -50,8 +50,8 @@ export interface ServiceOption {
 type Answers = Record<string, string | string[]>;
 
 const field =
-  "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
-const labelClass = "block text-sm font-medium text-gray-800";
+  "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const labelClass = "block text-15 font-medium text-ink";
 const KEY_RE = /^[a-z][a-z0-9_]*$/;
 const TYPES = ["text", "longtext", "choice", "file"] as const;
 
@@ -310,28 +310,28 @@ export function IntakeEditor({
             }
           />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {forms.map((f) => (
               <li key={f.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-medium text-gray-900">{f.name}</p>
+                    <p className="font-medium text-ink">{f.name}</p>
                     <span
                       className={cn(
-                        "rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                        "rounded-full border px-2.5 py-0.5 text-13 font-medium",
                         f.isActive
                           ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                          : "border-gray-200 bg-gray-50 text-gray-600",
+                          : "border-hairline bg-sunken text-ink-muted",
                       )}
                     >
                       {f.isActive ? "asked of clients" : "switched off"}
                     </span>
                   </div>
-                  <p className="mt-1 text-sm text-gray-700">
+                  <p className="mt-1 text-15 text-ink">
                     {f.serviceName ? `Only for ${f.serviceName}` : "Every service without its own form"} ·{" "}
                     {f.questionCount} question{f.questionCount === 1 ? "" : "s"}
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-500">
+                  <p className="mt-0.5 text-13 text-ink-muted">
                     {f.responseCount === 0
                       ? "No client has answered it yet."
                       : `${f.responseCount} client${f.responseCount === 1 ? " has" : "s have"} answered it. Their answers keep the keys they were given.`}
@@ -351,7 +351,7 @@ export function IntakeEditor({
           <CardHeader title={openId === "new" ? "A new form" : `Editing “${editing?.name ?? "form"}”`} />
           <CardBody className="space-y-4">
             {openId === "new" && (
-              <p className="text-sm text-gray-600">
+              <p className="text-15 text-ink-muted">
                 The box below starts with one question as a shape to work from — change the wording to your own. A new
                 form is created switched off, so nothing reaches a client until you switch it on.
               </p>
@@ -385,7 +385,7 @@ export function IntakeEditor({
                   disabled={!canWrite}
                   onChange={(e) => setName(e.target.value)}
                 />
-                <p className="mt-1 text-sm text-gray-500">For your own list. A client never sees it.</p>
+                <p className="mt-1 text-15 text-ink-muted">For your own list. A client never sees it.</p>
               </div>
               <div>
                 <label className={labelClass} htmlFor="form-service">Asked for</label>
@@ -405,7 +405,7 @@ export function IntakeEditor({
                   ))}
                   {unknownService && <option value={serviceId}>A service that is not in this firm's catalogue</option>}
                 </select>
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-15 text-ink-muted">
                   {unknownService
                     ? "This form points at a service this firm does not have. Choose one of yours before saving — the database will refuse the other."
                     : serviceId
@@ -415,7 +415,7 @@ export function IntakeEditor({
               </div>
             </div>
 
-            <label className="flex min-h-[44px] items-center gap-3 rounded-lg border border-gray-200 px-3 py-2">
+            <label className="flex min-h-[44px] items-center gap-3 rounded-lg border border-hairline px-3 py-2">
               <input
                 type="checkbox"
                 className="h-5 w-5"
@@ -423,7 +423,7 @@ export function IntakeEditor({
                 disabled={!canWrite}
                 onChange={(e) => setIsActive(e.target.checked)}
               />
-              <span className="text-sm text-gray-800">
+              <span className="text-15 text-ink">
                 Ask this form of clients
                 {editing?.isActive === false && isActive ? " — it goes live on the booking page as soon as you save" : ""}
               </span>
@@ -457,7 +457,7 @@ export function IntakeEditor({
                 rows={16}
                 spellCheck={false}
                 disabled={!canWrite}
-                className="mt-1 w-full overflow-x-auto whitespace-pre rounded-lg border border-gray-300 px-3 py-2 font-mono text-xs text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
+                className="mt-1 w-full overflow-x-auto whitespace-pre rounded-lg border border-edge px-3 py-2 font-mono text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
                 value={text}
                 onChange={(e) => {
                   setText(e.target.value);
@@ -466,11 +466,11 @@ export function IntakeEditor({
                 }}
               />
               {parseProblem ? (
-                <p role="alert" className="mt-1 text-sm text-red-700">
+                <p role="alert" className="mt-1 text-15 text-red-700">
                   {parseProblem}
                 </p>
               ) : (
-                <p className="mt-1 text-sm text-gray-500">
+                <p className="mt-1 text-15 text-ink-muted">
                   {questions.length} question{questions.length === 1 ? "" : "s"}. Each one is{" "}
                   <code>{"{ key, type, label }"}</code>, with <code>options</code> for a choice,{" "}
                   <code>required</code>, <code>help</code>, and <code>show_if</code> to hold it back until an earlier
@@ -504,7 +504,7 @@ export function IntakeEditor({
 
             {confirmDelete && editing && (
               <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3">
-                <p className="text-sm text-red-900">
+                <p className="text-15 text-red-900">
                   Delete “{editing.name}”? The questions go. The{" "}
                   {editing.responseCount === 0
                     ? "answers clients give"
@@ -523,17 +523,17 @@ export function IntakeEditor({
             )}
           </CardBody>
 
-          <div className="border-t border-gray-100 bg-gray-50 px-5 py-4">
-            <p className="text-sm font-medium text-gray-900">What the client will see</p>
-            <p className="mt-0.5 text-sm text-gray-600">
+          <div className="border-t border-hairline bg-sunken px-5 py-4">
+            <p className="text-15 font-medium text-ink">What the client will see</p>
+            <p className="mt-0.5 text-15 text-ink-muted">
               The same fields the booking wizard renders, in the same order. Answer them here to watch a{" "}
               <code>show_if</code> question appear. Nothing typed in this preview is saved or uploaded.
             </p>
-            <div className="mt-3 rounded-lg border border-gray-200 bg-white px-4 py-4">
+            <div className="mt-3 rounded-lg border border-hairline bg-raised px-4 py-4">
               {parseProblem ? (
-                <p className="text-sm text-gray-500">Nothing to show until the questions read as valid JSON.</p>
+                <p className="text-15 text-ink-muted">Nothing to show until the questions read as valid JSON.</p>
               ) : questions.length === 0 ? (
-                <p className="text-sm text-gray-500">
+                <p className="text-15 text-ink-muted">
                   No questions yet. The wizard adds this step for any form that is switched on, so
                   a form saved in this state puts an empty page in front of a client between the
                   time and signing in. Only a form that is switched off is skipped.
@@ -549,7 +549,7 @@ export function IntakeEditor({
                         onChange={(v) => setAnswers((a) => ({ ...a, [q.key]: v }))}
                       />
                     ) : (
-                      <p key={q.key} className="text-xs text-gray-400">
+                      <p key={q.key} className="text-13 text-ink-muted">
                         “{q.label}” is hidden until {q.show_if?.question} is “{q.show_if?.equals}”.
                       </p>
                     ),
@@ -586,10 +586,10 @@ function PreviewField({
       <div>
         <label className={labelClass} htmlFor={id}>
           {q.label}
-          {q.required && <span className="text-gray-500"> (required)</span>}
+          {q.required && <span className="text-ink-muted"> (required)</span>}
         </label>
         <input id={id} className={field} value={text} onChange={(e) => onChange(e.target.value)} />
-        {q.help && <p className="mt-1 text-sm text-gray-500">{q.help}</p>}
+        {q.help && <p className="mt-1 text-15 text-ink-muted">{q.help}</p>}
       </div>
     );
   }
@@ -599,7 +599,7 @@ function PreviewField({
       <div>
         <label className={labelClass} htmlFor={id}>
           {q.label}
-          {q.required && <span className="text-gray-500"> (required)</span>}
+          {q.required && <span className="text-ink-muted"> (required)</span>}
         </label>
         <textarea
           id={id}
@@ -609,8 +609,8 @@ function PreviewField({
           value={text}
           onChange={(e) => onChange(e.target.value)}
         />
-        {q.help && <p className="mt-1 text-sm text-gray-500">{q.help}</p>}
-        {q.max_length && <p className="mt-1 text-xs text-gray-500">Up to {q.max_length.toLocaleString("en-NG")} characters.</p>}
+        {q.help && <p className="mt-1 text-15 text-ink-muted">{q.help}</p>}
+        {q.max_length && <p className="mt-1 text-13 text-ink-muted">Up to {q.max_length.toLocaleString("en-NG")} characters.</p>}
       </div>
     );
   }
@@ -621,10 +621,10 @@ function PreviewField({
       <fieldset className="space-y-2">
         <legend className={labelClass}>
           {q.label}
-          {q.required && <span className="text-gray-500"> (required)</span>}
+          {q.required && <span className="text-ink-muted"> (required)</span>}
         </legend>
         {(q.options ?? []).map((opt) => (
-          <label key={opt} className="flex min-h-[44px] items-center gap-2 text-sm text-gray-700">
+          <label key={opt} className="flex min-h-[44px] items-center gap-2 text-15 text-ink">
             <input
               type="checkbox"
               className="h-5 w-5"
@@ -634,7 +634,7 @@ function PreviewField({
             {opt}
           </label>
         ))}
-        {q.help && <p className="text-sm text-gray-500">{q.help}</p>}
+        {q.help && <p className="text-15 text-ink-muted">{q.help}</p>}
       </fieldset>
     );
   }
@@ -644,7 +644,7 @@ function PreviewField({
       <div>
         <label className={labelClass} htmlFor={id}>
           {q.label}
-          {q.required && <span className="text-gray-500"> (required)</span>}
+          {q.required && <span className="text-ink-muted"> (required)</span>}
         </label>
         <select id={id} className={field} value={text} onChange={(e) => onChange(e.target.value)}>
           <option value="">Select…</option>
@@ -654,7 +654,7 @@ function PreviewField({
             </option>
           ))}
         </select>
-        {q.help && <p className="mt-1 text-sm text-gray-500">{q.help}</p>}
+        {q.help && <p className="mt-1 text-15 text-ink-muted">{q.help}</p>}
       </div>
     );
   }
@@ -662,9 +662,9 @@ function PreviewField({
   return (
     <div>
       <p className={labelClass}>{q.label}</p>
-      <input type="file" disabled className="mt-1 block w-full text-sm text-gray-400" />
-      {q.help && <p className="mt-1 text-sm text-gray-500">{q.help}</p>}
-      <p className="mt-1 text-xs text-gray-500">
+      <input type="file" disabled className="mt-1 block w-full text-15 text-ink-muted" />
+      {q.help && <p className="mt-1 text-15 text-ink-muted">{q.help}</p>}
+      <p className="mt-1 text-13 text-ink-muted">
         PDF or images, up to 25 MB each, {q.max_files ?? 1} file{(q.max_files ?? 1) === 1 ? "" : "s"} at most. The
         client uploads after signing in; this box does nothing here.
       </p>

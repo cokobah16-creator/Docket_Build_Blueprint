@@ -30,7 +30,7 @@ export function IosInstallHint({ appName }: { appName: string }) {
       full-screen app and notifications.
       <button
         type="button"
-        className="mt-1.5 block text-[11.5px] font-semibold underline underline-offset-2"
+        className="mt-1.5 block text-11 font-semibold underline underline-offset-2"
         onClick={() => { try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ } setShow(false); }}
       >
         Don&apos;t show again

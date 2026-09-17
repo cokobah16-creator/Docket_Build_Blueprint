@@ -30,18 +30,18 @@ export default async function MessagesPage() {
         detail={
           <Card className="grid min-h-[320px] place-items-center p-8 text-center">
             <div className="max-w-xs">
-              <Icon name="mail" size={28} className="mx-auto text-gray-300" />
-              <p className="mt-3 text-sm font-semibold text-gray-900">
+              <Icon name="mail" size={28} className="mx-auto text-ink-disabled" />
+              <p className="mt-3 text-15 font-semibold text-ink">
                 {threads.length > 0 ? "Choose a conversation" : "No conversations yet"}
               </p>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-gray-500">
+              <p className="mt-1 text-13 leading-relaxed text-ink-muted">
                 Each matter and consultation has its own secure thread with {firm?.name ?? "your firm"}.
               </p>
             </div>
           </Card>
         }
       />
-      <p className="text-[11.5px] leading-relaxed text-gray-500 lg:hidden">
+      <p className="text-11 leading-relaxed text-ink-muted lg:hidden">
         Each matter and consultation has its own secure thread with {firm?.name ?? "your firm"}.
       </p>
     </Screen>

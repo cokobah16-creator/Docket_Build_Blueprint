@@ -56,7 +56,7 @@ const STATUS_STYLE: Record<string, string> = {
   queued: "bg-amber-100 text-amber-900",
   sending: "bg-sky-100 text-sky-900",
   sent: "bg-emerald-100 text-emerald-900",
-  skipped: "bg-gray-100 text-gray-700",
+  skipped: "bg-sunken text-ink",
 };
 
 /**
@@ -84,7 +84,7 @@ const OUTCOME_MEANING: Record<string, string> = {
 
 const OUTCOME_STYLE: Record<string, string> = {
   processed: "bg-emerald-100 text-emerald-900",
-  ignored: "bg-gray-100 text-gray-700",
+  ignored: "bg-sunken text-ink",
   unverified: "bg-red-100 text-red-900",
   unreadable: "bg-amber-100 text-amber-900",
   error: "bg-red-100 text-red-900",
@@ -93,8 +93,8 @@ const OUTCOME_STYLE: Record<string, string> = {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-gray-500">{label}</dt>
-      <dd className="break-words text-sm text-gray-900">{children}</dd>
+      <dt className="text-13 uppercase tracking-wide text-ink-muted">{label}</dt>
+      <dd className="break-words text-15 text-ink">{children}</dd>
     </div>
   );
 }
@@ -219,8 +219,8 @@ export default async function AdminHealthPage({
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="font-heading text-2xl font-semibold text-brand">Platform health</h1>
-        <p className="text-sm text-gray-600">
+        <h1 className="font-heading text-26 font-semibold text-brand">Platform health</h1>
+        <p className="text-15 text-ink-muted">
           {mismatched.length} settlement mismatch{mismatched.length === 1 ? "" : "es"} · {failedRows} failed
           message{failedRows === 1 ? "" : "s"} · {overdue} overdue in the queue · {badWebhooks.length} webhook
           {badWebhooks.length === 1 ? "" : "s"} that did not process
@@ -239,8 +239,8 @@ export default async function AdminHealthPage({
       {/* ============================================================ settlement */}
       {/* ---------------------------------------------------------------- the documents: bytes vs rows */}
       <section id="documents" className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-gray-900">Are the documents actually there?</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="font-heading text-17 font-semibold text-ink">Are the documents actually there?</h2>
+        <p className="text-15 text-ink-muted">
           A database backup restores the rows that describe documents; the bytes are a separate thing, and a
           system with rows and no bytes looks intact until a lawyer opens a file. The storage-manifest
           function downloads every object on a rolling schedule, hashes it and compares it to the version
@@ -279,13 +279,13 @@ export default async function AdminHealthPage({
                     ["Last run", storage.last_run_at ? when(storage.last_run_at) : "never"],
                   ].map(([label, value]) => (
                     <div key={label}>
-                      <dt className="text-xs uppercase tracking-[0.06em] text-gray-500">{label}</dt>
-                      <dd className="mt-0.5 text-lg font-semibold text-gray-900">{value}</dd>
+                      <dt className="text-13 uppercase tracking-[0.06em] text-ink-muted">{label}</dt>
+                      <dd className="mt-0.5 text-17 font-semibold text-ink">{value}</dd>
                     </div>
                   ))}
                 </dl>
                 {!storage.storage_present && (
-                  <p className="mt-3 text-xs text-gray-500">
+                  <p className="mt-3 text-13 text-ink-muted">
                     This database has no storage schema, so the object count and the row-only check are unavailable here.
                   </p>
                 )}
@@ -296,7 +296,7 @@ export default async function AdminHealthPage({
       </section>
 
       <section id="settlement" className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-gray-900">Settlement</h2>
+        <h2 className="font-heading text-17 font-semibold text-ink">Settlement</h2>
 
         {mismatched.length > 0 && (
           <Alert kind="error" title="Money went somewhere Docket did not expect">
@@ -361,7 +361,7 @@ export default async function AdminHealthPage({
                           </Field>
                         </dl>
                         {!row.expected_subaccount && (
-                          <p className="mt-3 text-sm text-red-800">
+                          <p className="mt-3 text-15 text-red-800">
                             This firm has no Paystack subaccount at all, so nothing it charges can ever
                             settle correctly. Only the firm can set one, in its own settings — the
                             platform has no write on that column. Ask an owner to add it before the
@@ -399,13 +399,13 @@ export default async function AdminHealthPage({
                   <TBody>
                     {otherFailures.map((row) => (
                       <TR key={row.payment_id}>
-                        <TD className="font-medium text-gray-900">{row.invoice_number}</TD>
+                        <TD className="font-medium text-ink">{row.invoice_number}</TD>
                         <TD>{firmLabel(row)}</TD>
                         <TD className="whitespace-nowrap">
                           {formatMoneyMinor(Number(row.amount_minor), row.currency)}
                         </TD>
                         <TD>{row.status}</TD>
-                        <TD className="break-all font-mono text-xs">{row.provider_ref}</TD>
+                        <TD className="break-all font-mono text-13">{row.provider_ref}</TD>
                         <TD className="whitespace-nowrap">{row.paid_at ? when(row.paid_at) : "—"}</TD>
                       </TR>
                     ))}
@@ -415,7 +415,7 @@ export default async function AdminHealthPage({
             )}
 
             {settlement.length === SETTLEMENT_LIMIT && (
-              <p className="text-xs text-gray-500">
+              <p className="text-13 text-ink-muted">
                 Showing {SETTLEMENT_LIMIT} unsuccessful payments, the most recently recorded first.
                 There are more than that, and they are not on this page.
               </p>
@@ -426,7 +426,7 @@ export default async function AdminHealthPage({
 
       {/* ============================================================ notifications */}
       <section id="queue" className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-gray-900">The notification queue</h2>
+        <h2 className="font-heading text-17 font-semibold text-ink">The notification queue</h2>
 
         {sp.error && <Alert kind="error">{sp.error}</Alert>}
         {sp.done && <Alert kind="success">{sp.done}</Alert>}
@@ -442,7 +442,7 @@ export default async function AdminHealthPage({
           </Alert>
         )}
 
-        <p className="text-sm text-gray-600">
+        <p className="text-15 text-ink-muted">
           {queuedRows} waiting · {failedRows} failed · {overdue} overdue ·{" "}
           {queue.length} group{queue.length === 1 ? "" : "s"} across {firmGroups.length} firm
           {firmGroups.length === 1 ? "" : "s"}
@@ -500,7 +500,7 @@ export default async function AdminHealthPage({
                       {group.rows.map((row) => (
                         <TR key={`${row.status}-${row.channel}-${row.event}`}>
                           <TD>
-                            <Badge className={STATUS_STYLE[row.status] ?? "bg-gray-100 text-gray-700"}>
+                            <Badge className={STATUS_STYLE[row.status] ?? "bg-sunken text-ink"}>
                               {row.status}
                             </Badge>
                           </TD>
@@ -512,33 +512,33 @@ export default async function AdminHealthPage({
                           </TD>
                           <TD className="whitespace-nowrap">
                             {when(row.oldest)}
-                            <span className="block text-xs text-gray-500">
+                            <span className="block text-13 text-ink-muted">
                               {agoLabel(row.oldest, nowMs)}
                             </span>
                           </TD>
                           <TD className="tabular-nums">
                             {row.most_attempts}
                             {Number(row.most_send_attempts ?? 0) > 1 && (
-                              <span className="block text-xs text-gray-500">{row.most_send_attempts} sends</span>
+                              <span className="block text-13 text-ink-muted">{row.most_send_attempts} sends</span>
                             )}
                           </TD>
-                          <TD className="text-xs">{deliveryLabel(row)}</TD>
+                          <TD className="text-13">{deliveryLabel(row)}</TD>
                         </TR>
                       ))}
                     </TBody>
                   </Table>
 
                   {group.rows.some((r) => r.last_error) && (
-                    <div className="space-y-2 border-t border-gray-100 px-5 py-4">
-                      <p className="text-xs uppercase tracking-wide text-gray-500">
+                    <div className="space-y-2 border-t border-hairline px-5 py-4">
+                      <p className="text-13 uppercase tracking-wide text-ink-muted">
                         The most recent error in each group that has one
                       </p>
                       <ul className="space-y-1">
                         {group.rows
                           .filter((r) => r.last_error)
                           .map((r) => (
-                            <li key={`err-${r.status}-${r.channel}-${r.event}`} className="text-sm text-gray-700">
-                              <span className="font-medium text-gray-900">
+                            <li key={`err-${r.status}-${r.channel}-${r.event}`} className="text-15 text-ink">
+                              <span className="font-medium text-ink">
                                 {r.channel} · {r.event.replace(/_/g, " ")}
                               </span>
                               <span className="block break-words text-red-800">{r.last_error}</span>
@@ -554,7 +554,7 @@ export default async function AdminHealthPage({
         )}
 
         {queue.length === QUEUE_GROUP_LIMIT && (
-          <p className="text-xs text-gray-500">
+          <p className="text-13 text-ink-muted">
             Showing the {QUEUE_GROUP_LIMIT} largest groups. Smaller ones are not on this page.
           </p>
         )}
@@ -569,10 +569,10 @@ export default async function AdminHealthPage({
         <Card>
           <CardHeader title="What three words mean here" />
           <CardBody>
-            <dl className="space-y-2 text-sm text-gray-700">
-              <div className="sm:flex sm:gap-3"><dt className="font-medium text-gray-900 sm:w-28 sm:shrink-0">sent</dt><dd>The provider took the message and gave it an id. Accepted, not delivered.</dd></div>
-              <div className="sm:flex sm:gap-3"><dt className="font-medium text-gray-900 sm:w-28 sm:shrink-0">delivered</dt><dd>The provider's signed receipt said the inbox or handset has it. Written only from a receipt the delivery-receipts function verified; web push has none, so push stays at accepted.</dd></div>
-              <div className="sm:flex sm:gap-3"><dt className="font-medium text-gray-900 sm:w-28 sm:shrink-0">read</dt><dd>Known only for the in-app copy, when the person opens it. No email, SMS or push carries a read receipt Docket trusts.</dd></div>
+            <dl className="space-y-2 text-15 text-ink">
+              <div className="sm:flex sm:gap-3"><dt className="font-medium text-ink sm:w-28 sm:shrink-0">sent</dt><dd>The provider took the message and gave it an id. Accepted, not delivered.</dd></div>
+              <div className="sm:flex sm:gap-3"><dt className="font-medium text-ink sm:w-28 sm:shrink-0">delivered</dt><dd>The provider's signed receipt said the inbox or handset has it. Written only from a receipt the delivery-receipts function verified; web push has none, so push stays at accepted.</dd></div>
+              <div className="sm:flex sm:gap-3"><dt className="font-medium text-ink sm:w-28 sm:shrink-0">read</dt><dd>Known only for the in-app copy, when the person opens it. No email, SMS or push carries a read receipt Docket trusts.</dd></div>
             </dl>
           </CardBody>
         </Card>
@@ -580,8 +580,8 @@ export default async function AdminHealthPage({
 
       {/* ============================================================ cost */}
       <section id="cost" className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-gray-900">What messages cost</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="font-heading text-17 font-semibold text-ink">What messages cost</h2>
+        <p className="text-15 text-ink-muted">
           Per firm and month, by currency, at the rate in force when each message was accepted. Naira and dollars are
           never added together. A message accepted while no rate was entered is counted as <em>unpriced</em> — it is
           not free, and it is not guessed.
@@ -597,7 +597,7 @@ export default async function AdminHealthPage({
             {costGroups.map((g) => (
               <li key={g.key}>
                 <Card>
-                  <CardHeader title={g.label} action={g.matters !== null ? <span className="text-xs text-gray-600">{g.matters} open matter{g.matters === 1 ? "" : "s"}</span> : undefined} />
+                  <CardHeader title={g.label} action={g.matters !== null ? <span className="text-13 text-ink-muted">{g.matters} open matter{g.matters === 1 ? "" : "s"}</span> : undefined} />
                   <Table>
                     <THead>
                       <TR><TH>Month</TH><TH>Provider</TH><TH>Channel</TH><TH>Messages</TH><TH>Segments</TH><TH>Cost</TH><TH>Per open matter</TH><TH>Unpriced</TH></TR>
@@ -625,20 +625,20 @@ export default async function AdminHealthPage({
           </ul>
         )}
         {mattersRead.error && (
-          <p className="text-xs text-red-800">The open-matter count could not be read: {mattersRead.error}. Cost per open matter is left blank rather than computed against a guess.</p>
+          <p className="text-13 text-red-800">The open-matter count could not be read: {mattersRead.error}. Cost per open matter is left blank rather than computed against a guess.</p>
         )}
 
         <Card>
           <CardHeader title="Provider rates" />
           <CardBody className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-15 text-ink-muted">
               What each provider charges, from its contract, entered here with a second factor and audited. An SMS rate is
               per segment unless said otherwise; the segment count is computed from the exact text sent.
             </p>
             {ratesRead.error ? (
               <Alert kind="error">{ratesRead.error}</Alert>
             ) : ratesRead.rows.length === 0 ? (
-              <p className="text-sm text-gray-600">No rate has been entered. Until one is, every message is unpriced.</p>
+              <p className="text-15 text-ink-muted">No rate has been entered. Until one is, every message is unpriced.</p>
             ) : (
               <Table>
                 <THead><TR><TH>Provider</TH><TH>Channel</TH><TH>Rate</TH><TH>From</TH><TH>Note</TH></TR></THead>
@@ -649,7 +649,7 @@ export default async function AdminHealthPage({
                       <TD>{r.channel}</TD>
                       <TD className="tabular-nums">{formatMoneyMinor(Number(r.unit_minor), r.currency)}{r.per_segment ? " per segment" : " per message"}</TD>
                       <TD className="whitespace-nowrap">{r.effective_from}</TD>
-                      <TD className="break-words text-xs text-gray-600">{r.note ?? ""}</TD>
+                      <TD className="break-words text-13 text-ink-muted">{r.note ?? ""}</TD>
                     </TR>
                   ))}
                 </TBody>
@@ -662,7 +662,7 @@ export default async function AdminHealthPage({
 
       {/* ============================================================ webhooks */}
       <section id="webhooks" className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-gray-900">What providers sent us</h2>
+        <h2 className="font-heading text-17 font-semibold text-ink">What providers sent us</h2>
 
         {badWebhooks.length > 0 && (
           <Alert kind="warning" title={`${badWebhooks.length} did not process`}>
@@ -705,13 +705,13 @@ export default async function AdminHealthPage({
                     <TD>{w.provider}</TD>
                     <TD className="break-words">{w.event_type ?? "—"}</TD>
                     <TD>
-                      <Badge className={OUTCOME_STYLE[w.outcome] ?? "bg-gray-100 text-gray-700"}>
+                      <Badge className={OUTCOME_STYLE[w.outcome] ?? "bg-sunken text-ink"}>
                         {w.outcome}
                       </Badge>
-                      {w.error && <span className="block break-words text-xs text-red-800">{w.error}</span>}
+                      {w.error && <span className="block break-words text-13 text-red-800">{w.error}</span>}
                     </TD>
                     <TD>{w.signature_ok ? "verified" : "not verified"}</TD>
-                    <TD className="break-all font-mono text-xs">{w.provider_ref ?? "—"}</TD>
+                    <TD className="break-all font-mono text-13">{w.provider_ref ?? "—"}</TD>
                   </TR>
                 ))}
               </TBody>
@@ -725,8 +725,8 @@ export default async function AdminHealthPage({
             <dl className="space-y-2">
               {Object.entries(OUTCOME_MEANING).map(([outcome, meaning]) => (
                 <div key={outcome} className="sm:flex sm:gap-3">
-                  <dt className="text-sm font-medium text-gray-900 sm:w-28 sm:shrink-0">{outcome}</dt>
-                  <dd className="text-sm text-gray-700">{meaning}</dd>
+                  <dt className="text-15 font-medium text-ink sm:w-28 sm:shrink-0">{outcome}</dt>
+                  <dd className="text-15 text-ink">{meaning}</dd>
                 </div>
               ))}
             </dl>
@@ -734,13 +734,13 @@ export default async function AdminHealthPage({
         </Card>
 
         {webhooks.length === WEBHOOK_LIMIT && (
-          <p className="text-xs text-gray-500">
+          <p className="text-13 text-ink-muted">
             Showing the {WEBHOOK_LIMIT} most recent calls. Older ones are not on this page.
           </p>
         )}
       </section>
 
-      <p className="text-sm text-gray-600">
+      <p className="text-15 text-ink-muted">
         The reference data behind non-sitting days is on{" "}
         <Link href="/admin/reference" className="font-medium text-brand underline">
           the reference screen

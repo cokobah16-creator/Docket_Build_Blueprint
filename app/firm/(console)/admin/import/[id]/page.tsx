@@ -67,10 +67,10 @@ export default async function ImportResultPage({ params, searchParams }: { param
 
   return (
     <div className="space-y-6">
-      <p className="text-sm"><Link href="/firm/admin/import" className="text-brand underline">← Imports</Link></p>
+      <p className="text-15"><Link href="/firm/admin/import" className="text-brand underline">← Imports</Link></p>
       <header>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">{batch.source_name ?? "An import"}</h1>
-        <p className="text-sm text-gray-600">
+        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">{batch.source_name ?? "An import"}</h1>
+        <p className="text-15 text-ink-muted">
           Staged {formatWhen(batch.created_at, timezone)}{batch.created_by ? ` by ${names[batch.created_by] ?? "a colleague"}` : ""}
           {batch.processed_at ? ` · processed ${formatWhen(batch.processed_at, timezone)}` : " · not finished"}
         </p>
@@ -103,13 +103,13 @@ export default async function ImportResultPage({ params, searchParams }: { param
               ["Accepted", accepted],
               ["Clients not invited", notInvited],
             ] as Array<[string, number]>).map(([k, v]) => (
-              <div key={k} className="rounded-lg border border-gray-200 px-3 py-2">
-                <dt className="text-xs uppercase tracking-wide text-gray-500">{k}</dt>
-                <dd className="text-lg font-semibold text-gray-900">{v}</dd>
+              <div key={k} className="rounded-lg border border-hairline px-3 py-2">
+                <dt className="text-13 uppercase tracking-wide text-ink-muted">{k}</dt>
+                <dd className="text-17 font-semibold text-ink">{v}</dd>
               </div>
             ))}
           </dl>
-          <p className="mt-3 text-xs text-gray-600">Every number is a count of rows in this import as the database recorded them. Nothing was merged with what was already on the books.</p>
+          <p className="mt-3 text-13 text-ink-muted">Every number is a count of rows in this import as the database recorded them. Nothing was merged with what was already on the books.</p>
         </CardBody>
       </Card>
 
@@ -117,10 +117,10 @@ export default async function ImportResultPage({ params, searchParams }: { param
         <Card>
           <CardHeader title="Send each client their link" />
           <CardBody className="space-y-3">
-            <p className="text-sm text-gray-600">
+            <p className="text-15 text-ink-muted">
               Each link signs the client in — with the account they have, or one they make — and puts them on their matter; it lasts thirty days and is offered here until they accept. Anyone holding a link can join the matter, so send it only to the person it is for. Docket does not send it.
             </p>
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-hairline">
               {rows.filter((r) => r.invite_id && invites.get(r.invite_id)).map((r) => {
                 const inv = invites.get(r.invite_id!)!;
                 const m = r.matter_id ? matters.get(r.matter_id) : null;
@@ -129,14 +129,14 @@ export default async function ImportResultPage({ params, searchParams }: { param
                 return (
                   <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900">{r.raw.client_name ?? inv.phone ?? inv.email ?? "Client"}<span className="ml-2 text-xs font-normal text-gray-500">{[inv.phone, inv.email].filter(Boolean).join(" · ")}</span></p>
-                      <p className="text-xs text-gray-600">{m ? `${m.reference} · ${m.title}` : r.raw.title}{inv.accepted_by ? " · accepted" : ""}</p>
+                      <p className="text-15 font-medium text-ink">{r.raw.client_name ?? inv.phone ?? inv.email ?? "Client"}<span className="ml-2 text-13 font-normal text-ink-muted">{[inv.phone, inv.email].filter(Boolean).join(" · ")}</span></p>
+                      <p className="text-13 text-ink-muted">{m ? `${m.reference} · ${m.title}` : r.raw.title}{inv.accepted_by ? " · accepted" : ""}</p>
                     </div>
                     {!inv.accepted_by && (
                       <div className="flex flex-wrap items-center gap-2">
                         <CopyButton path={`/app/join?token=${encodeURIComponent(inv.token)}`} label="Copy the link" />
                         {digits && (
-                          <a href={`https://wa.me/${digits}?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-brand hover:bg-black/5">WhatsApp</a>
+                          <a href={`https://wa.me/${digits}?text=${encodeURIComponent(text)}`} target="_blank" rel="noreferrer" className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover">WhatsApp</a>
                         )}
                       </div>
                     )}
@@ -144,7 +144,7 @@ export default async function ImportResultPage({ params, searchParams }: { param
                 );
               })}
             </ul>
-            <p className="text-xs text-gray-500">The WhatsApp message says “{"{link}"}” where the copied link goes; paste it in before sending.</p>
+            <p className="text-13 text-ink-muted">The WhatsApp message says “{"{link}"}” where the copied link goes; paste it in before sending.</p>
           </CardBody>
         </Card>
       )}
@@ -152,27 +152,27 @@ export default async function ImportResultPage({ params, searchParams }: { param
       <Card>
         <CardHeader title="Row by row" />
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-600">
+          <table className="w-full text-left text-15">
+            <thead className="bg-sunken text-13 uppercase tracking-wide text-ink-muted">
               <tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Title</th><th className="px-3 py-2">Outcome</th><th className="px-3 py-2">On Docket as</th><th className="px-3 py-2">Note</th></tr>
             </thead>
             <tbody>
               {rows.map((r) => {
                 const m = r.matter_id ? matters.get(r.matter_id) : null;
                 return (
-                  <tr key={r.id} className={r.outcome === "failed" ? "bg-red-50" : r.outcome === "skipped" ? "text-gray-500" : ""}>
-                    <td className="px-3 py-2 font-mono text-xs">{r.row_no}</td>
-                    <td className="px-3 py-2">{r.raw.title ?? ""}{r.raw.legacy_reference ? <span className="ml-1 text-xs text-gray-500">({r.raw.legacy_reference})</span> : null}</td>
-                    <td className="px-3 py-2 text-xs">{r.outcome ?? "waiting"}</td>
-                    <td className="px-3 py-2 text-xs">{m ? <Link href={`/firm/matters/${m.id}`} className="text-brand underline">{m.reference}</Link> : ""}</td>
-                    <td className="px-3 py-2 text-xs">{r.note ?? ""}</td>
+                  <tr key={r.id} className={r.outcome === "failed" ? "bg-red-50" : r.outcome === "skipped" ? "text-ink-muted" : ""}>
+                    <td className="px-3 py-2 font-mono text-13">{r.row_no}</td>
+                    <td className="px-3 py-2">{r.raw.title ?? ""}{r.raw.legacy_reference ? <span className="ml-1 text-13 text-ink-muted">({r.raw.legacy_reference})</span> : null}</td>
+                    <td className="px-3 py-2 text-13">{r.outcome ?? "waiting"}</td>
+                    <td className="px-3 py-2 text-13">{m ? <Link href={`/firm/matters/${m.id}`} className="text-brand underline">{m.reference}</Link> : ""}</td>
+                    <td className="px-3 py-2 text-13">{r.note ?? ""}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         </div>
-        <p className="px-3 py-2 text-xs text-gray-500">Up to 5,000 rows are shown.</p>
+        <p className="px-3 py-2 text-13 text-ink-muted">Up to 5,000 rows are shown.</p>
       </Card>
     </div>
   );

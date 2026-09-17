@@ -12,6 +12,15 @@
 // exists; firmBySlug caches for a minute (src/lib/tenant.ts), so in practice
 // the wait this file is standing in for is the page's own reads — services,
 // lawyers, the site origin.
+//
+// IT COVERS THE WHOLE SITE AND IS DRAWN AS THE HOME PAGE. Every route under
+// this segment with no nearer loading.tsx arrives here — About, Services, a
+// lawyer's profile, the booking wizard, the policies — and the ones built on
+// PageShell are a narrower column than this. The home page is the shape chosen
+// because it is the one an address handed out on a card lands on, and because
+// its own top is a heading and two lines of prose, which is what PageShell puts
+// there too: the part of the screen a visitor reads first stands in the right
+// place on every route, and only the width below it is generous.
 
 import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 

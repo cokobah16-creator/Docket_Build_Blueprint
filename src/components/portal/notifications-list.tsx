@@ -21,11 +21,11 @@ export function NotificationsList({ rows, firmNames, timezone, compact = false }
     markNotificationsRead([id]).catch(() => undefined);
   }
 
-  if (items.length === 0) return <p className="px-5 py-8 text-center text-sm text-gray-500">Nothing yet. Reminders, updates and messages land here.</p>;
+  if (items.length === 0) return <p className="px-5 py-8 text-center text-15 text-ink-muted">Nothing yet. Reminders, updates and messages land here.</p>;
   return (
     <div>
       {!compact && unread > 0 && (
-        <div className="flex justify-end border-b border-gray-100 px-4 py-2">
+        <div className="flex justify-end border-b border-hairline px-4 py-2">
           <Button size="sm" variant="ghost" onClick={readAll}>Mark all read ({unread})</Button>
         </div>
       )}
@@ -38,7 +38,7 @@ export function NotificationsList({ rows, firmNames, timezone, compact = false }
               <Link
                 href={c.url}
                 onClick={() => readOne(n.id)}
-                className={`flex items-start gap-2.5 border-t border-gray-100 px-4 py-3 first:border-t-0 hover:bg-gray-50 ${n.read_at ? "" : "bg-[#FBFAF7]"}`}
+                className={`flex items-start gap-2.5 border-t border-hairline px-4 py-3 first:border-t-0 hover:bg-sunken ${n.read_at ? "" : "bg-[#FBFAF7]"}`}
               >
                 <span
                   aria-hidden="true"
@@ -46,9 +46,9 @@ export function NotificationsList({ rows, firmNames, timezone, compact = false }
                 />
                 <span className="min-w-0 flex-1">
                   {!n.read_at && <span className="sr-only">Unread. </span>}
-                  <span className="block text-[13.5px] font-semibold leading-snug text-gray-900">{c.title}</span>
-                  {c.body && <span className="mt-0.5 block text-[12.5px] leading-[1.4] text-gray-600">{c.body}</span>}
-                  <span className="mt-0.5 block text-[11px] text-gray-500">{fmt.format(new Date(n.created_at))}</span>
+                  <span className="block text-13 font-semibold leading-snug text-ink">{c.title}</span>
+                  {c.body && <span className="mt-0.5 block text-13 leading-[1.4] text-ink-muted">{c.body}</span>}
+                  <span className="mt-0.5 block text-11 text-ink-muted">{fmt.format(new Date(n.created_at))}</span>
                 </span>
               </Link>
             </li>

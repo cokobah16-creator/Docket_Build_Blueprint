@@ -44,7 +44,7 @@ export default async function PartnerApiPage({ searchParams }: { searchParams: P
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Partner API</h1>
+      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Partner API</h1>
 
       {error && (
         <Alert kind="error" title="The keys did not load">
@@ -53,7 +53,7 @@ export default async function PartnerApiPage({ searchParams }: { searchParams: P
       )}
 
       <Card>
-        <CardBody className="text-[12.5px] leading-[1.55] text-[#57534E]">
+        <CardBody className="text-13 leading-[1.55] text-[#57534E]">
           <p>
             A key lets another system — an accounting package, your own reporting — read this
             firm&rsquo;s matters, invoices, clients and event feed. It is <strong>read only</strong>:

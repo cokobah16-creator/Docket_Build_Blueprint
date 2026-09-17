@@ -97,7 +97,7 @@ export function PrimaryNav({
   const overflow = overflowSections(model);
   const ink = tone === "neutral" ? "text-[#141414]" : "text-brand";
   const activeFill = tone === "neutral" ? "bg-[#141414] text-white" : "bg-brand text-brand-on";
-  const edge = tone === "neutral" ? "border-[#DDD9D2]" : "border-gray-200";
+  const edge = tone === "neutral" ? "border-[#DDD9D2]" : "border-hairline";
   const inMore = overflow.some((s) => s.items.some((i) => i.href === active));
 
   const href = (item: NavItem) => withContext(item.href, context);
@@ -108,7 +108,7 @@ export function PrimaryNav({
       <nav
         aria-label={label}
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden w-[248px] shrink-0 flex-col overflow-y-auto border-r bg-white lg:flex",
+          "fixed inset-y-0 left-0 z-30 hidden w-[248px] shrink-0 flex-col overflow-y-auto border-r bg-raised lg:flex",
           edge,
         )}
       >
@@ -117,7 +117,7 @@ export function PrimaryNav({
           {model.sections.map((section, i) => (
             <div key={section.title ?? "main"} className={cn(i > 0 && "mt-5")}>
               {section.title && (
-                <h2 className="px-2.5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-500">
+                <h2 className="px-2.5 pb-1.5 text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">
                   {section.title}
                 </h2>
               )}
@@ -129,10 +129,10 @@ export function PrimaryNav({
                       data-dk-nav="destination"
                       aria-current={active === item.href ? "page" : undefined}
                       className={cn(
-                        "flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 text-[13.5px] transition-colors",
+                        "flex min-h-11 items-center gap-2.5 rounded-lg px-2.5 text-13 transition-colors",
                         active === item.href
                           ? cn(activeFill, "font-semibold")
-                          : cn("font-medium text-gray-700 hover:bg-black/[0.04]", `hover:${ink}`),
+                          : cn("font-medium text-ink hover:bg-black/[0.04]", `hover:${ink}`),
                       )}
                     >
                       <Icon name={item.icon} size={18} className="shrink-0" />
@@ -151,7 +151,7 @@ export function PrimaryNav({
       <nav
         aria-label={label}
         className={cn(
-          "fixed inset-y-0 left-0 z-30 hidden w-[68px] shrink-0 flex-col items-center overflow-y-auto border-r bg-white py-3 md:flex lg:hidden",
+          "fixed inset-y-0 left-0 z-30 hidden w-[68px] shrink-0 flex-col items-center overflow-y-auto border-r bg-raised py-3 md:flex lg:hidden",
           edge,
         )}
       >
@@ -165,8 +165,8 @@ export function PrimaryNav({
                 // The label is the accessible name and is shown under the icon
                 // at this size too — a rail of unexplained glyphs is a guess.
                 className={cn(
-                  "flex w-[58px] flex-col items-center gap-1 rounded-lg px-1 py-2 text-center text-[9.5px] font-medium leading-tight transition-colors",
-                  active === item.href ? activeFill : "text-gray-600 hover:bg-black/[0.04]",
+                  "flex w-[58px] flex-col items-center gap-1 rounded-lg px-1 py-2 text-center text-11 font-medium leading-tight transition-colors",
+                  active === item.href ? activeFill : "text-ink-muted hover:bg-black/[0.04]",
                 )}
               >
                 <Icon name={item.icon} size={20} className="shrink-0" />
@@ -181,7 +181,7 @@ export function PrimaryNav({
       <nav
         aria-label={label}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 border-t bg-white pb-[env(safe-area-inset-bottom)] md:hidden",
+          "fixed inset-x-0 bottom-0 z-40 border-t bg-raised pb-[env(safe-area-inset-bottom)] md:hidden",
           edge,
         )}
       >
@@ -196,8 +196,8 @@ export function PrimaryNav({
                 data-dk-nav="destination"
                 aria-current={active === item.href ? "page" : undefined}
                 className={cn(
-                  "flex min-h-14 flex-col items-center justify-center gap-[3px] px-1 py-2 text-center text-[11.5px] leading-tight",
-                  active === item.href ? cn("font-semibold", ink) : "text-gray-500",
+                  "flex min-h-14 flex-col items-center justify-center gap-[3px] px-1 py-2 text-center text-11 leading-tight",
+                  active === item.href ? cn("font-semibold", ink) : "text-ink-muted",
                 )}
               >
                 <Icon name={item.icon} size={21} />
@@ -213,8 +213,8 @@ export function PrimaryNav({
                 aria-expanded={moreOpen}
                 aria-controls={sheetId}
                 className={cn(
-                  "flex min-h-14 w-full flex-col items-center justify-center gap-[3px] px-1 py-2 text-center text-[11.5px] leading-tight",
-                  inMore ? cn("font-semibold", ink) : "text-gray-500",
+                  "flex min-h-14 w-full flex-col items-center justify-center gap-[3px] px-1 py-2 text-center text-11 leading-tight",
+                  inMore ? cn("font-semibold", ink) : "text-ink-muted",
                 )}
               >
                 <Icon name="menu" size={21} />
@@ -232,7 +232,7 @@ export function PrimaryNav({
               and takes no focus, because Escape and the Close button are what
               dismiss this from a keyboard, and a nameless button in the tab
               order would only be a stop with nothing to say. */}
-          <div aria-hidden="true" onClick={() => setMoreOpen(false)} className="absolute inset-0 bg-gray-900/40" />
+          <div aria-hidden="true" onClick={() => setMoreOpen(false)} className="absolute inset-0 bg-black/40" />
           <div
             ref={sheetRef}
             id={sheetId}
@@ -240,13 +240,13 @@ export function PrimaryNav({
             aria-modal="true"
             aria-label="More destinations"
             tabIndex={-1}
-            className="absolute inset-x-0 bottom-0 mx-auto max-h-[80dvh] max-w-lg animate-[dkRise_.22s_ease-out] overflow-y-auto rounded-t-[18px] bg-white pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(0,0,0,0.18)] focus:outline-none"
+            className="absolute inset-x-0 bottom-0 mx-auto max-h-[80dvh] max-w-lg animate-[dkRise_.22s_ease-out] overflow-y-auto rounded-t-sheet bg-raised pb-[calc(16px+env(safe-area-inset-bottom))] shadow-[0_-8px_32px_rgba(0,0,0,0.18)] focus:outline-none"
           >
-            <div aria-hidden="true" className="mx-auto mb-2 mt-2.5 h-1 w-[38px] rounded-full bg-gray-200" />
+            <div aria-hidden="true" className="mx-auto mb-2 mt-2.5 h-1 w-[38px] rounded-full bg-hairline" />
             {overflow.map((section) => (
               <div key={section.title ?? "more"} className="px-2 pb-1.5 pt-2">
                 {section.title && (
-                  <h2 className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-gray-500">
+                  <h2 className="px-3 pb-1 text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">
                     {section.title}
                   </h2>
                 )}
@@ -258,11 +258,11 @@ export function PrimaryNav({
                         data-dk-nav="destination"
                         aria-current={active === item.href ? "page" : undefined}
                         className={cn(
-                          "flex min-h-[52px] items-center gap-3 rounded-xl px-3 text-[15px]",
-                          active === item.href ? cn("font-semibold", ink) : "font-medium text-gray-800",
+                          "flex min-h-[52px] items-center gap-3 rounded-xl px-3 text-15",
+                          active === item.href ? cn("font-semibold", ink) : "font-medium text-ink",
                         )}
                       >
-                        <Icon name={item.icon} size={20} className="shrink-0 text-gray-500" />
+                        <Icon name={item.icon} size={20} className="shrink-0 text-ink-muted" />
                         <span className="truncate">{item.label}</span>
                       </Link>
                     </li>
@@ -275,7 +275,7 @@ export function PrimaryNav({
                 ref={closeRef}
                 type="button"
                 onClick={() => setMoreOpen(false)}
-                className="min-h-11 w-full rounded-[9px] border border-gray-300 text-sm font-medium text-gray-700"
+                className="min-h-11 w-full rounded-control border border-edge text-15 font-medium text-ink"
               >
                 Close
               </button>

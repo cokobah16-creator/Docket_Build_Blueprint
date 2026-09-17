@@ -11,7 +11,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import type { ConflictCheckRow, ConflictMatch } from "@/lib/db/types";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const KIND_LABELS: Record<ConflictMatch["kind"], string> = {
   client: "a client of the firm",
@@ -39,16 +39,16 @@ export function isCleared(checks: ConflictCheckRow[]): boolean {
 }
 
 export function MatchList({ matches, names }: { matches: ConflictMatch[]; names: Record<string, string> }) {
-  if (matches.length === 0) return <p className="text-sm text-emerald-800">No name on the firm&rsquo;s register matched.</p>;
+  if (matches.length === 0) return <p className="text-15 text-emerald-800">No name on the firm&rsquo;s register matched.</p>;
   return (
-    <ul className="divide-y divide-gray-100 rounded-lg border border-amber-200 bg-amber-50">
+    <ul className="divide-y divide-hairline rounded-lg border border-amber-200 bg-amber-50">
       {matches.map((m, i) => (
-        <li key={`${m.kind}-${m.name}-${m.matter_id ?? "r"}-${i}`} className="px-3 py-2 text-sm">
-          <p className="font-medium text-gray-900">
+        <li key={`${m.kind}-${m.name}-${m.matter_id ?? "r"}-${i}`} className="px-3 py-2 text-15">
+          <p className="font-medium text-ink">
             {m.name}
-            <span className="ml-2 text-xs font-normal text-gray-600">{STRENGTH_LABELS[m.strength]} match for &ldquo;{m.searched}&rdquo;</span>
+            <span className="ml-2 text-13 font-normal text-ink-muted">{STRENGTH_LABELS[m.strength]} match for &ldquo;{m.searched}&rdquo;</span>
           </p>
-          <p className="text-xs text-gray-700">
+          <p className="text-13 text-ink">
             {KIND_LABELS[m.kind]}
             {m.restricted
               ? ` — on a restricted matter you are not on; ask ${m.lead_lawyer_id ? names[m.lead_lawyer_id] ?? "its lead lawyer" : "its lead lawyer"}`
@@ -94,9 +94,9 @@ export function DecideCheck({
   }
 
   return (
-    <form onSubmit={submit} className="mt-2 space-y-2 rounded-lg border border-gray-200 p-3">
+    <form onSubmit={submit} className="mt-2 space-y-2 rounded-lg border border-hairline p-3">
       {error && <Alert kind="error">{error}</Alert>}
-      <p className="text-sm font-medium text-gray-900">Your decision</p>
+      <p className="text-15 font-medium text-ink">Your decision</p>
       <div className="flex flex-wrap gap-2">
         {(["clear", "conflict", "waived"] as const).map((o) => (
           <button
@@ -106,8 +106,8 @@ export function DecideCheck({
             aria-pressed={outcome === o}
             className={
               outcome === o
-                ? "flex min-h-[44px] items-center rounded-full border border-brand bg-brand px-4 text-sm text-brand-on"
-                : "flex min-h-[44px] items-center rounded-full border border-gray-300 bg-white px-4 text-sm text-gray-700 hover:border-brand"
+                ? "flex min-h-[44px] items-center rounded-full border border-brand bg-brand px-4 text-15 text-brand-on"
+                : "flex min-h-[44px] items-center rounded-full border border-edge bg-raised px-4 text-15 text-ink hover:border-brand"
             }
           >
             {OUTCOME_LABELS[o]}
@@ -115,11 +115,11 @@ export function DecideCheck({
         ))}
       </div>
       <div>
-        <label htmlFor={`note-${checkId}`} className="text-sm font-medium text-gray-900">
+        <label htmlFor={`note-${checkId}`} className="text-15 font-medium text-ink">
           {outcome === "waived" ? "Why the conflict is waived" : "Note"}
-          {outcome === "waived" ? <span className="text-red-700"> *</span> : <span className="text-gray-500"> (optional)</span>}
+          {outcome === "waived" ? <span className="text-red-700"> *</span> : <span className="text-ink-muted"> (optional)</span>}
         </label>
-        <p className="text-xs text-gray-500">
+        <p className="text-13 text-ink-muted">
           {outcome === "waived"
             ? "Who consented, and how. A waiver without its reason is refused."
             : "What you looked at, and why you decided as you did."}

@@ -33,7 +33,7 @@ export const metadata = { title: "Availability" };
 
 const PREVIEW_DAYS = 14;
 const BOOKED_STATUSES = ["pending", "awaiting_payment", "confirmed", "rescheduled"];
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 /** Calendar-date arithmetic on a YYYY-MM-DD, done at noon UTC so no zone can shift the day. */
 function addDays(ymd: string, days: number): string {
@@ -234,15 +234,15 @@ export default async function AvailabilityPage({
     <div className="space-y-5">
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Availability</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Availability</h1>
+          <p className="text-15 text-ink-muted">
             {ctx.firmName} · {isSelf ? "your week" : `${lawyerName}'s week`} · hours in {lawyerTz}
             {zonesDiffer ? `, slot times shown in ${viewerTz}` : ""}
           </p>
         </div>
         <Link
           href="/firm/appointments"
-          className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:border-brand"
+          className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:border-brand"
         >
           Consultations
         </Link>
@@ -253,7 +253,7 @@ export default async function AvailabilityPage({
           <form method="get" action="/firm/availability" className="grid gap-3 px-5 py-4 sm:grid-cols-[1fr_auto] sm:items-end">
             {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}
             <div>
-              <label htmlFor="lawyer" className="text-sm font-medium text-gray-900">Whose week</label>
+              <label htmlFor="lawyer" className="text-15 font-medium text-ink">Whose week</label>
               <select id="lawyer" name="lawyer" defaultValue={lawyerId} className={field}>
                 {staff.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
@@ -264,7 +264,7 @@ export default async function AvailabilityPage({
             </div>
             <button
               type="submit"
-              className="flex min-h-[44px] items-center justify-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+              className="flex min-h-[44px] items-center justify-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
             >
               Open
             </button>
@@ -297,7 +297,7 @@ export default async function AvailabilityPage({
           title="What a client would be offered"
           action={
             service ? (
-              <span className="hidden text-xs text-gray-500 sm:inline">
+              <span className="hidden text-13 text-ink-muted sm:inline">
                 next {PREVIEW_DAYS} days · {totalSlots} slot{totalSlots === 1 ? "" : "s"}
               </span>
             ) : undefined
@@ -312,7 +312,7 @@ export default async function AvailabilityPage({
                 : "The wizard offers slots for a service, and this firm has none in its catalogue yet. Until an owner or admin adds one — with a fee and a length — this week changes nothing a client can see."
             }
             action={
-              <Link href="/firm/appointments" className="text-sm font-medium text-brand underline">
+              <Link href="/firm/appointments" className="text-15 font-medium text-brand underline">
                 See the consultations already booked
               </Link>
             }
@@ -324,13 +324,13 @@ export default async function AvailabilityPage({
                 <Alert kind="error" title="The booking engine refused this">{previewError}</Alert>
               </div>
             )}
-            <p className="px-5 pt-4 text-sm text-gray-600">
+            <p className="px-5 pt-4 text-15 text-ink-muted">
               Computed by the booking engine itself for{" "}
-              <span className="font-medium text-gray-900">{service.name}</span> ({service.duration_min} minutes), the
+              <span className="font-medium text-ink">{service.name}</span> ({service.duration_min} minutes), the
               first active service. A longer or shorter service produces different times.
               {zonesDiffer ? ` Times below are in your zone, ${viewerTz}.` : ""}
             </p>
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-hairline">
               {preview.map((day) => {
                 const first = day.slots[0];
                 const last = day.slots[day.slots.length - 1];
@@ -338,11 +338,11 @@ export default async function AvailabilityPage({
                 return (
                   <li key={day.ymd} className="flex flex-wrap items-baseline justify-between gap-2 px-5 py-3">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-15 font-medium text-ink">
                         {dayLabel(day.ymd)}
                         {isToday ? " · today" : ""}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-13 text-ink-muted">
                         {day.slots.length > 0 ? (
                           <>
                             {first && last
@@ -359,10 +359,10 @@ export default async function AvailabilityPage({
                     </div>
                     <span
                       className={cn(
-                        "shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                        "shrink-0 rounded-full border px-2.5 py-0.5 text-13 font-medium",
                         day.slots.length > 0
                           ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                          : "border-gray-200 bg-gray-50 text-gray-600",
+                          : "border-hairline bg-sunken text-ink-muted",
                       )}
                     >
                       {day.slots.length === 0 ? "nothing free" : `${day.slots.length} slot${day.slots.length === 1 ? "" : "s"}`}
@@ -371,12 +371,12 @@ export default async function AvailabilityPage({
                 );
               })}
             </ul>
-            <div className="space-y-1 border-t border-gray-100 px-5 py-4 text-xs text-gray-500">
+            <div className="space-y-1 border-t border-hairline px-5 py-4 text-13 text-ink-muted">
               <p>
                 Two things trim a day even when the week says it is open. Nothing starting within{" "}
-                <span className="font-medium text-gray-700">two hours</span> of now is ever offered — the lead time is
+                <span className="font-medium text-ink">two hours</span> of now is ever offered — the lead time is
                 fixed in the booking engine, so today always looks shorter than tomorrow. And the{" "}
-                <span className="font-medium text-gray-700">daily cap</span> counts the appointments already in the diary
+                <span className="font-medium text-ink">daily cap</span> counts the appointments already in the diary
                 that day: once they reach the cap, the whole day stops being offered, however many hours are left in it.
               </p>
               <p>A slot also disappears when it overlaps a break, a blocked range, or an appointment already booked.</p>

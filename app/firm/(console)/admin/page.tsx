@@ -66,14 +66,14 @@ function Line({
           ? "bg-red-100 text-red-900"
           : "";
   return (
-    <div className="flex flex-col gap-1.5 border-b border-gray-100 py-4 last:border-0">
+    <div className="flex flex-col gap-1.5 border-b border-hairline py-4 last:border-0">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-gray-500">{label}</span>
+        <span className="text-15 text-ink-muted">{label}</span>
         <Badge className={badge}>{value}</Badge>
       </div>
-      <p className="text-sm text-gray-700">{meaning}</p>
+      <p className="text-15 text-ink">{meaning}</p>
       {href && (
-        <Link href={href} className="min-h-[44px] py-2.5 text-sm font-medium text-brand underline">
+        <Link href={href} className="min-h-[44px] py-2.5 text-15 font-medium text-brand underline">
           {action ?? "Change this"}
         </Link>
       )}
@@ -323,7 +323,7 @@ export default async function FirmAdminPage({ searchParams }: { searchParams: Pr
 
       <Card>
         <CardHeader title="The rest of the firm" />
-        <CardBody className="space-y-2 text-sm text-gray-700">
+        <CardBody className="space-y-2 text-15 text-ink">
           <p>
             Identity, operations, settlement, service of process, brand, policies, your domain and
             the wording of your messages all live on one screen.

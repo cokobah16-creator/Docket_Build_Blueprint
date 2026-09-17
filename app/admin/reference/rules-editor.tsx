@@ -15,10 +15,10 @@ import { DEADLINE_TRIGGER_LABELS, DEADLINE_TRIGGERS, type CourtRuleRow, type Rul
 
 export interface RuleView extends CourtRuleRow { provisions: RuleProvisionRow[] }
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
-const labelClass = "block text-sm font-medium text-gray-800";
-const primaryButton = "min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50";
-const quietButton = "min-h-[44px] rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-gray-800 hover:bg-black/5 disabled:opacity-50";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const labelClass = "block text-15 font-medium text-ink";
+const primaryButton = "min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white disabled:opacity-50";
+const quietButton = "min-h-[44px] rounded-lg border border-edge px-4 py-2.5 text-15 font-medium text-ink hover:bg-hover disabled:opacity-50";
 
 const EMPTY_RULE = { level: "", stateCode: "", name: "", citation: "", version: "", effectiveFrom: "", note: "" };
 const EMPTY_PROVISION: { key: string; label: string; citation: string; triggerKind: string; period: number; unit: "days" | "months"; countMode: "calendar" | "clear" | "working"; excludesVacation: boolean; rollsForward: boolean; note: string } =
@@ -46,7 +46,7 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
         action={!ruleDraft ? <button type="button" className={quietButton} onClick={() => { setRuleDraft(EMPTY_RULE); setResult(null); }}>Enter a set of rules</button> : undefined}
       />
       <CardBody className="space-y-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-15 text-ink-muted">
           What a firm&apos;s deadline is counted from. Each set of rules names its court level and state (or every court), its
           citation and version, and the day it came into force; each provision under it is one period. Nothing here is
           seeded — type it from the Rules, and retire a set when a new edition replaces it. A deadline already counted keeps
@@ -57,7 +57,7 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
 
         {ruleDraft && (
           <form
-            className="grid gap-3 rounded-lg border border-gray-200 p-4 sm:grid-cols-2"
+            className="grid gap-3 rounded-lg border border-hairline p-4 sm:grid-cols-2"
             onSubmit={(e) => { e.preventDefault(); start(async () => done(await saveCourtRule(ruleDraft))); }}
           >
             <div className="sm:col-span-2">
@@ -104,33 +104,33 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
         {rules.length === 0 ? (
           <EmptyState title="No rules of court are entered" hint="Until one is, a firm can only give a deadline's day itself. Enter the set a firm's courts use, then its periods." />
         ) : (
-          <ul className="divide-y divide-gray-100">
+          <ul className="divide-y divide-hairline">
             {rules.map((r) => (
               <li key={r.id} className="py-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {r.name} <span className="font-normal text-gray-600">({r.version})</span>
-                    {r.retired_on ? <span className="ml-2 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700">retired {r.retired_on}</span> : null}
+                  <p className="text-15 font-semibold text-ink">
+                    {r.name} <span className="font-normal text-ink-muted">({r.version})</span>
+                    {r.retired_on ? <span className="ml-2 rounded-full bg-sunken px-2 py-0.5 text-13 text-ink">retired {r.retired_on}</span> : null}
                   </p>
-                  <p className="text-xs text-gray-600">{r.level ? COURT_LEVEL_LABELS[r.level] ?? r.level : "every court"} · {r.state_code ? NG_STATES[r.state_code] ?? r.state_code : "every state"} · from {r.effective_from}</p>
+                  <p className="text-13 text-ink-muted">{r.level ? COURT_LEVEL_LABELS[r.level] ?? r.level : "every court"} · {r.state_code ? NG_STATES[r.state_code] ?? r.state_code : "every state"} · from {r.effective_from}</p>
                 </div>
-                {r.citation && <p className="text-xs text-gray-600">{r.citation}</p>}
-                {r.note && <p className="text-xs text-gray-500">{r.note}</p>}
+                {r.citation && <p className="text-13 text-ink-muted">{r.citation}</p>}
+                {r.note && <p className="text-13 text-ink-muted">{r.note}</p>}
                 {r.provisions.length > 0 ? (
                   <ul className="mt-2 space-y-1">
                     {r.provisions.map((p) => (
-                      <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-2 text-sm text-gray-800">
+                      <li key={p.id} className="flex flex-wrap items-baseline justify-between gap-2 text-15 text-ink">
                         <span>
                           <span className="font-medium">{p.label}</span>
-                          <span className="text-gray-600"> — {p.period} {p.unit === "months" ? "calendar months" : `${p.count_mode} days`} from {DEADLINE_TRIGGER_LABELS[p.trigger_kind].toLowerCase()}{p.excludes_vacation ? ", time stopped in vacation" : ""}{!p.rolls_forward ? ", no rolling forward" : ""}{p.citation ? ` · ${p.citation}` : ""}</span>
-                          <span className="ml-1 font-mono text-xs text-gray-500">{p.key}</span>
+                          <span className="text-ink-muted"> — {p.period} {p.unit === "months" ? "calendar months" : `${p.count_mode} days`} from {DEADLINE_TRIGGER_LABELS[p.trigger_kind].toLowerCase()}{p.excludes_vacation ? ", time stopped in vacation" : ""}{!p.rolls_forward ? ", no rolling forward" : ""}{p.citation ? ` · ${p.citation}` : ""}</span>
+                          <span className="ml-1 font-mono text-13 text-ink-muted">{p.key}</span>
                         </span>
-                        <button type="button" className="text-xs text-red-800 underline" disabled={busy} onClick={() => start(async () => done(await deleteRuleProvision(p.id)))}>Remove</button>
+                        <button type="button" className="text-13 text-red-800 underline" disabled={busy} onClick={() => start(async () => done(await deleteRuleProvision(p.id)))}>Remove</button>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <p className="mt-2 text-xs text-amber-800">No provision yet — this set counts nothing until one is entered.</p>
+                  <p className="mt-2 text-13 text-amber-800">No provision yet — this set counts nothing until one is entered.</p>
                 )}
                 <div className="mt-2 flex flex-wrap gap-2">
                   {provisionFor !== r.id && <button type="button" className={quietButton} onClick={() => { setProvisionFor(r.id); setProvisionDraft(EMPTY_PROVISION); setResult(null); }}>Add a provision</button>}
@@ -148,7 +148,7 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
                 )}
                 {provisionFor === r.id && (
                   <form
-                    className="mt-3 grid gap-3 rounded-lg border border-gray-200 p-4 sm:grid-cols-3"
+                    className="mt-3 grid gap-3 rounded-lg border border-hairline p-4 sm:grid-cols-3"
                     onSubmit={(e) => { e.preventDefault(); start(async () => done(await saveRuleProvision({ ...provisionDraft, ruleId: r.id }))); }}
                   >
                     <div>
@@ -188,10 +188,10 @@ export function RulesEditor({ rules }: { rules: RuleView[] }) {
                       <label htmlFor={`pc-${r.id}`} className={labelClass}>Citation</label>
                       <input id={`pc-${r.id}`} type="text" maxLength={300} value={provisionDraft.citation} onChange={(e) => setProvisionDraft({ ...provisionDraft, citation: e.target.value })} placeholder="Order 17 rule 1" className={field} />
                     </div>
-                    <label className="flex min-h-[44px] items-center gap-2 text-sm text-gray-800">
+                    <label className="flex min-h-[44px] items-center gap-2 text-15 text-ink">
                       <input type="checkbox" checked={provisionDraft.excludesVacation} onChange={(e) => setProvisionDraft({ ...provisionDraft, excludesVacation: e.target.checked })} className="h-5 w-5" /> Time stops during a vacation
                     </label>
-                    <label className="flex min-h-[44px] items-center gap-2 text-sm text-gray-800">
+                    <label className="flex min-h-[44px] items-center gap-2 text-15 text-ink">
                       <input type="checkbox" checked={provisionDraft.rollsForward} onChange={(e) => setProvisionDraft({ ...provisionDraft, rollsForward: e.target.checked })} className="h-5 w-5" /> A last day the court does not sit rolls forward
                     </label>
                     <div className="sm:col-span-3">

@@ -114,7 +114,7 @@ export default async function AppointmentPage({
       <ScreenHeader back="/app/appointments" backLabel="Back to appointments" title={appt.reference} titleAs="mono" />
       <Screen>
         <div className="flex items-start justify-between gap-3">
-          <h1 className="font-heading text-[22px] font-semibold leading-tight tracking-[-0.015em] text-brand">
+          <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand">
             {svc?.name ?? "Consultation"}
           </h1>
           <StatusPill status={appt.status as Status} />
@@ -177,9 +177,9 @@ export default async function AppointmentPage({
           <Card>
             <CardHeader title="Video consultation" />
             <CardBody className="space-y-3">
-              <p className="text-[13.5px] leading-relaxed text-gray-700">
+              <p className="text-13 leading-relaxed text-ink">
                 The waiting room opens at{" "}
-                <strong className="text-gray-900">{new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: tz }).format(opensAt)}</strong>, 10 minutes before
+                <strong className="text-ink">{new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: tz }).format(opensAt)}</strong>, 10 minutes before
                 your consultation. Test your camera and microphone there, then wait for {lawyerName} to admit you.
               </p>
               <Link href={`/app/appointments/${appt.id}/waiting-room`} className={buttonClasses("primary", "lg", "w-full")}>
@@ -199,15 +199,15 @@ export default async function AppointmentPage({
         {notes && notes.client_summary && (
           <Card>
             <CardHeader title="Your consultation summary" />
-            <CardBody className="space-y-3 text-[13.5px] leading-relaxed text-gray-800">
+            <CardBody className="space-y-3 text-13 leading-relaxed text-ink">
               <p className="whitespace-pre-wrap">{notes.client_summary}</p>
               {notes.advice_given && (
-                <div><p className="text-[11px] uppercase tracking-wide text-gray-500">Advice</p><p className="whitespace-pre-wrap">{notes.advice_given}</p></div>
+                <div><p className="text-11 uppercase tracking-wide text-ink-muted">Advice</p><p className="whitespace-pre-wrap">{notes.advice_given}</p></div>
               )}
               {notes.follow_up && (
-                <div><p className="text-[11px] uppercase tracking-wide text-gray-500">Next steps</p><p className="whitespace-pre-wrap">{notes.follow_up}</p></div>
+                <div><p className="text-11 uppercase tracking-wide text-ink-muted">Next steps</p><p className="whitespace-pre-wrap">{notes.follow_up}</p></div>
               )}
-              <p className="text-[11.5px] text-gray-500">
+              <p className="text-11 text-ink-muted">
                 Written by your lawyer ·{" "}
                 {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: tz }).format(new Date(notes.updated_at))}
               </p>
@@ -218,7 +218,7 @@ export default async function AppointmentPage({
         {live && upcoming && (
           <>
             <form action={cancel}><Button type="submit" variant="ghost" size="lg" className="w-full">Cancel appointment</Button></form>
-            <p className="text-[11.5px] leading-relaxed text-gray-500">
+            <p className="text-11 leading-relaxed text-ink-muted">
               Consultations may be rescheduled or cancelled free of charge up to 24 hours before the appointment.
             </p>
           </>

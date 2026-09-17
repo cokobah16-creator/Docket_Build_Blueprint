@@ -27,7 +27,7 @@ import { isE164, normalizeNigerianPhone } from "@/lib/nigeria";
  */
 const INVITE_PATH = "/app/join";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 export interface MatterPartyRow {
   user_id: string;
@@ -138,33 +138,33 @@ export function PartiesPanel({
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
 
   return (
-    <div className="divide-y divide-gray-100">
+    <div className="divide-y divide-hairline">
       {error && <div className="px-4 py-4 sm:px-5"><Alert kind="error" title="That was refused">{error}</Alert></div>}
 
       <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">On this matter</h3>
+        <h3 className="font-heading text-base font-semibold text-ink">On this matter</h3>
         {parties.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-15 text-ink-muted">
             Nobody on the client side yet. Invite your client below — they then see the timeline, the documents you share and their invoices in their app.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-gray-100">
+          <ul className="mt-3 divide-y divide-hairline">
             {parties.map((p) => (
               <li key={p.user_id} className="flex flex-wrap items-start justify-between gap-3 py-3">
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{p.full_name ?? "Client"}</p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-15 font-medium text-ink">{p.full_name ?? "Client"}</p>
+                  <p className="text-13 text-ink-muted">
                     {ROLE_LABELS[p.role] ?? p.role.replace(/_/g, " ")}
                     {p.phone ? ` · ${p.phone}` : ""}
                     {p.email ? ` · ${p.email}` : ""}
                   </p>
-                  <p className="mt-0.5 text-xs text-gray-500">
+                  <p className="mt-0.5 text-13 text-ink-muted">
                     {p.can_view_docs ? "Can read shared documents" : "No document access"}
                   </p>
                 </div>
                 {confirming === p.user_id ? (
                   <span className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs text-gray-600">They lose this matter in their app at once.</span>
+                    <span className="text-13 text-ink-muted">They lose this matter in their app at once.</span>
                     <Button size="sm" variant="danger" disabled={working === p.user_id} onClick={() => remove(p.user_id)}>
                       {working === p.user_id ? "Removing…" : "Remove"}
                     </Button>
@@ -180,15 +180,15 @@ export function PartiesPanel({
       </section>
 
       <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">Invite your client</h3>
-        <p className="mt-0.5 text-sm text-gray-600">
+        <h3 className="font-heading text-base font-semibold text-ink">Invite your client</h3>
+        <p className="mt-0.5 text-15 text-ink-muted">
           A phone number, an email address, or both. Send them the link over WhatsApp or SMS — it expires in fourteen days.
           They sign in with the number or email you invited here, and the matter then appears in their app.
         </p>
         <form onSubmit={submit} className="mt-3 space-y-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label htmlFor="invite-phone" className="text-sm font-medium text-gray-900">Phone</label>
+              <label htmlFor="invite-phone" className="text-15 font-medium text-ink">Phone</label>
               <input
                 id="invite-phone"
                 type="tel"
@@ -201,7 +201,7 @@ export function PartiesPanel({
               />
             </div>
             <div>
-              <label htmlFor="invite-email" className="text-sm font-medium text-gray-900">Email</label>
+              <label htmlFor="invite-email" className="text-15 font-medium text-ink">Email</label>
               <input
                 id="invite-email"
                 type="email"
@@ -214,7 +214,7 @@ export function PartiesPanel({
             </div>
           </div>
           <div>
-            <label htmlFor="invite-role" className="text-sm font-medium text-gray-900">They join as</label>
+            <label htmlFor="invite-role" className="text-15 font-medium text-ink">They join as</label>
             <select id="invite-role" value={role} onChange={(e) => setRole(e.target.value === "contact" ? "contact" : "client")} className={field}>
               <option value="client">Client — the matter is theirs</option>
               <option value="contact">Contact — follows the matter with the client&rsquo;s knowledge</option>
@@ -225,8 +225,8 @@ export function PartiesPanel({
 
         {invited && (
           <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4">
-            <p className="text-sm font-medium text-emerald-900">Invitation ready — send it now.</p>
-            <p className="mt-1 break-all text-xs text-emerald-900">{linkFor(invited.token)}</p>
+            <p className="text-15 font-medium text-emerald-900">Invitation ready — send it now.</p>
+            <p className="mt-1 break-all text-13 text-emerald-900">{linkFor(invited.token)}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <CopyButton path={`${INVITE_PATH}?token=${encodeURIComponent(invited.token)}`} label="Copy the link" />
               {digitsOf(invited.phone) && (
@@ -235,42 +235,42 @@ export function PartiesPanel({
                     href={`https://wa.me/${digitsOf(invited.phone)}?text=${encodeURIComponent(messageFor(invited.token))}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-3 text-sm font-medium text-brand-on hover:opacity-90"
+                    className="inline-flex min-h-[44px] items-center rounded-lg bg-brand px-3 text-15 font-medium text-brand-on hover:opacity-90"
                   >
                     Send on WhatsApp
                   </a>
                   <a
                     href={`sms:${invited.phone ?? ""}?&body=${encodeURIComponent(messageFor(invited.token))}`}
-                    className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-brand hover:bg-black/5"
+                    className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover"
                   >
                     Send by SMS
                   </a>
                 </>
               )}
             </div>
-            <p className="mt-2 text-xs text-emerald-900">Expires {invited.expiresAt ? fmt.format(new Date(invited.expiresAt)) : "in fourteen days"}.</p>
+            <p className="mt-2 text-13 text-emerald-900">Expires {invited.expiresAt ? fmt.format(new Date(invited.expiresAt)) : "in fourteen days"}.</p>
           </div>
         )}
       </section>
 
       <section className="px-4 py-4 sm:px-5">
-        <h3 className="font-heading text-base font-semibold text-gray-900">Invitations waiting</h3>
+        <h3 className="font-heading text-base font-semibold text-ink">Invitations waiting</h3>
         {invites.length === 0 ? (
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-15 text-ink-muted">
             No invitation is outstanding. Everyone invited to this matter has either accepted or been revoked.
           </p>
         ) : (
-          <ul className="mt-3 divide-y divide-gray-100">
+          <ul className="mt-3 divide-y divide-hairline">
             {invites.map((i) => (
               <li key={i.id} className="space-y-2 py-3">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-15 font-medium text-ink">
                     {i.phone ?? i.email ?? "Invitation"}
-                    <span className="ml-2 text-xs font-normal text-gray-500">{ROLE_LABELS[i.role] ?? i.role}</span>
+                    <span className="ml-2 text-13 font-normal text-ink-muted">{ROLE_LABELS[i.role] ?? i.role}</span>
                   </p>
-                  <p className="text-xs text-gray-500">Expires {fmt.format(new Date(i.expires_at))}</p>
+                  <p className="text-13 text-ink-muted">Expires {fmt.format(new Date(i.expires_at))}</p>
                 </div>
-                <p className="break-all text-xs text-gray-600">{origin ? linkFor(i.token) : `${INVITE_PATH}?token=…`}</p>
+                <p className="break-all text-13 text-ink-muted">{origin ? linkFor(i.token) : `${INVITE_PATH}?token=…`}</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <CopyButton path={`${INVITE_PATH}?token=${encodeURIComponent(i.token)}`} label="Copy the link" />
                   {digitsOf(i.phone) && (
@@ -278,7 +278,7 @@ export function PartiesPanel({
                       href={`https://wa.me/${digitsOf(i.phone)}?text=${encodeURIComponent(messageFor(i.token))}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex min-h-[44px] items-center rounded-lg border border-gray-300 px-3 text-sm font-medium text-brand hover:bg-black/5"
+                      className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover"
                     >
                       WhatsApp
                     </a>

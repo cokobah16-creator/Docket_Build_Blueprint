@@ -36,8 +36,8 @@ export default async function BookPage({
 
   return (
     <div className="mx-auto max-w-lg px-4 pb-12 pt-6">
-      <h1 className="font-heading text-[26px] font-semibold leading-tight tracking-[-0.015em] text-brand">Book a Consultation</h1>
-      <p className="mt-1.5 text-[13.5px] leading-relaxed text-gray-600">
+      <h1 className="font-heading text-26 font-semibold leading-tight tracking-[-0.015em] text-brand">Book a Consultation</h1>
+      <p className="mt-1.5 text-13 leading-relaxed text-ink-muted">
         Takes about three minutes. Your slot is held for 15 minutes while you pay.
       </p>
       <div className="mt-5">

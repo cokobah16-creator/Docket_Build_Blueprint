@@ -27,8 +27,8 @@ export function ClientLoginPanel({
   return (
     <>
       <DraftSweeper />
-      <h1 className="font-heading text-2xl font-semibold text-brand">Sign in</h1>
-      <p className="mt-1 text-sm text-gray-600">Use the phone number or email your firm has for you.</p>
+      <h1 className="font-heading text-26 font-semibold text-brand">Sign in</h1>
+      <p className="mt-1 text-15 text-ink-muted">Use the phone number or email your firm has for you.</p>
       {/* Above the form rather than inside it: this is about the attempt that brought them here,
           not about anything they have typed yet, and SignInForms clears its own slots as soon as
           a tab is tapped. kind="warning" because nothing has gone wrong with their account —
@@ -49,7 +49,7 @@ export function ClientLoginPanel({
           />
         </CardBody>
       </Card>
-      <p className="mt-6 text-center text-sm text-gray-500">
+      <p className="mt-6 text-center text-15 text-ink-muted">
         Staff? <a href="/firm/login" className="font-medium text-brand underline">Sign in to the console</a>
       </p>
     </>

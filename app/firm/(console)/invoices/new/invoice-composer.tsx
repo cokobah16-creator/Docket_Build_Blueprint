@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 const MAX_ITEMS = 50;
 
@@ -226,20 +226,20 @@ export function InvoiceComposer({
       <Card>
         <CardHeader title="Nobody to bill yet" />
         <CardBody className="space-y-3">
-          <p className="text-sm text-gray-700">
+          <p className="text-15 text-ink">
             An invoice is raised against a person {firmName} already acts for. Nobody has booked a consultation or
             been added to a matter yet, so there is nobody to bill.
           </p>
           <div className="flex flex-wrap gap-3">
             <Link
               href={`/firm/matters/new${firmQuery}`}
-              className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-sm font-medium text-brand-on hover:opacity-90"
+              className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
             >
               Open a matter and invite the client
             </Link>
             <Link
               href={`/firm/clients${firmQuery}`}
-              className="flex min-h-[44px] items-center rounded-lg border border-gray-300 px-4 text-sm font-medium text-brand hover:bg-black/5"
+              className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:bg-hover"
             >
               See who is on the books
             </Link>
@@ -257,10 +257,10 @@ export function InvoiceComposer({
         <CardHeader title="Who is billed" />
         <CardBody className="space-y-4">
           <div>
-            <label htmlFor="client_filter" className="text-sm font-medium text-gray-900">
+            <label htmlFor="client_filter" className="text-15 font-medium text-ink">
               Find the client
             </label>
-            <p className="text-xs text-gray-500">
+            <p className="text-13 text-ink-muted">
               Everyone {firmName} acts for: the people who have booked a consultation and the people named on a matter.
             </p>
             <input
@@ -276,7 +276,7 @@ export function InvoiceComposer({
           </div>
 
           <div>
-            <label htmlFor="client" className="text-sm font-medium text-gray-900">
+            <label htmlFor="client" className="text-15 font-medium text-ink">
               Client <span className="text-red-700">*</span>
             </label>
             <select id="client" value={clientId} onChange={(e) => setClientId(e.target.value)} className={field}>
@@ -289,12 +289,12 @@ export function InvoiceComposer({
               ))}
             </select>
             {filteredClients.length === 0 && (
-              <p className="mt-1 text-xs text-amber-800">
+              <p className="mt-1 text-13 text-amber-800">
                 Nobody matches that. Clear the search to see everyone on the firm&rsquo;s books.
               </p>
             )}
             {chosenClient && !chosenClient.email && (
-              <p className="mt-1 text-xs text-amber-800">
+              <p className="mt-1 text-13 text-amber-800">
                 {chosenClient.name} has no email address on file, so no receipt can be emailed. They will still see
                 the invoice in their app.
               </p>
@@ -302,14 +302,14 @@ export function InvoiceComposer({
           </div>
 
           <div>
-            <label htmlFor="matter" className="text-sm font-medium text-gray-900">
+            <label htmlFor="matter" className="text-15 font-medium text-ink">
               Against a matter
             </label>
-            <p className="text-xs text-gray-500">
+            <p className="text-13 text-ink-muted">
               Optional. Attach it and the issued invoice appears on that matter&rsquo;s timeline for the client.
             </p>
             {matters.length === 0 ? (
-              <p className={cn(field, "text-gray-600")}>
+              <p className={cn(field, "text-ink-muted")}>
                 This firm has no matters yet, so the invoice stands on its own.
               </p>
             ) : (
@@ -327,10 +327,10 @@ export function InvoiceComposer({
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="currency" className="text-sm font-medium text-gray-900">
+              <label htmlFor="currency" className="text-15 font-medium text-ink">
                 Currency
               </label>
-              <p className="text-xs text-gray-500">The firm bills in {defaultCurrency} unless you say otherwise.</p>
+              <p className="text-13 text-ink-muted">The firm bills in {defaultCurrency} unless you say otherwise.</p>
               <select
                 id="currency"
                 value={currency}
@@ -346,10 +346,10 @@ export function InvoiceComposer({
               </select>
             </div>
             <div>
-              <label htmlFor="due_on" className="text-sm font-medium text-gray-900">
+              <label htmlFor="due_on" className="text-15 font-medium text-ink">
                 Falls due on
               </label>
-              <p className="text-xs text-gray-500">Optional. After this day the invoice reads as overdue.</p>
+              <p className="text-13 text-ink-muted">Optional. After this day the invoice reads as overdue.</p>
               <input id="due_on" type="date" value={dueOn} onChange={(e) => setDueOn(e.target.value)} className={field} />
             </div>
           </div>
@@ -374,9 +374,9 @@ export function InvoiceComposer({
                 ? Math.round(toMinorUnits(unit) * quantity)
                 : null;
             return (
-              <div key={line.key} className="rounded-lg border border-gray-200 p-3">
+              <div key={line.key} className="rounded-lg border border-hairline p-3">
                 <div>
-                  <label htmlFor={`description_${line.key}`} className="text-sm font-medium text-gray-900">
+                  <label htmlFor={`description_${line.key}`} className="text-15 font-medium text-ink">
                     Line {index + 1}
                   </label>
                   <input
@@ -392,7 +392,7 @@ export function InvoiceComposer({
 
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
                   <div>
-                    <label htmlFor={`quantity_${line.key}`} className="text-sm font-medium text-gray-900">
+                    <label htmlFor={`quantity_${line.key}`} className="text-15 font-medium text-ink">
                       Quantity
                     </label>
                     <input
@@ -407,7 +407,7 @@ export function InvoiceComposer({
                     />
                   </div>
                   <div>
-                    <label htmlFor={`unit_${line.key}`} className="text-sm font-medium text-gray-900">
+                    <label htmlFor={`unit_${line.key}`} className="text-15 font-medium text-ink">
                       Amount each ({currency})
                     </label>
                     <input
@@ -425,8 +425,8 @@ export function InvoiceComposer({
                 </div>
 
                 <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm text-gray-700">
-                    {lineMinor === null ? "—" : <span className="font-medium text-gray-900">{money(lineMinor)}</span>}
+                  <p className="text-15 text-ink">
+                    {lineMinor === null ? "—" : <span className="font-medium text-ink">{money(lineMinor)}</span>}
                   </p>
                   <Button
                     type="button"
@@ -447,7 +447,7 @@ export function InvoiceComposer({
               Add another line
             </Button>
             {lines.length >= MAX_ITEMS && (
-              <p className="text-xs text-gray-500">An invoice takes at most {MAX_ITEMS} lines.</p>
+              <p className="text-13 text-ink-muted">An invoice takes at most {MAX_ITEMS} lines.</p>
             )}
           </div>
         </CardBody>
@@ -456,21 +456,21 @@ export function InvoiceComposer({
       <Card>
         <CardHeader title="What it comes to" />
         <CardBody>
-          <dl className="space-y-2 text-sm">
+          <dl className="space-y-2 text-15">
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-gray-600">Subtotal</dt>
-              <dd className="font-medium text-gray-900">{money(totals.subtotal)}</dd>
+              <dt className="text-ink-muted">Subtotal</dt>
+              <dd className="font-medium text-ink">{money(totals.subtotal)}</dd>
             </div>
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="text-gray-600">VAT at {vatRate}%</dt>
-              <dd className="font-medium text-gray-900">{money(totals.vat)}</dd>
+              <dt className="text-ink-muted">VAT at {vatRate}%</dt>
+              <dd className="font-medium text-ink">{money(totals.vat)}</dd>
             </div>
-            <div className="flex items-baseline justify-between gap-4 border-t border-gray-100 pt-2">
+            <div className="flex items-baseline justify-between gap-4 border-t border-hairline pt-2">
               <dt className="font-heading text-base font-semibold text-brand">Total</dt>
               <dd className="font-heading text-base font-semibold text-brand">{money(totals.total)}</dd>
             </div>
           </dl>
-          <p className="mt-3 text-xs text-gray-500">
+          <p className="mt-3 text-13 text-ink-muted">
             {vatRate > 0
               ? `VAT is the firm's own rate of ${vatRate}%, applied by the database when the invoice is raised.`
               : "This firm has no VAT rate set, so no VAT is added. An owner can set it on the firm's record."}
@@ -482,10 +482,10 @@ export function InvoiceComposer({
         <CardHeader title="Send it, or keep it" />
         <CardBody className="space-y-4">
           <div>
-            <label htmlFor="note" className="text-sm font-medium text-gray-900">
+            <label htmlFor="note" className="text-15 font-medium text-ink">
               Note to the client
             </label>
-            <p className="text-xs text-gray-500">
+            <p className="text-13 text-ink-muted">
               Optional, and the client reads it: it goes out with the invoice and, when the invoice is against a
               matter, onto that matter&rsquo;s timeline. Keep anything internal off this screen.
             </p>
@@ -513,7 +513,7 @@ export function InvoiceComposer({
               {pending ? "Working…" : "Save as a draft"}
             </Button>
           </div>
-          <p className="text-xs text-gray-500">
+          <p className="text-13 text-ink-muted">
             The invoice number is issued by the database as the invoice is raised, in the firm&rsquo;s own series.
           </p>
         </CardBody>
@@ -549,14 +549,14 @@ export function CopyLink({ value, label = "Copy link" }: { value: string; label?
           value={value}
           aria-label={label}
           onFocus={(e) => e.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-800"
+          className="min-w-0 flex-1 rounded-lg border border-edge bg-sunken px-3 py-2 text-base text-ink"
         />
         <Button type="button" variant="ghost" onClick={copy}>
           {state === "copied" ? "Copied" : label}
         </Button>
       </div>
       {state === "manual" && (
-        <p className="text-xs text-gray-600">
+        <p className="text-13 text-ink-muted">
           This browser would not let the page copy for you — press and hold the link above to copy it.
         </p>
       )}

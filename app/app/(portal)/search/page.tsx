@@ -48,7 +48,7 @@ function Snippet({ text }: { text: string }) {
     <span>
       {parts.map((p, i) =>
         p.startsWith("<<") && p.endsWith(">>")
-          ? <mark key={i} className="rounded bg-amber-100 px-0.5 text-gray-900">{p.slice(2, -2)}</mark>
+          ? <mark key={i} className="rounded bg-amber-100 px-0.5 text-ink">{p.slice(2, -2)}</mark>
           : <span key={i}>{p}</span>,
       )}
     </span>
@@ -101,18 +101,18 @@ export default async function PortalSearch({ searchParams }: { searchParams: Pro
       <Card>
         <form method="GET" action="/app/search" className="flex flex-col gap-2 p-4">
           {kind && <input type="hidden" name="kind" value={kind} />}
-          <label className="text-sm font-medium text-gray-800" htmlFor="q">Search your matters</label>
+          <label className="text-15 font-medium text-ink" htmlFor="q">Search your matters</label>
           <div className="flex gap-2">
             <input
               id="q" name="q" type="search" defaultValue={q} autoFocus minLength={2} maxLength={200}
               placeholder="A word from an update, a file name, a reference"
-              className="min-h-11 w-full rounded-lg border border-gray-300 px-3 text-[15px] text-gray-900 focus:border-brand focus:outline-none"
+              className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-brand focus:outline-none"
             />
-            <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-brand px-4 text-sm font-medium text-brand-on">
+            <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-brand px-4 text-15 font-medium text-brand-on">
               Search
             </button>
           </div>
-          <p className="text-xs leading-relaxed text-gray-500">
+          <p className="text-13 leading-relaxed text-ink-muted">
             This searches what your firm has written to you, the names of your documents, and the
             words inside the ones your firm has shared with you. A scanned or photographed page is
             a picture of words rather than words, so Docket cannot look inside those.
@@ -132,14 +132,14 @@ export default async function PortalSearch({ searchParams }: { searchParams: Pro
         <>
           <div className="flex flex-wrap gap-2">
             <Link href={keep(null)}
-                  className={cn("min-h-9 rounded-full border px-3 py-1.5 text-xs",
-                    kind === null ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700")}>
+                  className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
+                    kind === null ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink")}>
               Everything
             </Link>
             {KINDS.map(([k, label]) => (
               <Link key={k} href={keep(k)}
-                    className={cn("min-h-9 rounded-full border px-3 py-1.5 text-xs",
-                      kind === k ? "border-brand bg-brand text-brand-on" : "border-gray-300 bg-white text-gray-700")}>
+                    className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
+                      kind === k ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink")}>
                 {label}
               </Link>
             ))}
@@ -153,21 +153,21 @@ export default async function PortalSearch({ searchParams }: { searchParams: Pro
                 hint="Try a single word, or the reference on a letter from your firm."
               />
             ) : (
-              <ul className="divide-y divide-gray-100">
+              <ul className="divide-y divide-hairline">
                 {hits.map((hit) => (
                   <li key={`${hit.kind}:${hit.id}`}>
-                    <Link href={hrefFor(hit)} className="flex flex-col gap-1 px-4 py-3 hover:bg-gray-50">
+                    <Link href={hrefFor(hit)} className="flex flex-col gap-1 px-4 py-3 hover:bg-sunken">
                       <span className="flex items-baseline justify-between gap-3">
-                        <span className="min-w-0 text-sm font-medium text-gray-900">{hit.title}</span>
-                        <span className="shrink-0 text-[11px] uppercase tracking-wide text-gray-500">
+                        <span className="min-w-0 text-15 font-medium text-ink">{hit.title}</span>
+                        <span className="shrink-0 text-11 uppercase tracking-wide text-ink-muted">
                           {KIND_LABEL.get(hit.kind) ?? hit.kind}
                         </span>
                       </span>
                       {hit.snippet && (
-                        <span className="text-xs leading-relaxed text-gray-600"><Snippet text={hit.snippet} /></span>
+                        <span className="text-13 leading-relaxed text-ink-muted"><Snippet text={hit.snippet} /></span>
                       )}
                       {hit.firm_id && firmNames.has(hit.firm_id) && (
-                        <span className="text-[11px] text-gray-500">{firmNames.get(hit.firm_id)}</span>
+                        <span className="text-11 text-ink-muted">{firmNames.get(hit.firm_id)}</span>
                       )}
                     </Link>
                   </li>

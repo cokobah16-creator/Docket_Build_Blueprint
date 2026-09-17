@@ -18,7 +18,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { formatMoneyByCurrency } from "@/lib/money";
 import { BASELINE_CLAIMS, type FirmBaselineRow, type FirmMetrics } from "@/lib/db/types";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 /** A share, or a dash where there is nothing to take a share of. */
 function share(n: number, of: number): string {
@@ -37,10 +37,10 @@ function days(n: number): string {
 
 function Figure({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border border-gray-200 p-3">
-      <p className="text-xs text-gray-600">{label}</p>
-      <p className="mt-0.5 font-heading text-lg font-semibold text-[#141414]">{value}</p>
-      {sub && <p className="text-xs text-gray-500">{sub}</p>}
+    <div className="rounded-lg border border-hairline p-3">
+      <p className="text-13 text-ink-muted">{label}</p>
+      <p className="mt-0.5 font-heading text-17 font-semibold text-[#141414]">{value}</p>
+      {sub && <p className="text-13 text-ink-muted">{sub}</p>}
     </div>
   );
 }
@@ -49,7 +49,7 @@ export function Figures({ m, currency = "NGN" }: { m: FirmMetrics; currency?: st
   return (
     <div className="space-y-4">
       <section>
-        <h3 className="text-sm font-semibold text-gray-900">Consultations</h3>
+        <h3 className="text-15 font-semibold text-ink">Consultations</h3>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
           <Figure label="Booked in the window" value={String(m.bookings.made)} sub={`${m.bookings.paid} paid`} />
           <Figure label="Paid, after" value={hours(m.bookings.median_hours_to_pay)} sub="median, from booking" />
@@ -58,17 +58,17 @@ export function Figures({ m, currency = "NGN" }: { m: FirmMetrics; currency?: st
         </div>
       </section>
       <section>
-        <h3 className="text-sm font-semibold text-gray-900">From a consultation to a matter</h3>
+        <h3 className="text-15 font-semibold text-ink">From a consultation to a matter</h3>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
           <Figure label="Consultations held" value={String(m.consultation_to_matter.consultations)} />
           <Figure label="Followed by a matter" value={share(m.consultation_to_matter.followed_by_a_matter, m.consultation_to_matter.consultations)}
                   sub={`${m.consultation_to_matter.followed_by_a_matter} within ${m.consultation_to_matter.within_days} days`} />
           <Figure label="After" value={days(m.consultation_to_matter.median_days)} sub="median" />
         </div>
-        <p className="mt-1 text-xs text-gray-500">An inference, not a record: nothing joins a consultation to a matter.</p>
+        <p className="mt-1 text-13 text-ink-muted">An inference, not a record: nothing joins a consultation to a matter.</p>
       </section>
       <section>
-        <h3 className="text-sm font-semibold text-gray-900">Telling the client</h3>
+        <h3 className="text-15 font-semibold text-ink">Telling the client</h3>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
           <Figure label="Sittings updated" value={share(m.sittings.with_an_update, m.sittings.sat)} sub={`${m.sittings.with_an_update} of ${m.sittings.sat}`} />
           <Figure label="Within a day of the sitting" value={share(m.sittings.updated_within_24h, m.sittings.sat)} sub={`median ${hours(m.sittings.median_hours_to_update)}`} />
@@ -76,7 +76,7 @@ export function Figures({ m, currency = "NGN" }: { m: FirmMetrics; currency?: st
         </div>
       </section>
       <section>
-        <h3 className="text-sm font-semibold text-gray-900">Answering</h3>
+        <h3 className="text-15 font-semibold text-ink">Answering</h3>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
           <Figure label="Messages from clients" value={String(m.replies.messages_from_clients)} sub={`${m.replies.answered} answered`} />
           <Figure label="First reply, after" value={hours(m.replies.median_hours_to_first_reply)} sub="median" />
@@ -88,7 +88,7 @@ export function Figures({ m, currency = "NGN" }: { m: FirmMetrics; currency?: st
         </div>
       </section>
       <section>
-        <h3 className="text-sm font-semibold text-gray-900">Money and work</h3>
+        <h3 className="text-15 font-semibold text-ink">Money and work</h3>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <Figure label="Invoiced" value={formatMoneyByCurrency(m.money.invoiced, currency)} />
           <Figure label="Collected" value={formatMoneyByCurrency(m.money.collected, currency)} sub={`median ${days(m.money.median_days_to_collect)} to collect`} />
@@ -97,16 +97,16 @@ export function Figures({ m, currency = "NGN" }: { m: FirmMetrics; currency?: st
         </div>
       </section>
       <section>
-        <h3 className="text-sm font-semibold text-gray-900">Clients</h3>
+        <h3 className="text-15 font-semibold text-ink">Clients</h3>
         <div className="mt-2 grid gap-2 sm:grid-cols-2">
           <Figure label="Used the app in the window" value={String(m.clients.active_in_window)} />
           <Figure label="Consultations ahead" value={String(m.attendance.upcoming_now)} />
         </div>
       </section>
       {m.caveats.length > 0 && (
-        <section className="rounded-lg bg-gray-50 p-3">
-          <h3 className="text-sm font-semibold text-gray-900">What these numbers do not say</h3>
-          <ul className="mt-1 list-disc space-y-1 pl-5 text-xs text-gray-700">
+        <section className="rounded-lg bg-sunken p-3">
+          <h3 className="text-15 font-semibold text-ink">What these numbers do not say</h3>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-13 text-ink">
             {m.caveats.map((c) => <li key={c}>{c}</li>)}
           </ul>
         </section>
@@ -171,15 +171,15 @@ export function BaselinePanel({ firmId, timezone, canWrite, from, to, metrics, b
             {[7, 30, 90, 180].map((d) => (
               <button key={d} type="button" onClick={() => move(d)}
                 className={d === windowDays
-                  ? "min-h-[36px] rounded-full border border-brand bg-brand px-3 text-sm text-brand-on"
-                  : "min-h-[36px] rounded-full border border-gray-300 bg-white px-3 text-sm text-gray-700 hover:border-brand"}>
+                  ? "min-h-[36px] rounded-full border border-brand bg-brand px-3 text-15 text-brand-on"
+                  : "min-h-[36px] rounded-full border border-edge bg-raised px-3 text-15 text-ink hover:border-brand"}>
                 Last {d} days
               </button>
             ))}
           </div>
           {metrics ? <Figures m={metrics} />
-            : canWrite ? <p className="text-sm text-gray-600">No figures — the read did not return.</p>
-            : <p className="text-sm text-gray-600">The figures for a window are an owner&apos;s or administrator&apos;s to read.</p>}
+            : canWrite ? <p className="text-15 text-ink-muted">No figures — the read did not return.</p>
+            : <p className="text-15 text-ink-muted">The figures for a window are an owner&apos;s or administrator&apos;s to read.</p>}
         </CardBody>
       </Card>
 
@@ -187,7 +187,7 @@ export function BaselinePanel({ firmId, timezone, canWrite, from, to, metrics, b
         <Card>
           <CardHeader title="Record this baseline" />
           <CardBody>
-            <p className="mb-3 text-xs text-gray-600">
+            <p className="mb-3 text-13 text-ink-muted">
               The database counts this window again at the instant you record it, and stores what it counts then — with the
               window and your name against it, and it cannot be edited afterwards. The figures for the window itself will
               come back the same; the four that describe this moment rather than the window &mdash; <em>Open matters now</em>,
@@ -197,17 +197,17 @@ export function BaselinePanel({ firmId, timezone, canWrite, from, to, metrics, b
               stated claim: Docket cannot measure them and never presents them as if it had.
             </p>
             <form onSubmit={record} className="space-y-3">
-              <label className="block text-sm">
-                <span className="font-medium text-gray-800">Note</span>
+              <label className="block text-15">
+                <span className="font-medium text-ink">Note</span>
                 <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={2000} placeholder="What was happening at the firm over this window" className={field} />
               </label>
-              <fieldset className="rounded-lg border border-gray-200 p-3">
-                <legend className="px-1 text-sm font-medium text-gray-800">Before Docket — what the firm says</legend>
-                <p className="text-xs text-gray-500">Optional, and every one of them is recorded as a statement by you on today&apos;s date, never as a figure Docket computed.</p>
+              <fieldset className="rounded-lg border border-hairline p-3">
+                <legend className="px-1 text-15 font-medium text-ink">Before Docket — what the firm says</legend>
+                <p className="text-13 text-ink-muted">Optional, and every one of them is recorded as a statement by you on today&apos;s date, never as a figure Docket computed.</p>
                 <div className="mt-2 space-y-2">
                   {BASELINE_CLAIMS.map((c) => (
-                    <label key={c.key} className="block text-sm">
-                      <span className="text-gray-800">{c.label}</span>
+                    <label key={c.key} className="block text-15">
+                      <span className="text-ink">{c.label}</span>
                       <input value={stated[c.key] ?? ""} onChange={(e) => setStated((s) => ({ ...s, [c.key]: e.target.value }))}
                              maxLength={500} placeholder={c.hint} className={field} />
                     </label>
@@ -224,29 +224,29 @@ export function BaselinePanel({ firmId, timezone, canWrite, from, to, metrics, b
         <CardHeader title="Baselines already taken" />
         <CardBody>
           {baselines.length === 0 ? (
-            <p className="text-sm text-gray-600">
+            <p className="text-15 text-ink-muted">
               None yet. Take one before you change how the firm works, or there is nothing to compare with later — and any
               claim about what Docket saved would be a guess.
             </p>
           ) : (
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-hairline">
               {baselines.map((b) => (
                 <li key={b.id} className="py-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-15 font-medium text-ink">
                         {fmt.format(new Date(b.window_from))} to {fmt.format(new Date(b.window_to))}
                       </p>
-                      <p className="text-xs text-gray-600">Taken {fmtFull.format(new Date(b.taken_at))}{b.note ? ` · ${b.note}` : ""}</p>
+                      <p className="text-13 text-ink-muted">Taken {fmtFull.format(new Date(b.taken_at))}{b.note ? ` · ${b.note}` : ""}</p>
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => setShowing(showing === b.id ? null : b.id)}>{showing === b.id ? "Hide" : "Show the figures"}</Button>
                   </div>
                   {Object.keys(b.stated ?? {}).length > 0 && (
                     <div className="mt-2 rounded-lg bg-[#FFFAEB] p-3">
-                      <p className="text-xs font-semibold text-[#92400E]">Stated by the firm, not measured by Docket</p>
-                      <ul className="mt-1 space-y-0.5 text-xs text-gray-800">
+                      <p className="text-13 font-semibold text-[#92400E]">Stated by the firm, not measured by Docket</p>
+                      <ul className="mt-1 space-y-0.5 text-13 text-ink">
                         {Object.entries(b.stated).map(([k, v]) => (
-                          <li key={k}><span className="text-gray-600">{BASELINE_CLAIMS.find((c) => c.key === k)?.label ?? k.replace(/_/g, " ")}:</span> {v}</li>
+                          <li key={k}><span className="text-ink-muted">{BASELINE_CLAIMS.find((c) => c.key === k)?.label ?? k.replace(/_/g, " ")}:</span> {v}</li>
                         ))}
                       </ul>
                     </div>

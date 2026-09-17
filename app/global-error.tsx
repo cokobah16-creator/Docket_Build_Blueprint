@@ -16,7 +16,7 @@
 import { useEffect } from "react";
 import { reportBrowserError } from "@/lib/report-error";
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import "./globals.css";
 
 export default function GlobalError({
@@ -32,7 +32,7 @@ export default function GlobalError({
 
   return (
     <html lang="en">
-      <body className="min-h-screen text-gray-900 antialiased">
+      <body className="min-h-screen text-ink antialiased">
         <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-5 px-4 py-10">
           <Alert kind="error" title="Docket did not load">
             Something went wrong on our side before the page could be built. Try again in a
@@ -40,14 +40,14 @@ export default function GlobalError({
           </Alert>
 
           <div className="flex flex-col gap-3">
-            <Button size="lg" className="w-full" onClick={() => reset()}>
+            <Button variant="neutral" size="lg" fullWidth onClick={() => reset()}>
               Try again
             </Button>
             {/* A plain link, not next/link: the router lives below the root layout that just
                 failed, so an anchor is the way out that cannot itself be broken. */}
             <a
               href="/"
-              className="inline-flex w-full items-center justify-center rounded-lg border border-gray-300 px-6 py-3.5 text-base font-medium text-brand hover:bg-black/5"
+              className={buttonClasses("ghost", "lg", "w-full")}
             >
               Go to the home page
             </a>

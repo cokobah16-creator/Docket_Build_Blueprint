@@ -21,6 +21,26 @@ export interface BrandColours {
   primary?: string;
   accent?: string;
   surface?: string;
+  /**
+   * Opt-in: may this firm's own public site follow a visitor into the dark theme?
+   * Absent or false means no, and that is deliberate — in dark the firm's colour is
+   * re-toned to stay legible (src/lib/brand.ts), and doing that unasked to a page
+   * the firm considers theirs is how a support ticket saying "our green is wrong"
+   * starts. Docket's own surfaces, the client portal and the staff console, do not
+   * consult this.
+   *
+   * ONLY THE JSON BOOLEAN true IS EVER STORED HERE. validate_brand() rebuilds
+   * firms.brand from a whitelist, and under `colours` it kept a key only where the
+   * value matched a six-digit hex regex — which a boolean never does, so every
+   * dark_mode ever written was dropped by the trigger with no error at all.
+   * Migration 50 (supabase/migrations/20260910000050_tenant_dark_mode.sql) adds
+   * this one key, tested against the boolean rather than against the hex regex,
+   * and the brand form at /firm/admin/settings is what sets it. A quoted "true",
+   * a 1 and a false store nothing, so the only two states a row can hold are
+   * `true` and absent — which is why tenantAllowsDark() tests `=== true` and why
+   * turning the option off removes the key rather than storing false.
+   */
+  dark_mode?: boolean;
 }
 
 export interface FirmBrand {

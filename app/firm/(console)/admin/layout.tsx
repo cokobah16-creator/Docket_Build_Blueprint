@@ -58,11 +58,11 @@ export default async function FirmAdminLayout({ children }: { children: ReactNod
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="font-heading text-xl font-semibold text-gray-900">Firm administration</h1>
+        <h1 className="font-heading text-21 font-semibold text-ink">Firm administration</h1>
         {/* No firm name here. A layout cannot read ?firm=, so the name it would resolve is the
             account's default — which for a member of two firms is the wrong one over a form that
             writes the other. Each screen below names the firm it actually resolved. */}
-        <p className="mt-1 text-sm text-gray-600">
+        <p className="mt-1 text-15 text-ink-muted">
           What the firm is, what it sells, who works here and what it has done.
         </p>
       </div>

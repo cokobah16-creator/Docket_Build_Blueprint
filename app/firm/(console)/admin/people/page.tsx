@@ -150,8 +150,8 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
   return (
     <div className="space-y-5">
       <header className="min-w-0">
-        <h2 className="font-heading text-2xl font-semibold text-brand">People</h2>
-        <p className="text-sm text-gray-600">
+        <h2 className="font-heading text-26 font-semibold text-brand">People</h2>
+        <p className="text-15 text-ink-muted">
           {firmName} · {people.length} {people.length === 1 ? "person" : "people"} can sign in to this console
         </p>
       </header>
@@ -236,15 +236,15 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
 
       <Card>
         <CardHeader title="How somebody actually joins" />
-        <CardBody className="space-y-2 text-sm text-gray-600">
+        <CardBody className="space-y-2 text-15 text-ink-muted">
           <p>
-            <span className="font-medium text-gray-900">Docket does not send the invitation.</span>{" "}
+            <span className="font-medium text-ink">Docket does not send the invitation.</span>{" "}
             Creating one writes a row and mints a link; sending it is yours to do, by email or
             WhatsApp or however you reach the person. Copy the link above and send it.
           </p>
           <p>
             They open the link, sign in or sign up{" "}
-            <span className="font-medium text-gray-900">with the exact address you invited</span>,
+            <span className="font-medium text-ink">with the exact address you invited</span>,
             and accept. A different address is refused with “this invite was sent to a different
             email address” — the token alone proves nothing.
           </p>

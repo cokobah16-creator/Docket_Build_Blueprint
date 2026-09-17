@@ -17,7 +17,7 @@ import {
 import type { CollaborationDocumentRow, CollaborationRow } from "@/lib/db/types";
 
 const field =
-  "mt-1 block w-full min-h-11 rounded-lg border border-gray-300 px-3 text-base text-gray-900 focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]";
+  "mt-1 block w-full min-h-11 rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]";
 
 export function CollaborationPanel({
   matterId, rows, shared, firms, documents, firmNames, today,
@@ -105,40 +105,40 @@ export function CollaborationPanel({
       {error && <CardBody><Alert kind="error" title="That was refused">{error}</Alert></CardBody>}
 
       {open && (
-        <CardBody className="border-t border-gray-100">
+        <CardBody className="border-t border-hairline">
           <form onSubmit={propose} className="space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-sm text-gray-900">Which firm
+              <label className="block text-15 text-ink">Which firm
                 <select required value={form.withFirmId} onChange={(e) => setForm({ ...form, withFirmId: e.target.value })} className={field}>
                   <option value="">Choose a firm on Docket</option>
                   {firms.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
                 </select>
-                <span className="mt-1 block text-xs text-gray-500">
+                <span className="mt-1 block text-13 text-ink-muted">
                   A firm that is not on Docket has nothing to receive — record that arrangement as a note on the matter.
                 </span>
               </label>
-              <label className="block text-sm text-gray-900">As what
+              <label className="block text-15 text-ink">As what
                 <select value={form.kind} onChange={(e) => setForm({ ...form, kind: e.target.value })} className={field}>
                   {COLLABORATION_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
                 </select>
-                <span className="mt-1 block text-xs text-gray-500">{COLLABORATION_KINDS.find((k) => k.value === form.kind)?.hint}</span>
+                <span className="mt-1 block text-13 text-ink-muted">{COLLABORATION_KINDS.find((k) => k.value === form.kind)?.hint}</span>
               </label>
             </div>
-            <label className="block text-sm text-gray-900">What you are asking them to do
+            <label className="block text-15 text-ink">What you are asking them to do
               <input type="text" required maxLength={2000} value={form.scopeNote}
                      placeholder="Appear for us at the hearing on 3 November and report back."
                      onChange={(e) => setForm({ ...form, scopeNote: e.target.value })} className={field} />
             </label>
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="flex items-center gap-2 text-sm text-gray-900">
+              <label className="flex items-center gap-2 text-15 text-ink">
                 <input type="checkbox" checked={form.shareUpdates} onChange={(e) => setForm({ ...form, shareUpdates: e.target.checked })} />
                 Share the updates we write for the client
               </label>
-              <label className="block text-sm text-gray-900">Ends on (optional)
+              <label className="block text-15 text-ink">Ends on (optional)
                 <input type="date" min={today} value={form.endsOn} onChange={(e) => setForm({ ...form, endsOn: e.target.value })} className={field} />
               </label>
             </div>
-            <p className="text-xs text-gray-500">
+            <p className="text-13 text-ink-muted">
               They see the case title, suit number and court as they read today, and nothing else of the file. Internal
               notes are never shared. Documents are shared one named version at a time, after they accept — and your
               client is told the moment they do.
@@ -158,16 +158,16 @@ export function CollaborationPanel({
           {rows.map((r) => {
             const docs = shared.filter((s) => s.collaboration_id === r.id);
             return (
-              <li key={r.id} className="border-t border-gray-100 px-[15px] py-3 first:border-t-0">
+              <li key={r.id} className="border-t border-hairline px-[15px] py-3 first:border-t-0">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="text-[13.5px] font-semibold text-gray-900">
+                  <p className="text-13 font-semibold text-ink">
                     {firmNames[r.with_firm_id] ?? "Another firm"}
-                    <span className="font-normal text-gray-600"> · {KIND_LABEL.get(r.kind) ?? r.kind}</span>
+                    <span className="font-normal text-ink-muted"> · {KIND_LABEL.get(r.kind) ?? r.kind}</span>
                   </p>
-                  <span className={live(r) ? "text-xs font-medium text-[#15803D]" : "text-xs text-gray-500"}>{stateOf(r)}</span>
+                  <span className={live(r) ? "text-13 font-medium text-[#15803D]" : "text-13 text-ink-muted"}>{stateOf(r)}</span>
                 </div>
-                <p className="mt-1 text-[12.5px] text-gray-800">{r.scope_note}</p>
-                <p className="mt-0.5 text-xs text-gray-500">
+                <p className="mt-1 text-13 text-ink">{r.scope_note}</p>
+                <p className="mt-0.5 text-13 text-ink-muted">
                   {r.share_updates ? "Our client-facing updates are shared" : "No updates shared"} ·
                   {" "}{docs.filter((d) => !d.withdrawn_at).length} document{docs.filter((d) => !d.withdrawn_at).length === 1 ? "" : "s"} shared
                 </p>
@@ -175,7 +175,7 @@ export function CollaborationPanel({
                 {docs.length > 0 && (
                   <ul className="mt-1 space-y-0.5">
                     {docs.map((d) => (
-                      <li key={d.id} className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                      <li key={d.id} className="flex flex-wrap items-center gap-2 text-13 text-ink-muted">
                         <span className={d.withdrawn_at ? "line-through" : ""}>
                           {documents.find((x) => x.versionId === d.document_version_id)?.name
                             ?? documents.find((x) => x.id === d.document_id)?.name
@@ -193,10 +193,10 @@ export function CollaborationPanel({
 
                 {live(r) && (
                   <div className="mt-2 flex flex-wrap items-end gap-2">
-                    <label className="text-xs text-gray-700">
+                    <label className="text-13 text-ink">
                       Share a version
                       <select value={pick[r.id] ?? ""} onChange={(e) => setPick({ ...pick, [r.id]: e.target.value })}
-                              className="mt-1 block min-h-11 rounded-lg border border-gray-300 px-2 text-sm">
+                              className="mt-1 block min-h-11 rounded-lg border border-edge px-2 text-base">
                         <option value="">Choose a document</option>
                         {shareable.map((d) => <option key={d.id} value={d.versionId ?? ""}>{d.name}</option>)}
                       </select>
@@ -211,7 +211,7 @@ export function CollaborationPanel({
         </ul>
       )}
 
-      <CardBody className="border-t border-gray-100 text-xs text-gray-500">
+      <CardBody className="border-t border-hairline text-13 text-ink-muted">
         Sharing is by version: a document that gains a new version is not shared by a row written before it, so hand
         over the new one deliberately. Taking a version back, or ending the arrangement, closes every door at once —
         but neither recalls a copy already downloaded, and nothing in Docket can.

@@ -9,7 +9,7 @@ import { publishWorkflowPack } from "@/lib/actions/workflow";
 import { Alert } from "@/components/ui/alert";
 import { MATTER_TYPES, type WorkflowPackRow } from "@/lib/db/types";
 
-const field = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 const EXAMPLE = `{
   "statuses": [
     { "key": "instructions", "label": "Instructions Received", "colour": "slate", "sort": 10, "next_action": "Open the file" },
@@ -58,34 +58,34 @@ export function PackPublisher({ packs }: { packs: WorkflowPackRow[] }) {
       {result?.error && <Alert kind="error">{result.error}</Alert>}
       {result?.ok && <Alert kind="success">{result.ok}</Alert>}
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-sm text-gray-900">Pack key
+        <label className="text-15 text-ink">Pack key
           <input type="text" list="pack-keys" value={key} onChange={(e) => setKey(e.target.value.trim())} pattern="[a-z0-9_]{2,40}" placeholder="conveyancing" className={field} />
           <datalist id="pack-keys">{Array.from(new Set(packs.map((p) => p.key))).map((k) => <option key={k} value={k} />)}</datalist>
-          <span className="mt-1 block text-xs text-gray-500">An existing key publishes the next version of that pack; a new key starts one.</span>
+          <span className="mt-1 block text-13 text-ink-muted">An existing key publishes the next version of that pack; a new key starts one.</span>
           {loadable && (
             <button type="button" onClick={() => loadLatest(key)}
-                    className="mt-1 min-h-[36px] rounded-lg border border-gray-300 bg-white px-3 text-xs text-gray-700 hover:border-brand">
+                    className="mt-1 min-h-[36px] rounded-lg border border-edge bg-raised px-3 text-13 text-ink hover:border-brand">
               Load the latest version of {key} into this form
             </button>
           )}
         </label>
-        <label className="text-sm text-gray-900">Name<input type="text" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} className={field} /></label>
+        <label className="text-15 text-ink">Name<input type="text" maxLength={120} value={name} onChange={(e) => setName(e.target.value)} className={field} /></label>
       </div>
       <fieldset>
-        <legend className="text-sm text-gray-900">Matter types (none selected: every type)</legend>
+        <legend className="text-15 text-ink">Matter types (none selected: every type)</legend>
         <div className="mt-1 flex flex-wrap gap-2">
           {MATTER_TYPES.map((t) => (
-            <label key={t} className="flex items-center gap-1 rounded-lg border border-gray-300 px-2 py-1 text-xs">
+            <label key={t} className="flex items-center gap-1 rounded-lg border border-edge px-2 py-1 text-13">
               <input type="checkbox" checked={types.includes(t)} onChange={(e) => setTypes(e.target.checked ? [...types, t] : types.filter((x) => x !== t))} /> {t.replace(/_/g, " ")}
             </label>
           ))}
         </div>
       </fieldset>
-      <label className="block text-sm text-gray-900">Definition (JSON)
-        <textarea value={definition} onChange={(e) => setDefinition(e.target.value)} rows={18} className={`${field} font-mono text-xs`} />
+      <label className="block text-15 text-ink">Definition (JSON)
+        <textarea value={definition} onChange={(e) => setDefinition(e.target.value)} rows={18} className={`${field} font-mono text-base`} />
       </label>
-      <label className="block text-sm text-gray-900">Note<input type="text" maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What changed in this version" className={field} /></label>
-      <button type="button" disabled={busy || !key || !name} onClick={() => void publish()} className="min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50">{busy ? "Publishing…" : "Publish this version"}</button>
+      <label className="block text-15 text-ink">Note<input type="text" maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} placeholder="What changed in this version" className={field} /></label>
+      <button type="button" disabled={busy || !key || !name} onClick={() => void publish()} className="min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white disabled:opacity-50">{busy ? "Publishing…" : "Publish this version"}</button>
     </div>
   );
 }

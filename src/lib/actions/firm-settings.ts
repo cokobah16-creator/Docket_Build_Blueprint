@@ -84,6 +84,13 @@ export interface BrandInput {
   contactPhone: string;
   contactAddress: string;
   contactWhatsapp: string;
+  /**
+   * colours.dark_mode: may the firm's OWN public site follow a visitor into the dark theme?
+   * The client portal and the staff console never consult it and always follow. It is stored
+   * only when true — validate_brand() keeps the JSON boolean true and nothing else — so off
+   * removes the key rather than storing false.
+   */
+  darkMode: boolean;
 }
 
 export interface PolicyDocInput {
@@ -220,6 +227,7 @@ const BRAND_LABELS: Record<string, string> = {
   "colours.primary": "The primary colour",
   "colours.accent": "The accent colour",
   "colours.surface": "The background colour",
+  "colours.dark_mode": "Dark mode on your public site",
   "fonts.heading": "The heading typeface",
   "fonts.body": "The body typeface",
   "contact.email": "The contact email",
@@ -544,12 +552,13 @@ export async function updateServiceOfProcess(firmId: string, input: ServiceOfPro
 // ================================================================ brand
 
 /**
- * firms.brand is rewritten as it is stored. validate_brand() (migration 13) keeps ONLY tagline,
- * cta, logo_path, colours.primary/accent/surface as six-digit hex, fonts.heading/body as
- * letters, digits and spaces up to 40 characters, and contact.email/phone/address/whatsapp —
- * everything else is dropped with no error at all. The schema below is that whitelist, so the
- * person typing is told first; the row is then re-read and the difference reported, because the
- * schema is a courtesy and the trigger is the rule.
+ * firms.brand is rewritten as it is stored. validate_brand() (migration 13, widened by migration
+ * 50) keeps ONLY tagline, cta, logo_path, colours.primary/accent/surface as six-digit hex,
+ * colours.dark_mode where it is the boolean true, fonts.heading/body as letters, digits and
+ * spaces up to 40 characters, and contact.email/phone/address/whatsapp — everything else is
+ * dropped with no error at all. The schema below is that whitelist, so the person typing is told
+ * first; the row is then re-read and the difference reported, because the schema is a courtesy
+ * and the trigger is the rule.
  */
 export async function updateBrand(firmId: string, input: BrandInput): Promise<SettingsResult> {
   if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
@@ -578,6 +587,7 @@ export async function updateBrand(firmId: string, input: BrandInput): Promise<Se
     contactPhone: plain("The contact phone", 200),
     contactAddress: plain("The contact address", 200),
     contactWhatsapp: plain("The WhatsApp number", 200),
+    darkMode: z.boolean(),
   });
   const parsed = schema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the brand and try again." };
@@ -593,6 +603,11 @@ export async function updateBrand(firmId: string, input: BrandInput): Promise<Se
   if (d.primary) colours.primary = d.primary.toLowerCase();
   if (d.accent) colours.accent = d.accent.toLowerCase();
   if (d.surface) colours.surface = d.surface.toLowerCase();
+  // Sent only when it is on, because validate_brand() keeps the boolean true and drops
+  // everything else. Sending false would be dropped by the trigger and then reported by the
+  // diff below as "dropped by the database and is not saved" — a warning about a value the firm
+  // just turned off on purpose.
+  if (d.darkMode) colours.dark_mode = true;
   if (Object.keys(colours).length > 0) brand.colours = colours;
   const fonts: Json = {};
   if (d.headingFont) fonts.heading = d.headingFont;
@@ -615,6 +630,19 @@ export async function updateBrand(firmId: string, input: BrandInput): Promise<Se
   refresh();
 
   const notes = diffNotes(brand, stored, BRAND_LABELS);
+  // What the row came back holding, not what was typed into the form. A database still on
+  // migration 49 drops dark_mode exactly as it always did, and diffNotes has just said so on the
+  // line above — so reading d.darkMode here would print "Dark mode on your public site was
+  // dropped by the database and is not saved" and then, immediately under it, a promise that the
+  // firm's site now follows a visitor into dark. That contradiction is the lie on the screen
+  // every re-read in this file exists to prevent.
+  const storedColours = stored.colours as { dark_mode?: boolean } | null | undefined;
+  const darkKept = storedColours?.dark_mode === true;
+  notes.push(
+    darkKept
+      ? "Your public site now follows a visitor who has their phone set to dark, and your colours are re-toned there so they stay legible on a dark page. Your client portal and this console already did that and are unchanged."
+      : "Your public site stays light for every visitor, whatever their phone is set to. Your client portal and this console follow the visitor either way.",
+  );
   notes.push("Your public site reads the brand through a sixty-second cache, so it changes over there within a minute.");
   return { ok: true, notes };
 }

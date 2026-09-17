@@ -17,6 +17,8 @@ invitation as in step 4.*
    unpriced consultation, an intake form, a versioned policies skeleton) and
    leaves the firm **pending**. Brand JSON accepted by `create_firm(p_brand)`
    and `firms.brand`: `colours.{primary,accent,surface}` as `#rrggbb`,
+   `colours.dark_mode` only where it is the JSON boolean `true` (migration 50 —
+   the firm's opt-in for dark on its own public site, set from the brand form),
    `fonts.{heading,body}` (letters, digits, spaces), `tagline`, `cta`,
    `logo_path`, `contact.{email,phone,address,whatsapp}` — anything else is
    dropped by `validate_brand()`.

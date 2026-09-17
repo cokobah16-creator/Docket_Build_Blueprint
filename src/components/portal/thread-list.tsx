@@ -36,22 +36,22 @@ export function ThreadList({
                   href={t.href}
                   aria-current={open ? "page" : undefined}
                   className={cn(
-                    "flex items-start justify-between gap-3 border-t border-gray-100 px-4 py-3.5 first:border-t-0",
-                    open ? "bg-brand-surface" : "hover:bg-gray-50",
+                    "flex items-start justify-between gap-3 border-t border-hairline px-4 py-3.5 first:border-t-0",
+                    open ? "bg-brand-surface" : "hover:bg-sunken",
                   )}
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold leading-snug text-gray-900">{t.title}</p>
-                    <p className="mt-0.5 truncate text-xs text-gray-500">{t.subtitle}</p>
+                    <p className="truncate text-15 font-semibold leading-snug text-ink">{t.title}</p>
+                    <p className="mt-0.5 truncate text-13 text-ink-muted">{t.subtitle}</p>
                     {t.last && (
-                      <p className="mt-1 truncate text-xs text-gray-600">
+                      <p className="mt-1 truncate text-13 text-ink-muted">
                         {t.last.sender_id === userId ? "You: " : ""}
                         {t.last.body ?? "Attachment"} · {fmt.format(new Date(t.last.created_at))}
                       </p>
                     )}
                   </div>
                   {t.unread > 0 && (
-                    <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-brand px-1.5 text-[11px] font-bold text-brand-on">
+                    <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-brand px-1.5 text-11 font-bold text-brand-on">
                       <span className="sr-only">Unread messages: </span>
                       {t.unread}
                     </span>

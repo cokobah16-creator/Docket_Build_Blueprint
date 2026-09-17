@@ -204,8 +204,8 @@ export default async function AdminReferencePage({
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="font-heading text-2xl font-semibold text-brand">Reference data</h1>
-        <p className="text-sm text-gray-600">
+        <h1 className="font-heading text-26 font-semibold text-brand">Reference data</h1>
+        <p className="text-15 text-ink-muted">
           The court calendar and the court directory, maintained by the platform for every firm on
           Docket.
         </p>
@@ -222,7 +222,7 @@ export default async function AdminReferencePage({
         <Card>
           <CardHeader title="Is the non-sitting-day check on?" />
           <CardBody className="space-y-4">
-            <p className="text-sm text-gray-600">
+            <p className="text-15 text-ink-muted">
               <code>is_non_sitting_day()</code> is what warns a lawyer before a court date is fixed on
               a day the court does not sit, and what the database consults before it accepts the next
               date on a matter. It reads three things, and only one of them needs no data.
@@ -230,8 +230,8 @@ export default async function AdminReferencePage({
 
             <ul className="space-y-3">
               <li className="rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-                <p className="text-sm font-medium text-emerald-900">Weekends — on</p>
-                <p className="text-sm text-emerald-900">
+                <p className="text-15 font-medium text-emerald-900">Weekends — on</p>
+                <p className="text-15 text-emerald-900">
                   Saturday and Sunday are refused everywhere, with no data behind them.
                 </p>
               </li>
@@ -241,7 +241,7 @@ export default async function AdminReferencePage({
                   holidaysReachEnough ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"
                 }`}
               >
-                <p className={`text-sm font-medium ${holidaysReachEnough ? "text-emerald-900" : "text-amber-900"}`}>
+                <p className={`text-15 font-medium ${holidaysReachEnough ? "text-emerald-900" : "text-amber-900"}`}>
                   Public holidays —{" "}
                   {holidaysThrough === null
                     ? "nothing recorded"
@@ -249,7 +249,7 @@ export default async function AdminReferencePage({
                       ? `recorded through ${holidaysThrough}`
                       : `only recorded to the end of ${holidaysThrough}`}
                 </p>
-                <p className={`text-sm ${holidaysReachEnough ? "text-emerald-900" : "text-amber-900"}`}>
+                <p className={`text-15 ${holidaysReachEnough ? "text-emerald-900" : "text-amber-900"}`}>
                   {holidaysReachEnough
                     ? `Any day after ${holidaysThrough} is treated as an ordinary sitting day until the next year's dates are entered. Eid and Easter are declared each year and are only here once gazetted.`
                     : `It is ${thisYear}. A day this year that is a public holiday will be treated as an ordinary sitting day until it is entered below.`}
@@ -261,7 +261,7 @@ export default async function AdminReferencePage({
                   vacationsOn ? "border-emerald-200 bg-emerald-50" : "border-red-200 bg-red-50"
                 }`}
               >
-                <p className={`text-sm font-medium ${vacationsOn ? "text-emerald-900" : "text-red-900"}`}>
+                <p className={`text-15 font-medium ${vacationsOn ? "text-emerald-900" : "text-red-900"}`}>
                   Court vacations —{" "}
                   {vacationsOn
                     ? `${upcomingVacations} window${upcomingVacations === 1 ? "" : "s"} still to come${
@@ -271,7 +271,7 @@ export default async function AdminReferencePage({
                       ? `off, because every window entered has already ended — the last on ${dayLabel(vacationsThrough)}`
                       : "off, because nothing has been entered"}
                 </p>
-                <p className={`text-sm ${vacationsOn ? "text-emerald-900" : "text-red-900"}`}>
+                <p className={`text-15 ${vacationsOn ? "text-emerald-900" : "text-red-900"}`}>
                   {vacationsOn
                     ? "A date inside one of these windows is refused for the courts and states the window covers."
                     : vacationsThrough
@@ -281,7 +281,7 @@ export default async function AdminReferencePage({
               </li>
             </ul>
 
-            <p className="text-sm text-gray-600">
+            <p className="text-15 text-ink-muted">
               The directory itself holds <strong>{activeCourts}</strong> open platform court
               {activeCourts === 1 ? "" : "s"}
               {totalPlatformCourts !== activeCourts ? ` (${totalPlatformCourts} rows including closed ones)` : ""}. A
@@ -296,7 +296,7 @@ export default async function AdminReferencePage({
       <section id="vacations" className="space-y-4">
         <CourtVacationEditor vacations={vacations} />
         {vacations.length === VACATION_LIMIT && (
-          <p className="text-xs text-gray-500">
+          <p className="text-13 text-ink-muted">
             Showing the {VACATION_LIMIT} most recent windows by start date. Older ones are not on this
             page.
           </p>
@@ -306,7 +306,7 @@ export default async function AdminReferencePage({
       {/* ============================================================ holidays */}
       <section id="holidays" className="space-y-4">
         <PublicHolidayEditor holidays={holidays} />
-        <p className="text-xs text-gray-500">
+        <p className="text-13 text-ink-muted">
           Showing holidays from 1 January {thisYear} onwards
           {holidays.length === HOLIDAY_LIMIT ? `, capped at the first ${HOLIDAY_LIMIT}` : ""}. Earlier
           years are kept in the database and still answer for dates in the past.
@@ -317,21 +317,21 @@ export default async function AdminReferencePage({
       <section id="rules" className="space-y-4">
         <RulesEditor rules={rules} />
         {(ruleRes.error || provisionRes.error) && (
-          <p className="text-xs text-red-800">The rules could not be read: {ruleRes.error?.message ?? provisionRes.error?.message}. That is a failed read, not an empty list.</p>
+          <p className="text-13 text-red-800">The rules could not be read: {ruleRes.error?.message ?? provisionRes.error?.message}. That is a failed read, not an empty list.</p>
         )}
       </section>
 
       {/* ============================================================ courts */}
       <section id="courts" className="space-y-4">
         <PlatformCourtEditor courts={courts} totalCourts={totalPlatformCourts} search={courtSearch} />
-        <p className="text-xs text-gray-500">
+        <p className="text-13 text-ink-muted">
           {courtSearch
             ? `${courts.length} of ${totalPlatformCourts} platform courts match “${courtSearch}”.`
             : `Showing ${courts.length} platform courts of ${totalPlatformCourts}, by name. Search above to reach any of the others — this screen is the only place a platform court can be corrected or closed.`}
         </p>
       </section>
 
-      <p className="text-sm text-gray-600">
+      <p className="text-15 text-ink-muted">
         Failures across the platform — settlement, the notification queue and webhooks — are on{" "}
         <Link href="/admin/health" className="font-medium text-brand underline">
           the health screen

@@ -2,6 +2,7 @@
 
 import { useRef, type ReactNode } from "react";
 import { useDialogBehaviour } from "@/components/ui/dialog";
+import { Icon } from "@/components/ui/icon";
 
 export function Modal({
   open,
@@ -46,14 +47,19 @@ export function Modal({
           {/* Close was a 26px target, which is the control a thumb misses most
               often and the one it can least afford to miss twice. It is 44px
               now, and the negative margin takes the extra back out so the
-              header keeps the height it was drawn at. */}
+              header keeps the height it was drawn at.
+
+              The mark is icon.tsx's `close` rather than a ✕ character, for the
+              reason that file exists: a glyph is whatever font the phone
+              happens to have, and a mid-range Android without it draws an empty
+              box where the way out of the dialog should be. */}
           <button
             type="button"
             onClick={onClose}
             aria-label="Close dialog"
             className="-my-2.5 -mr-2 inline-flex size-11 shrink-0 items-center justify-center rounded-control text-ink-muted transition duration-fast hover:bg-sunken focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink"
           >
-            <span aria-hidden="true">✕</span>
+            <Icon name="close" size={17} strokeWidth={2.2} />
           </button>
         </header>
         <div className="px-5 py-4">{children}</div>

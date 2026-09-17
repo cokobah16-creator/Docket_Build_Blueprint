@@ -62,7 +62,7 @@ export function NoticeControls({ noticeId, status, isRegistrar }: { noticeId: st
           }}>Withdraw</Button>
         )}
       </div>
-      {error && <p className="max-w-[16rem] text-right text-[11px] text-[#B42318]">{error}</p>}
+      {error && <p className="max-w-[16rem] text-right text-11 text-[#B42318]">{error}</p>}
     </div>
   );
 }

@@ -113,52 +113,52 @@ async function setProviderRateAction(formData: FormData): Promise<void> {
 
 const RATE_PROVIDERS = ["termii", "twilio", "resend", "webpush"] as const;
 const RATE_CHANNELS = ["sms", "email", "push"] as const;
-const inputClass = "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
+const inputClass = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
 /** The form that enters a rate. No client JavaScript: it posts and redirects like the retry does. */
 export function RatesForm() {
   return (
     <form action={setProviderRateAction} className="grid gap-3 sm:grid-cols-3">
       <div>
-        <label htmlFor="rate-provider" className="text-sm font-medium text-gray-900">Provider</label>
+        <label htmlFor="rate-provider" className="text-15 font-medium text-ink">Provider</label>
         <select id="rate-provider" name="provider" className={inputClass} defaultValue="termii">
           {RATE_PROVIDERS.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>
       <div>
-        <label htmlFor="rate-channel" className="text-sm font-medium text-gray-900">Channel</label>
+        <label htmlFor="rate-channel" className="text-15 font-medium text-ink">Channel</label>
         <select id="rate-channel" name="channel" className={inputClass} defaultValue="sms">
           {RATE_CHANNELS.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
       <div>
-        <label htmlFor="rate-currency" className="text-sm font-medium text-gray-900">Currency</label>
+        <label htmlFor="rate-currency" className="text-15 font-medium text-ink">Currency</label>
         <select id="rate-currency" name="currency" className={inputClass} defaultValue="NGN">
           <option value="NGN">NGN</option>
           <option value="USD">USD</option>
         </select>
       </div>
       <div>
-        <label htmlFor="rate-amount" className="text-sm font-medium text-gray-900">Rate</label>
-        <p className="text-xs text-gray-500">In the currency's major unit, e.g. 4.00</p>
+        <label htmlFor="rate-amount" className="text-15 font-medium text-ink">Rate</label>
+        <p className="text-13 text-ink-muted">In the currency's major unit, e.g. 4.00</p>
         <input id="rate-amount" name="amount" type="text" inputMode="decimal" required className={inputClass} />
       </div>
       <div>
-        <label htmlFor="rate-from" className="text-sm font-medium text-gray-900">From</label>
-        <p className="text-xs text-gray-500">A calendar day. Blank means today.</p>
+        <label htmlFor="rate-from" className="text-15 font-medium text-ink">From</label>
+        <p className="text-13 text-ink-muted">A calendar day. Blank means today.</p>
         <input id="rate-from" name="effective_from" type="date" className={inputClass} />
       </div>
       <div className="flex items-end">
-        <label className="flex min-h-[44px] items-center gap-2 text-sm text-gray-900">
+        <label className="flex min-h-[44px] items-center gap-2 text-15 text-ink">
           <input type="checkbox" name="per_segment" defaultChecked className="h-5 w-5" /> Per segment (SMS)
         </label>
       </div>
       <div className="sm:col-span-2">
-        <label htmlFor="rate-note" className="text-sm font-medium text-gray-900">Note</label>
+        <label htmlFor="rate-note" className="text-15 font-medium text-ink">Note</label>
         <input id="rate-note" name="note" type="text" maxLength={300} className={inputClass} placeholder="Which contract, which route" />
       </div>
       <div className="flex items-end">
-        <button type="submit" className="min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white">Record the rate</button>
+        <button type="submit" className="min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white">Record the rate</button>
       </div>
     </form>
   );
@@ -173,7 +173,7 @@ export function RatesForm() {
 export function FailedNotifications({ rows, timezone }: { rows: FailedNotificationRow[]; timezone: string }) {
   if (rows.length === 0) {
     return (
-      <p className="text-sm text-gray-600">
+      <p className="text-15 text-ink-muted">
         Nothing has failed. A message that fails is listed here with the reason, and can be put
         back in the queue.
       </p>
@@ -182,32 +182,32 @@ export function FailedNotifications({ rows, timezone }: { rows: FailedNotificati
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-gray-600">
+      <p className="text-15 text-ink-muted">
         {rows.length} failed message{rows.length === 1 ? "" : "s"}. The database refuses a retry on
         anything that is not failed right now, and stops at five attempts. What the message said,
         and who it was for, are not shown here and are not readable from this console.
       </p>
       <ul className="space-y-2">
         {rows.map((row) => (
-          <li key={row.id} className="rounded-lg border border-gray-200 bg-white p-3">
+          <li key={row.id} className="rounded-lg border border-hairline bg-raised p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-15 font-medium text-ink">
                 {describeEvent(row.event)} · {row.channel}
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-13 text-ink-muted">
                 {row.firm_name ?? "No firm"}
                 {row.attempts > 0 ? ` · attempt ${row.attempts} of 5` : ""}
               </p>
             </div>
-            {row.error && <p className="mt-1 break-words text-xs text-red-800">{row.error}</p>}
+            {row.error && <p className="mt-1 break-words text-13 text-red-800">{row.error}</p>}
             {(row.failure_kind || row.send_attempts > 0) && (
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-13 text-ink-muted">
                 {row.failure_kind === "transient" ? "Transient: the dispatcher tried" : row.failure_kind === "permanent" ? "Permanent: the dispatcher tried" : "Tried"}
                 {" "}{row.send_attempts} time{row.send_attempts === 1 ? "" : "s"}{row.provider ? ` with ${row.provider}` : ""}
                 {row.failure_kind === "permanent" ? " and stopped — a retry sends the same message to the same address" : ""}.
               </p>
             )}
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-13 text-ink-muted">
               Queued {formatWhen(row.created_at, timezone, { dateStyle: "medium", timeStyle: "short" })}
             </p>
             <form action={retryOneNotification} className="mt-2">
@@ -215,7 +215,7 @@ export function FailedNotifications({ rows, timezone }: { rows: FailedNotificati
               <button
                 type="submit"
                 disabled={row.attempts >= 5}
-                className="min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50"
+                className="min-h-[44px] rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white disabled:opacity-50"
               >
                 {row.attempts >= 5 ? "Tried five times" : "Send this one again"}
               </button>

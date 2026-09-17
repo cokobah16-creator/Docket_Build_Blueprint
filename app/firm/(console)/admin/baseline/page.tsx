@@ -42,8 +42,8 @@ export default async function BaselinePage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-6">
       <header>
-        <h1 className="font-heading text-[22px] font-bold tracking-[-0.02em] text-[#141414]">Baseline</h1>
-        <p className="text-sm text-gray-600">{ctx.firmName} · what your own records say, over a window you choose</p>
+        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Baseline</h1>
+        <p className="text-15 text-ink-muted">{ctx.firmName} · what your own records say, over a window you choose</p>
       </header>
       {metricsError && <Alert kind="error" title="The figures could not be computed">{metricsError.message}. That is a failed read, not a firm with no work.</Alert>}
       {rowsError && <Alert kind="error" title="The records could not be read">{rowsError.message}.</Alert>}

@@ -37,7 +37,7 @@ export function PageHeader({
         <Link
           href={back}
           className={cn(
-            "inline-flex min-h-11 w-fit items-center gap-1.5 -ml-1 pl-1 pr-2 text-[12.5px] font-medium",
+            "inline-flex min-h-11 w-fit items-center gap-1.5 -ml-1 pl-1 pr-2 text-13 font-medium",
             tone === "neutral" ? "text-[#141414]" : "text-brand",
           )}
         >
@@ -50,14 +50,14 @@ export function PageHeader({
           <h1
             className={cn(
               // Grows with the room: 22px on a phone, 26px from tablet up.
-              "font-heading text-[22px] font-bold leading-tight tracking-[-0.02em] md:text-[26px]",
+              "font-heading text-21 font-bold leading-tight tracking-[-0.02em] md:text-26",
               tone === "neutral" ? "text-[#141414]" : "font-semibold text-brand",
             )}
           >
             {title}
           </h1>
           {description && (
-            <p className="mt-1 text-[12.5px] leading-relaxed text-gray-600 md:text-[13.5px]">{description}</p>
+            <p className="mt-1 text-13 leading-relaxed text-ink-muted md:text-13">{description}</p>
           )}
         </div>
         {actions && <div className="flex shrink-0 flex-wrap items-center gap-2.5">{actions}</div>}

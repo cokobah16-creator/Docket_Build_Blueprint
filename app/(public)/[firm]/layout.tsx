@@ -20,7 +20,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { firmBySlug } from "@/lib/tenant";
-import { brandFontsUrl, brandStyle } from "@/lib/brand";
+import { brandFontsUrl, brandStyle, tenantAllowsDark } from "@/lib/brand";
 import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
 import { after } from "next/server";
 
@@ -58,13 +58,29 @@ export default async function FirmLayout({
 
   const fontsUrl = brandFontsUrl(firm.brand);
   const base = `/${firm.slug}`;
+  const allowDark = tenantAllowsDark(firm.brand);
 
   return (
-    <div style={brandStyle(firm.brand)} className="min-h-screen bg-brand-surface">
+    // The firm's own shop window, so dark is the firm's call rather than ours:
+    // tenantAllowsDark() is false unless they opted in, and brandStyle() then emits
+    // the light values for both schemes, which pins the page to the colours they chose.
+    //
+    // The theme's NEUTRALS have to be pinned with them, and that is the whole reason
+    // data-theme-scope is here. Holding the brand colours light while --t-paper,
+    // --t-raised and --t-ink went on following the visitor's OS is the worst of both:
+    // a firm's navy heading would be sitting on a near-black card at 1.20:1, which is
+    // the exact failure this file's colours were re-toned to prevent. Opting out of
+    // dark means opting out of all of it.
+    <div
+      data-brand
+      data-theme-scope={allowDark ? undefined : "light"}
+      style={brandStyle(firm.brand, { allowDark })}
+      className="min-h-screen bg-brand-surface"
+    >
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
-      <header className="border-b border-black/5 bg-white">
+      <header className="border-b border-black/5 bg-raised">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4">
-          <Link href={base} className="font-heading text-lg font-semibold text-brand">
+          <Link href={base} className="font-heading text-17 font-semibold text-brand">
             {firm.name}
           </Link>
           <nav aria-label="Site" className="flex flex-wrap items-center gap-x-4 gap-y-2">
@@ -72,17 +88,17 @@ export default async function FirmLayout({
               <Link
                 key={item.href}
                 href={`${base}${item.href}`}
-                className="text-sm font-medium text-gray-600 hover:text-brand"
+                className="text-15 font-medium text-ink-muted hover:text-brand"
               >
                 {item.label}
               </Link>
             ))}
-            <Link href="/app/login" className="text-sm font-medium text-gray-600 hover:text-brand">
+            <Link href="/app/login" className="text-15 font-medium text-ink-muted hover:text-brand">
               Client sign in
             </Link>
             <Link
               href={`${base}/book`}
-              className="rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-brand-on hover:opacity-90"
+              className="rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-brand-on hover:opacity-90"
             >
               {firm.brand.cta ?? "Book a Consultation"}
             </Link>
@@ -92,8 +108,8 @@ export default async function FirmLayout({
 
       <main>{children}</main>
 
-      <footer className="mt-16 border-t border-black/5 bg-white">
-        <div className="mx-auto max-w-5xl space-y-3 px-4 py-8 text-sm text-gray-500">
+      <footer className="mt-16 border-t border-black/5 bg-raised">
+        <div className="mx-auto max-w-5xl space-y-3 px-4 py-8 text-15 text-ink-muted">
           {firm.policies.disclaimer?.text ? <p>{String(firm.policies.disclaimer.text)}</p> : null}
           <p className="flex flex-wrap gap-x-4 gap-y-1">
             <Link href={`${base}/terms`} className="hover:text-brand">Terms of service</Link>

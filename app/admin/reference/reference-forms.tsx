@@ -68,15 +68,15 @@ export interface CourtView {
 // ---------------------------------------------------------------- shared bits
 
 const field =
-  "mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 " +
+  "mt-1 min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink " +
   "focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
-const labelClass = "block text-sm font-medium text-gray-800";
+const labelClass = "block text-15 font-medium text-ink";
 const primaryButton =
-  "min-h-[44px] w-full rounded-lg bg-brand px-4 py-2.5 text-sm font-medium text-white disabled:opacity-50 sm:w-auto";
+  "min-h-[44px] w-full rounded-lg bg-brand px-4 py-2.5 text-15 font-medium text-white disabled:opacity-50 sm:w-auto";
 const ghostButton =
-  "min-h-[44px] w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm font-medium text-brand hover:bg-black/5 disabled:opacity-50 sm:w-auto";
+  "min-h-[44px] w-full rounded-lg border border-edge px-4 py-2.5 text-15 font-medium text-brand hover:bg-hover disabled:opacity-50 sm:w-auto";
 const dangerButton =
-  "min-h-[44px] w-full rounded-lg border border-red-300 px-4 py-2.5 text-sm font-medium text-red-800 hover:bg-red-50 disabled:opacity-50 sm:w-auto";
+  "min-h-[44px] w-full rounded-lg border border-red-300 px-4 py-2.5 text-15 font-medium text-red-800 hover:bg-red-50 disabled:opacity-50 sm:w-auto";
 
 const COURT_LEVEL_OPTIONS = Object.entries(COURT_LEVEL_LABELS).map(([value, label]) => ({ value, label }));
 
@@ -213,7 +213,7 @@ export function CourtVacationEditor({ vacations }: { vacations: VacationView[] }
         action={<Badge>{vacations.length} recorded</Badge>}
       />
       <CardBody className="space-y-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-15 text-ink-muted">
           A window from a court&apos;s own practice direction — the annual vacation, Christmas,
           Easter. Every day inside it becomes a non-sitting day for the courts it covers, which is
           what a lawyer is warned about before they fix a date. Leave the court blank to cover every
@@ -223,7 +223,7 @@ export function CourtVacationEditor({ vacations }: { vacations: VacationView[] }
         <Outcome result={result} />
 
         {draft ? (
-          <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+          <div className="space-y-4 rounded-lg border border-hairline p-4">
             <div>
               <label className={labelClass} htmlFor="vacation-name">
                 What the practice direction calls it
@@ -297,7 +297,7 @@ export function CourtVacationEditor({ vacations }: { vacations: VacationView[] }
               </div>
             </div>
 
-            <label className="flex items-start gap-3 text-sm text-gray-700">
+            <label className="flex items-start gap-3 text-15 text-ink">
               <input
                 type="checkbox"
                 checked={draft.timeRuns}
@@ -356,20 +356,20 @@ export function CourtVacationEditor({ vacations }: { vacations: VacationView[] }
           />
         ) : (
           <>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Recorded windows, newest first</p>
+            <p className="text-13 uppercase tracking-wide text-ink-muted">Recorded windows, newest first</p>
             <ul className="space-y-3">
               {vacations.map((v) => (
-                <li key={v.id} className="rounded-lg border border-gray-200 p-4">
+                <li key={v.id} className="rounded-lg border border-hairline p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900">{v.name}</p>
-                      <p className="text-sm text-gray-700">
+                      <p className="font-medium text-ink">{v.name}</p>
+                      <p className="text-15 text-ink">
                         {dayLabel(v.startsOn)} to {dayLabel(v.endsOn)}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-15 text-ink-muted">
                         {levelLabel(v.level)} · {stateLabel(v.stateCode)}
                       </p>
-                      {v.note && <p className="mt-1 text-sm text-gray-600">{v.note}</p>}
+                      {v.note && <p className="mt-1 text-15 text-ink-muted">{v.note}</p>}
                     </div>
                     <Badge className={v.timeRuns ? "bg-amber-100 text-amber-900" : ""}>
                       {v.timeRuns ? "time runs" : "time suspended"}
@@ -411,7 +411,7 @@ export function CourtVacationEditor({ vacations }: { vacations: VacationView[] }
                     )}
                   </div>
                   {confirmId === v.id && (
-                    <p className="mt-2 text-sm text-gray-600">
+                    <p className="mt-2 text-15 text-ink-muted">
                       Removing it makes those days ordinary sitting days again for every firm on Docket.
                     </p>
                   )}
@@ -507,7 +507,7 @@ export function PublicHolidayEditor({ holidays }: { holidays: HolidayView[] }) {
     <Card>
       <CardHeader title="Public holidays" action={<Badge>{holidays.length} listed</Badge>} />
       <CardBody className="space-y-4">
-        <p className="text-sm text-gray-600">
+        <p className="text-15 text-ink-muted">
           A holiday is keyed by its country, its date and its state — not by a row number. Saving
           the same date twice corrects the entry that is already there; a movable feast that falls
           on a different day next year is a new entry, because it is a different day. Eid-el-Fitr,
@@ -518,7 +518,7 @@ export function PublicHolidayEditor({ holidays }: { holidays: HolidayView[] }) {
         <Outcome result={result} />
 
         {draft ? (
-          <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+          <div className="space-y-4 rounded-lg border border-hairline p-4">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass} htmlFor="holiday-date">
@@ -588,7 +588,7 @@ export function PublicHolidayEditor({ holidays }: { holidays: HolidayView[] }) {
               </div>
             </div>
 
-            <label className="flex items-start gap-3 text-sm text-gray-700">
+            <label className="flex items-start gap-3 text-15 text-ink">
               <input
                 type="checkbox"
                 checked={draft.isMovable}
@@ -642,20 +642,20 @@ export function PublicHolidayEditor({ holidays }: { holidays: HolidayView[] }) {
           />
         ) : (
           <>
-            <p className="text-xs uppercase tracking-wide text-gray-500">
+            <p className="text-13 uppercase tracking-wide text-ink-muted">
               Recorded from 1 January this year onwards
             </p>
-            <ul className="divide-y divide-gray-100">
+            <ul className="divide-y divide-hairline">
               {holidays.map((h) => (
                 <li key={h.id} className="py-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900">{h.name}</p>
-                      <p className="text-sm text-gray-700">
+                      <p className="font-medium text-ink">{h.name}</p>
+                      <p className="text-15 text-ink">
                         {dayLabel(h.onDate)}
                         {h.observedOn ? ` · kept on ${dayLabel(h.observedOn)}` : ""}
                       </p>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-15 text-ink-muted">
                         {h.country} · {h.stateCode ? stateLabel(h.stateCode) : "national"}
                       </p>
                     </div>
@@ -779,7 +779,7 @@ export function PlatformCourtEditor({
             be opened, and this screen is the only place a platform court can be corrected. */}
         <form method="get" action="/admin/reference" className="flex flex-wrap items-end gap-2">
           <div className="min-w-[12rem] flex-1">
-            <label htmlFor="court-search" className="block text-sm font-medium text-gray-800">
+            <label htmlFor="court-search" className="block text-15 font-medium text-ink">
               Find a court
             </label>
             <input
@@ -788,19 +788,19 @@ export function PlatformCourtEditor({
               name="court"
               defaultValue={search}
               placeholder="Name, division or town"
-              className="mt-1 min-h-[44px] w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
+              className="mt-1 min-h-[44px] w-full rounded-lg border border-edge bg-raised px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
             />
           </div>
-          <button type="submit" className="min-h-[44px] rounded-lg border border-gray-300 bg-white px-4 text-sm font-medium text-gray-800">
+          <button type="submit" className="min-h-[44px] rounded-lg border border-edge bg-raised px-4 text-15 font-medium text-ink">
             Search
           </button>
           {search && (
-            <a href="/admin/reference" className="min-h-[44px] px-2 py-2.5 text-sm text-brand underline">
+            <a href="/admin/reference" className="min-h-[44px] px-2 py-2.5 text-15 text-brand underline">
               Clear
             </a>
           )}
         </form>
-        <p className="text-sm text-gray-600">
+        <p className="text-15 text-ink-muted">
           Every firm on Docket picks from this directory when it opens a matter or posts a sitting. A
           court entered here belongs to the platform, not to a firm — a firm adds its own private
           courts from its own console, and those are none of this screen&apos;s business. There is no
@@ -812,7 +812,7 @@ export function PlatformCourtEditor({
         <Outcome result={result} />
 
         {draft ? (
-          <div className="space-y-4 rounded-lg border border-gray-200 p-4">
+          <div className="space-y-4 rounded-lg border border-hairline p-4">
             <div>
               <label className={labelClass} htmlFor="court-name">
                 Full name, as the registry writes it
@@ -825,7 +825,7 @@ export function PlatformCourtEditor({
                 placeholder="Federal High Court, Warri Judicial Division"
                 className={field}
               />
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="mt-1 text-15 text-ink-muted">
                 The name is the key: the database refuses a second platform court with the same name.
               </p>
             </div>
@@ -873,7 +873,7 @@ export function PlatformCourtEditor({
                   placeholder="FHC/WR/CS/123/2026"
                   className={field}
                 />
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-13 text-ink-muted">
                   Shown to a lawyer opening a matter at this court, so the suit number is typed the
                   way the registry writes it. Leave it empty if the shape varies.
                 </p>
@@ -917,7 +917,7 @@ export function PlatformCourtEditor({
               </div>
             </div>
 
-            <label className="flex items-start gap-3 text-sm text-gray-700">
+            <label className="flex items-start gap-3 text-15 text-ink">
               <input
                 type="checkbox"
                 checked={draft.isActive}
@@ -956,21 +956,21 @@ export function PlatformCourtEditor({
           />
         ) : (
           <>
-            <p className="text-xs uppercase tracking-wide text-gray-500">Most recently added</p>
-            <ul className="divide-y divide-gray-100">
+            <p className="text-13 uppercase tracking-wide text-ink-muted">Most recently added</p>
+            <ul className="divide-y divide-hairline">
               {courts.map((c) => (
                 <li key={c.id} className="py-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900">{c.name}</p>
-                      <p className="text-sm text-gray-600">
+                      <p className="font-medium text-ink">{c.name}</p>
+                      <p className="text-15 text-ink-muted">
                         {levelLabel(c.level)}
                         {c.stateCode ? ` · ${stateLabel(c.stateCode)}` : ""}
                         {c.division ? ` · ${c.division}` : ""}
                         {c.city ? ` · ${c.city}` : ""}
                       </p>
                     </div>
-                    {!c.isActive && <Badge className="bg-gray-200 text-gray-800">closed</Badge>}
+                    {!c.isActive && <Badge className="bg-hairline text-ink">closed</Badge>}
                   </div>
                   <div className="mt-2">
                     <button

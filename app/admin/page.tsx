@@ -46,7 +46,7 @@ const STATUS_STYLE: Record<string, { classes: string; icon: string; label: strin
 };
 
 function FirmStatusBadge({ status }: { status: string }) {
-  const s = STATUS_STYLE[status] ?? { classes: "bg-gray-100 text-gray-700", icon: "◦", label: status };
+  const s = STATUS_STYLE[status] ?? { classes: "bg-sunken text-ink", icon: "◦", label: status };
   return (
     <Badge className={s.classes}>
       <span aria-hidden="true" className="mr-1">
@@ -77,8 +77,8 @@ interface SavedVerification {
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-gray-500">{label}</dt>
-      <dd className="text-sm text-gray-900">{children}</dd>
+      <dt className="text-13 uppercase tracking-wide text-ink-muted">{label}</dt>
+      <dd className="text-15 text-ink">{children}</dd>
     </div>
   );
 }
@@ -118,20 +118,20 @@ export default async function AdminFirmsPage() {
   return (
     <div className="space-y-6">
       <header className="space-y-2">
-        <h1 className="font-heading text-2xl font-semibold text-brand">Firms and domains</h1>
-        <p className="text-sm text-gray-600">
+        <h1 className="font-heading text-26 font-semibold text-brand">Firms and domains</h1>
+        <p className="text-15 text-ink-muted">
           {firms.length} firm{firms.length === 1 ? "" : "s"} · {pendingCount} awaiting verification ·{" "}
           {suspendedCount} suspended · no access to matter content
         </p>
         {open.length > 0 && (
-          <p className="text-sm">
+          <p className="text-15">
             <Link href="#domains" className="font-medium text-brand underline">
               {open.length} domain request{open.length === 1 ? "" : "s"} waiting
             </Link>
           </p>
         )}
         {firms.length === FIRM_LIMIT && (
-          <p className="text-xs text-gray-500">
+          <p className="text-13 text-ink-muted">
             Showing the {FIRM_LIMIT} most recently created firms. Older ones are not on this page.
           </p>
         )}
@@ -139,7 +139,7 @@ export default async function AdminFirmsPage() {
 
       {/* ============================================================ firms */}
       <section id="firms" className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-gray-900">Firms</h2>
+        <h2 className="font-heading text-17 font-semibold text-ink">Firms</h2>
 
         {firmsRead.error ? (
           <Alert kind="error" title="This screen could not read the firm list">
@@ -183,7 +183,7 @@ export default async function AdminFirmsPage() {
                           {f.custom_domain ? (
                             <span className="break-all">{f.custom_domain}</span>
                           ) : (
-                            <span className="text-gray-500">none — reached at its Docket address</span>
+                            <span className="text-ink-muted">none — reached at its Docket address</span>
                           )}
                         </Field>
                         <Field label="Registered name">
@@ -193,7 +193,7 @@ export default async function AdminFirmsPage() {
                           {f.rc_number ?? <span className="text-amber-700">not given</span>}
                         </Field>
                         <Field label="Principal office">
-                          {f.state_code ? (NG_STATES[f.state_code] ?? f.state_code) : <span className="text-gray-500">not given</span>}
+                          {f.state_code ? (NG_STATES[f.state_code] ?? f.state_code) : <span className="text-ink-muted">not given</span>}
                         </Field>
                         <Field label="People">
                           {f.member_count} member{f.member_count === 1 ? "" : "s"}
@@ -225,11 +225,11 @@ export default async function AdminFirmsPage() {
                       </dl>
 
                       <div>
-                        <p className="text-xs uppercase tracking-wide text-gray-500">
+                        <p className="text-13 uppercase tracking-wide text-ink-muted">
                           Owners and enrolment numbers
                         </p>
                         {owners.length === 0 ? (
-                          <p className="text-sm text-amber-700">
+                          <p className="text-15 text-amber-700">
                             No owner on record. Do not activate this firm — add an owner first.
                           </p>
                         ) : (
@@ -237,20 +237,20 @@ export default async function AdminFirmsPage() {
                             {owners.map((o) => (
                               <li
                                 key={o}
-                                className={`text-sm ${o.includes("no SCN") ? "text-amber-700" : "text-gray-900"}`}
+                                className={`text-15 ${o.includes("no SCN") ? "text-amber-700" : "text-ink"}`}
                               >
                                 {o}
                               </li>
                             ))}
                           </ul>
                         )}
-                        <p className="mt-1 text-xs text-gray-500">
+                        <p className="mt-1 text-13 text-ink-muted">
                           Check each number against the Roll, and the RC/BN number against the CAC
                           register, before setting a firm active.
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-4 border-t border-gray-100 pt-4 sm:grid-cols-2 lg:grid-cols-3">
+                      <div className="grid grid-cols-1 gap-4 border-t border-hairline pt-4 sm:grid-cols-2 lg:grid-cols-3">
                         <FirmStatusControl firmId={f.id} status={f.status} />
                         <FirmPlanControl firmId={f.id} plan={f.plan} />
                         <FirmDomainControl
@@ -270,7 +270,7 @@ export default async function AdminFirmsPage() {
 
       {/* ============================================================ domains */}
       <section id="domains" className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-gray-900">Domain requests</h2>
+        <h2 className="font-heading text-17 font-semibold text-ink">Domain requests</h2>
 
         <Alert kind="info" title="How a custom domain goes live">
           Vercel is asked first and the firm is written second. That order matters: Postgres cannot
@@ -323,7 +323,7 @@ export default async function AdminFirmsPage() {
                               {name}
                             </Link>
                           ) : (
-                            <span className="text-gray-500">
+                            <span className="text-ink-muted">
                               not among the {FIRM_LIMIT} firms listed above ({r.firm_id})
                             </span>
                           )}
@@ -345,22 +345,22 @@ export default async function AdminFirmsPage() {
 
                       {records.length > 0 && (
                         <div>
-                          <p className="text-xs uppercase tracking-wide text-gray-500">
+                          <p className="text-13 uppercase tracking-wide text-ink-muted">
                             Records the firm must add at its registrar
                           </p>
                           <ul className="mt-1 space-y-1">
                             {records.map((rec, i) => (
-                              <li key={`${rec.type}-${rec.domain}-${i}`} className="break-all text-sm text-gray-900">
+                              <li key={`${rec.type}-${rec.domain}-${i}`} className="break-all text-15 text-ink">
                                 <span className="font-medium">{rec.type}</span> {rec.domain} →{" "}
                                 <code className="break-all">{rec.value}</code>
-                                {rec.reason && <span className="text-gray-500"> ({rec.reason})</span>}
+                                {rec.reason && <span className="text-ink-muted"> ({rec.reason})</span>}
                               </li>
                             ))}
                           </ul>
                         </div>
                       )}
 
-                      <div className="border-t border-gray-100 pt-4">
+                      <div className="border-t border-hairline pt-4">
                         <DomainRequestControls requestId={r.id} hostname={r.hostname} status={r.status} />
                       </div>
                     </CardBody>
@@ -377,17 +377,17 @@ export default async function AdminFirmsPage() {
             <CardBody>
               <ul className="space-y-2">
                 {decided.map((r) => (
-                  <li key={r.id} className="text-sm text-gray-700">
-                    <span className="break-all font-medium text-gray-900">{r.hostname}</span> —{" "}
+                  <li key={r.id} className="text-15 text-ink">
+                    <span className="break-all font-medium text-ink">{r.hostname}</span> —{" "}
                     {REQUEST_STATUS_LABEL[r.status] ?? r.status}
                     {firmName(r) ? ` · ${firmName(r)}` : ""} ·{" "}
                     {formatWhen(r.decided_at ?? r.updated_at, ctx.timezone)}
-                    {r.note && <span className="block text-gray-500">{r.note}</span>}
+                    {r.note && <span className="block text-ink-muted">{r.note}</span>}
                   </li>
                 ))}
               </ul>
               {requests.length === REQUEST_LIMIT && (
-                <p className="mt-3 text-xs text-gray-500">
+                <p className="mt-3 text-13 text-ink-muted">
                   Showing the {REQUEST_LIMIT} most recent requests. Older ones are not on this page.
                 </p>
               )}
@@ -398,7 +398,7 @@ export default async function AdminFirmsPage() {
 
       {/* ============================================================ create */}
       <section className="space-y-4">
-        <h2 className="font-heading text-lg font-semibold text-gray-900">Create a firm for an owner</h2>
+        <h2 className="font-heading text-17 font-semibold text-ink">Create a firm for an owner</h2>
         <Card>
           <CardBody>
             <AdminCreateFirm />

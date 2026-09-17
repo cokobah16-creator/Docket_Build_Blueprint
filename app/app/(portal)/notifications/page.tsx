@@ -34,7 +34,7 @@ export default async function NotificationsPage() {
   return (
     <>
       <ScreenHeader back="/app" title="Notifications" titleAs="heading">
-        <Link href="/app/notifications/preferences" className="shrink-0 text-[12.5px] font-medium text-brand underline underline-offset-2">
+        <Link href="/app/notifications/preferences" className="shrink-0 text-13 font-medium text-brand underline underline-offset-2">
           Preferences
         </Link>
       </ScreenHeader>
