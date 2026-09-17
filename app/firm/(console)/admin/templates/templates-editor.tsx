@@ -134,7 +134,7 @@ export function TemplatesEditor({ firmId, templates, canWrite, timezone }: { fir
                   {MATTER_TYPES.map((m) => {
                     const on = draft.matterTypes.includes(m);
                     return (
-                      <label key={m} className={`inline-flex min-h-[36px] cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-13 ${on ? "border-brand bg-hover text-brand" : "border-edge text-ink"}`}>
+                      <label key={m} className={`inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-lg border px-2.5 text-13 ${on ? "border-brand bg-hover text-brand" : "border-edge text-ink"}`}>
                         <input type="checkbox" checked={on} onChange={() => setDraft({ ...draft, matterTypes: on ? draft.matterTypes.filter((x) => x !== m) : [...draft.matterTypes, m] })} />
                         {m.replace(/_/g, " ")}
                       </label>

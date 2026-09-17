@@ -506,7 +506,7 @@ export function StaffDocuments({
                       <span className="text-13 text-[#92400E]">No file yet — the upload stopped.</span>
                       {/* Bound to this row, so it finishes THIS document on any device, rather than
                           depending on ids this browser happens to still hold. */}
-                      <label className="inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-edge px-3 text-15 text-ink hover:bg-hover">
+                      <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-edge px-3 text-15 text-ink hover:bg-hover">
                         Finish upload
                         <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => uploadVersion(d, e)} disabled={Boolean(busy)} />
                       </label>

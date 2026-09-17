@@ -106,7 +106,7 @@ export default async function PortalSearch({ searchParams }: { searchParams: Pro
             <input
               id="q" name="q" type="search" defaultValue={q} autoFocus minLength={2} maxLength={200}
               placeholder="A word from an update, a file name, a reference"
-              className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-brand focus:outline-none"
+              className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand"
             />
             <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-brand px-4 text-15 font-medium text-brand-on">
               Search
@@ -132,13 +132,13 @@ export default async function PortalSearch({ searchParams }: { searchParams: Pro
         <>
           <div className="flex flex-wrap gap-2">
             <Link href={keep(null)}
-                  className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
+                  className={cn("min-h-11 rounded-full border px-3 py-1.5 text-13",
                     kind === null ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink")}>
               Everything
             </Link>
             {KINDS.map(([k, label]) => (
               <Link key={k} href={keep(k)}
-                    className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
+                    className={cn("min-h-11 rounded-full border px-3 py-1.5 text-13",
                       kind === k ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink")}>
                 {label}
               </Link>

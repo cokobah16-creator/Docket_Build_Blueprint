@@ -294,7 +294,7 @@ export function DocumentsTab({
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="text-13 text-[#92400E]">No file yet — the upload stopped.</span>
                     {canUpload && userId && d.uploaded_by === userId && (
-                      <label className="inline-flex min-h-[36px] cursor-pointer items-center rounded-lg border border-edge px-3 text-15 text-ink hover:bg-hover">
+                      <label className="inline-flex min-h-11 cursor-pointer items-center rounded-lg border border-edge px-3 text-15 text-ink hover:bg-hover">
                         Finish upload
                         <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => finishUpload(d, e)} disabled={Boolean(busy)} />
                       </label>

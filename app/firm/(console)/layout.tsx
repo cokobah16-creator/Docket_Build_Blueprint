@@ -133,7 +133,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
         <a
           key={f.id}
           href={`/firm?firm=${encodeURIComponent(f.id)}`}
-          className="mt-1 flex min-h-9 items-center rounded-lg px-2 -mx-2 font-medium text-[#141414] hover:bg-black/[0.04]"
+          className="mt-1 flex min-h-11 items-center rounded-lg px-2 -mx-2 font-medium text-[#141414] hover:bg-black/[0.04]"
         >
           <span className="truncate">{f.name}</span>
         </a>

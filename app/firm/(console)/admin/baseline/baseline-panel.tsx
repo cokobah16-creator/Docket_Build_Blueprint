@@ -171,8 +171,8 @@ export function BaselinePanel({ firmId, timezone, canWrite, from, to, metrics, b
             {[7, 30, 90, 180].map((d) => (
               <button key={d} type="button" onClick={() => move(d)}
                 className={d === windowDays
-                  ? "min-h-[36px] rounded-full border border-brand bg-brand px-3 text-15 text-brand-on"
-                  : "min-h-[36px] rounded-full border border-edge bg-raised px-3 text-15 text-ink hover:border-brand"}>
+                  ? "min-h-11 rounded-full border border-brand bg-brand px-3 text-15 text-brand-on"
+                  : "min-h-11 rounded-full border border-edge bg-raised px-3 text-15 text-ink hover:border-brand"}>
                 Last {d} days
               </button>
             ))}

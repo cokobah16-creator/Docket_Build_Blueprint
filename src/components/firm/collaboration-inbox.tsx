@@ -132,7 +132,7 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
                     <input
                       value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={4000}
                       placeholder="A note to the other firm"
-                      className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline-none"
+                      className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]"
                     />
                     <Button type="submit" size="sm" pending={busy === `note:${r.id}` || draft.trim().length === 0}>Send</Button>
                   </form>

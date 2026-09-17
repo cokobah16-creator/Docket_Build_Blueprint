@@ -127,7 +127,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
             <input
               id="q" name="q" type="search" defaultValue={q} autoFocus minLength={2} maxLength={200}
               placeholder="Okonkwo · LD/4521/2026 · quicksilver covenant"
-              className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline-none"
+              className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]"
             />
             <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-[#141414] px-4 text-15 font-medium text-white">
               Search
@@ -159,7 +159,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
           <div className="flex flex-wrap gap-2">
             <Link
               href={keep({ kind: null })}
-              className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
+              className={cn("min-h-11 rounded-full border px-3 py-1.5 text-13",
                 kind === null ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink hover:border-[#141414]")}
             >
               Everything
@@ -168,7 +168,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
               <Link
                 key={k}
                 href={keep({ kind: k })}
-                className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
+                className={cn("min-h-11 rounded-full border px-3 py-1.5 text-13",
                   kind === k ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink hover:border-[#141414]")}
               >
                 {label}

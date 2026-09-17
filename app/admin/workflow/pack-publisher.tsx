@@ -65,7 +65,7 @@ export function PackPublisher({ packs }: { packs: WorkflowPackRow[] }) {
           <span className="mt-1 block text-13 text-ink-muted">An existing key publishes the next version of that pack; a new key starts one.</span>
           {loadable && (
             <button type="button" onClick={() => loadLatest(key)}
-                    className="mt-1 min-h-[36px] rounded-lg border border-edge bg-raised px-3 text-13 text-ink hover:border-brand">
+                    className="mt-1 min-h-11 rounded-lg border border-edge bg-raised px-3 text-13 text-ink hover:border-brand">
               Load the latest version of {key} into this form
             </button>
           )}
