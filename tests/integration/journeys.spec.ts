@@ -42,15 +42,32 @@ const SECOND_FIRM_NAME = process.env.E2E_SECOND_FIRM_NAME ?? "";
 // file into one that passes while proving the opposite.
 const FORBIDDEN_MATTER_ID = process.env.E2E_FORBIDDEN_MATTER_ID ?? "";
 
-const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY && FIRM_SLUG);
-const clientConfigured = supabaseConfigured && Boolean(CLIENT_PHONE && CLIENT_OTP);
-const staffConfigured =
-  supabaseConfigured && Boolean(STAFF_EMAIL && STAFF_PASSWORD && STAFF_TOTP_SECRET);
-
-const missing = (names: Record<string, string>) =>
-  `set ${Object.keys(names)
-    .filter((k) => !names[k])
-    .join(", ")} — see tests/integration/README.md`;
+// NOTHING HERE SKIPS. Every test below used to guard itself with test.skip() when its own
+// configuration was absent, and this folder's README said the true thing about that: "a skip is
+// not a pass". But a skipped test and a passed test are the same colour on a pull request, so a
+// missing secret produced a green run that had verified nothing — the precise defect the e2e gate
+// had, one level down, and the reason nothing above the database was ever really checked. Now the
+// whole file refuses to run, once, naming everything it lacks, and the run is red. The three checks
+// on the FIXTURES further down (a thread, a matter, a document) are assertions for the same reason:
+// a fixture that has quietly gone missing must not read as a pass either.
+const REQUIRED: Record<string, string> = {
+  NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL,
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_ANON_KEY,
+  E2E_FIRM_SLUG: FIRM_SLUG,
+  E2E_CLIENT_PHONE: CLIENT_PHONE,
+  E2E_CLIENT_OTP: CLIENT_OTP,
+  E2E_STAFF_EMAIL: STAFF_EMAIL,
+  E2E_STAFF_PASSWORD: STAFF_PASSWORD,
+  E2E_STAFF_TOTP_SECRET: STAFF_TOTP_SECRET,
+  E2E_SECOND_FIRM_NAME: SECOND_FIRM_NAME,
+  E2E_FORBIDDEN_MATTER_ID: FORBIDDEN_MATTER_ID,
+};
+test.beforeAll(() => {
+  const absent = Object.keys(REQUIRED).filter((k) => !REQUIRED[k]);
+  if (absent.length > 0) {
+    throw new Error(`refusing to run: set ${absent.join(", ")} — see tests/integration/README.md`);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // TOTP, RFC 6238, so staff MFA can be completed without a phone in the room.
@@ -225,10 +242,6 @@ async function accessToken(page: Page): Promise<string> {
 // ---------------------------------------------------------------------------
 
 test("client signs in with a phone OTP and reaches the portal", async ({ page }) => {
-  test.skip(
-    !clientConfigured,
-    missing({ NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_ANON_KEY, E2E_FIRM_SLUG: FIRM_SLUG, E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }),
-  );
 
   await signInClient(page);
 
@@ -248,10 +261,6 @@ test("client signs in with a phone OTP and reaches the portal", async ({ page })
 // ---------------------------------------------------------------------------
 
 test("staff signs in with password and TOTP and reaches the console at aal2", async ({ page }) => {
-  test.skip(
-    !staffConfigured,
-    missing({ NEXT_PUBLIC_SUPABASE_URL: SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY: SUPABASE_ANON_KEY, E2E_FIRM_SLUG: FIRM_SLUG, E2E_STAFF_EMAIL: STAFF_EMAIL, E2E_STAFF_PASSWORD: STAFF_PASSWORD, E2E_STAFF_TOTP_SECRET: STAFF_TOTP_SECRET }),
-  );
 
   await signInStaff(page);
 
@@ -268,7 +277,6 @@ test("staff signs in with password and TOTP and reaches the console at aal2", as
 // ---------------------------------------------------------------------------
 
 test("a signed-in client can reach every primary portal destination", async ({ page }) => {
-  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
 
   await signInClient(page);
 
@@ -293,16 +301,12 @@ test("a signed-in client can reach every primary portal destination", async ({ p
 // ---------------------------------------------------------------------------
 
 test("a client reads a thread and posts a message that persists", async ({ page }) => {
-  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
 
   await signInClient(page);
   await page.goto("/app/messages");
 
   const thread = page.locator("a[href^='/app/messages/']").first();
-  test.skip(
-    !(await thread.isVisible().catch(() => false)),
-    "the client account has no message thread — seed one, or this proves nothing",
-  );
+  await expect(thread, "the client account has no message thread: the fixture is broken, and a skip here would read as a pass").toBeVisible();
   await thread.click();
 
   const body = `e2e ${new Date().toISOString()}`;
@@ -322,23 +326,16 @@ test("a client reads a thread and posts a message that persists", async ({ page 
 // ---------------------------------------------------------------------------
 
 test("a client opens a document on their own matter", async ({ page }) => {
-  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
 
   await signInClient(page);
   await page.goto("/app/matters");
 
   const matter = page.locator("a[href^='/app/matters/']").first();
-  test.skip(
-    !(await matter.isVisible().catch(() => false)),
-    "the client account holds no matter — seed one, or this proves nothing",
-  );
+  await expect(matter, "the client account holds no matter: the fixture is broken, and a skip here would read as a pass").toBeVisible();
   await matter.click();
 
   const doc = page.getByRole("link", { name: /download|open|view/i }).first();
-  test.skip(
-    !(await doc.isVisible().catch(() => false)),
-    "no document on the client's matter — seed one, or this proves nothing",
-  );
+  await expect(doc, "no document on the client's matter: the fixture is broken, and a skip here would read as a pass").toBeVisible();
 
   // open_document_version() must write a document_reads row before storage will
   // part with the bytes, so a 2xx here is the whole policy chain working.
@@ -354,8 +351,6 @@ test("a client opens a document on their own matter", async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 test("a client acting through two firms switches between them", async ({ page }) => {
-  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
-  test.skip(!SECOND_FIRM_NAME, "set E2E_SECOND_FIRM_NAME to a second firm acting for this client");
 
   await signInClient(page);
   await page.goto("/app");
@@ -384,11 +379,6 @@ test("a client acting through two firms switches between them", async ({ page })
 // ---------------------------------------------------------------------------
 
 test("a client cannot read another firm's matter, at the UI or the API", async ({ page, browser }) => {
-  test.skip(!clientConfigured, missing({ E2E_CLIENT_PHONE: CLIENT_PHONE, E2E_CLIENT_OTP: CLIENT_OTP }));
-  test.skip(
-    !FORBIDDEN_MATTER_ID,
-    "set E2E_FORBIDDEN_MATTER_ID to a matter of a firm that does NOT act for this client",
-  );
 
   await signInClient(page);
   const token = await accessToken(page);

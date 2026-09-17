@@ -7,11 +7,13 @@ import { defineConfig, devices } from "@playwright/test";
 //
 //   npx playwright test --config tests/integration/playwright.config.ts
 //
-// Nothing here starts a server: point PLAYWRIGHT_BASE_URL at the deployment (or
-// a local `next dev` you have already started) that is wired to the SAME
-// Supabase project the E2E_* accounts live in. A base URL pointing at one
-// project while the accounts live in another fails in ways that look like
-// application bugs.
+// With PLAYWRIGHT_BASE_URL set, nothing here starts a server: point it at the
+// deployment (or a local `next dev` you have already started) that is wired to
+// the SAME Supabase project the E2E_* accounts live in. A base URL pointing at
+// one project while the accounts live in another fails in ways that look like
+// application bugs. Without it — which is how CI runs — `npm run dev` is started
+// here, exactly as the root config does for the smoke tests, and it inherits the
+// same NEXT_PUBLIC_* variables the journeys read, so the two cannot disagree.
 
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000";
 
@@ -41,4 +43,12 @@ export default defineConfig({
     ...(launchOptions ? { launchOptions } : {}),
   },
   projects: [{ name: "mobile-chrome", use: { ...devices["Pixel 7"] } }],
+  webServer: process.env.PLAYWRIGHT_BASE_URL
+    ? undefined
+    : {
+        command: "npm run dev",
+        url: "http://localhost:3000",
+        reuseExistingServer: true,
+        timeout: 120_000,
+      },
 });

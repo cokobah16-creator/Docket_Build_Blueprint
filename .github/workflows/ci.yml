@@ -390,55 +390,38 @@ jobs:
           path: build.log
           if-no-files-found: ignore
 
-  # ---------------------------------------------------------------- browser smoke tests
+  # ---------------------------------------------------------------- browser tests
   #
-  # tests/e2e/smoke.spec.ts has four tests: the platform landing, a tenant's public home,
-  # /firm/start and /app/login. Without a configured Supabase the tenant test SKIPS itself
-  # outright, and two of the others drop their real assertions — the sign-in forms render a
-  # "not configured" notice instead of the Phone and Email tabs, because a tenant is resolved
-  # from firm_public and there is nothing to resolve against. What is left is one page load.
-  # That is a green tick that proves nothing, so this job is gated instead of run empty.
+  # Two jobs, both against a real Supabase project, and NEITHER is gated. Until 17 Sep 2026 the
+  # smoke job sat behind an e2e-preflight job that looked for the secrets and SKIPPED the tests
+  # when they were absent — while the run stayed green. A skipped test and a passed test are the
+  # same colour on a pull request, so for the entire life of that gate "CI is green" said nothing
+  # about whether a person could use the product. That is this programme's own rule — a check that
+  # cannot fail is not a check — broken in the one place it mattered most.
   #
-  # TO TURN IT ON, set three repository secrets:
-  #   NEXT_PUBLIC_SUPABASE_URL       the project URL
+  # Now a missing secret is RED. tests/e2e/smoke.spec.ts refuses to run in beforeAll and names every
+  # variable it lacks; tests/integration/journeys.spec.ts does the same for its ten. All of these are
+  # repository secrets, and all point at the STAGING project — never the one your firms are using
+  # (docs/ENVIRONMENTS.md, rule 2). scripts/seed-staging-fixtures.mjs creates everything they name
+  # and prints this block, filled in, when it finishes.
+  #
+  #   NEXT_PUBLIC_SUPABASE_URL       the staging project URL
   #   NEXT_PUBLIC_SUPABASE_ANON_KEY  its anon / publishable key
-  #   E2E_FIRM_SLUG                  the slug of a firm that is ACTIVE in that project. There is
-  #                                  no fallback: the spec REFUSES to run without it, because a
-  #                                  default naming one particular firm silently tested the wrong
-  #                                  thing in anybody else's project
-  #
-  # These tests only read public pages. They sign nobody in and write nothing. Even so, point
-  # them at a staging project rather than the one your firms are using.
-  #
-  # The `secrets` context cannot be read in a job-level `if:`, so the presence check is its own
-  # job and the answer travels as an output.
-  e2e-preflight:
-    name: Are the e2e secrets set?
-    runs-on: ubuntu-latest
-    outputs:
-      configured: ${{ steps.check.outputs.configured }}
-    steps:
-      - id: check
-        env:
-          SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
-          FIRM_SLUG: ${{ secrets.E2E_FIRM_SLUG }}
-        run: |
-          set -euo pipefail
-          # All three, because the e2e job passes all three. Checking two of them would let the
-          # job start with no anon key and fail as though the app were broken.
-          if [ -n "${SUPABASE_URL:-}" ] && [ -n "${SUPABASE_ANON_KEY:-}" ] && [ -n "${FIRM_SLUG:-}" ]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "e2e skipped: set NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY and E2E_FIRM_SLUG as repository secrets to run it."
-          fi
+  #   E2E_FIRM_SLUG                  the slug of a firm that is ACTIVE there
+  #   E2E_STAFF_EMAIL, E2E_STAFF_PASSWORD, E2E_STAFF_TOTP_SECRET
+  #                                  a firm member with TOTP enrolled; the fixture script printed
+  #                                  that secret once and there is no other copy of it
+  #   E2E_CLIENT_PHONE, E2E_CLIENT_OTP
+  #                                  a Supabase TEST number and its fixed code — and the number must
+  #                                  be the fixture client's own, or the OTP signs in a stranger who
+  #                                  holds no matter, no message and no document
+  #   E2E_SECOND_FIRM_NAME           a second firm acting for the same client
+  #   E2E_FORBIDDEN_MATTER_ID        a matter of a firm that does NOT act for the client
 
   e2e:
     name: Playwright smoke (mobile)
     runs-on: ubuntu-latest
-    needs: [e2e-preflight, typecheck]
-    if: needs.e2e-preflight.outputs.configured == 'true'
+    needs: [typecheck]
     steps:
       - uses: actions/checkout@v4
 
@@ -469,4 +452,50 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report/
+          if-no-files-found: ignore
+
+  journeys:
+    name: Authenticated journeys (mobile)
+    runs-on: ubuntu-latest
+    needs: [typecheck]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install the browser
+        run: npx playwright install --with-deps chromium
+
+      # tests/integration/playwright.config.ts starts `npm run dev` itself when PLAYWRIGHT_BASE_URL
+      # is unset, from this same environment, so the app and the journeys read one project. The
+      # spec refuses to run — red, not skipped — if any of the ten below is missing. There is no
+      # `if:` on this job and no preflight in front of it, on purpose.
+      - name: Run the journeys
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+          E2E_FIRM_SLUG: ${{ secrets.E2E_FIRM_SLUG }}
+          E2E_STAFF_EMAIL: ${{ secrets.E2E_STAFF_EMAIL }}
+          E2E_STAFF_PASSWORD: ${{ secrets.E2E_STAFF_PASSWORD }}
+          E2E_STAFF_TOTP_SECRET: ${{ secrets.E2E_STAFF_TOTP_SECRET }}
+          E2E_CLIENT_PHONE: ${{ secrets.E2E_CLIENT_PHONE }}
+          E2E_CLIENT_OTP: ${{ secrets.E2E_CLIENT_OTP }}
+          E2E_SECOND_FIRM_NAME: ${{ secrets.E2E_SECOND_FIRM_NAME }}
+          E2E_FORBIDDEN_MATTER_ID: ${{ secrets.E2E_FORBIDDEN_MATTER_ID }}
+        run: npm run test:integration
+
+      # The integration config reports to the console only, so what survives a failure is the
+      # per-test trace and screenshot directory, not an HTML report.
+      - name: Keep the traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: journeys-traces
+          path: test-results/
           if-no-files-found: ignore
