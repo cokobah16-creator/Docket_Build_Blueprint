@@ -7,22 +7,53 @@ This folder covers the other half — the journeys that only exist once somebody
 signed in, and the one that matters most, which is a person **not** being able to
 read what is not theirs.
 
-## Status: UNVERIFIED
+## Status: running in CI on every push — five of seven pass, two wait on one secret
 
-`journeys.spec.ts` has never been executed. It was written in an environment with
-no Supabase project to run it against, and every test in it is guarded to SKIP
-when its configuration is absent. **A skip is not a pass.** Until a run reports
-these as passed, nothing in this folder is evidence about the application — it is
-a specification of the journeys, written in executable form so it runs the moment
-configuration exists.
+`journeys.spec.ts` runs as the `journeys` job in `.github/workflows/ci.yml`, against the staging
+project in `docs/ENVIRONMENTS.md`, on the fixtures `scripts/seed-staging-fixtures.mjs` provisions.
+Its first executions were on 17 Sep 2026. **Nothing in it skips**: `beforeAll` refuses the whole
+file, naming every variable it lacks, and the run is red — a skip is not a pass, and a skipped
+test is the same colour as a passed one on a pull request.
 
-Why it could not be verified here, established by running the commands:
+As of 17 Sep 2026 (run 35277639314):
+
+| Journey | State |
+| --- | --- |
+| Client signs in with a phone OTP and reaches the portal | passes |
+| Staff signs in with password and TOTP at aal2 | **fails on a rotated secret** — see below |
+| A signed-in client reaches every primary destination | passes |
+| A client reads a thread and posts a message that persists | passes |
+| A client opens a document on their own matter | passes |
+| A client acting through two firms switches between them | passes |
+| A client cannot read another firm's matter, at the UI or the API | **fails at its staff-side positive control**, the same secret |
+
+The two failures share one cause and it is not the product's: every run of the fixture script
+used to re-enrol the staff owner's TOTP factor, two re-runs on 17 Sep left `E2E_STAFF_TOTP_SECRET`
+in GitHub naming a factor that no longer existed, and the staff sign-in stops at the challenge.
+The script now reuses the factor when the secret is passed back to it (`FIXTURE_STAFF_TOTP_SECRET`),
+so this cannot recur silently; the GitHub secret still has to be set once to the value the script
+last printed. When that is done the row above changes, and not before.
+
+What the first runs found, each fixed against the product as it runs rather than as it was
+remembered: a client who had never accepted any firm's terms and so met the consent gate on every
+page; selectors written against markup that does not exist (a matter's thread lives at
+`/app/matters/<id>?tab=messages`, a document opens from a button, the firm switcher had no
+accessible name); a portal that opens on whichever of two tied firms sorts first; a composer that
+showed a sent message only when Realtime echoed it; and GoTrue's minimum interval between phone
+codes, which six sign-ins in one run tripped. One of those is a product change (`sendMessage`
+returns the row it inserted); the rest are the tests learning the product.
+
+### How it was first written
+
+The file was written before any project existed to run it against, and this is why it could not
+be verified where it was written — established by running the commands at the time, kept because
+the constraints still hold for that environment:
 
 | Route to a real stack | Result |
 | --- | --- |
 | Local Postgres | **Works.** Cluster 16/main starts; the repo's whole SQL suite passes (31 suites, 1447 checks). But it is bare Postgres — no GoTrue, so no sign-in, no password, no OTP, no `aal2`. |
 | `supabase start` (local stack) | **Blocked.** The CLI installs (npm reaches the registry) and the Docker daemon starts, but image layers are refused by the egress proxy: `production.cloudfront.docker.com … Forbidden`. Zero images can be pulled, so the stack cannot come up. |
-| The hosted project | **Exists but unusable for this.** `Docket_Build_Blueprint` (`xgxuwimcxkpgtfkunwfe`) is ACTIVE_HEALTHY and its 51 applied migrations match `supabase/migrations/` exactly. It holds 1 firm, 1 firm member, and **0 matters, 0 messages, 0 documents** — nothing to sign in as and nothing to read. Seeding it would be a live database change. |
+| The production project | **Never.** `docs/ENVIRONMENTS.md` rule 2: no test ever points at production. It is why staging exists. |
 | The mock at `tests/fixtures/supabase-mock.mjs` | **Proves nothing here, by design.** Its own header: "It does not implement RLS, and it does not check the session against anything — it hands out a user because it was asked … Authorization is the database's, and only a real project can demonstrate it." It returns a fixed `aal2` session to any `/auth/v1/token` request, so every test below would pass against it whether or not authentication worked. |
 
 ## The journeys
@@ -70,14 +101,19 @@ the environment block at the end, including the TOTP secret that cannot be recov
 ```sh
 SUPABASE_URL=https://<staging-ref>.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=... SUPABASE_ANON_KEY=... \
+FIXTURE_CLIENT_PHONE=+<the number registered as a Supabase test number> \
+FIXTURE_STAFF_TOTP_SECRET=<the value GitHub holds as E2E_STAFF_TOTP_SECRET> \
   node scripts/seed-staging-fixtures.mjs
 ```
 
-**It has never been run.** Its signatures were read out of `supabase/migrations/` and
-`docs/RPC_REFERENCE.md` rather than remembered, but nothing has executed it end to end. Until it
-has, the list below is still what somebody does by hand, and a first clean run is what turns the
-script into the answer. One thing it does not do either way: the Supabase SMS test number, which is
-provider configuration rather than data.
+It has run end to end against staging, several times, and is idempotent — every step reads before
+it writes. **Pass `FIXTURE_STAFF_TOTP_SECRET` on every re-run.** A TOTP secret can never be read
+back, so without it the script has no choice but to replace the factor and print a new secret,
+and the journeys in CI go red on staff sign-in until GitHub is given the new value; with it, the
+script proves the secret against the enrolled factor and keeps it. The client's phone must be the
+number registered as a Supabase test number, because an OTP signs in whoever owns the number.
+One thing the script does not do: that test number itself, which is provider configuration rather
+than data (Authentication → Sign In / Providers → Phone, with a "valid until" date).
 
 ## What a person must supply
 
@@ -166,8 +202,8 @@ PW_CHROMIUM=/opt/pw-browsers/chromium-1194/chrome-linux/chrome \
   npx playwright test --config tests/integration/playwright.config.ts
 ```
 
-**Read the summary line.** `7 skipped` means the configuration above is missing
-and the journeys remain unverified. Only `7 passed` is evidence.
+**Read the summary line.** Nothing here skips: with configuration missing the file refuses
+to run and names what it lacks, and the run is red. Only `7 passed` is evidence.
 
 ## The SQL suite, which is verified
 
