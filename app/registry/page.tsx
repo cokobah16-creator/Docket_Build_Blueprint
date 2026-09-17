@@ -12,6 +12,7 @@ import { registryBatches, registryContext, registryDraftCounts, registryMembers,
 import { formatDay } from "@/lib/days";
 import { formatWhen } from "@/lib/time";
 import { NoticeControls, BatchControls } from "./notice-controls";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Cause list" };
 
@@ -35,10 +36,11 @@ export default async function RegistryHome({ searchParams }: { searchParams: Pro
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">{ctx.courtName}</h1>
-        <p className="text-15 text-[#57534E]">{registry.name} · {members.length} {members.length === 1 ? "person" : "people"} · times in {timezone}</p>
-      </div>
+      <PageHeader
+        tone="neutral"
+        title={ctx.courtName}
+        description={`${registry.name} · ${members.length} ${members.length === 1 ? "person" : "people"} · times in ${timezone}`}
+      />
 
       {registry.status === "suspended" && (
         <Alert kind="warning" title="This registry is suspended">

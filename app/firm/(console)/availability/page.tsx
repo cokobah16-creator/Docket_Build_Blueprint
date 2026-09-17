@@ -28,6 +28,8 @@ import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import type { AppointmentSlot, AvailabilityException, ServiceRow } from "@/lib/db/types";
 import { AvailabilityEditor } from "./availability-editor";
+import { PageHeader } from "@/components/shell/layout";
+import { buttonClasses } from "@/components/ui/button";
 
 export const metadata = { title: "Availability" };
 
@@ -232,21 +234,16 @@ export default async function AvailabilityPage({
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Availability</h1>
-          <p className="text-15 text-ink-muted">
-            {ctx.firmName} · {isSelf ? "your week" : `${lawyerName}'s week`} · hours in {lawyerTz}
-            {zonesDiffer ? `, slot times shown in ${viewerTz}` : ""}
-          </p>
-        </div>
-        <Link
-          href="/firm/appointments"
-          className="flex min-h-[44px] items-center rounded-lg border border-edge px-4 text-15 font-medium text-brand hover:border-brand"
-        >
-          Consultations
-        </Link>
-      </header>
+      <PageHeader
+        tone="neutral"
+        title="Availability"
+        description={`${ctx.firmName} · ${isSelf ? "your week" : `${lawyerName}'s week`} · hours in ${lawyerTz}${zonesDiffer ? `, slot times shown in ${viewerTz}` : ""}`}
+        actions={
+          <Link href="/firm/appointments" className={buttonClasses("ghost", "md")}>
+            Consultations
+          </Link>
+        }
+      />
 
       {isAdmin && staff.length > 1 ? (
         <Card>

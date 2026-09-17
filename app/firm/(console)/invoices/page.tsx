@@ -23,6 +23,8 @@ import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import type { InvoiceRow } from "@/lib/db/types";
+import { PageHeader } from "@/components/shell/layout";
+import { buttonClasses } from "@/components/ui/button";
 
 export const metadata = { title: "Invoices" };
 
@@ -206,20 +208,16 @@ export default async function FirmInvoicesPage({
 
   return (
     <div className="space-y-5">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Invoices</h1>
-          <p className="text-15 text-ink-muted">
-            {ctx.firmName} · fees settle straight to the firm&rsquo;s own account · times in {tz}
-          </p>
-        </div>
-        <Link
-          href={raiseHref}
-          className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
-        >
-          Raise an invoice
-        </Link>
-      </header>
+      <PageHeader
+        tone="neutral"
+        title="Invoices"
+        description={`${ctx.firmName} · fees settle straight to the firm’s own account · times in ${tz}`}
+        actions={
+          <Link href={raiseHref} className={buttonClasses("neutral", "md")}>
+            Raise an invoice
+          </Link>
+        }
+      />
 
       {overview ? (
         <section aria-label="Money totals" className="grid grid-cols-2 gap-3 lg:grid-cols-4">

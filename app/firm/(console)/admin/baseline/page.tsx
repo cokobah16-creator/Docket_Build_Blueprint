@@ -10,6 +10,7 @@ import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
 import type { FirmBaselineRow, FirmMetrics } from "@/lib/db/types";
 import { BaselinePanel } from "./baseline-panel";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Baseline" };
 
@@ -41,10 +42,11 @@ export default async function BaselinePage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Baseline</h1>
-        <p className="text-15 text-ink-muted">{ctx.firmName} · what your own records say, over a window you choose</p>
-      </header>
+      <PageHeader
+        tone="neutral"
+        title="Baseline"
+        description={`${ctx.firmName} · what your own records say, over a window you choose`}
+      />
       {metricsError && <Alert kind="error" title="The figures could not be computed">{metricsError.message}. That is a failed read, not a firm with no work.</Alert>}
       {rowsError && <Alert kind="error" title="The records could not be read">{rowsError.message}.</Alert>}
       {!ctx.isAdmin && (

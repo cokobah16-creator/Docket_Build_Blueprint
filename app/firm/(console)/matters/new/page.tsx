@@ -7,10 +7,10 @@
 // open_matter() (next_reference() is service-only), never in this code; and
 // nothing is firm-specific — the firm arrives from staffContext().
 
-import Link from "next/link";
 import { courtsFor, firmStaff, matterStatuses, requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
 import { NewMatterForm } from "./new-matter-form";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Open a matter" };
 
@@ -42,15 +42,13 @@ export default async function NewMatterPage({
 
   return (
     <div className="space-y-5">
-      <p className="text-15">
-        <Link href="/firm/matters" className="text-brand underline">← Matters</Link>
-      </p>
-      <header>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Open a matter</h1>
-        <p className="text-15 text-ink-muted">
-          {ctx.firmName} · the reference is issued by the database as the matter opens
-        </p>
-      </header>
+      <PageHeader
+        tone="neutral"
+        back="/firm/matters"
+        backLabel="Matters"
+        title="Open a matter"
+        description={`${ctx.firmName} · the reference is issued by the database as the matter opens`}
+      />
 
       <NewMatterForm
         firmId={firmId}

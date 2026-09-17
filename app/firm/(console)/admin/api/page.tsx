@@ -12,6 +12,7 @@ import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { todayIn } from "@/lib/days";
 import { PartnerApiPanel } from "./partner-api-panel";
 import type { ApiCredentialRow, ApiEndpointSummary } from "@/lib/db/types";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Partner API" };
 
@@ -44,7 +45,7 @@ export default async function PartnerApiPage({ searchParams }: { searchParams: P
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Partner API</h1>
+      <PageHeader tone="neutral" title="Partner API" />
 
       {error && (
         <Alert kind="error" title="The keys did not load">

@@ -22,6 +22,7 @@ import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Clients" };
 
@@ -332,12 +333,11 @@ export default async function FirmClientsPage({
 
   return (
     <div className="flex flex-col gap-3">
-      <header>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Clients</h1>
-        <p className="mt-0.5 text-13 text-[#57534E]">
-          {ctx.firmName} · {everyone.length} {everyone.length === 1 ? "person" : "people"} the firm acts for
-        </p>
-      </header>
+      <PageHeader
+        tone="neutral"
+        title="Clients"
+        description={`${ctx.firmName} · ${everyone.length} ${everyone.length === 1 ? "person" : "people"} the firm acts for`}
+      />
 
       <form method="get" action="/firm/clients" className="flex min-h-[46px] items-center gap-2.5 rounded-control border border-[#DDD9D2] bg-raised px-3.5 focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#141414]">
         {sp.firm && <input type="hidden" name="firm" value={sp.firm} />}

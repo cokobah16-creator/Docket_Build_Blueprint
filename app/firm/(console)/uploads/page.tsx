@@ -12,6 +12,7 @@ import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { relativeLabel } from "@/lib/relative";
 import type { DocumentRow } from "@/lib/db/types";
 import { ReviewButton } from "./review-button";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Uploads to review" };
 
@@ -57,12 +58,11 @@ export default async function FirmUploads({ searchParams }: { searchParams: Prom
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Uploads to review</h1>
-        <p className="mt-0.5 text-13 text-[#57534E]">
-          {ctx.firmName} · {docs.length === 0 ? "nothing waiting" : `${docs.length}${docs.length === LIMIT ? "+" : ""} waiting, oldest first`}
-        </p>
-      </div>
+      <PageHeader
+        tone="neutral"
+        title="Uploads to review"
+        description={`${ctx.firmName} · ${docs.length === 0 ? "nothing waiting" : `${docs.length}${docs.length === LIMIT ? "+" : ""} waiting, oldest first`}`}
+      />
 
       {error && <Alert kind="error" title="This screen could not read the uploads">{error.message}</Alert>}
 

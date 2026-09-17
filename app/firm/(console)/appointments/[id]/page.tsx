@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -7,7 +6,6 @@ import { formatWhen } from "@/lib/time";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Badge, StatusPill, type Status } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icon";
 import { Alert } from "@/components/ui/alert";
 import { ConsultationRoom } from "@/components/video/consultation-room";
 import { markNoShow } from "@/lib/actions/video";
@@ -16,6 +14,7 @@ import { RescheduleForm } from "./reschedule-form";
 import { CheckinPanel } from "./checkin-panel";
 import { DocumentsTab } from "@/components/portal/documents-tab";
 import type { AppointmentReadiness, DocumentRequestRow, DocumentRow, DocumentVersionRow } from "@/lib/db/types";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Appointment" };
 
@@ -90,25 +89,19 @@ export default async function FirmAppointmentPage({
 
   return (
     <div className="flex flex-col gap-3.5">
-      <p>
-        <Link href="/firm/appointments" className="inline-flex items-center gap-1.5 text-13 font-medium text-[#141414]">
-          <Icon name="chevron-left" size={15} strokeWidth={2} />
-          Consultations
-        </Link>
-      </p>
-      <header>
-        <h1 className="font-heading text-21 font-bold leading-tight tracking-[-0.02em] text-[#141414]">
-          {cl?.full_name ?? "Client"}
-        </h1>
-        <p className="mt-1 text-13 text-[#57534E]">
-          {svc?.name ?? "Consultation"} · {appt.mode.replace("_", " ")} · {svc?.duration_min ?? Math.round((endMs - startMs) / 60000)} minutes
-        </p>
-        <div className="mt-2.5 flex flex-wrap items-center gap-[7px]">
+      <PageHeader
+        tone="neutral"
+        back="/firm/appointments"
+        backLabel="Consultations"
+        title={cl?.full_name ?? "Client"}
+        description={`${svc?.name ?? "Consultation"} · ${appt.mode.replace("_", " ")} · ${svc?.duration_min ?? Math.round((endMs - startMs) / 60000)} minutes`}
+      >
+        <div className="flex flex-wrap items-center gap-[7px]">
           <StatusPill status={appt.status as Status} />
           <Badge>{formatWhen(appt.starts_at, tz, { dateStyle: "medium", timeStyle: "short" })}</Badge>
           <Badge className="font-mono">{appt.reference}</Badge>
         </div>
-      </header>
+      </PageHeader>
 
       {actionError && <Alert kind="error">{actionError}</Alert>}
       {saved && <Alert kind="success">Notes saved. {appt.status === "completed" ? "The consultation is marked completed and the client can see the summary." : ""}</Alert>}

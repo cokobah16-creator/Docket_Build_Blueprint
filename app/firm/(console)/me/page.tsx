@@ -19,6 +19,7 @@ import { ProfileEditor, type PractitionerProfile } from "./profile-editor";
 import { CalendarFeedPanel } from "./calendar-feed-panel";
 import { supabaseUrl } from "@/lib/env";
 import type { CalendarFeedStatus } from "@/lib/db/types";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Me" };
 
@@ -89,7 +90,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Me &amp; the firm</h1>
+      <PageHeader tone="neutral" title="Me & the firm" />
 
       <div className="flex items-center gap-3.5 rounded-card border border-[#DDD9D2] bg-raised p-[15px]">
         <span aria-hidden="true" className="grid size-12 shrink-0 place-items-center rounded-control bg-[#141414] font-heading text-17 font-bold text-white">

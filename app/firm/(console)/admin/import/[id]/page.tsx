@@ -15,6 +15,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import type { ImportBatchRow, ImportRowRecord } from "@/lib/db/types";
 import { CopyButton } from "../../../matters/[id]/matter-tabs";
 import { ContinueImport, DiscardImport, ResultsDownload } from "./results-actions";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Import results" };
 
@@ -67,14 +68,18 @@ export default async function ImportResultPage({ params, searchParams }: { param
 
   return (
     <div className="space-y-6">
-      <p className="text-15"><Link href="/firm/admin/import" className="text-brand underline">← Imports</Link></p>
-      <header>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">{batch.source_name ?? "An import"}</h1>
-        <p className="text-15 text-ink-muted">
-          Staged {formatWhen(batch.created_at, timezone)}{batch.created_by ? ` by ${names[batch.created_by] ?? "a colleague"}` : ""}
-          {batch.processed_at ? ` · processed ${formatWhen(batch.processed_at, timezone)}` : " · not finished"}
-        </p>
-      </header>
+      <PageHeader
+        tone="neutral"
+        back="/firm/admin/import"
+        backLabel="Imports"
+        title={batch.source_name ?? "An import"}
+        description={
+          <>
+            Staged {formatWhen(batch.created_at, timezone)}{batch.created_by ? ` by ${names[batch.created_by] ?? "a colleague"}` : ""}
+            {batch.processed_at ? ` · processed ${formatWhen(batch.processed_at, timezone)}` : " · not finished"}
+          </>
+        }
+      />
 
       {unstaged > 0 && !begun && (
         <Alert kind="warning" title={`${rows.length} of ${batch.row_count} rows arrived; the rest never did`}>

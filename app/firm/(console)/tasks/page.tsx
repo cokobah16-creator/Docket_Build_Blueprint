@@ -14,6 +14,7 @@ import { relativeLabel } from "@/lib/relative";
 import { formatDay, todayIn } from "@/lib/days";
 import type { TaskRow } from "@/lib/db/types";
 import { CloseTaskButton } from "./close-button";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Tasks" };
 
@@ -82,10 +83,11 @@ export default async function FirmTasks({ searchParams }: { searchParams: Promis
 
   return (
     <div className="flex flex-col gap-3.5">
-      <div>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Tasks</h1>
-        <p className="mt-0.5 text-13 text-[#57534E]">{ctx.firmName} · {tasks.length}{tasks.length === LIMIT ? "+" : ""} {view === "done" ? "closed" : view} · due times in {tz}</p>
-      </div>
+      <PageHeader
+        tone="neutral"
+        title="Tasks"
+        description={`${ctx.firmName} · ${tasks.length}${tasks.length === LIMIT ? "+" : ""} ${view === "done" ? "closed" : view} · due times in ${tz}`}
+      />
 
       <nav aria-label="Which tasks" className="-mx-4 flex gap-2 overflow-x-auto px-4">
         {VIEWS.map(([v, label]) => (

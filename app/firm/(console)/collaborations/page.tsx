@@ -12,6 +12,7 @@ import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { todayIn } from "@/lib/days";
 import { CollaborationInbox } from "@/components/firm/collaboration-inbox";
 import type { CollaborationInboxRow, CollaborationNoteRow } from "@/lib/db/types";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Work from other firms" };
 
@@ -47,7 +48,7 @@ export default async function FirmCollaborations({ searchParams }: { searchParam
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Work from other firms</h1>
+      <PageHeader tone="neutral" title="Work from other firms" />
 
       {error && (
         <Alert kind="error" title="This did not load">

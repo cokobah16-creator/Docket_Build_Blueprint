@@ -10,10 +10,10 @@
 // the rounding; and nothing is firm-specific — the firm, its VAT rate and its
 // default currency all arrive from staffContext().
 
-import Link from "next/link";
 import { firmMatters, requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
 import { InvoiceComposer, type ClientOption, type MatterOption } from "./invoice-composer";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Raise an invoice" };
 
@@ -149,18 +149,13 @@ export default async function NewInvoicePage({
 
   return (
     <div className="space-y-5">
-      <p className="text-15">
-        <Link href={backHref} className="text-brand underline">
-          ← {preselectedMatterId ? "Back to the matter" : "Invoices"}
-        </Link>
-      </p>
-      <header>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Raise an invoice</h1>
-        <p className="text-15 text-ink-muted">
-          {ctx.firmName} · the number is issued by the database as the invoice is raised · fees settle into the
-          firm&rsquo;s own account
-        </p>
-      </header>
+      <PageHeader
+        tone="neutral"
+        back={backHref}
+        backLabel={preselectedMatterId ? "The matter" : "Invoices"}
+        title="Raise an invoice"
+        description={`${ctx.firmName} · the number is issued by the database as the invoice is raised · fees settle into the firm’s own account`}
+      />
 
       <InvoiceComposer
         firmId={firmId}

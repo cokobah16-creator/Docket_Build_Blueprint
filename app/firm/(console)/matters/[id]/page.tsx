@@ -42,7 +42,7 @@ import type {
   ServiceDirectoryRow, TaskRow, CollaborationRow, CollaborationDocumentRow,
 } from "@/lib/db/types";
 import { CollaborationPanel } from "@/components/firm/collaboration-panel";
-import { CardGrid, WithAside } from "@/components/shell/layout";
+import { CardGrid, PageHeader, WithAside } from "@/components/shell/layout";
 import { CopyButton, MatterTabs, type TabSpec } from "./matter-tabs";
 import { StaffTimeline, type StaffUpdate } from "./staff-timeline";
 import { StaffDocuments, type StaffDocument } from "./staff-documents";
@@ -271,19 +271,14 @@ export default async function MatterWorkbench({
 
   return (
     <div className="space-y-5">
-      <p className="text-15">
-        <Link href={`/firm/matters${sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : ""}`} className="text-brand underline">← Matters</Link>
-      </p>
-
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">{matter.title}</h1>
-            <p className="text-15 text-ink-muted">
-              {matter.reference} · {typeLabel(matter.type)} · opened {formatWhen(`${matter.opened_at}T00:00:00Z`, "UTC", { dateStyle: "medium" })}
-            </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <PageHeader
+        tone="neutral"
+        back={`/firm/matters${sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : ""}`}
+        backLabel="Matters"
+        title={matter.title}
+        description={`${matter.reference} · ${typeLabel(matter.type)} · opened ${formatWhen(`${matter.opened_at}T00:00:00Z`, "UTC", { dateStyle: "medium" })}`}
+        actions={
+          <>
             {status && <StatusChip status={status} />}
             {matter.access === "team" && (
               <span className="inline-flex items-center rounded-full border border-[#141414] bg-[#141414] px-2.5 py-0.5 text-13 font-medium text-white" title="Only this matter's team can open it">
@@ -291,56 +286,58 @@ export default async function MatterWorkbench({
               </span>
             )}
             {matter.closed_at && <StatusPill status="closed" />}
-          </div>
-        </div>
+          </>
+        }
+      >
+        <div className="space-y-2">
+          {matter.cause_title && <p className="text-15 font-medium text-ink">{matter.cause_title}</p>}
 
-        {matter.cause_title && <p className="text-15 font-medium text-ink">{matter.cause_title}</p>}
+          <p className="text-15 text-ink">
+            {matter.court_name ?? "No court recorded"}
+            {matter.judicial_division ? `, ${matter.judicial_division}` : ""}
+            {matter.suit_number ? ` · ${matter.suit_number}` : " · no suit number yet"}
+            {matter.judge ? ` · ${matter.judge}` : ""}
+          </p>
 
-        <p className="text-15 text-ink">
-          {matter.court_name ?? "No court recorded"}
-          {matter.judicial_division ? `, ${matter.judicial_division}` : ""}
-          {matter.suit_number ? ` · ${matter.suit_number}` : " · no suit number yet"}
-          {matter.judge ? ` · ${matter.judge}` : ""}
-        </p>
-
-        <p className="text-15 text-ink">
-          {matter.next_event_at ? (
-            <>
-              Next in court: <strong>{formatWhen(matter.next_event_at, tz, { dateStyle: "full", timeStyle: "short" })}</strong>
-              {matter.next_event_note ? ` · ${matter.next_event_note}` : ""} <span className="text-ink-muted">({tz})</span>
-            </>
-          ) : matter.awaiting_date ? (
-            <span className="font-medium text-amber-800">Awaiting a date from the court.</span>
-          ) : (
-            <span className="text-ink-muted">No court date fixed.</span>
-          )}
-        </p>
-
-        {matter.next_action && (
-          <p className="text-15 font-medium text-brand">
-            Next action: {matter.next_action}
-            {(matter.next_action_owner_id || matter.next_action_due) && (
-              <span className="font-normal text-ink-muted">
-                {" · "}
-                {matter.next_action_owner_id ? (names[matter.next_action_owner_id] ?? "a colleague") : <span className="text-amber-800">nobody on it</span>}
-                {matter.next_action_due && (
-                  <>
-                    {" · due "}
-                    <span className={matter.next_action_due < todayIn(ctx.timezone) ? "font-semibold text-red-700" : undefined}>
-                      {matter.next_action_due < todayIn(ctx.timezone) ? "overdue, was " : ""}{formatDay(matter.next_action_due)}
-                    </span>
-                  </>
-                )}
-              </span>
+          <p className="text-15 text-ink">
+            {matter.next_event_at ? (
+              <>
+                Next in court: <strong>{formatWhen(matter.next_event_at, tz, { dateStyle: "full", timeStyle: "short" })}</strong>
+                {matter.next_event_note ? ` · ${matter.next_event_note}` : ""} <span className="text-ink-muted">({tz})</span>
+              </>
+            ) : matter.awaiting_date ? (
+              <span className="font-medium text-amber-800">Awaiting a date from the court.</span>
+            ) : (
+              <span className="text-ink-muted">No court date fixed.</span>
             )}
           </p>
-        )}
 
-        <p className="text-13 text-ink-muted">
-          Handling: {handling ?? "not recorded"} · Originating: {originating ?? "not recorded"}
-          {leadLawyerId && names[leadLawyerId] ? ` · Conduct: ${names[leadLawyerId]}` : ""}
-        </p>
-      </header>
+          {matter.next_action && (
+            <p className="text-15 font-medium text-brand">
+              Next action: {matter.next_action}
+              {(matter.next_action_owner_id || matter.next_action_due) && (
+                <span className="font-normal text-ink-muted">
+                  {" · "}
+                  {matter.next_action_owner_id ? (names[matter.next_action_owner_id] ?? "a colleague") : <span className="text-amber-800">nobody on it</span>}
+                  {matter.next_action_due && (
+                    <>
+                      {" · due "}
+                      <span className={matter.next_action_due < todayIn(ctx.timezone) ? "font-semibold text-red-700" : undefined}>
+                        {matter.next_action_due < todayIn(ctx.timezone) ? "overdue, was " : ""}{formatDay(matter.next_action_due)}
+                      </span>
+                    </>
+                  )}
+                </span>
+              )}
+            </p>
+          )}
+
+          <p className="text-13 text-ink-muted">
+            Handling: {handling ?? "not recorded"} · Originating: {originating ?? "not recorded"}
+            {leadLawyerId && names[leadLawyerId] ? ` · Conduct: ${names[leadLawyerId]}` : ""}
+          </p>
+        </div>
+      </PageHeader>
 
       {sp.error && <Alert kind="error" title="That was refused">{sp.error}</Alert>}
       {sp.issued === "1" && <Alert kind="success">Invoice issued. Your client can see it and pay from their app.</Alert>}

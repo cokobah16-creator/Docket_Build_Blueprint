@@ -26,6 +26,7 @@ import { cn } from "@/lib/cn";
 import type { MatterStatus, RepresentationRow } from "@/lib/db/types";
 import { RepresentationsPanel } from "@/components/firm/representations-panel";
 import { todayIn } from "@/lib/days";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Client" };
 
@@ -338,33 +339,36 @@ export default async function FirmClientPage({
 
   return (
     <div className="space-y-5">
-      <p className="text-15"><Link href={backHref} className="text-brand underline">← Clients</Link></p>
-
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">
+      <PageHeader
+        tone="neutral"
+        back={backHref}
+        backLabel="Clients"
+        title={
+          <>
             {name}
             {profile?.client_type === "business" && <Badge className="ml-2 align-middle">business</Badge>}
-          </h1>
-          <p className="text-15 text-ink-muted">
+          </>
+        }
+        description={
+          <>
             {ctx.firmName} · {matters.length} {matters.length === 1 ? "matter" : "matters"}
             {openMatters > 0 ? ` (${openMatters} open)` : ""} ·{" "}
             {appointments.length} {appointments.length === 1 ? "consultation" : "consultations"} · times in {tz}
-          </p>
-          <p className="mt-1 text-15 text-ink-muted">
-            {lastSeen
-              ? `Last seen ${formatWhen(lastSeen, tz, { dateStyle: "full", timeStyle: "short" })}`
-              : "Not seen yet — no consultation has taken place and nothing has been posted on their matters."}
-            {nextAppointment ? ` · next ${formatWhen(nextAppointment, tz, { dateStyle: "medium", timeStyle: "short" })}` : ""}
-          </p>
-        </div>
-        {owedLabel && (
+            <span className="mt-0.5 block">
+              {lastSeen
+                ? `Last seen ${formatWhen(lastSeen, tz, { dateStyle: "full", timeStyle: "short" })}`
+                : "Not seen yet — no consultation has taken place and nothing has been posted on their matters."}
+              {nextAppointment ? ` · next ${formatWhen(nextAppointment, tz, { dateStyle: "medium", timeStyle: "short" })}` : ""}
+            </span>
+          </>
+        }
+        actions={owedLabel && (
           <div className="rounded-card border border-amber-200 bg-amber-50 px-4 py-3 text-right">
             <p className="text-13 uppercase tracking-wide text-amber-900">Outstanding</p>
             <p className="font-heading text-21 font-semibold text-amber-900">{owedLabel}</p>
           </div>
         )}
-      </header>
+      />
 
       <RepresentationsPanel
         firmId={firmId}

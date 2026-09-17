@@ -14,6 +14,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { formatWhen } from "@/lib/time";
 import type { DocumentTextHealth } from "@/lib/db/types";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Documents" };
 
@@ -47,7 +48,7 @@ export default async function DocumentTextPage({ searchParams }: { searchParams:
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Documents</h1>
+      <PageHeader tone="neutral" title="Documents" />
 
       {error && (
         <Alert kind="error" title="The figures did not load">

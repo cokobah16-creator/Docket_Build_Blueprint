@@ -1,9 +1,9 @@
 // The columns an import understands, and a template to fill in. Nothing here reads data.
 
-import Link from "next/link";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { MATTER_TYPES } from "@/lib/db/types";
 import { TemplateDownload } from "./template-download";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Import template" };
 
@@ -31,7 +31,7 @@ const COLUMNS: Array<[string, string]> = [
 export default function ImportTemplatePage() {
   return (
     <div className="space-y-6">
-      <p className="text-15"><Link href="/firm/admin/import" className="text-brand underline">← Import</Link></p>
+      <PageHeader tone="neutral" back="/firm/admin/import" backLabel="Import" title="Import template" />
       <Card>
         <CardHeader title="The columns an import understands" action={<TemplateDownload columns={COLUMNS.map((c) => c[0])} />} />
         <CardBody>

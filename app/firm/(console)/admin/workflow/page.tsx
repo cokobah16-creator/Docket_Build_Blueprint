@@ -9,6 +9,7 @@ import { matterStatuses, requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
 import type { FirmWorkflowPackRow, WorkflowPackRow } from "@/lib/db/types";
 import { WorkflowPanel } from "./workflow-panel";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Workflow" };
 
@@ -31,10 +32,11 @@ export default async function WorkflowPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="space-y-6">
-      <header>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Workflow</h1>
-        <p className="text-15 text-ink-muted">{ctx.firmName} · the stages a matter moves through, and the work each starts</p>
-      </header>
+      <PageHeader
+        tone="neutral"
+        title="Workflow"
+        description={`${ctx.firmName} · the stages a matter moves through, and the work each starts`}
+      />
       {packError && <Alert kind="error" title="The catalogue could not be read">{packError.message}. That is a failed read, not an empty catalogue.</Alert>}
       {!ctx.isAdmin && <Alert kind="info">You are {ctx.role} here: the stages are shown, and an owner or administrator installs packs and edits the wording.</Alert>}
       <WorkflowPanel

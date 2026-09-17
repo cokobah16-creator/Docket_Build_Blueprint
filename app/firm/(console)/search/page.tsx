@@ -16,6 +16,7 @@ import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import type { SearchHit, SearchKind } from "@/lib/db/types";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Search" };
 
@@ -113,7 +114,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
 
   return (
     <div className="flex flex-col gap-3.5">
-      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Search</h1>
+      <PageHeader tone="neutral" title="Search" />
 
       <Card>
         <form method="GET" action="/firm/search" className="flex flex-col gap-2 p-[15px]">

@@ -8,6 +8,7 @@
 import { Alert } from "@/components/ui/alert";
 import { registryContext } from "@/lib/registry-data";
 import { StageForm } from "./stage-form";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Stage a cause list" };
 
@@ -20,10 +21,7 @@ export default async function RegistryImportPage({ searchParams }: { searchParam
   }
   return (
     <div className="flex flex-col gap-3.5">
-      <div>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Stage a cause list</h1>
-        <p className="text-15 text-[#57534E]">{ctx.courtName} · {ctx.registry.name}</p>
-      </div>
+      <PageHeader tone="neutral" title="Stage a cause list" description={`${ctx.courtName} · ${ctx.registry.name}`} />
       <StageForm registryId={ctx.registry.id} />
     </div>
   );

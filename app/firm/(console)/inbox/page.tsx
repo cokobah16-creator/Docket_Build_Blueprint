@@ -24,6 +24,7 @@ import { formatWhen, zonedDayRange } from "@/lib/time";
 import type { ServiceInboxRow } from "@/lib/db/types";
 import { AcknowledgeButton } from "./acknowledge-button";
 import { FileServiceForm, OpenProcessButton, RevokeServiceForm, type FileableMatter } from "./inbox-actions";
+import { PageHeader } from "@/components/shell/layout";
 
 export const metadata = { title: "Service inbox" };
 
@@ -45,7 +46,7 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
   if (!ctx) {
     return (
       <div className="space-y-5">
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Service inbox</h1>
+        <PageHeader tone="neutral" title="Service inbox" />
         <Alert kind="warning" title="Nothing to show yet">
           This account is not a member of a firm on Docket, so no process can have been served on it.
         </Alert>
@@ -95,11 +96,16 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-5">
-      <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Service inbox</h1>
-      <p className="text-15 text-ink-muted">
-        Processes served on {myFirmIds.size > 1 ? "your firms" : ctx.firmName} through Docket, and the ones
-        they served. Times in {timezone}.
-      </p>
+      <PageHeader
+        tone="neutral"
+        title="Service inbox"
+        description={
+          <>
+            Processes served on {myFirmIds.size > 1 ? "your firms" : ctx.firmName} through Docket, and the ones
+            they served. Times in {timezone}.
+          </>
+        }
+      />
 
       <Card>
         <CardHeader title="Response diary" />
