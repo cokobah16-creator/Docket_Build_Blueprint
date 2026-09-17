@@ -114,6 +114,9 @@ export function FirmSwitcher({
         className="flex items-center gap-1.5 text-left"
       >
         {children}
+        {/* The visible text is the welcome and the firm's name; what tapping it DOES is said
+            here for a screen reader, as FirmRow already says "Switch to this firm". */}
+        <span className="sr-only">Switch firm</span>
         <Icon name="chevron-down" size={13} strokeWidth={2} className="text-gray-400" />
       </button>
 

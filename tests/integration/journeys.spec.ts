@@ -4,15 +4,16 @@ import { createHmac } from "node:crypto";
 // ---------------------------------------------------------------------------
 // Authenticated user journeys against a REAL Supabase project.
 //
-// STATUS: UNVERIFIED. Every test in this file has been written but never once
-// executed, because the environment it was written in has no project to run it
-// against — see tests/integration/README.md, "Why this is unverified". Treat a
-// first green run as the moment these become evidence, not before. Until then
-// they are a specification of the journeys, in executable form.
+// STATUS: these run in CI on every push (the `journeys` job), against the staging project
+// described in docs/ENVIRONMENTS.md, on fixtures scripts/seed-staging-fixtures.mjs provisions.
+// Their first executions, on 17 Sep 2026, found things a read-through had not — a client who had
+// never accepted a firm's terms, selectors written against markup that does not exist, and a
+// portal that opens on whichever firm sorts first — so what is here has been corrected against
+// the product as it runs, not as it was remembered.
 //
-// Each block is guarded on the configuration it needs and SKIPS when that
-// configuration is absent. A skip is not a pass: `npx playwright test` printing
-// "7 skipped" means the journeys are still unverified.
+// NOTHING HERE SKIPS. `beforeAll` refuses the whole file, naming every variable it lacks, and
+// the run is red; the fixture checks further down are assertions for the same reason. A skip is
+// not a pass — see tests/integration/README.md.
 //
 // These tests sign in as real people and read real rows. Point them at a
 // project whose data you are willing to have read — never one a firm is using.
@@ -237,6 +238,24 @@ async function accessToken(page: Page): Promise<string> {
   return token;
 }
 
+/**
+ * Pin the portal to the fixture firm before reading anything firm-scoped.
+ *
+ * /app paints itself as ONE firm and narrows every read to it (src/lib/portal-firm.ts). With no
+ * choice made, it opens on the client's first firm — and for a client with one matter at each
+ * of two firms that is a tie, decided by row order, so half the runs opened on the second firm,
+ * which holds neither the message nor the document the journeys below read. Measured on 17 Sep
+ * 2026: three failures with one cause.
+ *
+ * The cookie is the same view preference selectFirm sets after a tap in the switcher, and it
+ * confers nothing: selectedFirm() re-validates it against the client's own firms on every read,
+ * and RLS decides what any query returns regardless. It accepts the slug, so no id is needed.
+ */
+async function viewFirm(page: Page, slug: string) {
+  const { hostname } = new URL(page.url());
+  await page.context().addCookies([{ name: "dk_firm", value: slug, domain: hostname, path: "/app", sameSite: "Lax" }]);
+}
+
 // ---------------------------------------------------------------------------
 // 1. Client sign-in
 // ---------------------------------------------------------------------------
@@ -303,9 +322,12 @@ test("a signed-in client can reach every primary portal destination", async ({ p
 test("a client reads a thread and posts a message that persists", async ({ page }) => {
 
   await signInClient(page);
+  await viewFirm(page, FIRM_SLUG);
   await page.goto("/app/messages");
 
-  const thread = page.locator("a[href^='/app/messages/']").first();
+  // A matter's thread lives on the matter (`/app/matters/<id>?tab=messages`,
+  // src/lib/portal-threads.ts); only a consultation's lives under /app/messages/.
+  const thread = page.locator("a[href*='tab=messages'], a[href^='/app/messages/']").first();
   await expect(thread, "the client account has no message thread: the fixture is broken, and a skip here would read as a pass").toBeVisible();
   await thread.click();
 
@@ -328,22 +350,35 @@ test("a client reads a thread and posts a message that persists", async ({ page 
 test("a client opens a document on their own matter", async ({ page }) => {
 
   await signInClient(page);
+  await viewFirm(page, FIRM_SLUG);
   await page.goto("/app/matters");
 
   const matter = page.locator("a[href^='/app/matters/']").first();
   await expect(matter, "the client account holds no matter: the fixture is broken, and a skip here would read as a pass").toBeVisible();
-  await matter.click();
+  const href = await matter.getAttribute("href");
+  // The matter opens on its timeline; the files are a tab of their own.
+  await page.goto(`${href!.split("?")[0]}?tab=documents`);
 
-  const doc = page.getByRole("link", { name: /download|open|view/i }).first();
+  // Each file with bytes behind it offers one button: "Preview" for a PDF or image, "Download"
+  // for anything else (src/components/portal/documents-tab.tsx).
+  const doc = page.getByRole("button", { name: /^(preview|download)$/i }).first();
   await expect(doc, "no document on the client's matter: the fixture is broken, and a skip here would read as a pass").toBeVisible();
 
-  // open_document_version() must write a document_reads row before storage will
-  // part with the bytes, so a 2xx here is the whole policy chain working.
-  const [response] = await Promise.all([
-    page.waitForResponse((r) => /storage|documents/.test(r.url()), { timeout: 30_000 }),
+  // Opening is two calls in order: open_document_version() writes the document_reads row, and
+  // only then does storage mint a signed URL — the storage policy checks for that row (migration
+  // 30). So a signed URL coming back is the whole chain working, and fetching it is the bytes.
+  const [signed] = await Promise.all([
+    page.waitForResponse((r) => r.url().includes("/storage/v1/object/sign/"), { timeout: 30_000 }),
     doc.click(),
   ]);
-  expect(response.status(), "the document did not open for its own client").toBeLessThan(400);
+  expect(signed.status(), "storage refused to sign a URL for the client's own document").toBeLessThan(400);
+
+  const open = page.getByRole("link", { name: /open in a new tab/i });
+  await expect(open).toBeVisible({ timeout: 30_000 });
+  const url = await open.getAttribute("href");
+  expect(url, "the preview rendered without a URL").toBeTruthy();
+  const bytes = await page.request.get(url!);
+  expect(bytes.status(), "the signed URL did not return the document").toBe(200);
 });
 
 // ---------------------------------------------------------------------------
@@ -353,21 +388,29 @@ test("a client opens a document on their own matter", async ({ page }) => {
 test("a client acting through two firms switches between them", async ({ page }) => {
 
   await signInClient(page);
+  // Start on the first firm, so that what follows is a real switch and not a
+  // tap on the firm already showing.
+  await viewFirm(page, FIRM_SLUG);
   await page.goto("/app");
 
-  // Tapping the firm name on home opens the switcher sheet.
-  await page.getByRole("button", { name: /firm|switch/i }).first().click();
-  const target = page.getByRole("button", { name: new RegExp(SECOND_FIRM_NAME, "i") });
+  // The firm's name under the welcome is the switcher's trigger — a button only
+  // when there is more than one firm to choose from, which is itself the claim.
+  const trigger = page.getByRole("button", { name: /switch firm/i });
+  await expect(trigger, "the switcher is not offered, so the portal does not see two firms acting for this client").toBeVisible();
+  await expect(trigger).not.toContainText(SECOND_FIRM_NAME);
+  await trigger.click();
+
+  const target = page.getByRole("dialog", { name: /your firms/i }).getByRole("button", { name: new RegExp(SECOND_FIRM_NAME, "i") });
   await expect(target, `${SECOND_FIRM_NAME} is not among this client's firms`).toBeVisible();
   await target.click();
 
   // selectFirm re-checks the firm against this client server-side before it
-  // sets anything; the whole app repaints to that firm.
-  await expect(page.getByText(new RegExp(SECOND_FIRM_NAME, "i")).first()).toBeVisible({
-    timeout: 30_000,
-  });
+  // sets anything; the whole app repaints to that firm. The reload is the
+  // proof: the sheet is closed then, so the name can only come from the
+  // repainted home.
+  await expect(page.getByRole("button", { name: /switch firm/i })).toContainText(SECOND_FIRM_NAME, { timeout: 30_000 });
   await page.reload();
-  await expect(page.getByText(new RegExp(SECOND_FIRM_NAME, "i")).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /switch firm/i })).toContainText(SECOND_FIRM_NAME);
 });
 
 // ---------------------------------------------------------------------------

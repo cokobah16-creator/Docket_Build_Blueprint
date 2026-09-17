@@ -253,10 +253,40 @@ async function signInClientByMagicLink(email) {
  *     factor" — and reaching aal2 would need the very secret that is lost. The service role is the
  *     only way out of that circle, and a staging fixture account's old factor is worth nothing.
  */
-async function enrolTotp(email) {
+async function enrolTotp(email, knownSecret) {
   const token = await signInWithPassword(email, PASSWORD);
   const user = await api('/auth/v1/user', { token });
-  for (const stale of (user?.factors ?? []).filter((f) => f.factor_type === 'totp')) {
+  const existing = (user?.factors ?? []).filter((f) => f.factor_type === 'totp');
+
+  // A factor that is already enrolled, whose secret the caller still holds, is REUSED: the
+  // journeys in CI carry that secret as E2E_STAFF_TOTP_SECRET, and rotating it on every run of
+  // this script broke them on 17 Sep 2026 — two re-runs on staging, and the secret GitHub held
+  // matched a factor that no longer existed. The secret is proved before it is trusted: one
+  // challenge, one verify, and only a session at aal2 counts.
+  if (knownSecret && existing.length > 0) {
+    for (const factor of existing) {
+      try {
+        const challenge = await api(`/auth/v1/factors/${factor.id}/challenge`, { method: 'POST', token, body: {} });
+        const verified = await api(`/auth/v1/factors/${factor.id}/verify`, {
+          method: 'POST', token,
+          body: { challenge_id: challenge.id, code: await freshTotp(knownSecret) },
+        });
+        if (verified?.access_token) {
+          console.log(`  reused the enrolled TOTP factor on ${email}; the secret you supplied still matches`);
+          return { token: verified.access_token, secret: knownSecret, reused: true };
+        }
+      } catch (e) {
+        console.log(`  the supplied secret does not match factor ${factor.id} on ${email}: ${String(e.message).slice(0, 120)}`);
+      }
+    }
+    console.log(`  none of ${email}'s factors answer to the supplied secret; enrolling afresh`);
+  } else if (existing.length > 0 && email === FIXTURES.staff.email) {
+    console.log(`  WARNING: ${email} already has a TOTP factor and no FIXTURE_STAFF_TOTP_SECRET was supplied.`);
+    console.log('  It will be replaced, and E2E_STAFF_TOTP_SECRET in GitHub must be updated to the value printed');
+    console.log('  below, or the journeys job goes red on staff sign-in. Pass the current secret to keep it.');
+  }
+
+  for (const stale of existing) {
     await admin(`/auth/v1/admin/users/${user.id}/factors/${stale.id}`, { method: 'DELETE' });
     console.log(`  removed an earlier TOTP factor on ${email}; nobody could read its secret back`);
   }
@@ -269,7 +299,7 @@ async function enrolTotp(email) {
     method: 'POST', token,
     body: { challenge_id: challenge.id, code: await freshTotp(secret) },
   });
-  return { token: verified.access_token, secret };
+  return { token: verified.access_token, secret, reused: false };
 }
 
 /**
@@ -345,9 +375,10 @@ async function main() {
   // 2. the staff member's second factor. Docket refuses every staff WRITE below aal2, so nothing
   //    after this point could be done without it.
   console.log('\n  enrolling TOTP for the staff owner...');
-  const { token: staffToken, secret: staffSecret } = await enrolTotp(FIXTURES.staff.email);
+  const { token: staffToken, secret: staffSecret, reused: staffSecretReused } =
+    await enrolTotp(FIXTURES.staff.email, process.env.FIXTURE_STAFF_TOTP_SECRET);
   out.staffTotpSecret = staffSecret;
-  console.log(`  aal2 reached; secret kept (${staffSecret.length} chars)`);
+  console.log(`  aal2 reached; secret ${staffSecretReused ? 'unchanged' : 'NEW'} (${staffSecret.length} chars)`);
 
   // 3. the firm, opened the way a firm opens itself
   let firm = (await svcSelect('firms', `slug=eq.${FIXTURES.firm.slug}&select=id,status`))[0];
@@ -551,7 +582,7 @@ async function main() {
   console.log(`E2E_FIRM_SLUG=${FIXTURES.firm.slug}`);
   console.log(`E2E_STAFF_EMAIL=${FIXTURES.staff.email}`);
   console.log(`E2E_STAFF_PASSWORD=${PASSWORD}`);
-  console.log(`E2E_STAFF_TOTP_SECRET=${staffSecret}`);
+  console.log(`E2E_STAFF_TOTP_SECRET=${staffSecret}${staffSecretReused ? '   # unchanged from the value you passed as FIXTURE_STAFF_TOTP_SECRET' : '   # NEW — update the GitHub secret'}`);
   console.log(`E2E_FORBIDDEN_MATTER_ID=${forbiddenMatter}`);
   console.log('');
   console.log('# This number must be registered as a Supabase TEST number with the fixed code below,');
