@@ -53,11 +53,12 @@ selectors alias `--t-*` onto one set or the other: the default, the OS
 preference, an explicit toggle, and `[data-theme-scope="light"]` which pins a
 subtree to light. Nothing restates a value, so light and dark cannot drift.
 
-### The gray bridge, and why it is temporary
+### The gray bridge, and why it is gone
 
-Tailwind's own `gray-*` is redefined warm and theme-aware, so the utilities
-already spread across the app pick up the palette without every screen being
-edited. It also corrected three failures that had been shipping:
+For one release Tailwind's own `gray-*` was redefined warm and theme-aware, so
+the two thousand utilities already spread across the app picked up the palette
+before any screen was edited. It also corrected three failures that had been
+shipping:
 
 | | uses | was | now |
 | --- | --- | --- | --- |
@@ -69,10 +70,33 @@ They all passed on a white card and failed on the warm page behind it, which is
 why nobody noticed: Tailwind's grays are blue, the ground is warm, and the two
 were never measured against each other.
 
-It is a bridge. `gray-500` cannot say whether it means muted prose or a
-placeholder, so it is being rewritten to the semantic names above, after which
-the bridge is deleted and any straggler becomes a dead class the linter finds.
-**Write new code against the semantic names.**
+Then the bridge came out. `gray-500` could not say whether it meant muted
+prose or a placeholder, so every use was rewritten to the semantic names above
+and the redefinition was deleted. Tailwind's stock gray is the blue one again,
+unmeasured against the warm ground, so a `text-gray-*` in new code is not a
+neutral — it is a bug, and it looks like one on the page. **Write against the
+semantic names.**
+
+## The primitives a screen does not restate
+
+Each of these existed while a dozen screens typed its markup out by hand, and
+each copy drifted from the original in a way a copy does: a heading without
+the desktop size step, a link drawn as a button at 40px, a table with no
+`scope` on its headers. The rule now is that a screen composes these and does
+not restate them.
+
+| for | use | not |
+| --- | --- | --- |
+| a screen title in the console or registry | `PageHeader tone="neutral"` from `src/components/shell/layout`, with `back` and `actions` | an `<h1>` carrying the class string, a "← Back" paragraph above it |
+| a screen title in the portal | `ScreenTitle` from `src/components/portal/screen` | |
+| a link that looks like a button | `buttonClasses(variant, size)` on the `<Link>` or `<a>` | a hand-rolled class string — it will be under 44px |
+| a button that is working | `<Button pending>` | `disabled` plus a "Saving…" label swap |
+| a table | `Table` and its parts, `density="compact"` for a log or a preview | `<table>` — except the two portal tables that fit a phone as they are |
+| an empty list | `EmptyState` | a muted paragraph |
+| a matter's status, as the firm coloured it | `StatusChip` from `src/components/firm/status-chip` | |
+
+The console wears no firm's colour, so its buttons are `neutral` and `ghost`;
+the portal wears the firm's, so its are `primary` and `ghost`.
 
 ## Type
 
