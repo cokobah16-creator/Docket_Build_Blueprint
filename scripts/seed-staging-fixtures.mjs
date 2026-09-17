@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 // Provision the accounts and rows the authenticated journeys need, on a STAGING project.
 //
-// STATUS: complete, and NEVER YET RUN. Every step below is written against the real policies and
-// RPCs — the signatures were read out of supabase/migrations and docs/RPC_REFERENCE.md rather than
-// remembered — but nothing has executed it end to end, because staging was still applying its
-// schema when it was written. Treat the first clean run as the moment it becomes evidence.
+// STATUS: run end to end against staging (wtfxbmrrpwdbyrspeeka) on 14–17 Sep 2026, several times,
+// and idempotent on every re-run. Every step is written against the real policies and RPCs — the
+// signatures were read out of supabase/migrations and docs/RPC_REFERENCE.md — and the first runs
+// found and fixed five things a read-through had not: an orphan document with no version, a
+// storage upsert the bucket's policies refuse, a TOTP factor that could not be re-enrolled, a
+// placeholder PDF the bucket's MIME allow-list rejected, and a client who had never accepted any
+// firm's terms and so saw the consent gate instead of every page the journeys open.
 //
 // WHY THIS EXISTS. tests/integration/README.md asks a person to hand-make six things before the
 // journeys can run: a client with a matter, a message and a document; a second firm acting for the
@@ -269,6 +272,44 @@ async function enrolTotp(email) {
   return { token: verified.access_token, secret };
 }
 
+/**
+ * A client accepts a firm's terms and privacy notice on first visit, or sees nothing else: the
+ * portal layout (app/app/(portal)/layout.tsx) looks for a consent_records row for the firm's
+ * CURRENT terms version and another for its privacy version, and renders the consent gate in
+ * place of every content page until both exist. The first run of the journeys proved it — all
+ * four content journeys failed on the gate, because the fixture had built the matter, the message
+ * and the document and never accepted anything.
+ *
+ * This writes the same two rows recordConsent (app/app/(portal)/actions.ts) writes, as the
+ * client, through the same policy (consent_records_insert: user_id = auth.uid()). The service role
+ * only READS here, to make the step idempotent. It refuses a '0-' version, because that is the
+ * draft marker every new firm starts with and consenting to an unpublished policy is not a thing
+ * a real client can do.
+ */
+async function acceptPolicies(clientToken, clientId, firmId, label) {
+  const [firmRow] = await svcSelect('firms', `id=eq.${firmId}&select=policies`);
+  const versions = { terms: firmRow?.policies?.terms?.version, privacy: firmRow?.policies?.privacy?.version };
+  for (const [kind, version] of Object.entries(versions)) {
+    if (!version || version.startsWith('0-')) {
+      throw new Error(`${label}: ${kind} is not published (version ${JSON.stringify(version)}); publish it before the client can accept it`);
+    }
+  }
+  const have = await svcSelect('consent_records',
+    `user_id=eq.${clientId}&firm_id=eq.${firmId}&select=kind,version`);
+  const accepted = [];
+  for (const [kind, version] of Object.entries(versions)) {
+    if (have.some((c) => c.kind === kind && c.version === version)) continue;
+    await api('/rest/v1/consent_records', {
+      method: 'POST', token: clientToken, headers: { Prefer: 'return=minimal' },
+      body: { user_id: clientId, firm_id: firmId, kind, version },
+    });
+    accepted.push(`${kind} ${version}`);
+  }
+  console.log(accepted.length
+    ? `  client accepted ${label}'s ${accepted.join(' and ')}`
+    : `  client had already accepted ${label}'s current terms and privacy notice`);
+}
+
 // ---------------------------------------------------------------- the fixtures
 const FIXTURES = {
   staff:      { email: 'staff.owner@docket-staging.invalid',   fullName: 'Ada Owner' },
@@ -406,6 +447,7 @@ async function main() {
   // 9. something to read. A thread the client started (messages_insert requires
   //    sender_id = auth.uid() and is_matter_party), and a document with real bytes behind it.
   const clientToken = await signInClientByMagicLink(FIXTURES.client.email);
+  await acceptPolicies(clientToken, out.client.id, firm.id, FIXTURES.firm.slug);
   const msgs = await svcSelect('messages', `matter_id=eq.${clientMatter}&select=id&limit=1`);
   if (msgs.length === 0) {
     await api('/rest/v1/messages', {
@@ -498,6 +540,7 @@ async function main() {
     const ct = await signInClientByMagicLink(FIXTURES.client.email);
     await rpcAs(ct, 'accept_invite', { p_token: inv2.token });
   }
+  await acceptPolicies(await signInClientByMagicLink(FIXTURES.client.email), out.client.id, firm2.id, FIXTURES.secondFirm.slug);
   console.log(`  second firm ${FIXTURES.secondFirm.slug} (${firm2.status}), same client on a matter there`);
 
   console.log('\n' + '='.repeat(72));
