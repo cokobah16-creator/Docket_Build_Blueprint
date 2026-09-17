@@ -553,8 +553,8 @@ export function CourtUpdateForm({
       </div>
 
       <div className="space-y-2">
-        <Button type="submit" size="lg" className="w-full" disabled={!canSubmit}>
-          {pending ? "Posting…" : "Post the update"}
+        <Button type="submit" size="lg" className="w-full" pending={pending} disabled={!canSubmit}>
+          Post the update
         </Button>
         {!outcome && <p className="text-center text-13 text-ink-muted">Tap what happened in court to begin.</p>}
         {outcome && (

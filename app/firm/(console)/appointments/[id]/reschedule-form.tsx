@@ -76,7 +76,7 @@ export function RescheduleForm({
         <label htmlFor="rs_reason" className="text-15 font-medium text-ink">Reason (audit only)</label>
         <input id="rs_reason" type="text" maxLength={200} value={reason} onChange={(e) => setReason(e.target.value)} className={field} />
       </div>
-      <Button type="submit" variant="ghost" disabled={!startsAt || busy}>{busy ? "Moving…" : "Move appointment"}</Button>
+      <Button type="submit" variant="ghost" pending={busy} disabled={!startsAt}>Move appointment</Button>
       <p className="text-13 text-ink-muted">Only slots the booking engine would offer are shown. The client is notified and reminders start again.</p>
     </form>
   );

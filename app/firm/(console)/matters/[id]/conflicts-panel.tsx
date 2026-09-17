@@ -116,8 +116,8 @@ export function ConflictsPanel({
                   {p.aliases.length > 0 && <p className="text-13 text-ink-muted">Also known as {p.aliases.join(", ")}</p>}
                   {p.note && <p className="mt-0.5 text-13 text-ink-muted">{p.note}</p>}
                 </div>
-                <Button size="sm" variant="ghost" disabled={working === p.id} onClick={() => remove(p.id)}>
-                  {working === p.id ? "Removing…" : "Remove"}
+                <Button size="sm" variant="ghost" pending={working === p.id} onClick={() => remove(p.id)}>
+                  Remove
                 </Button>
               </li>
             ))}
@@ -153,7 +153,7 @@ export function ConflictsPanel({
             <label htmlFor="adverse-note" className="text-15 font-medium text-ink">Note <span className="text-ink-muted">(optional)</span></label>
             <input id="adverse-note" type="text" maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} className={field} />
           </div>
-          <Button type="submit" size="sm" disabled={busy || name.trim().length < 2}>{busy ? "Adding…" : "Add to the other side"}</Button>
+          <Button type="submit" size="sm" pending={busy} disabled={name.trim().length < 2}>Add to the other side</Button>
         </form>
       </section>
 
@@ -166,8 +166,8 @@ export function ConflictsPanel({
               the cause title — against every other matter, and records what it found. You decide; Docket only finds.
             </p>
           </div>
-          <Button type="button" size="sm" onClick={() => void run()} disabled={running}>
-            {running ? "Searching…" : "Run a check now"}
+          <Button type="button" size="sm" onClick={() => void run()} pending={running}>
+            Run a check now
           </Button>
         </div>
 

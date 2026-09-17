@@ -123,7 +123,7 @@ export function ForgotPasswordForm() {
               variant="ghost"
               size="md"
               className="w-full"
-              disabled={busy || wait > 0}
+              pending={busy} disabled={wait > 0}
               onClick={() => void sendReset(email.trim())}
             >
               {wait > 0 ? `Send it again in ${wait}s` : "Send it again"}
@@ -154,8 +154,8 @@ export function ForgotPasswordForm() {
             hint="The address you sign in to the console with."
             required
           />
-          <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
-            {busy ? "Sending…" : "Email me a password link"}
+          <Button type="submit" size="lg" className="w-full" pending={busy}>
+            Email me a password link
           </Button>
           <a href="/firm/login" className="block text-center text-15 font-medium text-brand underline">
             Back to sign-in

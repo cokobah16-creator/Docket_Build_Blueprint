@@ -392,8 +392,8 @@ export function ConsultationRoom({
         )}
         {now > closesAt && <Alert kind="warning">This consultation has ended.</Alert>}
 
-        <Button size="lg" className="w-full" onClick={join} disabled={!windowOpen || phase === "connecting"}>
-          {phase === "connecting" ? "Connecting…" : role === "owner" ? "Open the room" : "Join and wait to be admitted"}
+        <Button size="lg" className="w-full" onClick={join} pending={phase === "connecting"} disabled={!windowOpen}>
+          {role === "owner" ? "Open the room" : "Join and wait to be admitted"}
         </Button>
       </div>
 

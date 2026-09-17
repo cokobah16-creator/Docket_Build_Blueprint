@@ -88,8 +88,8 @@ export function StaffLoginForm({
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <Button type="submit" size="lg" className="w-full" disabled={busy}>
-              {busy ? "Signing in…" : "Sign in"}
+            <Button type="submit" size="lg" className="w-full" pending={busy}>
+              Sign in
             </Button>
             {/* The only way out of a forgotten password that does not involve ringing somebody.
                 Below the button rather than beside the field: it is the escape hatch, not a

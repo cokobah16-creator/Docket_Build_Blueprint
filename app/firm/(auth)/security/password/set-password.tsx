@@ -211,8 +211,8 @@ export function SetPassword() {
             />
           )}
 
-          <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
-            {busy ? "Saving…" : "Set the new password"}
+          <Button type="submit" size="lg" className="w-full" pending={busy}>
+            Set the new password
           </Button>
           <p className="text-11 leading-relaxed text-ink-muted">
             Your authenticator app is not affected. The console will still ask for its code.

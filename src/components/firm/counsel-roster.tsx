@@ -307,8 +307,8 @@ export function CounselRoster({
                   </Button>
                   {confirmRemove === row.id ? (
                     <>
-                      <Button size="sm" variant="danger" disabled={pending} onClick={() => submitRemove(row.id)}>
-                        {pending ? "Removing…" : "Yes, remove"}
+                      <Button size="sm" variant="danger" pending={pending} onClick={() => submitRemove(row.id)}>
+                        Yes, remove
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setConfirmRemove(null)}>Keep</Button>
                     </>
@@ -333,8 +333,8 @@ export function CounselRoster({
                       lockedFirmName={firm?.name ?? null}
                     />
                     <div className="flex flex-wrap gap-2">
-                      <Button size="md" disabled={pending} onClick={() => submitEdit(row.id)}>
-                        {pending ? "Saving…" : "Save counsel"}
+                      <Button size="md" pending={pending} onClick={() => submitEdit(row.id)}>
+                        Save counsel
                       </Button>
                       <Button size="md" variant="ghost" onClick={() => setEditingId(null)}>Cancel</Button>
                     </div>
@@ -388,8 +388,8 @@ export function CounselRoster({
           />
 
           <div className="flex flex-wrap gap-2">
-            <Button size="lg" disabled={pending} onClick={submitAdd}>
-              {pending ? "Saving…" : "Add counsel"}
+            <Button size="lg" pending={pending} onClick={submitAdd}>
+              Add counsel
             </Button>
             <Button size="lg" variant="ghost" onClick={() => { setAdding(false); setDraft(emptyDraft()); setError(null); }}>
               Cancel

@@ -17,7 +17,7 @@ export function CloseTaskButton({ taskId }: { taskId: string }) {
       <Button
         size="sm"
         variant="ghost"
-        disabled={busy}
+        pending={busy}
         onClick={async () => {
           setBusy(true); setError(null);
           const r = await closeTask(taskId);
@@ -26,7 +26,7 @@ export function CloseTaskButton({ taskId }: { taskId: string }) {
           router.refresh();
         }}
       >
-        {busy ? "Closing…" : "Done"}
+        Done
       </Button>
       {error && <span className="text-11 text-[#B42318]">{error}</span>}
     </span>

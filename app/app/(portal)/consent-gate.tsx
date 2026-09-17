@@ -70,8 +70,8 @@ export function ConsentGate({
               </span>
             </label>
 
-            <Button type="submit" size="lg" className="w-full" disabled={busy}>
-              {busy ? "Saving…" : "Agree and continue"}
+            <Button type="submit" size="lg" className="w-full" pending={busy}>
+              Agree and continue
             </Button>
           </form>
         </CardBody>

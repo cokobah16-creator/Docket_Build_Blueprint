@@ -553,8 +553,8 @@ export function NewMatterForm({
                     onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void searchClients(); } }}
                     className={cn(field, "min-w-0 flex-1")}
                   />
-                  <Button type="button" variant="ghost" onClick={() => void searchClients()} disabled={searching} className="mt-1">
-                    {searching ? "Searching…" : "Search"}
+                  <Button type="button" variant="ghost" onClick={() => void searchClients()} pending={searching} className="mt-1">
+                    Search
                   </Button>
                 </div>
               </div>
@@ -685,8 +685,8 @@ export function NewMatterForm({
           )}
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button type="button" variant="ghost" onClick={() => void runCheck()} disabled={checking}>
-              {checking ? "Searching…" : check ? "Run the check again" : "Run the conflict check"}
+            <Button type="button" variant="ghost" onClick={() => void runCheck()} pending={checking}>
+              {check ? "Run the check again" : "Run the conflict check"}
             </Button>
             {check?.outcome && (
               <span className="text-15 text-emerald-800">
@@ -712,8 +712,8 @@ export function NewMatterForm({
       </Card>
 
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="submit" size="lg" disabled={busy} className="w-full sm:w-auto">
-          {busy ? "Opening…" : "Open the matter"}
+        <Button type="submit" size="lg" pending={busy} className="w-full sm:w-auto">
+          Open the matter
         </Button>
         <Link href="/firm/matters" className="text-15 text-brand underline">Cancel</Link>
       </div>

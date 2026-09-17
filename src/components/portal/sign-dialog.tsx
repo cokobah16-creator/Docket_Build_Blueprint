@@ -88,8 +88,8 @@ export function SignDialog({ open, name, versionId, storagePath, matterId, profi
             </label>
             <p className="text-13 text-ink-muted">What is recorded: who you are, the name you typed, this version and its checksum, that you opened it, and when. Once signed, no further version can be added to this document.</p>
             <div className="flex gap-2">
-              <Button onClick={sign} disabled={busy || !agreed || typed.trim().length < 2}>{busy ? "Signing…" : "Sign"}</Button>
-              <Button variant="ghost" onClick={onClose} disabled={busy}>Not now</Button>
+              <Button onClick={sign} pending={busy} disabled={!agreed || typed.trim().length < 2}>Sign</Button>
+              <Button variant="ghost" onClick={onClose} pending={busy}>Not now</Button>
             </div>
           </div>
         )}

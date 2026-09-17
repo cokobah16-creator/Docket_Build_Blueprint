@@ -105,8 +105,8 @@ export function AdminCreateFirm() {
         error={state.fieldErrors?.ownerScn}
       />
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {pending ? "Creating…" : "Create firm"}
+      <Button type="submit" size="lg" className="w-full" pending={pending}>
+        Create firm
       </Button>
       <p className="text-15 text-ink-muted">
         The firm arrives pending: no public site and no bookings until you activate it.

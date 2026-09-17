@@ -139,7 +139,7 @@ export function PayPanel({
       <Button
         size="lg"
         className="w-full"
-        disabled={pending}
+        pending={pending}
         onClick={() =>
           start(async () => {
             setError(null);
@@ -148,7 +148,7 @@ export function PayPanel({
           })
         }
       >
-        {pending ? "Taking payment…" : `Pay ${amount}`}
+        {`Pay ${amount}`}
       </Button>
 
       <p className="flex items-start gap-2.5 text-11 leading-relaxed text-ink-muted">

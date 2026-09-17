@@ -214,7 +214,7 @@ export function BaselinePanel({ firmId, timezone, canWrite, from, to, metrics, b
                   ))}
                 </div>
               </fieldset>
-              <Button type="submit" disabled={busy}>{busy ? "Recording…" : "Record"}</Button>
+              <Button type="submit" pending={busy}>Record</Button>
             </form>
           </CardBody>
         </Card>

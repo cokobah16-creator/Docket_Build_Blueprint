@@ -570,11 +570,9 @@ export function BookingWizard({
             size="lg"
             className="w-full"
             onClick={submit}
-            disabled={!user || submitting || (needEmail && !contactEmail)}
+            pending={submitting} disabled={!user || (needEmail && !contactEmail)}
           >
-            {submitting
-              ? "Holding your slot…"
-              : !user
+            {!user
                 ? "Sign in to confirm"
                 : feeMinor > 0
                   ? `Confirm and pay ${formatMoneyMinor(service!.price_minor, service!.currency)}`

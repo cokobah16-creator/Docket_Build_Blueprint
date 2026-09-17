@@ -397,8 +397,8 @@ export function ServeProcessForm({
       </div>
 
       <div className="space-y-2">
-        <Button type="submit" size="lg" className="w-full" disabled={!canSubmit}>
-          {pending ? "Serving…" : "Record service"}
+        <Button type="submit" size="lg" className="w-full" pending={pending} disabled={!canSubmit}>
+          Record service
         </Button>
         <p className="text-center text-13 text-ink-muted">
           Your client sees that the process was served, and on whom. Your note to the file stays with your firm.

@@ -59,8 +59,8 @@ export function JoinMatterForm({
         Accepting adds you to the file, so you can follow what happens on it, read what the firm shares with you,
         message them and see any invoice they raise. Nothing the firm keeps to itself is shared.
       </p>
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
-        {pending ? "Joining…" : "Accept and open the file"}
+      <Button type="submit" size="lg" className="w-full" pending={pending}>
+        Accept and open the file
       </Button>
       <p className="text-13 text-ink-muted">
         Invited by mistake? Close this page and tell the firm — an invitation nobody accepts expires on its own.

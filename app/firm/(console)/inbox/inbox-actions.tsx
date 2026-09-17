@@ -133,7 +133,7 @@ export function FileServiceForm({
         <p className="mt-1 text-13 text-ink-muted">Filed as an internal entry on your matter. The firm that served it never sees this.</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button size="md" disabled={pending} onClick={submit}>{pending ? "Filing…" : "File it"}</Button>
+        <Button size="md" pending={pending} onClick={submit}>File it</Button>
         <Button size="md" variant="ghost" onClick={() => { setOpen(false); setError(null); }}>Cancel</Button>
       </div>
     </div>
@@ -185,8 +185,8 @@ export function OpenProcessButton({
 
   return (
     <div className="space-y-1">
-      <Button size="sm" variant="ghost" disabled={busy} onClick={open}>
-        {busy ? "Opening…" : "Open the process"}
+      <Button size="sm" variant="ghost" pending={busy} onClick={open}>
+        Open the process
       </Button>
       {url && (
         <p className="text-15">
@@ -244,8 +244,8 @@ export function RevokeServiceForm({ serviceId }: { serviceId: string }) {
         matter as an internal entry, with your reason.
       </p>
       <div className="flex flex-wrap gap-2">
-        <Button size="md" variant="danger" disabled={pending || reason.trim().length < 3} onClick={submit}>
-          {pending ? "Withdrawing…" : "Withdraw service"}
+        <Button size="md" variant="danger" pending={pending} disabled={reason.trim().length < 3} onClick={submit}>
+          Withdraw service
         </Button>
         <Button size="md" variant="ghost" onClick={() => { setOpen(false); setError(null); }}>Keep it</Button>
       </div>

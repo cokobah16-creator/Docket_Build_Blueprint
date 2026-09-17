@@ -182,8 +182,8 @@ export function StageForm({ registryId }: { registryId: string }) {
                     {rows.length > 8 && <p className="px-2 py-1 text-13 text-ink-muted">…and {rows.length - 8} more</p>}
                   </div>
                 )}
-                <Button disabled={busy || !mappedRequired || rows.length === 0} onClick={() => void stage(rows)}>
-                  {busy ? "Staging…" : `Stage ${rows.length} as drafts`}
+                <Button pending={busy} disabled={!mappedRequired || rows.length === 0} onClick={() => void stage(rows)}>
+                  {`Stage ${rows.length} as drafts`}
                 </Button>
                 {!mappedRequired && <p className="text-13 text-ink-muted">Map the suit number and the day first.</p>}
               </>
@@ -204,7 +204,7 @@ export function StageForm({ registryId }: { registryId: string }) {
                 </label>
               ))}
               <div className="sm:col-span-2">
-                <Button type="submit" disabled={busy}>{busy ? "Staging…" : "Stage as a draft"}</Button>
+                <Button type="submit" pending={busy}>Stage as a draft</Button>
               </div>
             </form>
           </CardBody>

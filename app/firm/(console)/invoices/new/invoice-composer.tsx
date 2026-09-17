@@ -506,11 +506,11 @@ export function InvoiceComposer({
           </Alert>
 
           <div className="flex flex-col gap-3 sm:flex-row">
-            <Button type="button" size="lg" onClick={(e) => submit(e, true)} disabled={pending}>
-              {pending ? "Working…" : `Issue now${totals.total > 0 ? ` · ${money(totals.total)}` : ""}`}
+            <Button type="button" size="lg" onClick={(e) => submit(e, true)} pending={pending}>
+              {`Issue now${totals.total > 0 ? ` · ${money(totals.total)}` : ""}`}
             </Button>
-            <Button type="submit" size="lg" variant="ghost" disabled={pending}>
-              {pending ? "Working…" : "Save as a draft"}
+            <Button type="submit" size="lg" variant="ghost" pending={pending}>
+              Save as a draft
             </Button>
           </div>
           <p className="text-13 text-ink-muted">

@@ -165,8 +165,8 @@ export function PartiesPanel({
                 {confirming === p.user_id ? (
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="text-13 text-ink-muted">They lose this matter in their app at once.</span>
-                    <Button size="sm" variant="danger" disabled={working === p.user_id} onClick={() => remove(p.user_id)}>
-                      {working === p.user_id ? "Removing…" : "Remove"}
+                    <Button size="sm" variant="danger" pending={working === p.user_id} onClick={() => remove(p.user_id)}>
+                      Remove
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>Keep</Button>
                   </span>
@@ -220,7 +220,7 @@ export function PartiesPanel({
               <option value="contact">Contact — follows the matter with the client&rsquo;s knowledge</option>
             </select>
           </div>
-          <Button type="submit" disabled={busy}>{busy ? "Creating the invitation…" : "Create the invitation"}</Button>
+          <Button type="submit" pending={busy}>Create the invitation</Button>
         </form>
 
         {invited && (
@@ -285,8 +285,8 @@ export function PartiesPanel({
                   )}
                   {confirming === i.id ? (
                     <>
-                      <Button size="sm" variant="danger" disabled={working === i.id} onClick={() => revoke(i.id)}>
-                        {working === i.id ? "Revoking…" : "Revoke it"}
+                      <Button size="sm" variant="danger" pending={working === i.id} onClick={() => revoke(i.id)}>
+                        Revoke it
                       </Button>
                       <Button size="sm" variant="ghost" onClick={() => setConfirming(null)}>Leave it</Button>
                     </>

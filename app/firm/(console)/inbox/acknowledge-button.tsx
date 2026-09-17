@@ -12,7 +12,7 @@ export function AcknowledgeButton({ serviceId }: { serviceId: string }) {
     <form action={action} className="flex flex-col gap-2 sm:flex-row sm:items-end">
       <input type="hidden" name="serviceId" value={serviceId} />
       <Input label="Note (optional)" name="note" placeholder="Received at chambers" className="sm:w-64" />
-      <Button type="submit" size="md" disabled={pending}>{pending ? "Saving…" : "Acknowledge receipt"}</Button>
+      <Button type="submit" size="md" pending={pending}>Acknowledge receipt</Button>
       {state.error && <p role="alert" className="text-15 text-red-700">{state.error}</p>}
     </form>
   );

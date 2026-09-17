@@ -93,7 +93,7 @@ export function BeforeCard({ appointmentId, readiness, questions }: { appointmen
               )}
             </div>
           ))}
-          <Button type="submit" disabled={pending}>{pending ? "Sending…" : "Send my answers"}</Button>
+          <Button type="submit" pending={pending}>Send my answers</Button>
         </form>
       )}
     </div>

@@ -156,7 +156,7 @@ export function Checklist({ firmId, readiness, canWrite }: { firmId: string; rea
                   <label htmlFor={`skip-${s.key}`} className="text-15 font-medium text-ink">Why this firm is setting it aside</label>
                   <input id={`skip-${s.key}`} type="text" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" placeholder="Optional, kept in the audit trail" />
                   <div className="mt-2 flex gap-2">
-                    <Button type="button" size="sm" disabled={pending} onClick={() => skip(s.key)}>{pending ? "Saving…" : "Set aside"}</Button>
+                    <Button type="button" size="sm" pending={pending} onClick={() => skip(s.key)}>Set aside</Button>
                     <Button type="button" size="sm" variant="ghost" onClick={() => setSkipping(null)}>Cancel</Button>
                   </div>
                 </div>

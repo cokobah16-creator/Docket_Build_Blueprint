@@ -91,8 +91,8 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              <Button type="submit" size="lg" className="w-full" disabled={busy}>
-                {busy ? "Creating account…" : "Create account"}
+              <Button type="submit" size="lg" className="w-full" pending={busy}>
+                Create account
               </Button>
               <p className="text-center text-15 text-ink-muted">
                 Already have an account?{" "}
@@ -151,8 +151,8 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
             error={state.fieldErrors?.ownerScn}
           />
           <Input label="Primary colour (optional)" name="primaryColour" type="color" defaultValue="#1c2b3a" hint="You can refine the brand later in firm settings." />
-          <Button type="submit" size="lg" className="w-full" disabled={pending}>
-            {pending ? "Creating your firm…" : "Create firm and set up two-factor"}
+          <Button type="submit" size="lg" className="w-full" pending={pending}>
+            Create firm and set up two-factor
           </Button>
           <p className="text-15 text-ink-muted">
             No card at sign-up, and every firm is on the free plan while Docket is in

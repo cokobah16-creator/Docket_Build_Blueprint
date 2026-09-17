@@ -455,14 +455,14 @@ export function AvailabilityEditor({
 
           {canEdit && (
             <div className="flex flex-wrap items-center gap-3">
-              <Button size="lg" onClick={saveWeek} disabled={savingWeek || !dirty}>
-                {savingWeek ? "Saving…" : dirty ? "Save the week" : "Saved"}
+              <Button size="lg" onClick={saveWeek} pending={savingWeek} disabled={!dirty}>
+                {dirty ? "Save the week" : "Saved"}
               </Button>
               <Button
                 size="lg"
                 variant="ghost"
                 onClick={copyMonday}
-                disabled={savingWeek || week[1].length === 0}
+                pending={savingWeek} disabled={week[1].length === 0}
                 title={week[1].length === 0 ? "Set Monday first" : "Overwrites Tuesday to Friday"}
               >
                 Copy Monday to Tuesday–Friday
@@ -564,8 +564,8 @@ export function AvailabilityEditor({
                 </p>
               </div>
 
-              <Button size="lg" onClick={submitException} disabled={addingException}>
-                {addingException ? "Blocking…" : exWholeDay ? "Block the whole day" : "Block those hours"}
+              <Button size="lg" onClick={submitException} pending={addingException}>
+                {exWholeDay ? "Block the whole day" : "Block those hours"}
               </Button>
             </div>
           )}
@@ -599,10 +599,10 @@ export function AvailabilityEditor({
                       size="sm"
                       variant="ghost"
                       className="min-h-[44px]"
-                      disabled={removing && removingId === e.id}
+                      pending={removing && removingId === e.id}
                       onClick={() => lift(e.id)}
                     >
-                      {removing && removingId === e.id ? "Lifting…" : "Lift"}
+                      Lift
                     </Button>
                   )}
                 </li>

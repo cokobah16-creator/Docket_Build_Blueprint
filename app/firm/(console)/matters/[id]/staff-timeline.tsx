@@ -275,7 +275,7 @@ export function StaffTimeline({
                 </span>
               </label>
             </fieldset>
-            <Button type="submit" disabled={busy || !online}>{busy ? "Saving…" : "Add to the timeline"}</Button>
+            <Button type="submit" pending={busy} disabled={!online}>Add to the timeline</Button>
             {draft.restored && <p className="text-13 text-ink-muted">Draft restored — not posted yet.</p>}
             <OfflineNote />
           </form>

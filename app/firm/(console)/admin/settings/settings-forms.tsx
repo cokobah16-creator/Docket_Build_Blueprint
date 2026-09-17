@@ -180,8 +180,8 @@ function Labelled({
 
 function SaveButton({ pending, children = "Save" }: { pending: boolean; children?: ReactNode }) {
   return (
-    <Button type="submit" size="lg" disabled={pending} className="w-full sm:w-auto">
-      {pending ? "Saving…" : children}
+    <Button type="submit" size="lg" pending={pending} className="w-full sm:w-auto">
+      {children}
     </Button>
   );
 }
@@ -1113,11 +1113,11 @@ function DomainSection({ firmId, firmSlug, customDomain, openRequest, decidedReq
           <Button
             variant="ghost"
             size="lg"
-            disabled={pending}
+            pending={pending}
             className="w-full sm:w-auto"
             onClick={() => run(() => withdrawDomainRequest(openRequest.id))}
           >
-            {pending ? "Withdrawing…" : "Withdraw this request"}
+            Withdraw this request
           </Button>
         </div>
       ) : (

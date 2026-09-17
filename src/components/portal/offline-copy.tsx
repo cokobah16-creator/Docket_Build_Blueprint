@@ -41,7 +41,7 @@ export function OfflineCopy({ matterIds }: { matterIds: string[] }) {
       <Button
         variant="ghost"
         size="sm"
-        disabled={!ready || pending}
+        pending={pending} disabled={!ready}
         onClick={() =>
           start(async () => {
             if (saved) {
@@ -53,7 +53,7 @@ export function OfflineCopy({ matterIds }: { matterIds: string[] }) {
           })
         }
       >
-        {pending ? "Working…" : saved ? "Go online" : "Save now"}
+        {saved ? "Go online" : "Save now"}
       </Button>
     </SettingRow>
   );

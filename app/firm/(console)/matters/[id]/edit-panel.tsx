@@ -174,12 +174,12 @@ export function EditPanel({
           {accessError && <div className="mt-2"><Alert kind="error">{accessError}</Alert></div>}
           <div className="mt-3 flex flex-wrap gap-2">
             {access === "firm" ? (
-              <Button type="button" size="sm" variant="secondary" disabled={accessBusy} onClick={() => changeAccess("team")}>
-                {accessBusy ? "Restricting…" : onTeam ? "Restrict to the team" : "Put me on the team and restrict"}
+              <Button type="button" size="sm" variant="secondary" pending={accessBusy} onClick={() => changeAccess("team")}>
+                {onTeam ? "Restrict to the team" : "Put me on the team and restrict"}
               </Button>
             ) : (
-              <Button type="button" size="sm" variant="secondary" disabled={accessBusy} onClick={() => changeAccess("firm")}>
-                {accessBusy ? "Opening…" : "Open to the whole firm"}
+              <Button type="button" size="sm" variant="secondary" pending={accessBusy} onClick={() => changeAccess("firm")}>
+                Open to the whole firm
               </Button>
             )}
           </div>
@@ -319,7 +319,7 @@ export function EditPanel({
           )}
         </fieldset>
 
-        <Button type="submit" size="lg" disabled={busy}>{busy ? "Saving…" : "Save the matter"}</Button>
+        <Button type="submit" size="lg" pending={busy}>Save the matter</Button>
       </form>
 
       <section className="px-4 py-4 sm:px-5">
@@ -330,8 +330,8 @@ export function EditPanel({
               Closed on {new Intl.DateTimeFormat("en-GB", { dateStyle: "long", timeZone: "UTC" }).format(new Date(`${initial.closedAt}T00:00:00Z`))}.
               Everything on it stays readable to your client; nothing is deleted.
             </p>
-            <Button className="mt-3" variant="ghost" disabled={closing} onClick={() => setClosed(false)}>
-              {closing ? "Reopening…" : "Reopen the matter"}
+            <Button className="mt-3" variant="ghost" pending={closing} onClick={() => setClosed(false)}>
+              Reopen the matter
             </Button>
           </>
         ) : (
@@ -341,8 +341,8 @@ export function EditPanel({
             </p>
             {confirmClose ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">
-                <Button variant="danger" disabled={closing} onClick={() => setClosed(true)}>
-                  {closing ? "Closing…" : `Close it as at today, ${todayIn(timezone)}`}
+                <Button variant="danger" pending={closing} onClick={() => setClosed(true)}>
+                  {`Close it as at today, ${todayIn(timezone)}`}
                 </Button>
                 <Button variant="ghost" onClick={() => setConfirmClose(false)}>Keep it open</Button>
               </div>

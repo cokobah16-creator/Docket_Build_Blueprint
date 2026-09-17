@@ -106,8 +106,8 @@ export function TemplatesEditor({ firmId, templates, canWrite, timezone }: { fir
                   </div>
                   {canWrite && (
                     <span className="flex gap-2">
-                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => start(t)}>Edit</Button>
-                      <Button size="sm" variant="ghost" disabled={busy} onClick={() => retire(t)}>{t.retired_at ? "Put back in use" : "Retire"}</Button>
+                      <Button size="sm" variant="ghost" pending={busy} onClick={() => start(t)}>Edit</Button>
+                      <Button size="sm" variant="ghost" pending={busy} onClick={() => retire(t)}>{t.retired_at ? "Put back in use" : "Retire"}</Button>
                     </span>
                   )}
                 </li>
@@ -172,8 +172,8 @@ export function TemplatesEditor({ firmId, templates, canWrite, timezone }: { fir
                 </ul>
               </details>
               <div className="flex gap-2">
-                <Button type="submit" disabled={busy || unknown.length > 0}>{busy ? "Saving…" : "Save"}</Button>
-                <Button type="button" variant="ghost" disabled={busy} onClick={() => setEditing(null)}>Cancel</Button>
+                <Button type="submit" pending={busy} disabled={unknown.length > 0}>Save</Button>
+                <Button type="button" variant="ghost" pending={busy} onClick={() => setEditing(null)}>Cancel</Button>
               </div>
             </form>
           </CardBody>

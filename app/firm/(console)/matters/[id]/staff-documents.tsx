@@ -392,7 +392,7 @@ export function StaffDocuments({
             <input value={askTitle} onChange={(e) => setAskTitle(e.target.value)} required maxLength={200} placeholder="What document" className="rounded-lg border border-edge px-3 py-2 text-base sm:col-span-2" />
             <input type="date" value={askDue} onChange={(e) => setAskDue(e.target.value)} className="rounded-lg border border-edge px-3 py-2 text-base" aria-label="By when" />
             <input value={askWhy} onChange={(e) => setAskWhy(e.target.value)} maxLength={2000} placeholder="Why it is needed (the client sees this)" className="rounded-lg border border-edge px-3 py-2 text-base sm:col-span-3" />
-            <div className="sm:col-span-3"><Button type="submit" size="sm" disabled={askBusy || !online || askTitle.trim().length < 2}>{askBusy ? "Asking…" : "Ask"}</Button>{askDraft.restored && <span className="ml-2 text-13 text-ink-muted">Draft restored.</span>}<OfflineNote /></div>
+            <div className="sm:col-span-3"><Button type="submit" size="sm" pending={askBusy} disabled={!online || askTitle.trim().length < 2}>Ask</Button>{askDraft.restored && <span className="ml-2 text-13 text-ink-muted">Draft restored.</span>}<OfflineNote /></div>
           </form>
         )}
         {openRequests.length === 0 ? (
@@ -451,7 +451,7 @@ export function StaffDocuments({
                 </label>
               ))}
               {genTemplate?.note && <p className="text-13 text-ink-muted sm:col-span-2">{genTemplate.note}</p>}
-              <div className="sm:col-span-2"><Button type="submit" size="sm" disabled={genBusy || !online || !genTemplate}>{genBusy ? "Generating…" : "Generate"}</Button><OfflineNote /></div>
+              <div className="sm:col-span-2"><Button type="submit" size="sm" pending={genBusy} disabled={!online || !genTemplate}>Generate</Button><OfflineNote /></div>
             </form>
           )}
         </section>
@@ -510,7 +510,7 @@ export function StaffDocuments({
                         Finish upload
                         <input type="file" accept={ACCEPT} className="sr-only" onChange={(e) => uploadVersion(d, e)} disabled={Boolean(busy)} />
                       </label>
-                      <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>
+                      <Button size="sm" variant="ghost" pending={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>
                     </span>
                   )}
                 </div>
@@ -533,13 +533,13 @@ export function StaffDocuments({
                 {d.version?.checksum && (
                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
                     {!isLocked(d) && executionOf(d) !== "paper" && !d.signature_requested_at && (
-                      <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => askSignature(d)}>Ask the client to sign</Button>
+                      <Button size="sm" variant="ghost" pending={Boolean(busy)} onClick={() => askSignature(d)}>Ask the client to sign</Button>
                     )}
                     {executionOf(d) !== "paper" && d.version.kind !== "executed_paper" && !signaturesOf(d).some((sg) => sg.signer_id === userId && sg.version_id === d.version?.id) && (!isLocked(d) || d.locked_version_id === d.version.id) && (
-                      <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => d.version && setSigning({ doc: d, version: d.version })}>Sign for the firm</Button>
+                      <Button size="sm" variant="ghost" pending={Boolean(busy)} onClick={() => d.version && setSigning({ doc: d, version: d.version })}>Sign for the firm</Button>
                     )}
                     {!isLocked(d) && executionOf(d) !== "electronic" && (
-                      <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => setPaperFor(paperFor === d.id ? null : d.id)}>{paperFor === d.id ? "Cancel" : "Record execution on paper"}</Button>
+                      <Button size="sm" variant="ghost" pending={Boolean(busy)} onClick={() => setPaperFor(paperFor === d.id ? null : d.id)}>{paperFor === d.id ? "Cancel" : "Record execution on paper"}</Button>
                     )}
                   </div>
                 )}
@@ -551,7 +551,7 @@ export function StaffDocuments({
                     <label className="text-13 text-ink">Attested by<input value={paper.attestedBy} onChange={(e) => setPaper({ ...paper, attestedBy: e.target.value })} maxLength={200} placeholder="Commissioner for Oaths, notary…" className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" /></label>
                     <label className="text-13 text-ink">Stamp duty reference<input value={paper.stampRef} onChange={(e) => setPaper({ ...paper, stampRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" /></label>
                     <label className="text-13 text-ink">Registration reference<input value={paper.registrationRef} onChange={(e) => setPaper({ ...paper, registrationRef: e.target.value })} maxLength={120} className="mt-1 w-full rounded-lg border border-edge px-3 py-2 text-base" /></label>
-                    <div className="sm:col-span-2"><Button type="submit" size="sm" disabled={Boolean(busy) || !online}>Record</Button><OfflineNote /></div>
+                    <div className="sm:col-span-2"><Button type="submit" size="sm" pending={Boolean(busy)} disabled={!online}>Record</Button><OfflineNote /></div>
                   </form>
                 )}
 
@@ -579,7 +579,7 @@ export function StaffDocuments({
                     (isReviewed(d) ? (
                       <span className="text-15 text-ink-muted">Reviewed</span>
                     ) : (
-                      <Button size="sm" variant="ghost" onClick={() => markReviewed(d)} disabled={Boolean(busy)}>
+                      <Button size="sm" variant="ghost" onClick={() => markReviewed(d)} pending={Boolean(busy)}>
                         Mark as reviewed
                       </Button>
                     ))}

@@ -18,7 +18,7 @@ export function ReviewButton({ documentId, userId }: { documentId: string; userI
       <Button
         size="sm"
         variant="ghost"
-        disabled={busy}
+        pending={busy}
         onClick={async () => {
           const supabase = supabaseBrowser();
           if (!supabase) { setError("Not configured."); return; }
@@ -32,7 +32,7 @@ export function ReviewButton({ documentId, userId }: { documentId: string; userI
           router.refresh();
         }}
       >
-        {busy ? "Marking…" : "Mark as reviewed"}
+        Mark as reviewed
       </Button>
       {error && <span className="text-11 text-[#B42318]">{error}</span>}
     </span>

@@ -148,7 +148,7 @@ export function TasksPanel({
             </div>
           </div>
           <p className="text-13 text-ink-muted">Times are in {timezone}.</p>
-          <Button type="submit" disabled={busy || title.trim().length < 2}>{busy ? "Adding…" : "Add the task"}</Button>
+          <Button type="submit" pending={busy} disabled={title.trim().length < 2}>Add the task</Button>
         </form>
       </section>
 
@@ -176,8 +176,8 @@ export function TasksPanel({
                       {t.template_key ? ` · from the ${t.pack_key ?? "pack"} pack, at ${(t.status_key ?? "").replace(/_/g, " ")}` : ""}
                     </p>
                   </div>
-                  <Button size="sm" variant="ghost" disabled={closing === t.id} onClick={() => close(t.id)}>
-                    {closing === t.id ? "Closing…" : "Mark done"}
+                  <Button size="sm" variant="ghost" pending={closing === t.id} onClick={() => close(t.id)}>
+                    Mark done
                   </Button>
                 </li>
               );

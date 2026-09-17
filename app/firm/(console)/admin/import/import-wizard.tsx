@@ -318,7 +318,7 @@ export function ImportWizard({
             ))}
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button type="button" onClick={() => void toPreview()} disabled={checking}>{checking ? "Checking against the books…" : "Check the rows"}</Button>
+            <Button type="button" onClick={() => void toPreview()} pending={checking}>Check the rows</Button>
             <Button type="button" variant="ghost" onClick={() => { setTable(null); setPhase("upload"); }}>Choose another file</Button>
           </div>
         </CardBody>
@@ -343,7 +343,7 @@ export function ImportWizard({
           {batch && phase !== "running" && (
             <Alert kind="warning" title={`${batch.staged} of ${rows.length} rows are staged in a batch that is not finished`}>
               Nothing has been filed from it. Retry continues from row {batch.staged + 1} into the same batch; discard it to start again. The columns cannot be changed while it stands.
-              <div className="mt-2"><Button type="button" size="sm" variant="ghost" disabled={discarding} onClick={() => void discard()}>{discarding ? "Discarding…" : "Discard this batch"}</Button></div>
+              <div className="mt-2"><Button type="button" size="sm" variant="ghost" pending={discarding} onClick={() => void discard()}>Discard this batch</Button></div>
             </Alert>
           )}
           {phase === "running" && progress && (
@@ -380,8 +380,8 @@ export function ImportWizard({
             </table>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button type="button" size="lg" onClick={() => void run()} disabled={phase === "running" || discarding || inCount === 0}>{phase === "running" ? "Filing…" : batch ? "Retry from where it stopped" : `File ${inCount} ${inCount === 1 ? "matter" : "matters"}`}</Button>
-            <Button type="button" variant="ghost" disabled={phase === "running" || batch !== null} onClick={() => setPhase("map")}>Back to the columns</Button>
+            <Button type="button" size="lg" onClick={() => void run()} pending={phase === "running"} disabled={discarding || inCount === 0}>{batch ? "Retry from where it stopped" : `File ${inCount} ${inCount === 1 ? "matter" : "matters"}`}</Button>
+            <Button type="button" variant="ghost" pending={phase === "running"} disabled={batch !== null} onClick={() => setPhase("map")}>Back to the columns</Button>
           </div>
         </CardBody>
       </Card>

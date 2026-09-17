@@ -69,8 +69,8 @@ export function AuthorityList({ rows, firms, today }: {
               {" "}{r.can_pay ? "may pay on your behalf" : "no payments"} · cannot sign anything for you
             </p>
             {live(r) && (
-              <Button size="sm" variant="ghost" className="mt-1" disabled={busy === r.id} onClick={() => void end(r.id)}>
-                {busy === r.id ? "Ending…" : "End this authority"}
+              <Button size="sm" variant="ghost" className="mt-1" pending={busy === r.id} onClick={() => void end(r.id)}>
+                End this authority
               </Button>
             )}
           </li>

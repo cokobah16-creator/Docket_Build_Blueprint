@@ -487,10 +487,10 @@ export function ServicesEditor({
       )}
 
       <div className="flex flex-wrap gap-2">
-        <Button size="lg" onClick={save} disabled={saving}>
-          {saving ? "Saving…" : openId === "new" ? "Add this service" : "Save changes"}
+        <Button size="lg" onClick={save} pending={saving}>
+          {openId === "new" ? "Add this service" : "Save changes"}
         </Button>
-        <Button size="lg" variant="ghost" onClick={close} disabled={saving}>
+        <Button size="lg" variant="ghost" onClick={close} pending={saving}>
           Cancel
         </Button>
       </div>
@@ -595,7 +595,7 @@ export function ServicesEditor({
                       <Button size="sm" variant="ghost" onClick={() => openExisting(s)}>
                         Edit
                       </Button>
-                      <Button size="sm" variant={s.isActive ? "ghost" : "primary"} onClick={() => toggleActive(s)} disabled={rowBusy}>
+                      <Button size="sm" variant={s.isActive ? "ghost" : "primary"} onClick={() => toggleActive(s)} pending={rowBusy}>
                         {s.isActive ? "Switch off" : "Switch on"}
                       </Button>
                     </div>
@@ -629,10 +629,10 @@ export function ServicesEditor({
                             : "Nothing has ever been booked on it, so it will go."}
                         </p>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          <Button size="sm" variant="danger" onClick={() => remove(s)} disabled={rowBusy}>
-                            {rowBusy ? "Deleting…" : "Delete permanently"}
+                          <Button size="sm" variant="danger" onClick={() => remove(s)} pending={rowBusy}>
+                            Delete permanently
                           </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(null)} disabled={rowBusy}>
+                          <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(null)} pending={rowBusy}>
                             Keep it
                           </Button>
                         </div>

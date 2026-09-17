@@ -25,7 +25,7 @@ export function BatchControls({ batchId, count }: { batchId: string; count: numb
   }
   return (
     <div className="flex flex-col items-end gap-1">
-      <Button size="sm" disabled={busy} onClick={() => void publish()}>{busy ? "Publishing…" : `Publish ${count}`}</Button>
+      <Button size="sm" pending={busy} onClick={() => void publish()}>{`Publish ${count}`}</Button>
       {error && <Alert kind="error">{error}</Alert>}
     </div>
   );
@@ -49,13 +49,13 @@ export function NoticeControls({ noticeId, status, isRegistrar }: { noticeId: st
     <div className="flex shrink-0 flex-col items-end gap-1">
       <div className="flex gap-1.5">
         {status === "draft" && isRegistrar && (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run(() => publishRegistryNotice(noticeId))}>Publish</Button>
+          <Button size="sm" variant="ghost" pending={busy} onClick={() => void run(() => publishRegistryNotice(noticeId))}>Publish</Button>
         )}
         {status === "draft" && (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => void run(() => discardRegistryDraft(noticeId))}>Discard</Button>
+          <Button size="sm" variant="ghost" pending={busy} onClick={() => void run(() => discardRegistryDraft(noticeId))}>Discard</Button>
         )}
         {status === "published" && isRegistrar && (
-          <Button size="sm" variant="ghost" disabled={busy} onClick={() => {
+          <Button size="sm" variant="ghost" pending={busy} onClick={() => {
             const reason = window.prompt("Why is this notice withdrawn? The firms that confirmed it read this.") ?? "";
             if (reason.trim().length < 3) return;
             void run(() => withdrawRegistryNotice(noticeId, reason));

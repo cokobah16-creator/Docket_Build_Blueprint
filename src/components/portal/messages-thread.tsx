@@ -227,7 +227,7 @@ export function MessagesThread({
             {busy?.startsWith("Attaching") ? busy : "Attach a document"}
             <input type="file" className="sr-only" onChange={attach} disabled={Boolean(busy)} />
           </label>
-          <Button type="submit" disabled={Boolean(busy) || !online || (!body.trim() && attachments.length === 0)}>{busy === "Sending…" ? "Sending…" : "Send"}</Button>
+          <Button type="submit" pending={Boolean(busy)} disabled={!online || (!body.trim() && attachments.length === 0)}>Send</Button>
         </div>
         {draft.restored && <p className="text-13 text-ink-muted">Draft restored — not sent yet.</p>}
         <OfflineNote />

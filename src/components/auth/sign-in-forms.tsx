@@ -762,8 +762,8 @@ export function SignInForms({
           />
           {/* First button in the form, and its name matches /send|continue|code/i —
               journeys.spec.ts:112 takes .first(). Nothing may be inserted above it. */}
-          <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
-            {busy ? "Sending code…" : "Send code"}
+          <Button type="submit" size="lg" className="w-full" pending={busy}>
+            Send code
           </Button>
           {offlineNote}
         </form>
@@ -817,10 +817,10 @@ export function SignInForms({
           <Button
             type="submit"
             size="lg"
-            className={busy ? "w-full opacity-70" : "w-full"}
-            aria-busy={busy}
-          >
-            {busy ? "Verifying…" : "Verify and continue"}
+            className="w-full"
+           
+           pending={busy}>
+            Verify and continue
           </Button>
           {/* A button, never an Input with a label — a second control labelled "…code" on this stage
               would break getByLabel(/code/i) in strict mode. Its name matches neither
@@ -832,7 +832,7 @@ export function SignInForms({
             variant="ghost"
             size="md"
             className="w-full"
-            disabled={busy || phoneWait > 0}
+            pending={busy} disabled={phoneWait > 0}
             onClick={() => {
               if (sentTo) void sendCode(sentTo, true);
             }}
@@ -860,8 +860,8 @@ export function SignInForms({
             hint="The address your firm has for you."
             required
           />
-          <Button type="submit" size="lg" className="w-full" disabled={busy} aria-busy={busy}>
-            {busy ? "Sending link…" : "Email me a sign-in link"}
+          <Button type="submit" size="lg" className="w-full" pending={busy}>
+            Email me a sign-in link
           </Button>
           {offlineNote}
         </form>
@@ -900,10 +900,10 @@ export function SignInForms({
           <Button
             type="submit"
             size="lg"
-            className={busy ? "w-full opacity-70" : "w-full"}
-            aria-busy={busy}
-          >
-            {busy ? "Verifying…" : "Verify and continue"}
+            className="w-full"
+           
+           pending={busy}>
+            Verify and continue
           </Button>
           {/* The email path had no way back at all: a link sent to an address with a typo in it was
               unrecoverable without switching tabs twice. The frequency limit is per address and the
@@ -913,7 +913,7 @@ export function SignInForms({
             variant="ghost"
             size="md"
             className="w-full"
-            disabled={busy || emailWait > 0}
+            pending={busy} disabled={emailWait > 0}
             onClick={() => {
               if (sentToEmail) void sendLink(sentToEmail, true);
             }}

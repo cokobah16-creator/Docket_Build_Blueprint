@@ -94,8 +94,8 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
         {state === "denied" ? (
           <p className="text-13 text-[#92400E]">Notifications are blocked for this site. Allow them in your browser settings to turn them on.</p>
         ) : (
-          <Button size="sm" variant="ghost" onClick={enable} disabled={state === "busy"}>
-            {state === "busy" ? "Turning on…" : "Turn on notifications"}
+          <Button size="sm" variant="ghost" onClick={enable} pending={state === "busy"}>
+            Turn on notifications
           </Button>
         )}
         {message && <p className="text-13 text-red-800">{message}</p>}
@@ -112,8 +112,8 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
         {state === "denied" ? (
           <Badge tone="waiting" icon="alert">Blocked</Badge>
         ) : (
-          <Button size="sm" onClick={enable} disabled={state === "busy"}>
-            {state === "busy" ? "Turning on…" : "Turn on"}
+          <Button size="sm" onClick={enable} pending={state === "busy"}>
+            Turn on
           </Button>
         )}
         {state === "denied" && (

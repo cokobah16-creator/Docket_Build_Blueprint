@@ -87,13 +87,13 @@ export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWr
           ) : (
             <div className="mt-2 space-y-2">
               {!check && (
-                <Button type="button" size="sm" disabled={checking || !canWrite} onClick={() => {
+                <Button type="button" size="sm" pending={checking} disabled={!canWrite} onClick={() => {
                   setError(null); setChecking(true);
                   runConflictCheck(firmId, { appointmentId })
                     .then((r) => { if ("error" in r) setError(r.error); else setCheck({ checkId: r.checkId, matches: r.matches }); })
                     .catch(() => setError("The check did not run — the connection may have dropped. Try again."))
                     .finally(() => setChecking(false));
-                }}>{checking ? "Checking…" : "Run the check"}</Button>
+                }}>Run the check</Button>
               )}
               {check && (
                 <>
@@ -108,7 +108,7 @@ export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWr
 
       {readiness.held && (
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="button" onClick={confirm} disabled={pending || !canWrite}>{pending ? "Confirming…" : "Confirm the consultation"}</Button>
+          <Button type="button" onClick={confirm} pending={pending} disabled={!canWrite}>Confirm the consultation</Button>
           <span className="text-13 text-ink-muted">
             {readiness.ready ? "Everything asked for is in." : readiness.checkin_required ? "The database refuses until every item above is in." : "Nothing is required; confirm when you are ready."}
           </span>
@@ -122,7 +122,7 @@ export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWr
             {open.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span className="text-15 text-ink">{r.title}{r.due_on ? <span className="ml-1 text-13 text-ink-muted">by {formatDay(r.due_on)}</span> : null}</span>
-                {canWrite && <Button type="button" size="sm" variant="ghost" disabled={pending} onClick={() => withdraw(r.id)}>Withdraw</Button>}
+                {canWrite && <Button type="button" size="sm" variant="ghost" pending={pending} onClick={() => withdraw(r.id)}>Withdraw</Button>}
               </li>
             ))}
           </ul>
@@ -144,7 +144,7 @@ export function CheckinPanel({ appointmentId, firmId, readiness, requests, canWr
               <label htmlFor="ck-why" className="text-15 font-medium text-ink">Why <span className="text-ink-muted">(optional, the client reads it)</span></label>
               <input id="ck-why" type="text" maxLength={2000} value={why} onChange={(e) => setWhy(e.target.value)} className={field} />
             </div>
-            <Button type="submit" size="sm" disabled={pending || title.trim().length < 2}>{pending ? "Asking…" : "Ask for it"}</Button>
+            <Button type="submit" size="sm" pending={pending} disabled={title.trim().length < 2}>Ask for it</Button>
           </form>
         )}
       </div>

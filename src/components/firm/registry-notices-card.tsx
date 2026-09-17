@@ -135,10 +135,10 @@ export function RegistryNoticesCard({ firmId, firmParam, timezone, notices }: {
                   )}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Button size="sm" disabled={busy === k || n.listed_on_non_sitting_day} onClick={() => void confirm(n)}>
-                    {busy === k ? "Confirming…" : sameDayAlready ? "Confirm — it is the sitting in the diary" : "Confirm into the diary"}
+                  <Button size="sm" pending={busy === k || n.listed_on_non_sitting_day} onClick={() => void confirm(n)}>
+                    {sameDayAlready ? "Confirm — it is the sitting in the diary" : "Confirm into the diary"}
                   </Button>
-                  <Button size="sm" variant="ghost" disabled={busy === k} onClick={() => void reject(n)}>Not ours / not to be diarised</Button>
+                  <Button size="sm" variant="ghost" pending={busy === k} onClick={() => void reject(n)}>Not ours / not to be diarised</Button>
                   <Link href={`/firm/matters/${n.matter_id}${firmParam ? `?firm=${encodeURIComponent(firmParam)}` : ""}`} className="self-center text-13 text-brand underline">Open the matter →</Link>
                 </div>
               </li>

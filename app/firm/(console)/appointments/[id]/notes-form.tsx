@@ -108,8 +108,8 @@ export function NotesForm({
         </label>
       )}
 
-      <Button type="submit" variant="neutral" size="lg" className="w-full" disabled={busy}>
-        {busy ? "Saving…" : canComplete && markCompleted ? "Save and mark completed" : "Save notes"}
+      <Button type="submit" variant="neutral" size="lg" className="w-full" pending={busy}>
+        {canComplete && markCompleted ? "Save and mark completed" : "Save notes"}
       </Button>
     </form>
   );

@@ -93,8 +93,8 @@ export function CalendarFeedPanel({ firmId, feed, feedBase, timezone }: {
             <p className="mt-0.5 text-13">
               Client names are <strong>{feed.include_client_names ? "included" : "not included"}</strong>.
             </p>
-            <Button size="sm" variant="ghost" className="mt-2" disabled={busy !== null} onClick={() => void end(feed.id)}>
-              {busy === "revoke" ? "Ending…" : "Turn it off"}
+            <Button size="sm" variant="ghost" className="mt-2" pending={busy === "revoke"} disabled={busy !== null && busy !== "revoke"} onClick={() => void end(feed.id)}>
+              Turn it off
             </Button>
             <p className="mt-1.5 text-11">
               To change the client-names setting, or to cut off a lost phone, issue a new address below:
@@ -116,8 +116,8 @@ export function CalendarFeedPanel({ firmId, feed, feedBase, timezone }: {
         </label>
 
         <div>
-          <Button size="sm" disabled={busy !== null} onClick={() => void issue()}>
-            {busy === "issue" ? "Issuing…" : feed ? "Issue a new address with these settings" : "Create my calendar URL"}
+          <Button size="sm" pending={busy === "issue"} disabled={busy !== null && busy !== "issue"} onClick={() => void issue()}>
+            {feed ? "Issue a new address with these settings" : "Create my calendar URL"}
           </Button>
         </div>
       </CardBody>

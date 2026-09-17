@@ -143,7 +143,7 @@ export function CollaborationPanel({
               notes are never shared. Documents are shared one named version at a time, after they accept — and your
               client is told the moment they do.
             </p>
-            <Button type="submit" disabled={busy === "propose"}>{busy === "propose" ? "Proposing…" : "Propose it"}</Button>
+            <Button type="submit" pending={busy === "propose"}>Propose it</Button>
           </form>
         </CardBody>
       )}
@@ -184,7 +184,7 @@ export function CollaborationPanel({
                         {d.withdrawn_at
                           ? <span>· taken back {formatDay(d.withdrawn_at.slice(0, 10))}</span>
                           : live(r) && (
-                              <Button size="sm" variant="ghost" disabled={busy === d.id} onClick={() => void takeBack(d.id)}>Take it back</Button>
+                              <Button size="sm" variant="ghost" pending={busy === d.id} onClick={() => void takeBack(d.id)}>Take it back</Button>
                             )}
                       </li>
                     ))}
@@ -201,8 +201,8 @@ export function CollaborationPanel({
                         {shareable.map((d) => <option key={d.id} value={d.versionId ?? ""}>{d.name}</option>)}
                       </select>
                     </label>
-                    <Button size="sm" disabled={busy === r.id || !pick[r.id]} onClick={() => void share(r.id)}>Share it</Button>
-                    <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => void finish(r.id)}>End this</Button>
+                    <Button size="sm" pending={busy === r.id || !pick[r.id]} onClick={() => void share(r.id)}>Share it</Button>
+                    <Button size="sm" variant="ghost" pending={busy === r.id} onClick={() => void finish(r.id)}>End this</Button>
                   </div>
                 )}
               </li>

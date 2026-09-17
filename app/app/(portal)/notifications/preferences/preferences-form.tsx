@@ -57,7 +57,7 @@ export function PreferencesForm({ initial }: { initial: NotificationPreference[]
           </tbody>
         </table>
       </div>
-      <Button onClick={save} disabled={busy}>{busy ? "Saving…" : "Save preferences"}</Button>
+      <Button onClick={save} pending={busy}>Save preferences</Button>
     </div>
   );
 }

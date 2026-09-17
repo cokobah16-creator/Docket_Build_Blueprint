@@ -488,15 +488,15 @@ export function IntakeEditor({
 
             <div className="flex flex-wrap gap-2">
               {canWrite && (
-                <Button size="lg" onClick={save} disabled={saving || Boolean(parseProblem)}>
-                  {saving ? "Saving…" : openId === "new" ? "Save this form" : "Save changes"}
+                <Button size="lg" onClick={save} pending={saving} disabled={Boolean(parseProblem)}>
+                  {openId === "new" ? "Save this form" : "Save changes"}
                 </Button>
               )}
-              <Button size="lg" variant="ghost" onClick={close} disabled={saving}>
+              <Button size="lg" variant="ghost" onClick={close} pending={saving}>
                 Close
               </Button>
               {canWrite && editing && !confirmDelete && (
-                <Button size="lg" variant="ghost" onClick={() => setConfirmDelete(true)} disabled={saving}>
+                <Button size="lg" variant="ghost" onClick={() => setConfirmDelete(true)} pending={saving}>
                   Delete this form
                 </Button>
               )}
@@ -512,10 +512,10 @@ export function IntakeEditor({
                   stay on their consultations.
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Button size="sm" variant="danger" onClick={remove} disabled={deleting}>
-                    {deleting ? "Deleting…" : "Delete permanently"}
+                  <Button size="sm" variant="danger" onClick={remove} pending={deleting}>
+                    Delete permanently
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} disabled={deleting}>
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)} pending={deleting}>
                     Keep it
                   </Button>
                 </div>

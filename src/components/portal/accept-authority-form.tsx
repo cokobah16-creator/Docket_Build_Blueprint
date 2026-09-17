@@ -35,7 +35,7 @@ export function AcceptAuthorityForm({ token }: { token: string }) {
           className="mt-1 block w-full min-h-11 rounded-lg border border-edge px-3 font-mono text-base text-ink focus:border-brand focus:outline-none"
         />
       </label>
-      <Button type="submit" disabled={busy || value.trim().length === 0}>{busy ? "Taking it up…" : "Take up this authority"}</Button>
+      <Button type="submit" pending={busy} disabled={value.trim().length === 0}>Take up this authority</Button>
     </form>
   );
 }

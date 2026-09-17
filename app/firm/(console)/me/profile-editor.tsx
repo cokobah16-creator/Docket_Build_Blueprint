@@ -91,7 +91,7 @@ export function ProfileEditor({ firmId, userId, firmSlug, firmStatus, profile, c
           <span className="mt-1 block text-ink-muted">Off, nobody can book you and your name is not on the site. Your enrolment number is never shown either way.</span>
         </span>
       </label>
-      <Button type="submit" disabled={pending}>{pending ? "Saving…" : "Save my profile"}</Button>
+      <Button type="submit" pending={pending}>Save my profile</Button>
     </form>
   );
 }

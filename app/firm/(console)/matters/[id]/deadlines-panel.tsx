@@ -231,7 +231,7 @@ export function DeadlinesPanel({
                         </label>
                       </div>
                       <div className="flex gap-2">
-                        <Button type="button" size="sm" disabled={busy === ev.court_event_id} onClick={() => void attach(ev.court_event_id)}>Attach and confirm the date</Button>
+                        <Button type="button" size="sm" pending={busy === ev.court_event_id} onClick={() => void attach(ev.court_event_id)}>Attach and confirm the date</Button>
                         <Button type="button" size="sm" variant="ghost" onClick={() => setAttachFor(null)}>Cancel</Button>
                       </div>
                       <p className="text-13 text-ink-muted">Attaching the evidence records you as the lawyer who confirmed this date.</p>
@@ -294,7 +294,7 @@ export function DeadlinesPanel({
             </label>
             {provision ? (
               <div className="space-y-2">
-                <Button type="button" size="sm" variant="ghost" disabled={busy === "preview"} onClick={() => void doPreview()}>{busy === "preview" ? "Counting…" : "Count it"}</Button>
+                <Button type="button" size="sm" variant="ghost" pending={busy === "preview"} onClick={() => void doPreview()}>Count it</Button>
                 {preview && (
                   <div className="rounded-lg border border-hairline bg-sunken p-3">
                     <p className="text-15 font-semibold text-ink">Falls due {formatDay(preview.due_on)}</p>
@@ -314,7 +314,7 @@ export function DeadlinesPanel({
               <input type="text" maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} className={field} />
             </label>
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={busy === "save"}>{busy === "save" ? "Saving…" : supersedes ? "Save the new count" : "Propose the deadline"}</Button>
+              <Button type="submit" pending={busy === "save"}>{supersedes ? "Save the new count" : "Propose the deadline"}</Button>
               <Button type="button" variant="ghost" onClick={() => { setOpen(false); setSupersedes(null); setPreview(null); setProvisionId(""); setDueOn(""); }}>Cancel</Button>
             </div>
           </form>
@@ -342,12 +342,12 @@ export function DeadlinesPanel({
                   {d.note ? ` · ${d.note}` : ""}
                 </p>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  {d.status === "proposed" && canConfirm && <Button type="button" size="sm" disabled={busy === d.id} onClick={() => void confirm(d.id)}>Confirm</Button>}
+                  {d.status === "proposed" && canConfirm && <Button type="button" size="sm" pending={busy === d.id} onClick={() => void confirm(d.id)}>Confirm</Button>}
                   <Button type="button" size="sm" variant="ghost" onClick={() => recompute(d)}>Recount</Button>
                   {dischargeFor === d.id ? (
                     <span className="flex flex-wrap items-center gap-2">
                       <input type="text" maxLength={1000} value={dischargeNote} onChange={(e) => setDischargeNote(e.target.value)} placeholder="Why it no longer applies" className="rounded-lg border border-edge px-3 py-2 text-base" />
-                      <Button type="button" size="sm" variant="ghost" disabled={busy === d.id} onClick={() => void discharge(d.id)}>Discharge</Button>
+                      <Button type="button" size="sm" variant="ghost" pending={busy === d.id} onClick={() => void discharge(d.id)}>Discharge</Button>
                       <Button type="button" size="sm" variant="ghost" onClick={() => setDischargeFor(null)}>Cancel</Button>
                     </span>
                   ) : (

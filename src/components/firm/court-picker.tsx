@@ -270,7 +270,7 @@ export function CourtPicker({
                   placeholder="FHC/L/CS/123/2026" className={field}
                 />
               </div>
-              <Button type="button" onClick={addCourt} disabled={busy}>{busy ? "Adding…" : "Add this court"}</Button>
+              <Button type="button" onClick={addCourt} pending={busy}>Add this court</Button>
             </div>
           )}
         </div>

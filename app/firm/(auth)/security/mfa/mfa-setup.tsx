@@ -164,8 +164,8 @@ export function MfaSetup({ next }: { next?: string | null }) {
               onChange={(e) => setCode(e.target.value)}
               required
             />
-            <Button type="submit" size="lg" className="w-full" disabled={busy}>
-              {busy ? "Verifying…" : "Verify"}
+            <Button type="submit" size="lg" className="w-full" pending={busy}>
+              Verify
             </Button>
           </form>
         )}

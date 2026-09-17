@@ -27,7 +27,7 @@ export function CreateRegistryForm({ courts }: { courts: Array<{ id: string; lab
         <Input label="Contact email (optional)" name="contactEmail" type="email" maxLength={320} autoCapitalize="none" />
       </div>
       <Input label="Note (optional)" name="note" maxLength={2000} hint="Who agreed to the pilot, and on what terms. Kept in the audit trail." />
-      <Button type="submit" disabled={pending || courts.length === 0}>{pending ? "Creating…" : "Create the registry"}</Button>
+      <Button type="submit" pending={pending} disabled={courts.length === 0}>Create the registry</Button>
       {courts.length === 0 && <p className="text-13 text-ink-muted">Every platform-wide court already has a registry, or none is active.</p>}
     </form>
   );
@@ -47,7 +47,7 @@ export function AddMemberForm({ registryId }: { registryId: string }) {
           <option value="clerk">Clerk — stages</option>
         </select>
       </label>
-      <Button type="submit" size="sm" disabled={pending}>{pending ? "Adding…" : "Add"}</Button>
+      <Button type="submit" size="sm" pending={pending}>Add</Button>
       {state.error && <p className="basis-full text-13 text-red-800">{state.error}</p>}
       {state.done && <p className="basis-full text-13 text-emerald-800">{state.done}</p>}
     </form>
@@ -61,7 +61,7 @@ export function RemoveMemberButton({ registryId, userId }: { registryId: string;
   return (
     <span className="flex items-center gap-2">
       {error && <span className="text-13 text-red-800">{error}</span>}
-      <Button size="sm" variant="ghost" disabled={busy} onClick={async () => {
+      <Button size="sm" variant="ghost" pending={busy} onClick={async () => {
         if (!window.confirm("Remove this person from the registry?")) return;
         setBusy(true); setError(null);
         const r = await removeRegistryMember(registryId, userId);
@@ -82,8 +82,8 @@ export function RegistryStatusForm({ registryId, status }: { registryId: string;
       <label className="block text-13 text-ink">Why (kept in the audit trail)
         <input name="note" maxLength={500} className="mt-1 block min-h-[40px] w-64 rounded-lg border border-edge px-2 text-base" />
       </label>
-      <Button type="submit" size="sm" variant="ghost" disabled={pending}>
-        {pending ? "Saving…" : next === "suspended" ? "Suspend — nothing new can be published" : "Restore"}
+      <Button type="submit" size="sm" variant="ghost" pending={pending}>
+        {next === "suspended" ? "Suspend — nothing new can be published" : "Restore"}
       </Button>
       {state.error && <p className="basis-full text-13 text-red-800">{state.error}</p>}
       {state.done && <p className="basis-full text-13 text-emerald-800">{state.done}</p>}

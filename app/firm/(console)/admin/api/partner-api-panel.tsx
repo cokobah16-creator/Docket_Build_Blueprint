@@ -140,8 +140,8 @@ export function PartnerApiPanel({ firmId, credentials, endpoints, today }: {
                 ))}
               </div>
             </fieldset>
-            <Button type="submit" disabled={busy === "issue" || form.scopes.length === 0}>
-              {busy === "issue" ? "Issuing…" : "Issue a key"}
+            <Button type="submit" pending={busy === "issue" || form.scopes.length === 0}>
+              Issue a key
             </Button>
           </form>
         </CardBody>
@@ -170,8 +170,8 @@ export function PartnerApiPanel({ firmId, credentials, endpoints, today }: {
                   {c.revoke_reason ? ` · ${c.revoke_reason}` : ""}
                 </p>
                 {!c.revoked_at && (
-                  <Button size="sm" variant="ghost" className="mt-1" disabled={busy === c.id} onClick={() => void end(c.id)}>
-                    {busy === c.id ? "Revoking…" : "Revoke it"}
+                  <Button size="sm" variant="ghost" className="mt-1" pending={busy === c.id} onClick={() => void end(c.id)}>
+                    Revoke it
                   </Button>
                 )}
               </li>
@@ -205,7 +205,7 @@ export function PartnerApiPanel({ firmId, credentials, endpoints, today }: {
                 ))}
               </div>
             </fieldset>
-            <Button type="submit" disabled={busy === "hook"}>{busy === "hook" ? "Saving…" : "Save the endpoint"}</Button>
+            <Button type="submit" pending={busy === "hook"}>Save the endpoint</Button>
           </form>
         </CardBody>
 
@@ -228,7 +228,7 @@ export function PartnerApiPanel({ firmId, credentials, endpoints, today }: {
                   {e.delivered} delivered · {e.pending} waiting · {e.failed} failed
                 </p>
                 {e.active && (
-                  <Button size="sm" variant="ghost" className="mt-1" disabled={busy === e.id} onClick={() => void dropHook(e.id)}>
+                  <Button size="sm" variant="ghost" className="mt-1" pending={busy === e.id} onClick={() => void dropHook(e.id)}>
                     Stop pushing to this
                   </Button>
                 )}

@@ -393,8 +393,8 @@ export function PeoplePanel({
                 </Alert>
               )}
 
-              <Button type="submit" size="lg" disabled={inviting} className="w-full sm:w-auto">
-                {inviting ? "Creating the invitation…" : "Create the invitation"}
+              <Button type="submit" size="lg" pending={inviting} className="w-full sm:w-auto">
+                Create the invitation
               </Button>
             </form>
 
@@ -538,10 +538,10 @@ export function PeoplePanel({
                           <Button
                             variant="ghost"
                             size="lg"
-                            disabled={busy || draft === p.role}
+                            pending={busy} disabled={draft === p.role}
                             onClick={() => saveRole(p)}
                           >
-                            {busy ? "Saving…" : "Save the role"}
+                            Save the role
                           </Button>
                         </div>
                       )}
@@ -577,8 +577,8 @@ export function PeoplePanel({
                             <li>This cannot be undone here. Bringing them back means a fresh invitation.</li>
                           </ul>
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <Button variant="danger" size="lg" disabled={busy} onClick={() => remove(p)}>
-                              {busy ? "Removing…" : `Yes, remove ${p.name}`}
+                            <Button variant="danger" size="lg" pending={busy} onClick={() => remove(p)}>
+                              {`Yes, remove ${p.name}`}
                             </Button>
                             <Button variant="ghost" size="lg" onClick={() => setConfirmingRemoval(null)}>
                               Keep them
@@ -685,8 +685,8 @@ export function PeoplePanel({
                             “invite invalid or expired”.
                           </p>
                           <div className="mt-3 flex flex-wrap gap-2">
-                            <Button variant="danger" size="lg" disabled={busy} onClick={() => cancelInvite(i)}>
-                              {busy ? "Cancelling…" : "Yes, cancel it"}
+                            <Button variant="danger" size="lg" pending={busy} onClick={() => cancelInvite(i)}>
+                              Yes, cancel it
                             </Button>
                             <Button variant="ghost" size="lg" onClick={() => setConfirmingRemoval(null)}>
                               Leave it open

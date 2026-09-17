@@ -102,8 +102,8 @@ export function WorkflowPanel({ firmId, packs, installed, statuses, canWrite }: 
                     <p className="mt-1 text-13 text-ink-muted">{def.statuses.map((s) => s.label).join(" → ")}</p>
                     {canWrite && (
                       <div className="mt-2 flex flex-wrap gap-2">
-                        {have === null && <Button type="button" size="sm" disabled={busy !== null} onClick={() => void install(key, latest.version)}>{busy === `${key}:${latest.version}` ? "Installing…" : "Install"}</Button>}
-                        {have !== null && have < latest.version && <Button type="button" size="sm" disabled={busy !== null} onClick={() => void install(key, latest.version)}>{busy === `${key}:${latest.version}` ? "Upgrading…" : `Upgrade to version ${latest.version}`}</Button>}
+                        {have === null && <Button type="button" size="sm" pending={busy === `${key}:${latest.version}`} disabled={busy !== null && busy !== `${key}:${latest.version}`} onClick={() => void install(key, latest.version)}>Install</Button>}
+                        {have !== null && have < latest.version && <Button type="button" size="sm" pending={busy === `${key}:${latest.version}`} disabled={busy !== null && busy !== `${key}:${latest.version}`} onClick={() => void install(key, latest.version)}>{`Upgrade to version ${latest.version}`}</Button>}
                         {have !== null && have >= latest.version && <span className="text-13 text-ink-muted">Up to date.</span>}
                       </div>
                     )}
@@ -132,7 +132,7 @@ export function WorkflowPanel({ firmId, packs, installed, statuses, canWrite }: 
                     <label className="text-15 text-ink">Order<input type="number" min={0} max={10000} value={draft.sort} onChange={(e) => setDraft({ ...draft, sort: Number(e.target.value) })} className={field} /></label>
                     <label className="text-15 text-ink sm:col-span-4">Next action the stage suggests (offered when the slot is empty)<input type="text" maxLength={500} value={draft.defaultNextAction} onChange={(e) => setDraft({ ...draft, defaultNextAction: e.target.value })} className={field} /></label>
                     <div className="flex gap-2 sm:col-span-4">
-                      <Button type="button" size="sm" disabled={busy === s.id} onClick={() => void saveEdit(s.id)}>{busy === s.id ? "Saving…" : "Save"}</Button>
+                      <Button type="button" size="sm" pending={busy === s.id} onClick={() => void saveEdit(s.id)}>Save</Button>
                       <Button type="button" size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button>
                     </div>
                   </div>

@@ -99,10 +99,10 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
               <div className="mt-2 flex flex-wrap gap-2">
                 {side === "receiving" && awaiting(r) && (
                   <>
-                    <Button size="sm" disabled={busy === r.id} onClick={() => void answer(r.id, true)}>
-                      {busy === r.id ? "…" : "Accept"}
+                    <Button size="sm" pending={busy === r.id} onClick={() => void answer(r.id, true)}>
+                      Accept
                     </Button>
-                    <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => void answer(r.id, false)}>Decline</Button>
+                    <Button size="sm" variant="ghost" pending={busy === r.id} onClick={() => void answer(r.id, false)}>Decline</Button>
                   </>
                 )}
                 {live(r) && (
@@ -110,7 +110,7 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
                     <Button size="sm" variant="ghost" onClick={() => { setOpenNotes(openNotes === r.id ? null : r.id); setDraft(""); }}>
                       {openNotes === r.id ? "Close" : `Notes (${mine.length})`}
                     </Button>
-                    <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => void finish(r.id)}>End this</Button>
+                    <Button size="sm" variant="ghost" pending={busy === r.id} onClick={() => void finish(r.id)}>End this</Button>
                   </>
                 )}
               </div>
@@ -134,7 +134,7 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
                       placeholder="A note to the other firm"
                       className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline-none"
                     />
-                    <Button type="submit" size="sm" disabled={busy === `note:${r.id}` || draft.trim().length === 0}>Send</Button>
+                    <Button type="submit" size="sm" pending={busy === `note:${r.id}` || draft.trim().length === 0}>Send</Button>
                   </form>
                 </div>
               )}

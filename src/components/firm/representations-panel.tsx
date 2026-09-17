@@ -201,7 +201,7 @@ export function RepresentationsPanel({
               address on its own gives nobody access, and neither does the link on its own.
             </p>
 
-            <Button type="submit" disabled={busy === "grant"}>{busy === "grant" ? "Recording…" : "Record the authority"}</Button>
+            <Button type="submit" pending={busy === "grant"}>Record the authority</Button>
           </form>
         </CardBody>
       )}
@@ -235,8 +235,8 @@ export function RepresentationsPanel({
               </p>
               {r.revoked_at && r.revoke_reason && <p className="mt-0.5 text-13 text-ink-muted">Ended: {r.revoke_reason}</p>}
               {canWrite && !r.revoked_at && (
-                <Button size="sm" variant="ghost" className="mt-1" disabled={busy === r.id} onClick={() => void end(r.id)}>
-                  {busy === r.id ? "Ending…" : "End this authority"}
+                <Button size="sm" variant="ghost" className="mt-1" pending={busy === r.id} onClick={() => void end(r.id)}>
+                  End this authority
                 </Button>
               )}
             </li>

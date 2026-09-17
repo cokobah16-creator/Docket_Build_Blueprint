@@ -31,7 +31,7 @@ export function ContinueImport({ batchId }: { batchId: string }) {
   }
   return (
     <span className="flex flex-wrap items-center gap-2">
-      <Button type="button" size="sm" disabled={busy} onClick={() => void go()}>{busy ? "Filing…" : "Continue filing"}</Button>
+      <Button type="button" size="sm" pending={busy} onClick={() => void go()}>Continue filing</Button>
       {error && <span className="text-15 text-red-700">{error}</span>}
     </span>
   );
@@ -56,7 +56,7 @@ export function DiscardImport({ batchId }: { batchId: string }) {
   }
   return (
     <span className="flex flex-wrap items-center gap-2">
-      <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void go()}>{busy ? "Discarding…" : "Discard this batch"}</Button>
+      <Button type="button" size="sm" variant="ghost" pending={busy} onClick={() => void go()}>Discard this batch</Button>
       {error && <span className="text-15 text-red-700">{error}</span>}
     </span>
   );

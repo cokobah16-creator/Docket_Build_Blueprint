@@ -233,8 +233,8 @@ export function DocumentsTab({
                   {r.due_on && <p className="text-13 text-[#92400E]">By {new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: "UTC" }).format(new Date(`${r.due_on}T00:00:00Z`))}</p>}
                 </div>
                 {canUpload && (
-                  <Button size="sm" disabled={Boolean(busy)} onClick={() => { setForRequest(r.id); fileInput.current?.click(); }}>
-                    {forRequest === r.id && busy ? busy : "Upload this"}
+                  <Button size="sm" pending={Boolean(busy)} onClick={() => { setForRequest(r.id); fileInput.current?.click(); }}>
+                    Upload this
                   </Button>
                 )}
               </li>
@@ -302,7 +302,7 @@ export function DocumentsTab({
                     {/* retire_empty_document() lets the person who started it, or any staff member
                         who may write the row, retire it — so the firm can clear a client's
                         stopped upload off its own consultation rather than looking at it forever. */}
-                    {userId && (d.uploaded_by === userId || audience === "staff") && <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>}
+                    {userId && (d.uploaded_by === userId || audience === "staff") && <Button size="sm" variant="ghost" pending={Boolean(busy)} onClick={() => remove(d)}>Remove</Button>}
                   </span>
                 )}
               </div>

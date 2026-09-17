@@ -56,7 +56,7 @@ export function JoinForm({ token, signedIn, email, invitedEmail }: { token: stri
         <input type="hidden" name="token" value={token} />
         {state.error && <Alert kind="error">{state.error}</Alert>}
         <p className="text-15 text-ink">Signed in as {email}. Accepting joins you to the firm in the invited role; you then set up two-factor authentication.</p>
-        <Button type="submit" size="lg" className="w-full" disabled={pending}>{pending ? "Joining…" : "Accept and join the firm"}</Button>
+        <Button type="submit" size="lg" className="w-full" pending={pending}>Accept and join the firm</Button>
       </form>
     );
   }
@@ -75,7 +75,7 @@ export function JoinForm({ token, signedIn, email, invitedEmail }: { token: stri
       {mode === "signup" && <Input label="Your full name" autoComplete="name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />}
       <Input label="Email (as invited)" type="email" autoComplete="email" value={addr} onChange={(e) => setAddr(e.target.value)} required />
       <Input label="Password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={10} value={password} onChange={(e) => setPassword(e.target.value)} required />
-      <Button type="submit" size="lg" className="w-full" disabled={busy}>{busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}</Button>
+      <Button type="submit" size="lg" className="w-full" pending={busy}>{mode === "signup" ? "Create account" : "Sign in"}</Button>
     </form>
   );
 }

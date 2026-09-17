@@ -126,7 +126,7 @@ export function DecideCheck({
         </p>
         <textarea id={`note-${checkId}`} rows={2} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} className={field} />
       </div>
-      <Button type="submit" size="sm" disabled={busy}>{busy ? "Recording…" : "Record the decision"}</Button>
+      <Button type="submit" size="sm" pending={busy}>Record the decision</Button>
     </form>
   );
 }
