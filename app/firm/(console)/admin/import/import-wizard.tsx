@@ -25,6 +25,7 @@ import { MATTER_TYPES } from "@/lib/db/types";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 
 const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
@@ -351,34 +352,32 @@ export function ImportWizard({
               Staged {progress.staged} of {progress.total}; filed {progress.processed} of {progress.total}. Stay on this page.
             </Alert>
           )}
-          <div className="max-h-[60vh] overflow-auto rounded-lg border border-hairline">
-            <table className="w-full text-left text-15">
-              <thead className="sticky top-0 bg-sunken text-13 uppercase tracking-wide text-ink-muted">
-                <tr>
-                  <th className="px-2 py-2">In</th><th className="px-2 py-2">#</th><th className="px-2 py-2">Title</th><th className="px-2 py-2">Client</th><th className="px-2 py-2">Status</th><th className="px-2 py-2">Opened</th><th className="px-2 py-2">Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r) => (
-                  <tr key={r.row_no} className={skips.has(r.row_no) ? "text-ink-muted" : r.issues.length ? "bg-amber-50" : ""}>
-                    <td className="px-2 py-1.5">
-                      <input type="checkbox" aria-label={`Include row ${r.row_no}`} checked={!skips.has(r.row_no)} disabled={phase === "running"}
-                        onChange={(e) => setSkips((s) => { const n = new Set(s); if (e.target.checked) n.delete(r.row_no); else n.add(r.row_no); return n; })} className="h-5 w-5" />
-                    </td>
-                    <td className="px-2 py-1.5 font-mono text-13">{r.row_no}</td>
-                    <td className="px-2 py-1.5">{r.raw.title ?? <em className="text-red-700">no title</em>}{r.raw.legacy_reference ? <span className="ml-1 text-13 text-ink-muted">({r.raw.legacy_reference})</span> : null}</td>
-                    <td className="px-2 py-1.5 text-13">{[r.raw.client_name, r.raw.client_phone, r.raw.client_email].filter(Boolean).join(" · ")}</td>
-                    <td className="px-2 py-1.5 text-13">{r.raw.status ?? "new inquiry"}</td>
-                    <td className="px-2 py-1.5 text-13">{r.raw.opened_on ?? "today"}</td>
-                    <td className="px-2 py-1.5 text-13">
-                      {r.dupe && <span className="block text-amber-900">{r.dupe.reason} ({r.dupe.reference})</span>}
-                      {r.issues.map((i) => <span key={i} className="block text-amber-900">{i}</span>)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table density="compact" className="max-h-[60vh] overflow-auto rounded-card border border-hairline">
+            <THead className="sticky top-0 bg-sunken">
+              <TR>
+                <TH>In</TH><TH>#</TH><TH>Title</TH><TH>Client</TH><TH>Status</TH><TH>Opened</TH><TH>Notes</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {rows.map((r) => (
+                <TR key={r.row_no} className={skips.has(r.row_no) ? "text-ink-muted" : r.issues.length ? "bg-amber-50" : ""}>
+                  <TD>
+                    <input type="checkbox" aria-label={`Include row ${r.row_no}`} checked={!skips.has(r.row_no)} disabled={phase === "running"}
+                      onChange={(e) => setSkips((s) => { const n = new Set(s); if (e.target.checked) n.delete(r.row_no); else n.add(r.row_no); return n; })} className="size-6" />
+                  </TD>
+                  <TD className="font-mono">{r.row_no}</TD>
+                  <TD>{r.raw.title ?? <em className="text-red-700">no title</em>}{r.raw.legacy_reference ? <span className="ml-1 text-ink-muted">({r.raw.legacy_reference})</span> : null}</TD>
+                  <TD>{[r.raw.client_name, r.raw.client_phone, r.raw.client_email].filter(Boolean).join(" · ")}</TD>
+                  <TD>{r.raw.status ?? "new inquiry"}</TD>
+                  <TD>{r.raw.opened_on ?? "today"}</TD>
+                  <TD>
+                    {r.dupe && <span className="block text-amber-900">{r.dupe.reason} ({r.dupe.reference})</span>}
+                    {r.issues.map((i) => <span key={i} className="block text-amber-900">{i}</span>)}
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
           <div className="flex flex-wrap gap-3">
             <Button type="button" size="lg" onClick={() => void run()} pending={phase === "running"} disabled={discarding || inCount === 0}>{batch ? "Retry from where it stopped" : `File ${inCount} ${inCount === 1 ? "matter" : "matters"}`}</Button>
             <Button type="button" variant="ghost" pending={phase === "running"} disabled={batch !== null} onClick={() => setPhase("map")}>Back to the columns</Button>

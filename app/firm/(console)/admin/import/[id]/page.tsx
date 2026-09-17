@@ -12,6 +12,7 @@ import { firmStaff, requestedFirmId, staffContext, staffLabel } from "@/lib/firm
 import { formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import type { ImportBatchRow, ImportRowRecord } from "@/lib/db/types";
 import { CopyButton } from "../../../matters/[id]/matter-tabs";
 import { ContinueImport, DiscardImport, ResultsDownload } from "./results-actions";
@@ -157,27 +158,25 @@ export default async function ImportResultPage({ params, searchParams }: { param
 
       <Card>
         <CardHeader title="Row by row" />
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-15">
-            <thead className="bg-sunken text-13 uppercase tracking-wide text-ink-muted">
-              <tr><th className="px-3 py-2">#</th><th className="px-3 py-2">Title</th><th className="px-3 py-2">Outcome</th><th className="px-3 py-2">On Docket as</th><th className="px-3 py-2">Note</th></tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => {
-                const m = r.matter_id ? matters.get(r.matter_id) : null;
-                return (
-                  <tr key={r.id} className={r.outcome === "failed" ? "bg-red-50" : r.outcome === "skipped" ? "text-ink-muted" : ""}>
-                    <td className="px-3 py-2 font-mono text-13">{r.row_no}</td>
-                    <td className="px-3 py-2">{r.raw.title ?? ""}{r.raw.legacy_reference ? <span className="ml-1 text-13 text-ink-muted">({r.raw.legacy_reference})</span> : null}</td>
-                    <td className="px-3 py-2 text-13">{r.outcome ?? "waiting"}</td>
-                    <td className="px-3 py-2 text-13">{m ? <Link href={`/firm/matters/${m.id}`} className="text-brand underline">{m.reference}</Link> : ""}</td>
-                    <td className="px-3 py-2 text-13">{r.note ?? ""}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <Table density="compact">
+          <THead>
+            <TR><TH>#</TH><TH>Title</TH><TH>Outcome</TH><TH>On Docket as</TH><TH>Note</TH></TR>
+          </THead>
+          <TBody>
+            {rows.map((r) => {
+              const m = r.matter_id ? matters.get(r.matter_id) : null;
+              return (
+                <TR key={r.id} className={r.outcome === "failed" ? "bg-red-50" : r.outcome === "skipped" ? "text-ink-muted" : ""}>
+                  <TD className="font-mono">{r.row_no}</TD>
+                  <TD>{r.raw.title ?? ""}{r.raw.legacy_reference ? <span className="ml-1 text-ink-muted">({r.raw.legacy_reference})</span> : null}</TD>
+                  <TD>{r.outcome ?? "waiting"}</TD>
+                  <TD>{m ? <Link href={`/firm/matters/${m.id}`} className="text-brand underline">{m.reference}</Link> : ""}</TD>
+                  <TD>{r.note ?? ""}</TD>
+                </TR>
+              );
+            })}
+          </TBody>
+        </Table>
         <p className="px-3 py-2 text-13 text-ink-muted">Up to 5,000 rows are shown.</p>
       </Card>
     </div>

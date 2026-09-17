@@ -15,6 +15,7 @@ import { PURPOSE_KINDS, type StageNoticesResult } from "@/lib/db/types";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 
 const field = "mt-1 block w-full min-h-11 rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]";
 
@@ -170,16 +171,16 @@ export function StageForm({ registryId }: { registryId: string }) {
                   ))}
                 </div>
                 {rows.length > 0 && (
-                  <div className="overflow-x-auto rounded-lg border border-hairline">
-                    <table className="w-full text-left text-13">
-                      <thead className="bg-sunken text-ink-muted"><tr><th className="px-2 py-1">Suit</th><th className="px-2 py-1">Day</th><th className="px-2 py-1">Time</th><th className="px-2 py-1">Purpose</th></tr></thead>
-                      <tbody>
+                  <div className="rounded-card border border-hairline">
+                    <Table density="compact">
+                      <THead><TR><TH>Suit</TH><TH>Day</TH><TH>Time</TH><TH>Purpose</TH></TR></THead>
+                      <TBody>
                         {rows.slice(0, 8).map((r, i) => (
-                          <tr key={i} className="border-t border-hairline"><td className="px-2 py-1 font-mono">{r.suit_number || "—"}</td><td className="px-2 py-1">{r.listed_on || "—"}</td><td className="px-2 py-1">{r.listed_time ?? ""}</td><td className="px-2 py-1">{r.purpose ?? r.purpose_kind ?? ""}</td></tr>
+                          <TR key={i}><TD className="font-mono">{r.suit_number || "—"}</TD><TD>{r.listed_on || "—"}</TD><TD>{r.listed_time ?? ""}</TD><TD>{r.purpose ?? r.purpose_kind ?? ""}</TD></TR>
                         ))}
-                      </tbody>
-                    </table>
-                    {rows.length > 8 && <p className="px-2 py-1 text-13 text-ink-muted">…and {rows.length - 8} more</p>}
+                      </TBody>
+                    </Table>
+                    {rows.length > 8 && <p className="px-3 py-2 text-13 text-ink-muted">…and {rows.length - 8} more</p>}
                   </div>
                 )}
                 <Button pending={busy} disabled={!mappedRequired || rows.length === 0} onClick={() => void stage(rows)}>

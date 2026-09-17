@@ -27,6 +27,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { Input, Select } from "@/components/ui/input";
 import { SettingRow, Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/cn";
@@ -1081,29 +1082,27 @@ function DomainSection({ firmId, firmSlug, customDomain, openRequest, decidedReq
             {openRequest.note ? ` Docket says: ${openRequest.note}` : ""}
           </Alert>
           {records.length > 0 ? (
-            <div className="overflow-x-auto rounded-lg border border-hairline">
-              <table className="w-full min-w-[24rem] text-left text-15">
-                <thead className="bg-sunken text-13 uppercase tracking-wide text-ink-muted">
-                  <tr>
-                    <th scope="col" className="px-3 py-2">Type</th>
-                    <th scope="col" className="px-3 py-2">Name</th>
-                    <th scope="col" className="px-3 py-2">Value</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-hairline">
-                  {records.map((r, i) => (
-                    <tr key={`${text(r.type)}-${text(r.domain)}-${i}`}>
-                      <td className="px-3 py-2 font-medium text-ink">{text(r.type) || "—"}</td>
-                      <td className="break-all px-3 py-2 text-ink"><code>{text(r.domain) || "—"}</code></td>
-                      <td className="break-all px-3 py-2 text-ink">
-                        <code>{text(r.value) || "—"}</code>
-                        {text(r.reason) && <p className="mt-1 text-13 text-ink-muted">{text(r.reason)}</p>}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <Table density="compact" className="rounded-card border border-hairline">
+              <THead>
+                <TR>
+                  <TH>Type</TH>
+                  <TH>Name</TH>
+                  <TH>Value</TH>
+                </TR>
+              </THead>
+              <TBody>
+                {records.map((r, i) => (
+                  <TR key={`${text(r.type)}-${text(r.domain)}-${i}`}>
+                    <TD className="font-medium">{text(r.type) || "—"}</TD>
+                    <TD className="break-all"><code>{text(r.domain) || "—"}</code></TD>
+                    <TD className="break-all">
+                      <code>{text(r.value) || "—"}</code>
+                      {text(r.reason) && <p className="mt-1 text-ink-muted">{text(r.reason)}</p>}
+                    </TD>
+                  </TR>
+                ))}
+              </TBody>
+            </Table>
           ) : (
             <p className="text-15 text-ink-muted">
               No DNS records to add yet. When Docket starts verifying, the records appear here. In
