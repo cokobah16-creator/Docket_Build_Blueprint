@@ -713,7 +713,16 @@ export function SignInForms({
       const { error: err } = await client.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectNext)}`,
+          // flow=google IS NOT DECORATION. This is the same callback the emailed magic link comes
+          // home to, and a cancelled Google consent screen arrives there carrying access_denied —
+          // the same error_code a magic link that has already been spent carries. Nothing else in
+          // the parameters separates them, so without this marker somebody who tapped the button
+          // and then changed their mind was told a sign-in link had expired and invited to type a
+          // code from an email that was never sent. Supabase stores this whole URL against the
+          // OAuth state and returns the browser to it, error parameters appended, so the marker
+          // survives the round trip through Google. If the state is lost, Supabase falls back to
+          // SITE_URL, the marker goes with it, and the copy degrades to the generic sentence.
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectNext)}&flow=google`,
         },
       });
       // Only reached when the handshake never started; on success the browser has already left.

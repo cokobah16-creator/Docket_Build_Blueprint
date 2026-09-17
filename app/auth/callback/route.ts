@@ -54,6 +54,13 @@ export async function GET(request: Request) {
     errorCode: url.searchParams.get("error_code"),
     hasCode: Boolean(code),
     exchangeFailed,
+    // WHICH WAY IN THIS WAS, which the parameters themselves do not say. Google's PKCE handshake
+    // ends here exactly as a magic link does, and a cancelled consent screen arrives carrying
+    // access_denied — the same error_code a spent magic link carries. Without this, somebody who
+    // tapped "Continue with Google" and changed their mind was told a sign-in link had expired and
+    // invited to type the code from an email nobody had sent. Docket put ?flow=google on its own
+    // redirect_to (src/components/auth/sign-in-forms.tsx), and Supabase hands the whole URL back.
+    flow: url.searchParams.get("flow"),
   });
 
   if (reason) {

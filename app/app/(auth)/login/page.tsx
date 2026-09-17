@@ -12,7 +12,7 @@
 // is now served the strict nonce policy like everything else.
 
 import { safeNext } from "@/lib/auth-redirect";
-import { callbackMessage } from "@/lib/auth-errors";
+import { callbackMessage, callbackTitle } from "@/lib/auth-errors";
 import { ClientLoginPanel } from "./client-login";
 
 export const metadata = { title: "Sign in" };
@@ -31,10 +31,14 @@ export default async function ClientLoginPage({
   // A key, never a sentence: app/auth/callback/route.ts puts it on the URL and this looks it up,
   // so nothing GoTrue said ends up in browser history or a Referer header.
   const problem = callbackMessage(params.reason);
+  // The heading has to move with the sentence. Google comes home to the same callback as the
+  // emailed link, and "That link did not sign you in" over a paragraph about a Google consent
+  // screen is a heading contradicting its own paragraph.
+  const problemTitle = callbackTitle(params.reason);
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
-      <ClientLoginPanel next={next} problem={problem} />
+      <ClientLoginPanel next={next} problem={problem} problemTitle={problemTitle} />
     </main>
   );
 }

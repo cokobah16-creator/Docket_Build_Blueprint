@@ -21,10 +21,13 @@ import { Alert } from "@/components/ui/alert";
 export function StaffLoginForm({
   next,
   problem,
+  problemTitle,
 }: {
   next: string | null;
   /** Why the link that brought them here did not work, if that is how they arrived. */
   problem?: string | null;
+  /** The heading for it, decided with the sentence in src/lib/auth-errors.ts. */
+  problemTitle?: string | null;
 }) {
   const router = useRouter();
   const supabase = supabaseBrowser();
@@ -86,7 +89,7 @@ export function StaffLoginForm({
         Sign in with your firm email. Two-factor authentication is required.
       </p>
       {problem && (
-        <Alert kind="warning" title="That link did not sign you in" className="mt-4">
+        <Alert kind="warning" title={problemTitle ?? "That link did not sign you in"} className="mt-4">
           {problem}
         </Alert>
       )}

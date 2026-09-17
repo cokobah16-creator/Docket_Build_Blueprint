@@ -122,6 +122,25 @@ export const WHATSAPP_NOT_SENT =
 export const GOOGLE_UNAVAILABLE =
   "Signing in with Google is not available right now. Use the phone number or email your firm has for you.";
 
+/**
+ * The Google round trip came back without a session — which is NOT the same failure as a link.
+ *
+ * Google and the emailed magic link come home to the same route, so for a while they got the same
+ * sentence, and that sentence talked about an email. Somebody who tapped "Continue with Google",
+ * thought better of it at the consent screen and pressed Cancel was told that a sign-in link may
+ * have expired or been opened in a different browser, and invited to type a code from an email
+ * nobody had sent them. Google returns access_denied for a cancelled consent, which is the same
+ * error_code a spent magic link arrives with; nothing in the parameters tells the two apart, so
+ * the caller has to say which flow it is (app/auth/callback/route.ts, ?flow=google).
+ *
+ * BLAMES NOBODY, because the commonest cause is not a fault at all. Cancelling is a decision, and
+ * a decision should not be reported as an error with a remedy attached to it. The other two ways
+ * in are named because they are what the person does next, whichever it was.
+ */
+export const GOOGLE_DID_NOT_FINISH =
+  "That Google sign-in did not finish, so you are not signed in. Nothing has changed — try Google " +
+  "again, or use the phone number or email your firm has for you.";
+
 /** Phone sign-in refused for a reason that is about the number, said without saying which. */
 export const PHONE_NO_ENTRY =
   "We could not sign you in with that number. Check it, or use the email address your firm has for you.";
@@ -326,13 +345,28 @@ export function signInProblem(step: SignInStep, failure: AuthFailureShape): Sign
  * are already sitting in inboxes, and nothing GoTrue said is ever carried in a query string a
  * browser will log, put in a Referer header or keep in history.
  */
-export type CallbackReason = "link" | "trouble";
+export type CallbackReason = "link" | "trouble" | "google";
 
 /** The sentence for a ?reason= on the sign-in page. An unknown key says nothing rather than guessing. */
 export function callbackMessage(reason: string | null | undefined): string | null {
   if (reason === "link") return LINK_DID_NOT_WORK;
   if (reason === "trouble") return SIGN_IN_TROUBLE;
+  if (reason === "google") return GOOGLE_DID_NOT_FINISH;
   return null;
+}
+
+/**
+ * The heading above that sentence.
+ *
+ * It lives here rather than in the two panels that render it because it was hardcoded in both, as
+ * "That link did not sign you in" — true of a magic link and false of everything else that now
+ * comes home to the same route. A heading that contradicts the paragraph under it is worse than no
+ * heading, and two copies of it would have needed fixing twice.
+ */
+export function callbackTitle(reason: string | null | undefined): string {
+  if (reason === "google") return "Google did not sign you in";
+  if (reason === "trouble") return "That sign-in did not work";
+  return "That link did not sign you in";
 }
 
 /**
@@ -351,22 +385,43 @@ export function callbackMessage(reason: string | null | undefined): string | nul
  * exchangeCodeForSession(code)` — with the same silent bounce afterwards.
  *
  * Both are the same thing to the person holding the phone, and both get the same key.
+ *
+ * A THIRD WAY IN NOW SHARES THE ROUTE, and it is not an email at all. Google's PKCE handshake comes
+ * home to /auth/callback exactly as a magic link does, with the same parameters spelled the same
+ * way: cancel the Google consent screen and the browser arrives carrying access_denied, which is
+ * the same error_code a magic link that has already been spent arrives with. There is nothing in
+ * the parameters to tell them apart — so `flow` is passed in from the callback, which knows,
+ * because it is on the redirect_to Docket itself constructed (?flow=google).
+ *
+ * WHEN THE FLOW IS GOOGLE, EVERY FAILURE IS A GOOGLE FAILURE, and the error codes are not consulted
+ * at all. Splitting them finer would only invent distinctions the person cannot act on — a
+ * cancelled consent, a client Google will not honour, and a verifier this browser does not hold all
+ * leave them in one place with the same two alternatives — and every extra branch is another chance
+ * to tell somebody who never typed an address to go and read their email.
+ *
+ * `flow` arrives from a query string, so it is attacker-supplied like everything else here. The
+ * worst it can do is put the Google sentence on a link failure, which is a wrong sentence and not
+ * a wrong outcome: no branch of this function decides anything but which words are shown.
  */
 export function callbackReason(params: {
   error: string | null;
   errorCode: string | null;
   hasCode: boolean;
   exchangeFailed: boolean;
+  /** "google" when this callback is the far end of signInWithOAuth rather than an emailed link. */
+  flow?: string | null;
 }): CallbackReason | null {
-  const { error, errorCode, hasCode, exchangeFailed } = params;
+  const { error, errorCode, hasCode, exchangeFailed, flow } = params;
   const said = `${error ?? ""} ${errorCode ?? ""}`.toLowerCase();
+  const viaGoogle = flow === "google";
 
   // GoTrue refused before we were reached. otp_expired is the common one; access_denied covers a
-  // link that has already been spent.
+  // link that has already been spent — and, on the Google flow, a consent screen someone cancelled.
   if (error || errorCode) {
+    if (viaGoogle) return "google";
     return /otp_expired|access_denied|invalid_request|unauthorized_client/.test(said) ? "link" : "trouble";
   }
-  if (exchangeFailed) return "link";
+  if (exchangeFailed) return viaGoogle ? "google" : "link";
   // No code, no error, nothing to exchange: somebody typed the callback URL, or a scanner followed
   // it and stripped the query. There is nothing to report and nothing to sign in.
   if (!hasCode) return null;
