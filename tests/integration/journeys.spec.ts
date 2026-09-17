@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { createHmac } from "node:crypto";
 
 // ---------------------------------------------------------------------------
@@ -121,7 +121,24 @@ async function freshTotp(secret: string): Promise<string> {
 // Sign-in helpers
 // ---------------------------------------------------------------------------
 
+// The client's session, once obtained, reused for the rest of the worker. Playwright gives every
+// test a fresh browser context, so without this each test asks GoTrue for a new phone code — six
+// per run — and GoTrue keeps a minimum interval between codes to one number (sms max_frequency,
+// a minute by default) as well as an hourly ceiling. On 17 Sep 2026 the sixth request in a run
+// came under a minute after the fifth, GoTrue refused it, and the code field never appeared. The
+// first test to need the client still signs in through the form, so that journey is exercised
+// once per run; what the later tests claim is about a signed-in client, not about signing in.
+let clientSession: Awaited<ReturnType<BrowserContext["storageState"]>> | null = null;
+
 async function signInClient(page: Page) {
+  if (clientSession) {
+    await page.context().addCookies(clientSession.cookies);
+    await page.goto("/app");
+    await expect(page, "the reused client session was not honoured").toHaveURL(/\/app(\/|$)/, { timeout: 30_000 });
+    await expect(page).not.toHaveURL(/\/app\/login/);
+    return;
+  }
+
   await page.goto("/app/login");
   await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
 
@@ -137,6 +154,7 @@ async function signInClient(page: Page) {
 
   await expect(page).toHaveURL(/\/app(\/|$)/, { timeout: 30_000 });
   await expect(page).not.toHaveURL(/\/app\/login/);
+  clientSession = await page.context().storageState();
 }
 
 async function signInStaff(page: Page) {
