@@ -19,6 +19,7 @@ import { formatDay, todayIn } from "@/lib/days";
 import { formatWhen } from "@/lib/time";
 import { COURT_LEVEL_LABELS, NG_STATES } from "@/lib/nigeria";
 import {
+import { EmptyState } from "@/components/ui/card";
   courtDateProvenance, DEADLINE_TRIGGER_LABELS, DEADLINE_TRIGGERS,
   type CauseListRow, type CourtRuleRow, type DeadlineCalculation, type DeadlineTrigger, type FirmDeadlineRow, type RuleProvisionRow,
 } from "@/lib/db/types";
@@ -196,7 +197,7 @@ export function DeadlinesPanel({
           <h3 className="text-base font-semibold text-ink">Court dates, and where each came from</h3>
         </div>
         {courtEvents.length === 0 ? (
-          <p className="px-5 pb-5 text-15 text-ink-muted">No court date is open on this matter.</p>
+          <EmptyState title="No court date is open on this matter" />
         ) : (
           <ul className="divide-y divide-hairline">
             {courtEvents.map((ev) => {
@@ -321,7 +322,7 @@ export function DeadlinesPanel({
         )}
 
         {live.length === 0 ? (
-          <p className="border-t border-hairline px-5 py-4 text-15 text-ink-muted">No deadline is open on this matter.</p>
+          <div className="border-t border-hairline"><EmptyState title="No deadline is open on this matter" /></div>
         ) : (
           <ul className="divide-y divide-hairline border-t border-hairline">
             {live.map((d) => (

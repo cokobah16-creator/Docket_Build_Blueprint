@@ -21,6 +21,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { formatWhen } from "@/lib/time";
 import type { AdversePartyRow, ConflictCheckRow, ConflictMatch } from "@/lib/db/types";
+import { EmptyState } from "@/components/ui/card";
 
 const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
 
@@ -185,7 +186,7 @@ export function ConflictsPanel({
         )}
 
         {checks.length === 0 ? (
-          <p className="mt-3 text-15 text-ink-muted">No check has been run on this matter.</p>
+          <EmptyState title="No check has been run on this matter" />
         ) : (
           <ul className="mt-3 space-y-3">
             {checks.map((c) => (

@@ -14,7 +14,7 @@ import { useRouter } from "next/navigation";
 import { retireDocumentTemplate, saveDocumentTemplate } from "@/lib/actions/templates";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { MATTER_TYPES, TEMPLATE_PLACEHOLDERS, type DocumentTemplateRow, type TemplateExecution } from "@/lib/db/types";
 
 const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
@@ -86,7 +86,7 @@ export function TemplatesEditor({ firmId, templates, canWrite, timezone }: { fir
         <CardBody>
           <p className="mb-3 text-13 text-ink-muted">A document is generated from one of these on a matter&apos;s Documents tab.</p>
           {templates.length === 0 ? (
-            <p className="text-15 text-ink-muted">No templates yet. An engagement letter is the usual first one.</p>
+            <EmptyState title="No templates yet" hint="An engagement letter is the usual first one." />
           ) : (
             <ul className="divide-y divide-hairline">
               {templates.map((t) => (

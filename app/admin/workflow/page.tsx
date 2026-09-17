@@ -2,7 +2,7 @@
 // and the form that publishes the next one. A version is immutable; firms install what they choose.
 
 import { Alert } from "@/components/ui/alert";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { platformContext } from "@/lib/admin-data";
 import { formatWhen } from "@/lib/time";
 import type { WorkflowPackRow } from "@/lib/db/types";
@@ -26,7 +26,7 @@ export default async function AdminWorkflowPage() {
       <Card>
         <CardHeader title="Published" />
         <CardBody>
-          {packs.length === 0 ? <p className="text-15 text-ink-muted">Nothing published yet.</p> : (
+          {packs.length === 0 ? <EmptyState title="Nothing published yet" /> : (
             <ul className="divide-y divide-hairline">
               {packs.map((p) => (
                 <li key={`${p.key}-${p.version}`} className="py-2 text-15">

@@ -7,7 +7,7 @@ import { clientTimezone } from "@/lib/portal-data";
 import { formatDay } from "@/lib/days";
 import { formatMoneyMinor } from "@/lib/money";
 import { startInvoicePayment } from "@/lib/actions/portal";
-import { Card, CardBody } from "@/components/ui/card";
+import { Card, CardBody, EmptyState } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Timeline } from "@/components/portal/timeline";
@@ -177,7 +177,7 @@ async function InvoicesSection({ supabase, matterId, tz }: { supabase: SB; matte
     .eq("matter_id", matterId)
     .order("issued_at", { ascending: false });
   const invoices = (data ?? []) as Array<{ id: string; number: string; status: string; currency: string; total_minor: number; paid_minor: number; issued_at: string | null; due_at: string | null }>;
-  if (invoices.length === 0) return <p className="px-5 py-8 text-center text-15 text-ink-muted">No invoices on this matter.</p>;
+  if (invoices.length === 0) return <EmptyState title="No invoices on this matter" />;
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: tz });
   return (
     <ul className="divide-y divide-hairline">
