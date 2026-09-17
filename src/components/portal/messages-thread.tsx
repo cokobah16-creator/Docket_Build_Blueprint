@@ -75,8 +75,13 @@ export function MessagesThread({
     const supabase = supabaseBrowser();
     if (!supabase) return;
     const filter = matterId ? `matter_id=eq.${matterId}` : `appointment_id=eq.${appointmentId}`;
+    // One topic per mount. The browser client is a singleton and realtime-js hands back an
+    // existing channel for a repeated topic, so a mount, unmount and mount again on the same
+    // thread — which React's strict mode does on every mount in development — would reuse a
+    // channel that is still leaving, and a channel can be subscribed once. The suffix makes each
+    // mount its own subscription; the id check below makes a duplicate delivery harmless.
     const channel = supabase
-      .channel(`messages-${matterId ?? appointmentId}`)
+      .channel(`messages-${matterId ?? appointmentId}-${crypto.randomUUID()}`)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages", filter }, (payload) => {
         const row = payload.new as MessageRow;
         setMessages((cur) => (cur.some((m) => m.id === row.id) ? cur : [...cur, row]));
@@ -136,7 +141,13 @@ export function MessagesThread({
     setBusy("Sending…");
     try {
       const r = await sendMessage({ firmId, matterId, appointmentId, body, attachments, id: draft.value.id });
-      if (r?.error) { setError(r.error); return; }
+      if (r && "error" in r) { setError(r.error); return; }
+      // The database's copy, shown at once. Realtime may deliver the same row a moment later;
+      // the id check keeps it to one.
+      if (r && "message" in r) {
+        const row = r.message;
+        setMessages((cur) => (cur.some((m) => m.id === row.id) ? cur : [...cur, row]));
+      }
       draft.clear();
       setAttemptLost(false);
       // A new id for whatever is written next, so the sent message's id is never reused.

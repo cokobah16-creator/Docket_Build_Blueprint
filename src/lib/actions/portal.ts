@@ -11,7 +11,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { siteOrigin } from "@/lib/site";
 import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
 import { SELECTED_FIRM_COOKIE, clientFirms } from "@/lib/portal-firm";
-import type { MessageAttachment } from "@/lib/db/types";
+import type { MessageAttachment, MessageRow } from "@/lib/db/types";
 
 type Err = { error: string } | undefined;
 
@@ -166,14 +166,19 @@ export async function sendMessage(input: {
   firmId: string; matterId: string | null; appointmentId: string | null; body: string; attachments: MessageAttachment[];
   /** Minted by the composer per message: a retry after a lost reply lands once, on the key. */
   id?: string | null;
-}): Promise<Err> {
+}): Promise<Err | { message: MessageRow }> {
   const { supabase, user } = await userClient();
   if (!supabase || !user) return { error: "Sign in first." };
   const body = input.body.trim();
   if (!body && input.attachments.length === 0) return { error: "Write a message or attach a document." };
   if (body.length > 4000) return { error: "Keep messages under 4,000 characters." };
   const id = input.id && z.string().uuid().safeParse(input.id).success ? input.id : undefined;
-  const { error } = await supabase.from("messages").insert({
+  // The row comes back with the insert, so the composer can show the message the database
+  // holds — its id, its timestamp — rather than wait for Realtime to echo it. The first CI run of
+  // the journeys (17 Sep 2026) sent a message that landed and then watched an empty thread for
+  // thirty seconds: the echo is a second channel, and a message a person has sent must not
+  // depend on it to be seen.
+  const { data, error } = await supabase.from("messages").insert({
     ...(id ? { id } : {}),
     firm_id: input.firmId,
     matter_id: input.matterId,
@@ -181,13 +186,21 @@ export async function sendMessage(input: {
     sender_id: user.id,
     body: body || null,
     attachments: input.attachments.slice(0, 5),
-  });
+  }).select(MESSAGE_COLUMNS).single();
   // The same message sent twice (a retry whose first reply was lost) is refused by the primary
-  // key: that is success, not a failure to show.
-  if (error && error.code === "23505" && id) return undefined;
+  // key: that is success, not a failure to show — and the row that landed the first time is the
+  // one to show.
+  if (error && error.code === "23505" && id) {
+    const { data: landed } = await supabase.from("messages").select(MESSAGE_COLUMNS).eq("id", id).maybeSingle();
+    return landed ? { message: landed as MessageRow } : undefined;
+  }
+  // Inserted, but not readable back by its sender: the row is there, and there is nothing to show
+  // for it beyond what Realtime or a reload will bring. Not an error to report.
+  if (error && error.code === "PGRST116") return undefined;
   if (error) return { error: error.message };
-  return undefined;
+  return { message: data as MessageRow };
 }
+const MESSAGE_COLUMNS = "id, firm_id, matter_id, appointment_id, sender_id, body, attachments, read_at, reads_tracked, created_at";
 
 /** Retire a documents row that never received its file: an upload that stopped. retire_empty_document() decides. */
 export async function retireEmptyDocument(documentId: string): Promise<Err> {
