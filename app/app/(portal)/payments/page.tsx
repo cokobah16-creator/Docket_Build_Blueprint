@@ -5,7 +5,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { formatMoneyMinor } from "@/lib/money";
 import { Card, CardBody, EmptyState } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
-import { Screen } from "@/components/portal/screen";
+import { Screen, ScreenTitle } from "@/components/portal/screen";
 
 export const metadata = { title: "Payments" };
 
@@ -26,7 +26,7 @@ export default async function PaymentsPage() {
 
   return (
     <Screen>
-      <h1 className="font-heading text-26 font-semibold text-brand">Payments</h1>
+      <ScreenTitle>Payments</ScreenTitle>
       <Card>
         {invoices.length === 0 ? (
           <EmptyState title="No invoices yet" hint="Consultation fees and matter invoices appear here with receipts." />

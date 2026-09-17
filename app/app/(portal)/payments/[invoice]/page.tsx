@@ -8,7 +8,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { startInvoicePayment } from "@/lib/actions/portal";
-import { Screen } from "@/components/portal/screen";
+import { Screen, ScreenTitle } from "@/components/portal/screen";
 import { PayPanel } from "@/components/portal/pay-panel";
 import type { PaymentChannel } from "@/lib/providers/payments";
 
@@ -60,7 +60,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     <Screen>
       <header className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand">{inv.status === "paid" ? "Receipt" : "Invoice"} {inv.number}</h1>
+          <ScreenTitle>{inv.status === "paid" ? "Receipt" : "Invoice"} {inv.number}</ScreenTitle>
           <p className="mt-1 text-13 text-ink-muted">{firm?.legal_name ?? firm?.name ?? "Your firm"}</p>
         </div>
         <StatusPill status={inv.status as Status} />

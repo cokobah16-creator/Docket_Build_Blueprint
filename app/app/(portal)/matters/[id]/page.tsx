@@ -13,7 +13,7 @@ import { Alert } from "@/components/ui/alert";
 import { Timeline } from "@/components/portal/timeline";
 import { DocumentsTab, type DocumentWithVersion } from "@/components/portal/documents-tab";
 import { MessagesThread } from "@/components/portal/messages-thread";
-import { Screen, ScreenHeader } from "@/components/portal/screen";
+import { Screen, ScreenHeader, ScreenTitle } from "@/components/portal/screen";
 import { WithAside } from "@/components/shell/layout";
 import { cn } from "@/lib/cn";
 import type { DocumentRow, DocumentSignatureRow, DocumentVersionRow, MatterRow, MatterStatus, MessageRow, UpdateRow, DocumentRequestRow } from "@/lib/db/types";
@@ -88,7 +88,7 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
       <ScreenHeader back="/app/matters" backLabel="Back to matters" title={matter.reference} titleAs="mono" />
       <Screen>
         <header>
-          <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand md:text-26">{matter.title}</h1>
+          <ScreenTitle>{matter.title}</ScreenTitle>
           <p className="mt-1 text-13 text-ink-muted">{firm?.name ?? "Your firm"}{lawyers.length ? ` · ${lawyers.map((l) => l.full_name ?? l.title).join(", ")}` : ""}</p>
         </header>
 

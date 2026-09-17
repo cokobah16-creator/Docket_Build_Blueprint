@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { firmById } from "@/lib/tenant";
 import { ConsultationRoom } from "@/components/video/consultation-room";
 import { Alert } from "@/components/ui/alert";
-import { Screen, ScreenHeader } from "@/components/portal/screen";
+import { Screen, ScreenHeader, ScreenTitle } from "@/components/portal/screen";
 
 export const metadata = { title: "Waiting room" };
 
@@ -45,7 +45,7 @@ export default async function WaitingRoomPage({ params }: { params: Promise<{ id
       <ScreenHeader back={`/app/appointments/${appt.id}`} backLabel={`Back to appointment ${appt.reference}`} title="Waiting room" />
       <Screen>
         <header>
-          <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand">{svc?.name ?? "Consultation"}</h1>
+          <ScreenTitle>{svc?.name ?? "Consultation"}</ScreenTitle>
           <dl className="mt-2.5 space-y-1.5 text-13">
             <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-ink-muted">With</dt><dd className="font-semibold text-ink">{lawyerName}{law?.title ? ` · ${law.title}` : ""}</dd></div>
             <div className="flex gap-2.5"><dt className="w-[62px] shrink-0 text-ink-muted">When</dt><dd className="font-semibold text-ink">{when} <span className="font-normal text-ink-muted">({tz})</span></dd></div>

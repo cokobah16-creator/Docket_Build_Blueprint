@@ -8,6 +8,7 @@ import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
 import { startPayment } from "@/lib/actions/booking";
+import { ScreenTitle } from "@/components/portal/screen";
 
 export function PaymentResult({
   appointmentId, reference, initialStatus, holdExpiresAt, startsAt, timezone, invoiceId, invoiceNumber, amount, bookHref,
@@ -68,9 +69,7 @@ export function PaymentResult({
           <span className="grid size-[62px] place-items-center rounded-full border border-[#A7D8BE] bg-[#ECFDF3] text-[#05603A]">
             <Icon name="check" size={30} strokeWidth={2.4} />
           </span>
-          <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand">
-            Booked and paid
-          </h1>
+          <ScreenTitle>Booked and paid</ScreenTitle>
           <p className="max-w-[280px] text-13 leading-relaxed text-ink-muted">
             {when} ({timezone}). A receipt is on its way to your email.
           </p>

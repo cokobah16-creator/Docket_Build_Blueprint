@@ -5,7 +5,8 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { clientTimezone, firmNamesFor } from "@/lib/portal-data";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { courtDateProvenance, type CourtEventRow } from "@/lib/db/types";
-import { Screen } from "@/components/portal/screen";
+import { Screen, ScreenTitle } from "@/components/portal/screen";
+import { buttonClasses } from "@/components/ui/button";
 
 export const metadata = { title: "Court dates" };
 
@@ -56,8 +57,8 @@ export default async function CourtDatesPage() {
   return (
     <Screen>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-heading text-26 font-semibold text-brand">Court dates</h1>
-        <a href="/app/court-dates/ics" className="rounded-lg border border-edge px-3 py-1.5 text-15 font-medium text-brand hover:bg-hover">Add to calendar (.ics)</a>
+        <ScreenTitle>Court dates</ScreenTitle>
+        <a href="/app/court-dates/ics" className={buttonClasses("ghost", "sm")}>Add to calendar (.ics)</a>
       </div>
       <p className="text-15 text-ink-muted">Every court date across your matters and firms, shown in {tz}.</p>
       <Card>

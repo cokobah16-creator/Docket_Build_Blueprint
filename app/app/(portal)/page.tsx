@@ -21,7 +21,7 @@ import { NotificationsList } from "@/components/portal/notifications-list";
 import { IosInstallHint } from "@/components/portal/pwa-hints";
 import { OfflineBanner } from "@/components/portal/offline-banner";
 import { FirmSwitcher, type FirmChoice } from "@/components/portal/firm-switcher";
-import { Screen } from "@/components/portal/screen";
+import { Screen, ScreenTitle } from "@/components/portal/screen";
 import { WithAside } from "@/components/shell/layout";
 import { DEFAULT_TOKENS } from "@/lib/brand";
 import type { DocumentRow, NotificationRow } from "@/lib/db/types";
@@ -134,9 +134,7 @@ export default async function ClientDashboard() {
         ) : (
           <div className="min-w-0 flex-1">
             {firmLine ?? (
-              <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand md:text-26">
-                Welcome, {displayName}
-              </h1>
+              <ScreenTitle>Welcome, {displayName}</ScreenTitle>
             )}
           </div>
         )}

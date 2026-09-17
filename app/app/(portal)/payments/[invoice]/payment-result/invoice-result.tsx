@@ -11,6 +11,7 @@ import { startInvoicePayment } from "@/lib/actions/portal";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { ScreenTitle } from "@/components/portal/screen";
 
 export function InvoiceResult({ invoiceId, number, initialStatus, totalMinor, paidMinor, currency, matterId }: {
   invoiceId: string; number: string; initialStatus: string; totalMinor: number; paidMinor: number; currency: string; matterId: string | null;
@@ -52,7 +53,7 @@ export function InvoiceResult({ invoiceId, number, initialStatus, totalMinor, pa
 
   return (
     <div className="space-y-5">
-      <h1 className="font-heading text-26 font-semibold text-brand">{done ? "Payment received" : "Confirming your payment"}</h1>
+      <ScreenTitle>{done ? "Payment received" : "Confirming your payment"}</ScreenTitle>
       {error && <Alert kind="error">{error}</Alert>}
       <Card>
         <CardHeader title={`Invoice ${number}`} />
