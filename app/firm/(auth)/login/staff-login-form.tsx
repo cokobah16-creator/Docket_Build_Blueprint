@@ -12,6 +12,7 @@ import { useState, type FormEvent } from "react";
 import { DraftSweeper } from "@/components/ui/connection";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
+import { stitchSignedInVisitor } from "@/lib/actions/analytics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardBody } from "@/components/ui/card";
@@ -20,10 +21,13 @@ import { Alert } from "@/components/ui/alert";
 export function StaffLoginForm({
   next,
   problem,
+  problemTitle,
 }: {
   next: string | null;
   /** Why the link that brought them here did not work, if that is how they arrived. */
   problem?: string | null;
+  /** The heading for it, decided with the sentence in src/lib/auth-errors.ts. */
+  problemTitle?: string | null;
 }) {
   const router = useRouter();
   const supabase = supabaseBrowser();
@@ -51,6 +55,27 @@ export function StaffLoginForm({
     setBusy(false);
     if (err) setError(err.message);
     else {
+      // THE ONLY STAFF SIGN-IN THAT MINTS A SESSION IN THE BROWSER, which is why it is the only
+      // one that needs this. The two-factor screen verifies a factor against a session this call
+      // already created, and the password-recovery screen inherits one from /auth/callback, which
+      // stitches on its own — so neither needs a second join.
+      //
+      // WHAT THIS BUYS TODAY, STATED HONESTLY: nothing in the funnel yet. Every funnel event names
+      // a client — site_viewed and booking_started carry the anonymous cookie, and matter_opened
+      // carries the CLIENT's id even though a lawyer is the one who opened the matter
+      // (src/lib/actions/matters.ts). No event has ever been attributed to a staff account, so
+      // this joins a visitor to an identity that has no events of its own. It is a join waiting
+      // for an event rather than one repairing a broken funnel, and it is here so that the day a
+      // staff-side event is added — a firm registering, a console first used — the join is already
+      // being made instead of being discovered missing a second time.
+      //
+      // The one thing it does change now: a lawyer who browsed their own firm's public site before
+      // signing in had those site_viewed events under the anonymous cookie, and they now belong to
+      // her account. That is staff traffic acquiring a name rather than staying anonymous in the
+      // client funnel's top step — worth knowing when reading that step, and the reason this is
+      // written down rather than left for somebody to find in the data.
+      void stitchSignedInVisitor().catch(() => undefined);
+
       router.replace(next ?? "/firm");
       router.refresh();
     }
@@ -64,7 +89,7 @@ export function StaffLoginForm({
         Sign in with your firm email. Two-factor authentication is required.
       </p>
       {problem && (
-        <Alert kind="warning" title="That link did not sign you in" className="mt-4">
+        <Alert kind="warning" title={problemTitle ?? "That link did not sign you in"} className="mt-4">
           {problem}
         </Alert>
       )}

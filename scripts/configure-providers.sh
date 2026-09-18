@@ -12,7 +12,19 @@
 # Optional:
 #   EXTRA_REDIRECT_URLS     comma-separated extra redirect URLs (preview deployments etc.)
 #   TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_MESSAGE_SERVICE_SID
-#                           when all three are set, phone sign-in is enabled with Twilio
+#                           when all three are set, phone sign-in is enabled with Twilio.
+#                           The message service SID is MG..., NOT the AC... account SID.
+#   RESEND_API_KEY, EMAIL_FROM
+#                           when both are set, Auth sends its mail through Resend instead of
+#                           Supabase's built-in service, which delivers only to members of the
+#                           project's own organisation. Without these, email sign-in does not
+#                           work for anybody outside the team.
+#   EMAIL_RATE_LIMIT_PER_HOUR
+#                           emails per hour Auth will send (default 100). Only settable with
+#                           custom SMTP above; the mail provider's own plan is the real ceiling.
+#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET
+#                           when both are set, Google sign-in is enabled. The redirect URI Google
+#                           needs is Supabase's, not Docket's; the summary prints it.
 #
 # Stripe is intentionally absent (decision 0002).
 # Nothing here is stored in the repo. Run it from a shell where the variables are exported:
@@ -37,6 +49,48 @@ if [ -n "${EXTRA_REDIRECT_URLS:-}" ]; then REDIRECTS="${REDIRECTS},${EXTRA_REDIR
 
 PHONE_JSON=""
 if [ -n "${TWILIO_ACCOUNT_SID:-}" ] && [ -n "${TWILIO_AUTH_TOKEN:-}" ] && [ -n "${TWILIO_MESSAGE_SERVICE_SID:-}" ]; then
+  # A MESSAGING SERVICE SID, NOT THE ACCOUNT SID. Both are 34 characters behind a two-letter prefix
+  # and they are trivially easy to swap; nothing downstream notices until a real person tries to
+  # sign in, at which point Twilio answers
+  #   21212: Invalid From Number (caller ID): AC...
+  # and GoTrue turns that into a 422 on /otp. This project ran with the Account SID in this slot and
+  # no client could receive a code until it was found in the auth logs.
+  #
+  # THE WHOLE SHAPE, NOT THE PREFIX. Checking only for MG catches the Account SID — the failure that
+  # actually happened here — and nothing else. Every Twilio SID is its two letters plus exactly 32
+  # hex characters, so a value truncated by a double-click that stopped at a word boundary, one with
+  # a newline or a trailing quote carried in from a dashboard copy, or one with a stray character
+  # pasted onto the end all still begin MG and all still configure a provider that cannot send. The
+  # whole point of this guard is to fail while the value is in somebody's hand rather than in a
+  # tester's report, and half a check does that for one mistake out of several.
+  #
+  # ACCOUNT SID TOO, for the mirror image. Nothing above stops the Messaging Service SID being
+  # pasted into TWILIO_ACCOUNT_SID, which fails at authentication instead and just as silently.
+  # [[ =~ ]] AND NOT grep, WHICH IS THE POINT. grep matches line by line, so a value that arrived
+  # with a newline in it — two SIDs double-clicked together, a dashboard copy that took the row
+  # ending with it — passes as soon as ANY ONE of its lines matches, which is precisely the paste
+  # accident this is here to catch. The bash matcher anchors ^ and $ to the whole string.
+  sid_ok() { local re="^$1[0-9a-fA-F]{32}$"; [[ "$2" =~ $re ]]; }
+  if ! sid_ok AC "$TWILIO_ACCOUNT_SID"; then
+    echo "ERROR: TWILIO_ACCOUNT_SID is not an Account SID (expected AC + 32 hex characters, 34 in all)." >&2
+    echo "       Got ${#TWILIO_ACCOUNT_SID} characters starting '${TWILIO_ACCOUNT_SID:0:2}'." >&2
+    echo "       Twilio Console > Account > API keys & tokens." >&2
+    exit 1
+  fi
+  case "$TWILIO_MESSAGE_SERVICE_SID" in
+    AC*)
+      echo "ERROR: TWILIO_MESSAGE_SERVICE_SID is an ACCOUNT SID (AC...), not a Messaging Service SID." >&2
+      echo "       Twilio refuses it as a caller ID with error 21212 and no SMS code is ever sent." >&2
+      echo "       Find the MG... SID at Twilio Console > Messaging > Services." >&2
+      exit 1 ;;
+  esac
+  if ! sid_ok MG "$TWILIO_MESSAGE_SERVICE_SID"; then
+    echo "ERROR: TWILIO_MESSAGE_SERVICE_SID is not a Messaging Service SID (expected MG + 32 hex characters, 34 in all)." >&2
+    echo "       Got ${#TWILIO_MESSAGE_SERVICE_SID} characters starting '${TWILIO_MESSAGE_SERVICE_SID:0:2}'." >&2
+    echo "       A truncated or over-long paste still starts MG and still cannot send." >&2
+    echo "       Twilio Console > Messaging > Services." >&2
+    exit 1
+  fi
   PHONE_JSON=$(python3 - <<PY
 import json, os
 print(json.dumps({
@@ -80,7 +134,67 @@ read -r -d '' MAGIC_LINK_HTML <<'HTML' || true
 <p>If you did not ask to sign in, nothing has happened and you can ignore this email.</p>
 HTML
 
-BODY=$(APP_URL="$APP_URL" REDIRECTS="$REDIRECTS" PHONE_JSON="$PHONE_JSON" MAGIC_LINK_HTML="$MAGIC_LINK_HTML" python3 - <<'PY'
+# WHY THIS IS NOT OPTIONAL FOR ANYTHING WITH TESTERS ON IT. Without a custom SMTP server, Supabase
+# Auth REFUSES to deliver to any address that is not a member of the project's organisation — the
+# error is "Email address not authorized" — and the handful of messages an hour it does allow come
+# from a shared service with no delivery SLA that Supabase documents as not meant for production.
+# A tester who is not on the team gets nothing, silently, and the project's own auth log fills with
+#   429: email rate limit exceeded
+# on /otp and /signup. That is exactly what happened here: every email sign-in and every emailed
+# password link failed for everyone outside the organisation, while the screens correctly reported
+# a send that genuinely had not happened.
+#
+# Resend is already a dependency for the notification dispatcher, so the credentials exist; this
+# points Auth at the same account. Port 465 is implicit TLS, which is what Resend documents.
+SMTP_JSON=""
+EMAIL_RATE=""
+if [ -n "${RESEND_API_KEY:-}" ] && [ -n "${EMAIL_FROM:-}" ]; then
+  # Checked HERE, with the other credentials, and not where it is sent. Everything in this file that
+  # can be known to be wrong is rejected before the first request goes out, because the requests are
+  # not one transaction: a value validated late aborts the run with the site URL, the allow-list and
+  # the email template already applied and the rest not, which is a worse state than either doing it
+  # or not doing it. The Twilio guards above are early for the same reason.
+  EMAIL_RATE="${EMAIL_RATE_LIMIT_PER_HOUR:-100}"
+  case "$EMAIL_RATE" in
+    ''|*[!0-9]*)
+      echo "ERROR: EMAIL_RATE_LIMIT_PER_HOUR must be a whole number of emails per hour. Got: $EMAIL_RATE" >&2
+      exit 1 ;;
+  esac
+  SMTP_JSON=$(python3 - <<'SMTPPY'
+import json, os
+print(json.dumps({
+  "smtp_host": os.environ.get("SMTP_HOST", "smtp.resend.com"),
+  "smtp_port": int(os.environ.get("SMTP_PORT", "465")),
+  "smtp_user": os.environ.get("SMTP_USER", "resend"),
+  "smtp_pass": os.environ["RESEND_API_KEY"],
+  "smtp_admin_email": os.environ["EMAIL_FROM"],
+  "smtp_sender_name": os.environ.get("SMTP_SENDER_NAME", "Docket"),
+}))
+SMTPPY
+)
+fi
+
+# GOOGLE, WHICH IS THE ONE WAY IN THAT DELIVERS NOTHING. Every other route depends on a message
+# reaching a person — an SMS through Twilio, a mail through SMTP — and both of those have failed in
+# this project already. Google asks nothing of either, so it is the route that keeps working when a
+# provider does not.
+#
+# THE REDIRECT URI GOOGLE NEEDS IS NOT DOCKET'S. It is Supabase's callback, and it is the single
+# commonest reason a Google button returns redirect_uri_mismatch. The summary prints it.
+GOOGLE_JSON=""
+if [ -n "${GOOGLE_CLIENT_ID:-}" ] && [ -n "${GOOGLE_CLIENT_SECRET:-}" ]; then
+  GOOGLE_JSON=$(python3 - <<'GOOGLEPY'
+import json, os
+print(json.dumps({
+  "external_google_enabled": True,
+  "external_google_client_id": os.environ["GOOGLE_CLIENT_ID"],
+  "external_google_secret": os.environ["GOOGLE_CLIENT_SECRET"],
+}))
+GOOGLEPY
+)
+fi
+
+BODY=$(APP_URL="$APP_URL" REDIRECTS="$REDIRECTS" PHONE_JSON="$PHONE_JSON" SMTP_JSON="$SMTP_JSON" GOOGLE_JSON="$GOOGLE_JSON" MAGIC_LINK_HTML="$MAGIC_LINK_HTML" python3 - <<'PY'
 import json, os
 body = {
   "site_url": os.environ["APP_URL"],
@@ -93,6 +207,10 @@ body = {
 }
 if os.environ.get("PHONE_JSON"):
   body.update(json.loads(os.environ["PHONE_JSON"]))
+if os.environ.get("SMTP_JSON"):
+  body.update(json.loads(os.environ["SMTP_JSON"]))
+if os.environ.get("GOOGLE_JSON"):
+  body.update(json.loads(os.environ["GOOGLE_JSON"]))
 print(json.dumps(body))
 PY
 )
@@ -127,6 +245,42 @@ else
   echo "         Set it by hand: Auth > Providers > Email > Email OTP Expiration = 900 seconds."
 fi
 
+# THE QUOTA DOES NOT MOVE WHEN THE TRANSPORT DOES, and that is the whole reason this block exists.
+#
+# Setting smtp_host above changes WHO CARRIES the mail. It does not change how many Supabase Auth is
+# willing to hand over: rate_limit_email_sent is a separate project-level setting, counted across
+# /auth/v1/signup, /auth/v1/recover and every /auth/v1/otp that sends an email, and Supabase pins it
+# low while the built-in service is in use because that service is shared. Custom SMTP is what makes
+# the setting editable at all — it does not raise it.
+#
+# So the repair announced above could be reported as complete and leave a project answering exactly
+# the 429 that started this, with a paid mail provider sitting behind it wondering why nothing ever
+# arrives. Configuring the transport and not the quota fixes the half nobody was complaining about.
+#
+# 100 AN HOUR, and the number is a judgement rather than a discovery. Every email Docket sends
+# through Auth is somebody trying to get in — a sign-in code or a password link — so the ceiling
+# only has to clear the real thing: a firm onboarding its clients, a tester going round again, a
+# morning where several people sign in at once. It is not a budget. THE MAIL PROVIDER'S OWN PLAN IS
+# STILL THE REAL CEILING: Resend's free tier is 100 a DAY, so a project on it will meet that limit
+# long before this one, and the failure moves from GoTrue's log into Resend's. Raise or lower it
+# with EMAIL_RATE_LIMIT_PER_HOUR.
+#
+# ONLY WHEN SMTP WAS CONFIGURED, and in its own soft-failing request. Supabase rejects this setting
+# on a project still using the built-in service, and that rejection under `curl -fsS` with `set -e`
+# would take the run down after the main PATCH has already landed — the same hazard mailer_otp_exp
+# is kept apart for, for the same reason, in the same shape.
+if [ -n "$SMTP_JSON" ]; then
+  if curl -fsS -X PATCH "${MGMT}/config/auth" "${AUTH_HDR[@]}" \
+       -d "{\"rate_limit_email_sent\": ${EMAIL_RATE}}" >/dev/null 2>&1; then
+    :
+  else
+    echo "   NOTE: rate_limit_email_sent was not accepted. The SMTP settings above WERE applied,"
+    echo "         so mail now leaves through your own provider — but the project is still capped"
+    echo "         at whatever quota it had, which is what 429 email rate limit exceeded means."
+    echo "         Set it by hand: Auth > Rate Limits > Emails sent per hour."
+  fi
+fi
+
 curl -fsS "${MGMT}/config/auth" "${AUTH_HDR[@]}" | python3 -c '
 import json, sys
 c = json.load(sys.stdin)
@@ -139,8 +293,35 @@ exp = c.get("mailer_otp_exp")
 too_long = isinstance(exp, int) and exp > 3600
 print("   sign-in email lasts :", f"{exp}s" if isinstance(exp, int) else "(not reported by this API)",
       "  <- longer than an hour; Supabase advises against it" if too_long else "")
+host = c.get("smtp_host")
+if host:
+    print("   sign-in email via   :", host, "as", c.get("smtp_admin_email") or "(no sender)")
+    # Printed beside the transport because the two are read as one fact and are not one setting.
+    # A project can be pointed at a paid mail provider and still be capped where the built-in
+    # service left it, which is 429 email rate limit exceeded with nothing in the summary to
+    # explain it. The provider plan is named because it, not this number, is the real ceiling.
+    sent = c.get("rate_limit_email_sent")
+    print("   sign-in email quota :",
+          f"{sent} an hour" if isinstance(sent, int) else "(not reported by this API)",
+          " <- the limit on your mail plan still applies on top of this")
+else:
+    print("   sign-in email via   : SUPABASE BUILT-IN SMTP  <- delivers ONLY to members of the")
+    print("                         Supabase organisation that owns this project, a few an hour.")
+    print("                         Every other address fails with: Email address not authorized.")
+    print("                         The quota shows as 429 email rate limit exceeded in the auth")
+    print("                         log. Set RESEND_API_KEY and EMAIL_FROM and re-run.")
 print("   phone sign-in       :", c.get("external_phone_enabled"), "provider:", c.get("sms_provider"))
+print("   Google sign-in      :", c.get("external_google_enabled"))
 '
+if [ -n "$GOOGLE_JSON" ]; then
+  echo "   Google redirect URI : https://${SUPABASE_PROJECT_REF}.supabase.co/auth/v1/callback"
+  echo "                         This exact string must be an Authorised redirect URI on the OAuth"
+  echo "                         client in Google Cloud Console, or Google answers"
+  echo "                         redirect_uri_mismatch and the button does nothing. It is Supabase"
+  echo "                         that Google returns to, never Docket."
+else
+  echo "   Google sign-in not changed: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to enable it."
+fi
 if [ -z "$PHONE_JSON" ]; then
   echo "   phone provider not changed: set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_MESSAGE_SERVICE_SID to enable SMS OTP."
 fi

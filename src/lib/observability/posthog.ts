@@ -22,7 +22,21 @@ export const FUNNEL = {
   matterOpened: "matter_opened",
 } as const;
 
+/**
+ * The platform's own journey, which is a different journey and deliberately not a sixth step.
+ *
+ * FUNNEL above is one client moving through one firm. This is a firm arriving at Docket, and the
+ * two do not compose: nobody views a firm's site and then registers a firm as the next step, and
+ * anything that charted Object.values(FUNNEL) as a single sequence would be nonsense if this were
+ * folded in. Named here for the same reason FUNNEL is — so a typo cannot invent a variant — and
+ * kept apart so the client funnel stays five steps long.
+ */
+export const PLATFORM = {
+  firmRegistered: "firm_registered",
+} as const;
+
 export type FunnelEvent = (typeof FUNNEL)[keyof typeof FUNNEL];
+export type PlatformEvent = (typeof PLATFORM)[keyof typeof PLATFORM];
 
 function host(): string {
   return (process.env.POSTHOG_HOST ?? DEFAULT_HOST).replace(/\/+$/, "");
@@ -35,7 +49,7 @@ function host(): string {
  * Timestamps are UTC — rendering in a person's zone is a screen's job, not telemetry's.
  */
 export async function capture(
-  event: FunnelEvent | string,
+  event: FunnelEvent | PlatformEvent | string,
   distinctId: string,
   properties: Record<string, unknown> = {},
 ): Promise<boolean> {

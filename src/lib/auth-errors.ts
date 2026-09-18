@@ -51,7 +51,13 @@ export interface AuthFailureShape {
 }
 
 /** Which call failed. The same GoTrue code means different things at different steps. */
-export type SignInStep = "send_sms" | "verify_sms" | "send_email" | "verify_email";
+export type SignInStep =
+  | "send_sms"
+  | "send_whatsapp"
+  | "verify_sms"
+  | "send_email"
+  | "verify_email"
+  | "start_google";
 
 export interface SignInProblem {
   /** The sentence to show. Always ours, never the provider's. */
@@ -103,6 +109,37 @@ export const LINK_DID_NOT_WORK =
 
 /** The send failed at the SMS provider, or the send hook timed out. Same move either way. */
 export const CODE_NOT_SENT = "We could not send a code to that number. Check it, or sign in by email instead.";
+
+/**
+ * The same failure on the WhatsApp channel, which needs its own sentence because it has its own
+ * way of being wrong: a number can be perfectly good and simply not be on WhatsApp, which is not
+ * true of SMS. So this points at the text message rather than at the number.
+ */
+export const WHATSAPP_NOT_SENT =
+  "We could not reach that number on WhatsApp. Send it as a text message instead, or sign in by email.";
+
+/** Google sign-in is off at the project level, or the handshake never started. */
+export const GOOGLE_UNAVAILABLE =
+  "Signing in with Google is not available right now. Use the phone number or email your firm has for you.";
+
+/**
+ * The Google round trip came back without a session — which is NOT the same failure as a link.
+ *
+ * Google and the emailed magic link come home to the same route, so for a while they got the same
+ * sentence, and that sentence talked about an email. Somebody who tapped "Continue with Google",
+ * thought better of it at the consent screen and pressed Cancel was told that a sign-in link may
+ * have expired or been opened in a different browser, and invited to type a code from an email
+ * nobody had sent them. Google returns access_denied for a cancelled consent, which is the same
+ * error_code a spent magic link arrives with; nothing in the parameters tells the two apart, so
+ * the caller has to say which flow it is (app/auth/callback/route.ts, ?flow=google).
+ *
+ * BLAMES NOBODY, because the commonest cause is not a fault at all. Cancelling is a decision, and
+ * a decision should not be reported as an error with a remedy attached to it. The other two ways
+ * in are named because they are what the person does next, whichever it was.
+ */
+export const GOOGLE_DID_NOT_FINISH =
+  "That Google sign-in did not finish, so you are not signed in. Nothing has changed — try Google " +
+  "again, or use the phone number or email your firm has for you.";
 
 /** Phone sign-in refused for a reason that is about the number, said without saying which. */
 export const PHONE_NO_ENTRY =
@@ -224,6 +261,36 @@ export function signInProblem(step: SignInStep, failure: AuthFailureShape): Sign
     return { text: SIGN_IN_TROUBLE };
   }
 
+  if (step === "start_google") {
+    // Nothing here is about the person: an OAuth handshake that will not start is about the
+    // project's configuration or the network, and both leave the same two ways in.
+    return { text: GOOGLE_UNAVAILABLE, switchTo: "phone" };
+  }
+
+  if (step === "send_whatsapp") {
+    // GoTrue answers the WhatsApp channel with the same codes as SMS — it is the same Twilio call
+    // with a different sender — so the rules are the SMS rules, and only the provider-failure
+    // sentence differs, because "not on WhatsApp" is a real and common reason a good number fails.
+    if (
+      code === "sms_send_failed" ||
+      code === "hook_timeout" ||
+      code === "hook_timeout_after_retry" ||
+      says(/error sending .*otp to provider|failed to reach hook/i)
+    ) {
+      return { text: WHATSAPP_NOT_SENT };
+    }
+    if (code === "phone_provider_disabled" || says(/unsupported phone provider/i)) {
+      return { text: SMS_TURNED_OFF, switchTo: "email" };
+    }
+    if (code === "validation_failed" || says(/e\.164|invalid phone/i)) {
+      return { text: PHONE_NO_ENTRY };
+    }
+    if (code === "otp_disabled" || code === "user_banned" || says(/signups not allowed/i)) {
+      return { text: PHONE_NO_ENTRY };
+    }
+    return { text: SIGN_IN_TROUBLE };
+  }
+
   if (step === "send_sms") {
     if (code === "phone_provider_disabled" || says(/unsupported phone provider/i)) {
       return { text: SMS_TURNED_OFF, switchTo: "email" };
@@ -278,13 +345,28 @@ export function signInProblem(step: SignInStep, failure: AuthFailureShape): Sign
  * are already sitting in inboxes, and nothing GoTrue said is ever carried in a query string a
  * browser will log, put in a Referer header or keep in history.
  */
-export type CallbackReason = "link" | "trouble";
+export type CallbackReason = "link" | "trouble" | "google";
 
 /** The sentence for a ?reason= on the sign-in page. An unknown key says nothing rather than guessing. */
 export function callbackMessage(reason: string | null | undefined): string | null {
   if (reason === "link") return LINK_DID_NOT_WORK;
   if (reason === "trouble") return SIGN_IN_TROUBLE;
+  if (reason === "google") return GOOGLE_DID_NOT_FINISH;
   return null;
+}
+
+/**
+ * The heading above that sentence.
+ *
+ * It lives here rather than in the two panels that render it because it was hardcoded in both, as
+ * "That link did not sign you in" — true of a magic link and false of everything else that now
+ * comes home to the same route. A heading that contradicts the paragraph under it is worse than no
+ * heading, and two copies of it would have needed fixing twice.
+ */
+export function callbackTitle(reason: string | null | undefined): string {
+  if (reason === "google") return "Google did not sign you in";
+  if (reason === "trouble") return "That sign-in did not work";
+  return "That link did not sign you in";
 }
 
 /**
@@ -303,22 +385,43 @@ export function callbackMessage(reason: string | null | undefined): string | nul
  * exchangeCodeForSession(code)` — with the same silent bounce afterwards.
  *
  * Both are the same thing to the person holding the phone, and both get the same key.
+ *
+ * A THIRD WAY IN NOW SHARES THE ROUTE, and it is not an email at all. Google's PKCE handshake comes
+ * home to /auth/callback exactly as a magic link does, with the same parameters spelled the same
+ * way: cancel the Google consent screen and the browser arrives carrying access_denied, which is
+ * the same error_code a magic link that has already been spent arrives with. There is nothing in
+ * the parameters to tell them apart — so `flow` is passed in from the callback, which knows,
+ * because it is on the redirect_to Docket itself constructed (?flow=google).
+ *
+ * WHEN THE FLOW IS GOOGLE, EVERY FAILURE IS A GOOGLE FAILURE, and the error codes are not consulted
+ * at all. Splitting them finer would only invent distinctions the person cannot act on — a
+ * cancelled consent, a client Google will not honour, and a verifier this browser does not hold all
+ * leave them in one place with the same two alternatives — and every extra branch is another chance
+ * to tell somebody who never typed an address to go and read their email.
+ *
+ * `flow` arrives from a query string, so it is attacker-supplied like everything else here. The
+ * worst it can do is put the Google sentence on a link failure, which is a wrong sentence and not
+ * a wrong outcome: no branch of this function decides anything but which words are shown.
  */
 export function callbackReason(params: {
   error: string | null;
   errorCode: string | null;
   hasCode: boolean;
   exchangeFailed: boolean;
+  /** "google" when this callback is the far end of signInWithOAuth rather than an emailed link. */
+  flow?: string | null;
 }): CallbackReason | null {
-  const { error, errorCode, hasCode, exchangeFailed } = params;
+  const { error, errorCode, hasCode, exchangeFailed, flow } = params;
   const said = `${error ?? ""} ${errorCode ?? ""}`.toLowerCase();
+  const viaGoogle = flow === "google";
 
   // GoTrue refused before we were reached. otp_expired is the common one; access_denied covers a
-  // link that has already been spent.
+  // link that has already been spent — and, on the Google flow, a consent screen someone cancelled.
   if (error || errorCode) {
+    if (viaGoogle) return "google";
     return /otp_expired|access_denied|invalid_request|unauthorized_client/.test(said) ? "link" : "trouble";
   }
-  if (exchangeFailed) return "link";
+  if (exchangeFailed) return viaGoogle ? "google" : "link";
   // No code, no error, nothing to exchange: somebody typed the callback URL, or a scanner followed
   // it and stripped the query. There is nothing to report and nothing to sign in.
   if (!hasCode) return null;

@@ -6,8 +6,10 @@
 // shape and forwards the session.
 
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
+import { PLATFORM, capture } from "@/lib/observability";
 import { NG_STATES } from "@/lib/nigeria";
 import type { CreateFirmResult } from "@/lib/db/types";
 
@@ -86,6 +88,29 @@ export async function createFirm(
   }
   const result = data as CreateFirmResult | null;
   if (!result?.firm_id) return { error: "The firm was not created. Please try again." };
+
+  // THE FIRST THING DOCKET HAS EVER COUNTED ABOUT ITSELF. Every other event in
+  // src/lib/observability/posthog.ts is one client moving through one firm; none of them fire
+  // when a firm arrives, so the platform could say how many consultations a firm held and not
+  // how many firms it had won. This is that step, and it is on the owner's own id rather than a
+  // visitor cookie because by here they are signed in and create_firm has made them the owner.
+  //
+  // Bound to a const before the closure, as matters.ts does and for the same reason: inside
+  // after() TypeScript can no longer prove result.firm_id is still the string the `if` tested.
+  //
+  // Registered BEFORE the redirect below, which throws. after() runs its callback once the
+  // response is sent, and a redirect is a response — but the registration has to happen first,
+  // because nothing after the throw runs at all.
+  //
+  // Facts about the firm, never about the person: an id and the state it practises in. No name,
+  // no RC number, no SCN, no email.
+  const firmId = result.firm_id;
+  after(() =>
+    capture(PLATFORM.firmRegistered, user.id, {
+      firm_id: firmId,
+      state_code: parsed.data.stateCode || null,
+    }).catch(() => undefined),
+  );
 
   // Owner writes need an MFA-verified session: enrol before the console.
   redirect("/firm/security/mfa");

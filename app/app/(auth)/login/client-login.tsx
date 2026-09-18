@@ -13,10 +13,13 @@ import { Alert } from "@/components/ui/alert";
 export function ClientLoginPanel({
   next,
   problem,
+  problemTitle,
 }: {
   next: string | null;
-  /** Why the sign-in link they just followed did not work, if that is how they got here. */
+  /** Why the sign-in they just attempted did not work, if that is how they got here. */
   problem?: string | null;
+  /** The heading for it, decided with the sentence in src/lib/auth-errors.ts. */
+  problemTitle?: string | null;
 }) {
   const router = useRouter();
   // Where they were going before the gate stopped them, or the portal home if they simply
@@ -34,7 +37,7 @@ export function ClientLoginPanel({
           a tab is tapped. kind="warning" because nothing has gone wrong with their account —
           there is a link that did not work and a form right below that will. */}
       {problem && (
-        <Alert kind="warning" title="That link did not sign you in" className="mt-4">
+        <Alert kind="warning" title={problemTitle ?? "That link did not sign you in"} className="mt-4">
           {problem}
         </Alert>
       )}
