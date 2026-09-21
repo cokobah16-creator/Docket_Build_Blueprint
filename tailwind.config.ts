@@ -9,9 +9,9 @@ import type { Config } from "tailwindcss";
 //              which flip between light and dark.
 //
 // A firm must never be able to repaint the platform's pages, so docket-* is
-// deliberately literal rather than variable. The rule is that green is the ink
-// and the ground, and gold is only ever a fill, a rule, or type sitting on
-// green — never text on paper. See design/home/README.md.
+// deliberately literal rather than variable. The platform palette is deep navy,
+// restrained emerald and brass: navy carries authority, emerald carries action,
+// and brass is reserved for rules, emphasis and small moments of ceremony.
 //
 // The semantic neutrals are named for their ROLE, not their lightness: `ink` is
 // the text colour in both themes, near-black on paper and near-white on a dark
@@ -45,17 +45,20 @@ const config: Config = {
         },
 
         docket: {
-          paper: "#f3f2f2",
-          ink: "#201e1d",
-          hunter: "#2c4a34",
-          deep: "#203024",
-          link: "#3f694a",
-          gold: "#ffb81c",
-          "gold-pale": "#ffcb71",
-          muted: "#5b5959",
-          "muted-dark": "#3f3d3c",
-          hair: "#b4b2b2",
-          edge: "#7d7a7a",
+          paper: "#f5f1e8",
+          ivory: "#fbf9f4",
+          sand: "#efeade",
+          "sand-deep": "#ebe5d9",
+          ink: "#13202c",
+          hunter: "#0b1928",
+          deep: "#07121d",
+          link: "#267a60",
+          gold: "#ae8648",
+          "gold-pale": "#d8bd8a",
+          muted: "#68716f",
+          "muted-dark": "#46505a",
+          hair: "#d8d2c7",
+          edge: "#7c827f",
         },
 
 

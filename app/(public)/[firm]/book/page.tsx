@@ -35,22 +35,49 @@ export default async function BookPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-lg px-4 pb-12 pt-6">
-      <h1 className="font-heading text-26 font-semibold leading-tight tracking-[-0.015em] text-brand">Book a Consultation</h1>
-      <p className="mt-1.5 text-13 leading-relaxed text-ink-muted">
-        Takes about three minutes. Your slot is held for 15 minutes while you pay.
-      </p>
-      <div className="mt-5">
-        <BookingWizard
-          firm={firm}
-          services={services}
-          lawyers={lawyers}
-          forms={forms}
-          initialServiceSlug={sp.service ?? null}
-          initialLawyerId={sp.lawyer ?? null}
-          resume={sp.resume === "1"}
-        />
+    <section className="booking-page border-b border-hairline">
+      <div className="mx-auto grid max-w-[1180px] gap-10 px-4 py-10 sm:px-6 sm:py-16 lg:grid-cols-[0.78fr_1.22fr] lg:gap-16 lg:px-8 lg:py-20">
+        <aside className="lg:sticky lg:top-8 lg:self-start">
+          <p className="text-11 font-semibold uppercase tracking-[0.15em] text-brand-accent">Private consultation</p>
+          <h1 className="mt-4 max-w-[12ch] font-heading text-44 font-semibold leading-[1.03] tracking-[-0.035em] text-brand sm:text-56">
+            Book time with {firm.name}.
+          </h1>
+          <p className="mt-5 max-w-[46ch] text-15 leading-6 text-ink-muted">
+            Choose the legal service, meeting format and available time. Your answers give the lawyer a useful brief before you meet.
+          </p>
+          <div className="mt-8 border-t border-hairline">
+            {[
+              ["01", "Choose the service"],
+              ["02", "Select a lawyer and time"],
+              ["03", "Sign in, review and confirm"],
+            ].map(([number, label]) => (
+              <div key={number} className="flex items-center gap-4 border-b border-hairline py-4">
+                <span className="font-heading text-17 text-brand-accent">{number}</span>
+                <span className="text-13 font-semibold text-ink">{label}</span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-6 text-11 leading-5 text-ink-muted">
+            Your slot is held for 15 minutes while you pay. Submitting a booking does not by itself create a lawyer-client relationship.
+          </p>
+        </aside>
+
+        <div className="booking-workspace border border-hairline bg-raised px-4 pb-6 shadow-e2 sm:px-7 sm:pb-8">
+          <div className="border-b border-hairline py-5 lg:hidden">
+            <p className="font-heading text-26 font-semibold text-brand">Book a Consultation</p>
+            <p className="mt-1 text-13 text-ink-muted">Usually takes about three minutes.</p>
+          </div>
+          <BookingWizard
+            firm={firm}
+            services={services}
+            lawyers={lawyers}
+            forms={forms}
+            initialServiceSlug={sp.service ?? null}
+            initialLawyerId={sp.lawyer ?? null}
+            resume={sp.resume === "1"}
+          />
+        </div>
       </div>
-    </div>
+    </section>
   );
 }

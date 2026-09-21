@@ -304,7 +304,7 @@ export function BookingWizard({
   const feeMinor = service?.price_minor ?? 0;
 
   return (
-    <div>
+    <div className="booking-wizard">
       <header className="sticky top-0 z-20 -mx-4 flex min-h-[50px] items-center gap-2.5 border-b border-hairline bg-raised/[0.92] px-3.5 py-2.5 backdrop-blur-xl">
         <button
           type="button"

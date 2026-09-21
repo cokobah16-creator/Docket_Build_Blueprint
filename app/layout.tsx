@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { brandStyle } from "@/lib/brand";
 import "./globals.css";
+import "./marketing-os.css";
 
 export const metadata: Metadata = {
   title: {

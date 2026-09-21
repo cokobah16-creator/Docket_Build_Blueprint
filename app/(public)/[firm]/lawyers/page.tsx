@@ -26,9 +26,10 @@ export default async function LawyersPage({ params }: { params: Promise<{ firm: 
         <div className="grid gap-4 sm:grid-cols-2">
           {lawyers.map((l) => (
             <Link key={l.id} href={`/${firm.slug}/lawyers/${l.slug ?? l.id}`} className="block">
-              <Card className="h-full transition hover:shadow-md">
+              <Card className="public-list-card h-full">
                 <CardBody className="space-y-1">
-                  <h2 className="font-heading text-base font-semibold text-ink">
+                  <p className="text-11 font-semibold uppercase tracking-[0.12em] text-brand-accent">Legal team</p>
+                  <h2 className="font-heading text-21 font-semibold text-brand">
                     {lawyerDisplayName(l, firm.name)}
                   </h2>
                   {l.title && <p className="text-15 text-ink-muted">{l.title}</p>}
