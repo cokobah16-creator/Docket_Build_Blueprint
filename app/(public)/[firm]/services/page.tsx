@@ -26,11 +26,12 @@ export default async function ServicesPage({ params }: { params: Promise<{ firm:
         <div className="grid gap-4 sm:grid-cols-2">
           {services.map((s) => (
             <Link key={s.id} href={`/${firm.slug}/services/${s.slug}`} className="block">
-              <Card className="h-full transition hover:shadow-md">
+              <Card className="public-list-card h-full">
                 <CardBody className="space-y-2">
-                  <h2 className="font-heading text-base font-semibold text-ink">{s.name}</h2>
+                  <p className="text-11 font-semibold uppercase tracking-[0.12em] text-brand-accent">Consultation</p>
+                  <h2 className="font-heading text-21 font-semibold text-brand">{s.name}</h2>
                   {s.description && <p className="text-15 text-ink-muted">{s.description}</p>}
-                  <p className="text-15 font-medium text-brand">
+                  <p className="border-t border-hairline pt-3 text-13 font-semibold text-brand">
                     {formatMoneyMinor(s.price_minor, s.currency)} · {s.duration_min} minutes
                   </p>
                 </CardBody>
