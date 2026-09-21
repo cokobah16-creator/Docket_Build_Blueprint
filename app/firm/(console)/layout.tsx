@@ -5,9 +5,8 @@
 //
 // The console wears no firm's colours. Those belong to the client app, where a
 // client is reading their own firm's pages; here they would only make the same
-// tool look different to every person using it. Colour in this shell means one
-// thing — something is late, unpaid, or waiting on you — so the ground is
-// near-monochrome and the status pills are the only saturated things on screen.
+// tool look different to every person using it. Navy navigation and restrained
+// emerald actions frame neutral records; status colours retain their meaning.
 //
 // It is the same console at every size, not a different product per device: a
 // grouped sidebar on a desk, an icon rail on a tablet, and four thumbs plus
@@ -24,17 +23,19 @@ import { Badge } from "@/components/ui/badge";
 import { ConnectionBadge } from "@/components/ui/connection";
 import { ServiceWorkerRegistrar } from "@/components/portal/sw-registrar";
 import { AppShell } from "@/components/shell/app-shell";
+import { WorkspaceBar } from "@/components/shell/workspace";
+import "../../legal-os.css";
 import { CONSOLE_NAV } from "@/components/shell/nav";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 
 /** Docket's own working-tool palette — deliberately not a firm's brand. */
 const CONSOLE_TOKENS = {
-  "--dk-primary": "#141414",
-  "--dk-accent": "#57534E",
-  "--dk-surface": "#F5F4F1",
+  "--dk-primary": "#0b1928",
+  "--dk-accent": "#1f624d",
+  "--dk-surface": "#f8f5ee",
   "--dk-on-primary": "#ffffff",
   "--dk-on-accent": "#ffffff",
-  "--dk-font-heading": "Archivo",
+  "--dk-font-heading": "Inter",
   "--dk-font-body": "Inter",
 } as CSSProperties;
 
@@ -103,7 +104,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
     <>
       <Link
         href="/firm"
-        className="block truncate font-heading text-15 font-bold tracking-[-0.02em] text-[#141414]"
+        className="workspace-sidebar-firm block truncate"
       >
         {firmName}
       </Link>
@@ -127,7 +128,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
    * in the console where the whole document has to be built again, so it is.
    */
   const switcher = others.length > 0 && (
-    <nav aria-label="Switch firm" className="text-13 leading-relaxed text-[#57534E]">
+    <nav aria-label="Switch firm" className="workspace-switcher text-13 leading-relaxed">
       <span className="block">Switch to</span>
       {others.map((f) => (
         <a
@@ -150,7 +151,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
     // in a console screen still reads against this cream rather than against a dark
     // page that is not there. Docket's own consoles get a dark palette of their
     // own; this is the honest statement that they have not got one yet.
-    <div data-theme-scope="light" style={CONSOLE_TOKENS} className="min-h-[100dvh] bg-brand-surface">
+    <div data-theme-scope="light" style={CONSOLE_TOKENS} className="legal-os min-h-[100dvh] bg-brand-surface">
       <link rel="stylesheet" href={CONSOLE_FONTS} />
       {/* The offline shell for the console too: without it a dropped connection shows the browser's own error page. */}
       <ServiceWorkerRegistrar />
@@ -159,6 +160,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
         nav={CONSOLE_NAV}
         tone="neutral"
         navLabel="Console"
+        commandBar={<WorkspaceBar firmName={firmName} firmId={ctx.firmId} />}
         // A member of one firm needs no `?firm=` on anything: there is nothing
         // to be ambiguous about, and the cookie the middleware set carries the
         // answer anyway. A member of several gets it named on every link, from
@@ -167,6 +169,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
         navContext={others.length > 0 ? { firm: ctx.firmId } : undefined}
         masthead={
           <div className="min-w-0">
+            <div className="workspace-identity"><Link href={`/firm?firm=${ctx.firmId}`} className="workspace-wordmark">Docket</Link><p>Practice workspace</p></div>
             {identity}
             <div className="mt-2 flex items-center gap-2">
               <ConnectionBadge />

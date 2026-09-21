@@ -25,6 +25,8 @@ import { ConnectionBadge } from "@/components/ui/connection";
 import { Alert } from "@/components/ui/alert";
 import { Screen } from "@/components/portal/screen";
 import { AppShell } from "@/components/shell/app-shell";
+import { WorkspaceBar } from "@/components/shell/workspace";
+import "../../legal-os.css";
 import { PORTAL_NAV } from "@/components/shell/nav";
 import { ConsentGate } from "./consent-gate";
 
@@ -95,7 +97,7 @@ export default async function PortalLayout({ children }: { children: ReactNode }
     // data-brand is what makes the two colour sets brandStyle() emits selectable:
     // without it the --dk-primary-l / --dk-primary-d pair sits there unread and the
     // firm's colour never changes for the dark theme. See app/globals.css.
-    <div data-brand style={brandStyle(firm?.brand)} className="min-h-[100dvh] bg-brand-surface">
+    <div data-brand style={brandStyle(firm?.brand)} className="legal-os min-h-[100dvh] bg-brand-surface">
       {fontsUrl && <link rel="stylesheet" href={fontsUrl} />}
       <ToastProvider>
         <ServiceWorkerRegistrar />
@@ -110,15 +112,16 @@ export default async function PortalLayout({ children }: { children: ReactNode }
           <AppShell
             nav={PORTAL_NAV}
             navLabel="Primary"
+            commandBar={<WorkspaceBar client firmName={firm?.name ?? "Your client portal"} />}
             masthead={
               <div className="min-w-0">
+                <div className="workspace-identity"><Link href="/app" className="workspace-wordmark">Docket</Link><p>Your client portal</p></div>
                 <Link
                   href="/app"
-                  className="block truncate font-heading text-15 font-semibold tracking-[-0.015em] text-brand"
+                  className="workspace-sidebar-firm block truncate"
                 >
                   {firm?.name ?? "Docket"}
                 </Link>
-                <p className="mt-0.5 text-11 text-ink-muted">Your client portal</p>
                 <div className="mt-2 empty:hidden"><ConnectionBadge /></div>
               </div>
             }

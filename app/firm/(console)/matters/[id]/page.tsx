@@ -43,6 +43,7 @@ import type {
 } from "@/lib/db/types";
 import { CollaborationPanel } from "@/components/firm/collaboration-panel";
 import { CardGrid, WithAside } from "@/components/shell/layout";
+import { LedgerPanel, LedgerRow } from "@/components/shell/workspace";
 import { CopyButton, MatterTabs, type TabSpec } from "./matter-tabs";
 import { StaffTimeline, type StaffUpdate } from "./staff-timeline";
 import { StaffDocuments, type StaffDocument } from "./staff-documents";
@@ -55,6 +56,7 @@ import { EditPanel } from "./edit-panel";
 export const metadata = { title: "Matter" };
 
 const TABS: TabSpec[] = [
+  { key: "overview", label: "Overview" },
   { key: "timeline", label: "Timeline" },
   { key: "documents", label: "Documents" },
   { key: "messages", label: "Messages" },
@@ -144,7 +146,7 @@ export default async function MatterWorkbench({
 }) {
   const { id } = await params;
   const sp = await searchParams;
-  const tab = TABS.some((t) => t.key === sp.tab) ? (sp.tab as string) : "timeline";
+  const tab = TABS.some((t) => t.key === sp.tab) ? (sp.tab as string) : "overview";
 
   let ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
@@ -275,10 +277,11 @@ export default async function MatterWorkbench({
         <Link href={`/firm/matters${sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : ""}`} className="text-brand underline">← Matters</Link>
       </p>
 
-      <header className="space-y-2">
+      <header className="workspace-heading space-y-2">
+        <p className="workspace-eyebrow">Matter record · {matter.reference}</p>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">{matter.title}</h1>
+            <h1 className="workspace-title">{matter.title}</h1>
             <p className="text-15 text-ink-muted">
               {matter.reference} · {typeLabel(matter.type)} · opened {formatWhen(`${matter.opened_at}T00:00:00Z`, "UTC", { dateStyle: "medium" })}
             </p>
@@ -347,7 +350,13 @@ export default async function MatterWorkbench({
 
       {/* The overview stays beside the tabs from 1280px and falls above them
           below that, so the file's shape is on screen while its detail is read. */}
-      <WithAside from="xl" aside={glance}>
+      {tab === "overview" ? (
+        <>
+          <MatterTabs tabs={TABS} active={tab} basePath={basePath} extraQuery={extraQuery} />
+          <MatterOverview ctx={ctx} matter={matter} names={names} basePath={basePath} extraQuery={extraQuery} />
+          {glance}
+        </>
+      ) : <WithAside from="xl" aside={glance}>
         <MatterTabs tabs={TABS} active={tab} basePath={basePath} extraQuery={extraQuery} />
 
       <Card>
@@ -364,9 +373,31 @@ export default async function MatterWorkbench({
           <EditSection ctx={ctx} matter={matter} statuses={statuses} staffOptions={staffOptions} leadLawyerId={leadLawyerId} alsoOn={lawyers.filter((l) => !l.is_lead).map((l) => l.user_id)} />
         )}
         </Card>
-      </WithAside>
+      </WithAside>}
     </div>
   );
+}
+
+async function MatterOverview({ ctx, matter, names, basePath, extraQuery }: {
+  ctx: StaffContext; matter: MatterDetail; names: Record<string, string>; basePath: string; extraQuery: string;
+}) {
+  const [documents, updates, tasks] = await Promise.all([
+    ctx.supabase.from("documents").select("id, name, created_at, client_visible").eq("matter_id", matter.id).eq("firm_id", ctx.firmId).is("deleted_at", null).order("created_at", { ascending: false }).limit(5),
+    ctx.supabase.from("updates").select("id, title, occurred_at, visibility").eq("matter_id", matter.id).eq("firm_id", ctx.firmId).order("occurred_at", { ascending: false }).limit(5),
+    ctx.supabase.from("tasks").select("id, title, due_at, assignee_id").eq("matter_id", matter.id).eq("firm_id", ctx.firmId).eq("status", "open").order("due_at", { nullsFirst: false }).limit(5),
+  ]);
+  const path = (tab: string) => `${basePath}?tab=${tab}${extraQuery}`;
+  return <div className="ledger-grid">
+    <LedgerPanel title="Documents" href={path("documents")}>
+      {documents.error ? <p className="ledger-empty">Documents could not be loaded. Open Documents to retry.</p> : !documents.data?.length ? <p className="ledger-empty">No documents on this matter. Open Documents to upload the first file.</p> : documents.data.map(d => <LedgerRow key={d.id} href={path("documents")} title={d.name} detail={formatWhen(d.created_at, ctx.timezone, { dateStyle: "medium" })} trailing={d.client_visible ? "Client visible" : "Internal"} />)}
+    </LedgerPanel>
+    <LedgerPanel title="Timeline" href={path("timeline")}>
+      {updates.error ? <p className="ledger-empty">The timeline could not be loaded. Open Timeline to retry.</p> : !updates.data?.length ? <p className="ledger-empty">No updates yet. Post the first update in Timeline.</p> : updates.data.map(u => <LedgerRow key={u.id} href={path("timeline")} title={u.title} detail={formatWhen(u.occurred_at, ctx.timezone, { dateStyle: "medium" })} trailing={u.visibility === "client" ? "Client visible" : "Internal"} />)}
+    </LedgerPanel>
+    <LedgerPanel title="Open tasks" href={path("tasks")}>
+      {tasks.error ? <p className="ledger-empty">Tasks could not be loaded. Open Tasks to retry.</p> : !tasks.data?.length ? <p className="ledger-empty">No open tasks. Add a task to record the next step and its owner.</p> : tasks.data.map(t => <LedgerRow key={t.id} href={path("tasks")} title={t.title} detail={<>{t.assignee_id ? names[t.assignee_id] ?? "Assigned colleague" : "Unassigned"}<br />{t.due_at ? formatWhen(t.due_at, ctx.timezone, { dateStyle: "medium" }) : "No due date"}</>} trailing={t.due_at && new Date(t.due_at).getTime() < Date.now() ? <span className="font-semibold text-red-700">Overdue</span> : "Open"} />)}
+    </LedgerPanel>
+  </div>;
 }
 
 function StatusChip({ status }: { status: MatterStatus }) {

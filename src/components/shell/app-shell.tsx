@@ -21,6 +21,7 @@ export function AppShell({
   navFooter,
   /** The compact bar shown only on phones, where there is no sidebar. */
   header,
+  commandBar,
   /** Full-bleed and above the page: a suspension notice, a consent gate. */
   banner,
   /** How wide the content may grow. Reading screens stay narrower. */
@@ -35,6 +36,7 @@ export function AppShell({
   masthead?: ReactNode;
   navFooter?: ReactNode;
   header?: ReactNode;
+  commandBar?: ReactNode;
   banner?: ReactNode;
   width?: "wide" | "reading";
   navContext?: Record<string, string>;
@@ -59,6 +61,7 @@ export function AppShell({
       />
 
       <div className="md:pl-[68px] lg:pl-[248px]">
+        {commandBar}
         {header}
         {banner}
         <main

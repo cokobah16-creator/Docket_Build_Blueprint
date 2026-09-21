@@ -22,6 +22,7 @@ const arg = (name, fallback) => {
 };
 const PORT = Number(arg("port", "54321"));
 const ROLE = arg("role", "staff"); // staff | client
+const SCENARIO = arg("scenario", "multiple"); // multiple | single | empty
 
 // A JWT is three base64url parts; supabase-js reads the payload without verifying it, which is
 // all `getAuthenticatorAssuranceLevel()` needs to report aal2.
@@ -202,6 +203,16 @@ const TABLES = {
   authority_grants: [],
   collaborations: [],
 };
+
+// Optional presentation cases; this server still provides no authorization proof.
+TABLES.updates.forEach(row => { row.visibility = "client"; });
+TABLES.tasks.forEach(row => { row.status = "open"; });
+TABLES.firm_cause_list = [{ court_event_id: "ce1", firm_id: FIRM_ID, matter_id: MATTER_ID, cause_title: MATTER.title, court: MATTER.court_name, scheduled_at: far, purpose: "Hearing" }];
+TABLES.firm_deadlines = [{ id: "deadline1", firm_id: FIRM_ID, matter_id: MATTER_ID, title: "File written address", cause_title: MATTER.title, due_on: past.slice(0, 10), status: "confirmed" }];
+if (SCENARIO === "single") TABLES.matters = [MATTER];
+if (SCENARIO === "empty") {
+  for (const table of ["matters", "updates", "tasks", "firm_cause_list", "firm_deadlines", "firm_threads"]) TABLES[table] = [];
+}
 
 const RPC = {
   available_slots: [],

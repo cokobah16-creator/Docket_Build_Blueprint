@@ -34,7 +34,7 @@ export function MatterTabs({
   }, [active]);
 
   return (
-    <nav aria-label="Matter sections" className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+    <nav aria-label="Matter sections" className="matter-tabs -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
       <ul className="flex gap-2 pb-1">
         {tabs.map((t) => {
           const current = t.key === active;
