@@ -15,6 +15,7 @@
     "test:navigation": "node tests/fixtures/navigation.mjs",
     "test:design": "node tests/fixtures/design.mjs",
     "test:design:inventory": "node tests/fixtures/design.mjs --inventory",
+    "auth:check": "bash scripts/check-auth-readiness.sh",
     "test:fixtures": "npm run test:layout && npm run test:ergonomics && npm run test:composer && npm run test:navigation && npm run test:design",
     "test:integration": "playwright test --config tests/integration/playwright.config.ts"
   },
