@@ -19,8 +19,8 @@ import { buttonClasses } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 import { PushOptIn } from "@/components/push/push-opt-in";
-import { MatterSearch } from "@/components/firm/matter-search";
-import { CardGrid, PageHeader, WithAside } from "@/components/shell/layout";
+import { PracticeOverview } from "@/components/firm/practice-overview";
+import { CardGrid, WithAside } from "@/components/shell/layout";
 import type { SittingDue } from "@/lib/db/types";
 
 export const metadata = { title: "Today" };
@@ -147,16 +147,12 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
 
   return (
     <div className="flex flex-col gap-4">
-      <PageHeader
-        title="Today"
-        description={`${ctx.firmName} · ${todayLabel}`}
-        tone="neutral"
-        actions={<PushOptIn compact />}
-      />
+      <header className="workspace-heading flex flex-wrap items-center justify-between gap-4">
+        <div><p className="workspace-eyebrow">Practice overview</p><h1 className="workspace-title">Today</h1><p className="text-13 text-ink-muted">{todayLabel} · {ctx.firmName}</p></div>
+        <PushOptIn compact />
+      </header>
 
-      {/* Search sits at the top of the feed: a lawyer arrives knowing the cause
-          title or the suit number, not which screen it lives on. */}
-      <MatterSearch />
+      <PracticeOverview ctx={ctx} />
 
       <WithAside
         from="xl"

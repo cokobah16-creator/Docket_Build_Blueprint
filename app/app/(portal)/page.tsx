@@ -111,17 +111,17 @@ export default async function ClientDashboard() {
 
   const firmLine = firm && (
     <>
-      <span className="block font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand">
-        Welcome, {displayName}
-      </span>
+      <span className="workspace-eyebrow block mb-2">Your client workspace</span>
+      <span className="workspace-title block">Welcome, {displayName}</span>
       <span className="mt-0.5 block text-13 text-ink-muted">{firm.name}</span>
     </>
   );
 
   return (
-    <Screen className="gap-4">
+    <Screen className="client-home gap-5">
       <IosInstallHint appName={firm?.name ?? "Docket"} />
       <OfflineBanner />
+      <h1 className="sr-only">Your client workspace</h1>
 
       <header className="flex items-start justify-between gap-3">
         {/* One firm is a fact, several is a choice — only the second is a button. */}
@@ -134,9 +134,9 @@ export default async function ClientDashboard() {
         ) : (
           <div className="min-w-0 flex-1">
             {firmLine ?? (
-              <h1 className="font-heading text-21 font-semibold leading-tight tracking-[-0.015em] text-brand md:text-26">
+              <p className="workspace-title">
                 Welcome, {displayName}
-              </h1>
+              </p>
             )}
           </div>
         )}
@@ -153,6 +153,31 @@ export default async function ClientDashboard() {
           )}
         </Link>
       </header>
+
+      {only && (
+        <div className="client-hero-grid">
+          <section className="client-matter">
+            <p className="workspace-eyebrow">Your matter · {only.reference}</p>
+            <h2><Link href={`/app/matters/${only.id}`}>{only.title}</Link></h2>
+            <div className="client-matter-meta">
+              {only.status && <span className="client-matter-status">{only.status.label}</span>}
+              {only.lawyer_names.length > 0 && <span>{only.lawyer_names.join(", ")}</span>}
+            </div>
+            <div className="mt-5 border-t border-white/30 pt-4 text-13 leading-relaxed">
+              <p className="font-semibold">Next court date</p>
+              <p>{only.next_event_at ? new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(only.next_event_at)) : "No date recorded yet"}</p>
+              {only.court_name && <p>{only.court_name}</p>}
+            </div>
+          </section>
+          <section className="client-next">
+            <p className="workspace-eyebrow">Stay informed</p>
+            <h2>{only.last_update?.title ?? "Your matter, in one place"}</h2>
+            <p className="text-13 leading-relaxed text-ink-muted">{only.last_update ? `Updated ${fmt.format(new Date(only.last_update.occurred_at))}. Open your matter to read the update and any instructions from your lawyer.` : "Read your case record, see shared documents or ask your lawyer a question."}</p>
+            <Link className="client-action mt-5" href={`/app/matters/${only.id}`}>View matter <Icon name="chevron-right" size={16} /></Link>
+          </section>
+        </div>
+      )}
+      {matters.length > 1 && <section className="client-next"><p className="workspace-eyebrow">Your matters</p><h2>Choose the file you want to work on</h2><p className="text-13 text-ink-muted">You have several matters with this firm. Select one before sending a message or uploading a document.</p><Link href="/app/matters" className="client-action mt-4">Choose a matter <Icon name="chevron-right" size={16} /></Link></section>}
 
       {/* Five actions share the width on a phone and grow into buttons with
           room to breathe on a laptop — the same five, never a different set. */}

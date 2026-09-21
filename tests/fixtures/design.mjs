@@ -500,12 +500,12 @@ function auditPage({ G, RAMP, RADII, FIELD_MIN_PX, SEED, PALETTE, docketOwned, c
     const cs = getComputedStyle(el);
     for (let i = 0; i < cs.length; i++) {
       const name = cs.item(i);
-      if (!name.startsWith("--t-") && !name.startsWith("--dk-")) continue;
+      if (!name.startsWith("--t-") && !name.startsWith("--dk-") && !name.startsWith("--os-")) continue;
       const c = asColour(cs.getPropertyValue(name));
       if (c) allowed.add(key(c));
     }
   };
-  const scopes = [document.documentElement, ...document.querySelectorAll('[style*="--dk-"], [data-theme-scope]')];
+  const scopes = [document.documentElement, ...document.querySelectorAll('[style*="--dk-"], [data-theme-scope], .legal-os')];
   for (const el of scopes) collect(el);
   for (const literal of PALETTE) { const c = asColour(literal); if (c) allowed.add(key(c)); }
 
