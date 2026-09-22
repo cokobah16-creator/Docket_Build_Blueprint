@@ -8,13 +8,12 @@
 // into two people who each completed half of it.
 //
 // WHERE IT WAS BEING TOLD, AND WHERE IT WAS NOT. app/auth/callback/route.ts did this, and that
-// route is reached by exactly one sign-in: the emailed magic link. Every other way into Docket
-// verifies in the browser — the phone code, and now the code in the sign-in email — and so never
-// passed through the one place that stitched. The booking wizard is the sharpest version of the
-// loss: someone lands on a firm's site, starts a booking, signs in with the phone code in the
-// middle of it, and pays. site_viewed and booking_started are the cookie; the payment and the
-// matter are the account; nothing joined them, so the two halves of the funnel Docket most wants
-// to read belonged to two different people.
+// route is reached by the emailed magic link and Google OAuth. Phone and WhatsApp codes verify in
+// the browser and so never passed through the one place that stitched. The booking wizard is the
+// sharpest version of the loss: someone lands on a firm's site, starts a booking, signs in with the
+// phone code in the middle of it, and pays. site_viewed and booking_started are the cookie; the
+// payment and the matter are the account; nothing joined them, so the two halves of the funnel
+// Docket most wants to read belonged to two different people.
 //
 // WHY IT CANNOT BE DONE IN THE BROWSER, and so why a client component has to ask a server to do
 // it. Both halves are deliberately server-side: the visitor cookie is httpOnly (middleware.ts says

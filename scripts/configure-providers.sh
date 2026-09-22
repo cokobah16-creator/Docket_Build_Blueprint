@@ -37,6 +37,40 @@ need SUPABASE_PROJECT_REF
 need APP_URL
 APP_URL="${APP_URL%/}"
 
+case "$APP_URL" in
+  https://*|http://localhost:*) ;;
+  *)
+    echo "ERROR: APP_URL must be an https origin (or http://localhost for local work). Got: $APP_URL" >&2
+    exit 1 ;;
+esac
+APP_AUTHORITY="${APP_URL#*://}"
+case "$APP_AUTHORITY" in
+  ''|*/*|*\?*|*\#*)
+    echo "ERROR: APP_URL must be an origin with no path, query or fragment. Got: $APP_URL" >&2
+    exit 1 ;;
+esac
+
+# Optional providers are optional as a group, never one variable at a time. Silently ignoring a
+# half-configured pair is how a deployment looks complete while its button can never work.
+require_complete_group() {
+  local label="$1"
+  shift
+  local present=0
+  local name
+  for name in "$@"; do
+    if [ -n "${!name:-}" ]; then present=$((present + 1)); fi
+  done
+  if [ "$present" -ne 0 ] && [ "$present" -ne "$#" ]; then
+    echo "ERROR: $label is only partly configured. Set all of: $*" >&2
+    exit 1
+  fi
+}
+
+require_complete_group "custom SMTP" RESEND_API_KEY EMAIL_FROM
+require_complete_group "Google OAuth" GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET
+require_complete_group "Twilio phone sign-in" \
+  TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_MESSAGE_SERVICE_SID
+
 MGMT="https://api.supabase.com/v1/projects/${SUPABASE_PROJECT_REF}"
 FUNCTIONS="https://${SUPABASE_PROJECT_REF}.supabase.co/functions/v1"
 AUTH_HDR=(-H "Authorization: Bearer ${SUPABASE_ACCESS_TOKEN}" -H "Content-Type: application/json")
@@ -108,29 +142,21 @@ PY
 )
 fi
 
-# THE SIGN-IN EMAIL CARRIES BOTH HALVES, and it only does so because this template says so.
+# A BRANDED MAGIC LINK, not an OTP Docket never asked the person to enter.
 #
-# Supabase's stock magic-link template is the link alone. The link is a PKCE link: the verifier it
-# needs was written to the browser that ASKED for it, so the two commonest ways an email is
-# actually read — tapping through inside Gmail's in-app browser, or opening it on the laptop when
-# the phone asked — fail on a link that is otherwise perfectly good. {{ .Token }} is the same
-# credential without that constraint: six digits, typed into any browser on any device, verified by
-# /auth/v1/verify with nothing to look up locally. src/components/auth/sign-in-forms.tsx shows a
-# field for it beside the link, and app/auth/callback/route.ts points at it by name when a link
-# fails. Remove {{ .Token }} here and that field silently becomes a box no code can ever satisfy.
+# Supabase's stock email is also link-only. Keeping that contract means the live provider and the
+# screen cannot silently disagree: phone and WhatsApp use six-digit codes; email uses one clear
+# action. The link carries PKCE state, so it must be opened on the device and browser that requested
+# it. The sign-in screen says that explicitly instead of rendering a code field that only works
+# when a custom template happens to include {{ .Token }}.
 #
-# SIX DIGITS. GoTrue allows 6 to 10 (GOTRUE_MAILER_OTP_LENGTH) and defaults to 6, which is what the
-# form assumes and what sms_otp_length is already pinned to above. If that default is ever changed
-# for this project, change CODE_LENGTH in the component in the same commit.
-#
-# Plain text inside one <p>, no images, no tracking pixel, no web font: this is read on a 3G phone
-# in a Gmail client that will strip most of what a designer would put here anyway, and a sign-in
-# email that looks like marketing is a sign-in email that lands in spam.
+# No images, tracking pixel or web font: this is read on a 3G phone in a Gmail client that may strip
+# most of what a designer would put here, and a sign-in email that looks like marketing is a sign-in
+# email that lands in spam.
 read -r -d '' MAGIC_LINK_HTML <<'HTML' || true
 <h2>Sign in to Docket</h2>
-<p><a href="{{ .ConfirmationURL }}">Tap here to sign in</a></p>
-<p>Or type this code on the sign-in screen: <strong>{{ .Token }}</strong></p>
-<p>If you are reading this on a different device from the one you are signing in on, use the code — the link only works in the browser that asked for it.</p>
+<p><a href="{{ .ConfirmationURL }}">Sign in to Docket</a></p>
+<p>Open this link on the device and in the browser where you asked to sign in. It expires shortly and can only be used once.</p>
 <p>If you did not ask to sign in, nothing has happened and you can ignore this email.</p>
 HTML
 
@@ -202,7 +228,7 @@ body = {
   "external_email_enabled": True,
   "mailer_autoconfirm": False,
   "security_update_password_require_reauthentication": True,
-  "mailer_subjects_magic_link": "Your Docket sign-in code",
+  "mailer_subjects_magic_link": "Your Docket sign-in link",
   "mailer_templates_magic_link_content": os.environ["MAGIC_LINK_HTML"],
 }
 if os.environ.get("PHONE_JSON"):
@@ -219,19 +245,16 @@ curl -fsS -X PATCH "${MGMT}/config/auth" "${AUTH_HDR[@]}" -d "$BODY" >/dev/null
 
 # HOW LONG A SIGN-IN EMAIL STAYS GOOD FOR, sent on its own and allowed to fail on its own.
 #
-# One setting governs both halves of that email — GoTrue keeps the link and the {{ .Token }} code
-# as one credential — so this is the lifetime of anything in that message. sms_otp_exp above is
-# pinned to 600; the email side was never pinned at all, which left a credential that signs
-# somebody straight into a firm's client portal living for however long the platform's default
-# happens to be, and defaults move. Supabase disallows more than 86400 and its own security
-# advisor warns above 3600.
+# This is the lifetime of the magic link. sms_otp_exp above is pinned to 600; the email side was
+# never pinned at all, which left a credential that signs somebody straight into a firm's client
+# portal living for however long the platform's default happens to be, and defaults move. Supabase
+# disallows more than 86400 and its own security advisor warns above 3600.
 #
 # 900 is the deliberate number: longer than the SMS code because an email arrives more slowly and
 # is read when the person gets to it, short enough that a message sitting in an inbox overnight is
 # not a key to a law firm. Fifteen minutes is generous for the actual flow, which is "tap the
-# button, read the email that has just arrived" — and if it does lapse, the screen it lapses on now
-# has a resend with a countdown and a code field beside it, which is what makes a short expiry
-# affordable. It was not affordable before those existed.
+# button, read the email that has just arrived" — and if it does lapse, the screen has a resend
+# with a countdown and a clear route back to correct the address.
 #
 # SENT SEPARATELY, AND ON PURPOSE. The field name is not something this repository can verify from
 # here: GOTRUE_MAILER_OTP_EXP is the documented variable and sms_otp_exp proves the Management API
@@ -288,7 +311,13 @@ print("   site_url            :", c.get("site_url"))
 print("   uri_allow_list      :", c.get("uri_allow_list"))
 print("   email sign-in       :", c.get("external_email_enabled"))
 tpl = c.get("mailer_templates_magic_link_content") or ""
-print("   sign-in email       : link", "+ code" if "{{ .Token }}" in tpl else "ONLY — the code field in the app cannot work")
+branded = "Sign in to Docket" in tpl and "{{ .ConfirmationURL }}" in tpl
+if branded and "{{ .Token }}" not in tpl:
+    print("   sign-in email       : branded magic link")
+elif "{{ .Token }}" in tpl:
+    print("   sign-in email       : link + UNUSED numeric token  <- re-run this script")
+else:
+    print("   sign-in email       : provider default magic link  <- re-run this script")
 exp = c.get("mailer_otp_exp")
 too_long = isinstance(exp, int) and exp > 3600
 print("   sign-in email lasts :", f"{exp}s" if isinstance(exp, int) else "(not reported by this API)",

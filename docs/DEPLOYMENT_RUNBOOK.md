@@ -109,22 +109,47 @@ they are reset.
 - **Authentication → Multi-Factor → TOTP: on.** This is not a nicety: `staff_w()` and `admin_w()`
   both require `mfa_ok()`, which is the JWT claim `aal = 'aal2'`. **Without TOTP enabled, no staff
   member can write anything at all.** Staff enrol at `/firm/security/mfa`.
-- **Site URL and redirect allow-list.** `scripts/configure-providers.sh` sets these over the
-  Management API, along with Twilio for SMS OTP if you give it the three Twilio variables:
+- **Site URL, redirect allow-list and sign-in providers.** `scripts/configure-providers.sh` sets
+  these over the Management API. Give it the Resend pair for production email, the Google pair for
+  OAuth, and all three Twilio values for phone and WhatsApp OTP:
 
   ```bash
   SUPABASE_ACCESS_TOKEN=sbp_... \
   SUPABASE_PROJECT_REF=<ref> \
   APP_URL=https://app.example \
+  RESEND_API_KEY=re_... \
+  EMAIL_FROM=sign-in@app.example \
+  GOOGLE_CLIENT_ID=...apps.googleusercontent.com \
+  GOOGLE_CLIENT_SECRET=... \
+  TWILIO_ACCOUNT_SID=AC... \
+  TWILIO_AUTH_TOKEN=... \
+  TWILIO_MESSAGE_SERVICE_SID=MG... \
   bash scripts/configure-providers.sh
   ```
 
-  It prints back what it set, and tells you what it did not change.
+  It prints back what it set, and tells you what it did not change. Then run the read-only gate with
+  the first three variables still exported:
+
+  ```bash
+  npm run auth:check
+  ```
+
+  This verifies what the Supabase Management API can prove without printing credentials: the Site
+  URL, callback allow-list, link-only Docket email template, custom SMTP, Google, phone provider and
+  six-digit SMS setting. It exits non-zero when any required path is missing.
+- **Google Cloud Console → OAuth client → Authorised redirect URIs:** add exactly
+  `https://<ref>.supabase.co/auth/v1/callback`. The Docket domain is not Google's callback;
+  Supabase is. A mismatch here is the usual `redirect_uri_mismatch` failure.
+- **Provider checks the API cannot prove:** verify the `EMAIL_FROM` domain in Resend; attach an
+  approved SMS sender and an approved WhatsApp sender to the Twilio Messaging Service; complete one
+  real delivery on each route.
 - **Authentication → Hooks → Send SMS** (optional, later): point it at a small function that
   forwards OTPs to Termii on the `dnd` route, so sign-in codes reach Nigerian numbers on the same
   path as everything else. Supabase's built-in Twilio provider works until then.
 
-**Proves it worked:** you can request a code at `/app/login` and receive it.
+**Proves it worked:** `npm run auth:check` passes; a Nigerian number receives and verifies one SMS
+and one WhatsApp code; the Docket email arrives from the verified sender and its link returns to the
+requested page; Google returns through `/auth/callback` to that same page.
 
 ---
 

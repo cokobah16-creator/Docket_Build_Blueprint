@@ -17,10 +17,10 @@
 // visitor and the account that just signed in are one person, so the funnel does not break in
 // half at the sign-in step. Nothing but two opaque ids is sent; no email, no phone, no name.
 //
-// This route is reached by exactly one sign-in, the emailed magic link. The phone code and the
-// code in that same email both verify in the browser and never come through here, so for them the
-// join is made by src/lib/actions/analytics.ts instead — the same helper, called from the other
-// side. See src/lib/observability/stitch.ts for what that costs when it is missed.
+// This route is reached by the emailed magic link and Google OAuth. Phone and WhatsApp codes verify
+// in the browser and never come through here, so their join is made by
+// src/lib/actions/analytics.ts instead — the same helper, called from the other side. See
+// src/lib/observability/stitch.ts for what that costs when it is missed.
 
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
   if (supabase && code) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     exchangeFailed = Boolean(error);
-    // The same join the phone and email codes now make through src/lib/actions/analytics.ts. It
+    // The same join phone and WhatsApp codes make through src/lib/actions/analytics.ts. It
     // used to be written out here, which is why it only ever covered the one sign-in that passes
     // through this route.
     await stitchVisitor(data?.user?.id ?? data?.session?.user?.id ?? null);
@@ -58,16 +58,15 @@ export async function GET(request: Request) {
     // ends here exactly as a magic link does, and a cancelled consent screen arrives carrying
     // access_denied — the same error_code a spent magic link carries. Without this, somebody who
     // tapped "Continue with Google" and changed their mind was told a sign-in link had expired and
-    // invited to type the code from an email nobody had sent. Docket put ?flow=google on its own
+    // invited to read an email nobody had sent. Docket put ?flow=google on its own
     // redirect_to (src/components/auth/sign-in-forms.tsx), and Supabase hands the whole URL back.
     flow: url.searchParams.get("flow"),
   });
 
   if (reason) {
-    // Back to sign-in with the destination still attached, so a second attempt — by link or by the
-    // code in the same email — still ends up where the first one was going. Which sign-in screen
-    // depends on where the link was heading: this route carries a client's magic link and a
-    // member of staff's password-recovery link alike.
+    // Back to sign-in with the destination still attached, so a second attempt still ends up where
+    // the first one was going. Which sign-in screen depends on where the link was heading: this
+    // route carries a client's magic link and a member of staff's password-recovery link alike.
     const back = new URL(loginHref(surfaceFor(next), next), url.origin);
     back.searchParams.set("reason", reason);
     return NextResponse.redirect(back);

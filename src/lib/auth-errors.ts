@@ -56,7 +56,6 @@ export type SignInStep =
   | "send_whatsapp"
   | "verify_sms"
   | "send_email"
-  | "verify_email"
   | "start_google";
 
 export interface SignInProblem {
@@ -100,12 +99,11 @@ export const CODE_DID_NOT_WORK = "That code did not work. Check the six digits, 
  * nobody expects: the sign-in link carries a PKCE code, and the verifier it needs was written to
  * the browser that ASKED for the link. Open it in Gmail's in-app browser, or on the laptop when
  * the phone asked, and the exchange fails on a link that is otherwise perfectly good — which is
- * exactly why the same email now carries a code, and why this sentence points at it.
+ * why the sign-in screen tells the person to open the link in the browser that requested it.
  */
 export const LINK_DID_NOT_WORK =
   "That sign-in link did not work. It may have expired, been used already, or been opened in a " +
-  "different browser from the one that asked for it. Ask for a new link and open it in the same " +
-  "browser you asked from.";
+  "different browser from the one that asked for it. Return to that browser and ask for a new link.";
 
 /** The send failed at the SMS provider, or the send hook timed out. Same move either way. */
 export const CODE_NOT_SENT = "We could not send a code to that number. Check it, or sign in by email instead.";
@@ -241,13 +239,11 @@ export function signInProblem(step: SignInStep, failure: AuthFailureShape): Sign
     return { text: TOO_MANY_TRIES };
   }
 
-  if (step === "verify_sms" || step === "verify_email") {
+  if (step === "verify_sms") {
     // otp_expired covers wrong, expired and never-issued. validation_failed is a malformed token,
     // which the field's own constraints should already have caught. otp_disabled joins them rather
-    // than becoming an answer about whose number — or whose address — this is. The email channel
-    // answers with the same codes and gets the same sentence for the same reason: a client who
-    // mistypes a digit and a stranger guessing at an address must not be able to tell each other's
-    // outcome apart.
+    // than becoming an answer about whose number this is. A client who mistypes a digit and a
+    // stranger guessing at a number must not be able to tell each other's outcome apart.
     if (
       code === "otp_expired" ||
       code === "validation_failed" ||

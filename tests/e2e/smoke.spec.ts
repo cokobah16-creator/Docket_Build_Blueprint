@@ -74,5 +74,17 @@ test("client login renders both sign-in methods", async ({ page }) => {
   if (configured) {
     await expect(page.getByRole("tab", { name: "Phone" })).toBeVisible();
     await expect(page.getByRole("tab", { name: "Email" })).toBeVisible();
+
+    // The production provider sends a magic link, not a numeric email OTP. Stub the provider call
+    // so this smoke test proves the post-send contract without delivering a real message.
+    await page.route("**/auth/v1/otp*", async (route) => {
+      await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+    });
+    await page.getByRole("tab", { name: "Email" }).click();
+    await page.getByLabel("Email address").fill("client@example.com");
+    await page.getByRole("button", { name: "Email me a sign-in link" }).click();
+
+    await expect(page.getByText(/we sent a sign-in link to client@example\.com/i)).toBeVisible();
+    await expect(page.getByLabel(/code from the email/i)).toHaveCount(0);
   }
 });

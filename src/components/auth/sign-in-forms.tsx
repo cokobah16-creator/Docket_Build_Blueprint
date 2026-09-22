@@ -122,7 +122,6 @@ type Channel = "sms" | "whatsapp";
 /** scripts/configure-providers.sh sets sms_otp_length 6 and sms_otp_exp 600. Both are said out loud. */
 const CODE_LENGTH = 6;
 const CODE_FIELD_ID = "sign-in-code";
-const EMAIL_CODE_FIELD_ID = "sign-in-email-code";
 
 /**
  * A per-device preference, alongside docket:low-data and docket:ios-hint-dismissed. Never under
@@ -232,9 +231,6 @@ export function SignInForms({
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  /** The email channel's own six digits. Separate from `code` for the same reason the stages are
-   *  separate: tapping between tabs must not show one channel the other's half-typed number. */
-  const [emailCode, setEmailCode] = useState("");
 
   /** The resolved E.164 a code was actually sent to. The only string verify and resend may use. */
   const [sentTo, setSentTo] = useState<string | null>(null);
@@ -255,7 +251,6 @@ export function SignInForms({
   const [formError, setFormError] = useState<string | null>(null);
   const [phoneError, setPhoneError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
-  const [emailCodeError, setEmailCodeError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   /** One deadline per identifier. The shape is the fix — see src/lib/cooldown.ts. */
@@ -268,7 +263,6 @@ export function SignInForms({
   const inFlight = useRef(false);
   const verified = useRef(false);
   const lastTried = useRef<string | null>(null);
-  const lastTriedEmail = useRef<string | null>(null);
 
   const { online, known: onlineKnown } = useConnectionState();
 
@@ -326,7 +320,6 @@ export function SignInForms({
     setFormError(null);
     setPhoneError(null);
     setCodeError(null);
-    setEmailCodeError(null);
     setNotice(null);
   }
 
@@ -461,11 +454,11 @@ export function SignInForms({
   }
 
   /**
-   * The one success path, shared by both codes.
+   * The success path for a code verified in this browser.
    *
-   * Reached whenever a session is established IN THIS BROWSER — the phone code, and now the code
-   * from the email. Not the magic link: that one lands on /auth/callback, which has a whole
-   * server-side route to itself and never renders this component.
+   * Reached when the phone or WhatsApp code establishes a session here. The email magic link and
+   * Google OAuth land on /auth/callback, which has a server-side route to itself and never render
+   * this component.
    *
    * /app/login uses onSignedIn to reach the ?next= destination and /app/join to re-run its server
    * page; the booking wizard passes nothing, which is why this component never navigates, reloads
@@ -612,77 +605,13 @@ export function SignInForms({
       }
       setSentToEmail(address);
       setEmailSent(true);
-      setEmailCode("");
-      lastTriedEmail.current = null;
       armCooldown(address, DEFAULT_RESEND_SECONDS);
-      if (again) setNotice("A new sign-in email is on the way. Only the newest link works.");
+      if (again) setNotice("A new sign-in link is on the way. The newest link is the only one that works.");
     } catch (caught) {
       setFormError(isNetworkFailure(caught) ? SIGN_IN_NOT_SENT : SIGN_IN_TROUBLE);
     } finally {
       inFlight.current = false;
       setBusy(false);
-    }
-  }
-
-  /**
-   * The email's OTHER half.
-   *
-   * The same email carries a link and a code, and this is the code. It exists because the link
-   * cannot always work: it carries a PKCE code whose verifier was written to the browser that
-   * ASKED for it, so opening it in Gmail's in-app browser, or on a laptop when the phone asked,
-   * fails on a link that is otherwise perfectly good. That was the single largest silent failure
-   * on this screen, and the honest old copy — "Open it on this device to continue" — described the
-   * limitation rather than removing it. verifyOtp with type "email" has no verifier to lose and
-   * works from any browser, on any device, so a client who cannot use the link types six digits
-   * instead.
-   *
-   * type: "email" and not "magiclink". They are not interchangeable and the names invite the wrong
-   * guess: "email" is the type for the numeric code, "magiclink" for the token_hash carried by the
-   * link itself. Verifying six typed digits as "magiclink" answers "Email link is invalid or has
-   * expired" on a code that is perfectly good — and magiclink is deprecated for email sign-in
-   * besides, where the live set is email, recovery, invite and email_change.
-   */
-  async function submitEmailCode(token: string) {
-    const digits = token.replace(/\D/g, "").slice(0, CODE_LENGTH);
-    const target = sentToEmail;
-    if (!target || inFlight.current || verified.current) return;
-    if (digits.length !== CODE_LENGTH) {
-      clearMessages();
-      setEmailCodeError(`Enter the ${CODE_LENGTH} digits from the email.`);
-      return;
-    }
-    inFlight.current = true;
-    lastTriedEmail.current = digits;
-    setBusy(true);
-    clearMessages();
-    try {
-      const { error: err } = await client.auth.verifyOtp({ email: target, token: digits, type: "email" });
-      if (err) {
-        const problem = signInProblem("verify_email", failureShape(err));
-        setEmailCodeError(problem.text || CODE_DID_NOT_WORK);
-        return;
-      }
-      completeSignIn();
-    } catch (caught) {
-      setFormError(isNetworkFailure(caught) ? SIGN_IN_NOT_SENT : SIGN_IN_TROUBLE);
-    } finally {
-      inFlight.current = false;
-      setBusy(false);
-    }
-  }
-
-  /** Digits only, six at most, and the sixth one submits — onCodeChange's rule, for the other channel. */
-  function onEmailCodeChange(value: string) {
-    const digits = value.replace(/\D/g, "").slice(0, CODE_LENGTH);
-    setEmailCode(digits);
-    if (emailCodeError) setEmailCodeError(null);
-    if (
-      digits.length === CODE_LENGTH &&
-      !inFlight.current &&
-      !verified.current &&
-      lastTriedEmail.current !== digits
-    ) {
-      void submitEmailCode(digits);
     }
   }
 
@@ -1042,8 +971,7 @@ export function SignInForms({
           </Button>
           {/* The email path had no way back at all: a link sent to an address with a typo in it was
               unrecoverable without switching tabs twice. The frequency limit is per address and the
-              same shape as the SMS one, so it gets the same countdown. One send produces both the
-              link and the code, so this asks for both and the label says so. */}
+              same shape as the SMS one, so it gets the same countdown. */}
           <Button
             variant="ghost"
             size="md"
@@ -1062,15 +990,13 @@ export function SignInForms({
             onClick={() => {
               setEmailSent(false);
               setSentToEmail(null);
-              setEmailCode("");
-              lastTriedEmail.current = null;
               clearMessages();
             }}
           >
             Change the address
           </Button>
           {offlineNote}
-        </form>
+        </div>
       )}
     </div>
   );
