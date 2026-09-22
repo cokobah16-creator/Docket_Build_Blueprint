@@ -108,7 +108,7 @@ export function PrimaryNav({
       <nav
         aria-label={label}
         className={cn(
-          "dk-sidebar fixed inset-y-0 left-0 z-30 hidden w-[248px] shrink-0 flex-col overflow-y-auto border-r bg-raised lg:flex",
+          "dk-sidebar fixed inset-y-0 left-0 z-30 hidden w-[calc(248px+env(safe-area-inset-left))] shrink-0 pl-[env(safe-area-inset-left)] flex-col overflow-y-auto border-r bg-raised lg:flex",
           edge,
         )}
       >
@@ -151,7 +151,7 @@ export function PrimaryNav({
       <nav
         aria-label={label}
         className={cn(
-          "dk-sidebar fixed inset-y-0 left-0 z-30 hidden w-[68px] shrink-0 flex-col items-center overflow-y-auto border-r bg-raised py-3 md:flex lg:hidden",
+          "dk-sidebar fixed inset-y-0 left-0 z-30 hidden w-[calc(68px+env(safe-area-inset-left))] shrink-0 flex-col items-center overflow-y-auto border-r bg-raised py-3 pl-[env(safe-area-inset-left)] md:flex lg:hidden",
           edge,
         )}
       >
@@ -181,7 +181,7 @@ export function PrimaryNav({
       <nav
         aria-label={label}
         className={cn(
-          "fixed inset-x-0 bottom-0 z-40 border-t bg-raised pb-[env(safe-area-inset-bottom)] md:hidden",
+          "fixed inset-x-0 bottom-0 z-40 border-t bg-raised pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:hidden",
           edge,
         )}
       >

@@ -59,7 +59,7 @@ export function QuickActions({ actions }: { actions: QuickAction[] }) {
       {open && (
         <div
           id={panelId}
-          className="absolute right-0 top-[calc(100%+6px)] z-50 w-[300px] max-w-[calc(100vw-32px)] overflow-hidden rounded-card border border-hairline bg-raised text-ink shadow-e3"
+          className="absolute right-0 top-[calc(100%+6px)] z-50 max-h-[calc(100dvh-80px)] w-[300px] max-w-[calc(100vw-32px)] overflow-y-auto rounded-card border border-hairline bg-raised text-ink shadow-e3"
         >
           <p className="border-b border-hairline px-3 py-2 text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">
             Start something
