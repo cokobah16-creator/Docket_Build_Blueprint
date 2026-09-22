@@ -9,6 +9,9 @@ import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, EmptyState } from "@/components/ui/card";
+import { StatusPill } from "@/components/ui/badge";
+import { buttonClasses } from "@/components/ui/button";
+import { Table, THead, TBody, TR, TH, TD } from "@/components/ui/table";
 import { cn } from "@/lib/cn";
 import { firmStaff, requestedFirmId, staffContext, staffLabel } from "@/lib/firm-data";
 import { relativeLabel } from "@/lib/relative";
@@ -77,13 +80,13 @@ export default async function FirmTasks({ searchParams }: { searchParams: Promis
     return qs ? `/firm/tasks?${qs}` : "/firm/tasks";
   };
   const chip = (active: boolean) =>
-    cn("flex min-h-[44px] shrink-0 items-center rounded-full border px-4 text-15", active ? "border-[#141414] bg-[#141414] text-white" : "border-edge bg-raised text-ink");
+    cn("flex min-h-11 shrink-0 items-center rounded-control border px-3 text-13 font-medium", active ? "border-ink-strong bg-ink-strong text-paper" : "border-hairline bg-raised text-ink hover:border-edge");
 
   return (
     <div className="flex flex-col gap-3.5">
       <div>
-        <h1 className="font-heading text-21 font-bold tracking-[-0.02em] text-[#141414]">Tasks</h1>
-        <p className="mt-0.5 text-13 text-[#57534E]">{ctx.firmName} · {tasks.length}{tasks.length === LIMIT ? "+" : ""} {view === "done" ? "closed" : view} · due times in {tz}</p>
+        <h1 className="text-21 font-semibold tracking-[-0.01em] text-ink-strong md:text-26">Tasks</h1>
+        <p className="mt-0.5 text-13 text-ink-muted">{ctx.firmName} · {tasks.length}{tasks.length === LIMIT ? "+" : ""} {view === "done" ? "closed" : view} · due times in {tz}</p>
       </div>
 
       <nav aria-label="Which tasks" className="-mx-4 flex gap-2 overflow-x-auto px-4">
@@ -92,27 +95,27 @@ export default async function FirmTasks({ searchParams }: { searchParams: Promis
         ))}
       </nav>
 
-      {error && <Alert kind="error" title="This screen could not read the tasks">{error.message}</Alert>}
+      {error && <Alert kind="error" title="Tasks could not be loaded">Nothing has been changed. Refresh the page to try again; if it keeps happening, tell your firm&apos;s administrator.</Alert>}
 
       {view === "next" ? (
         <Card>
           {nextActions.length === 0 ? (
-            <EmptyState title="No matter has a next action recorded" hint="Set one on the matter's Edit tab, with who is on it and the day it is due by." />
+            <EmptyState title="No matter has a next action recorded" hint="Set one on the matter's Details tab, with who is on it and the day it is due by." />
           ) : (
             <ul>
               {nextActions.map((m) => {
                 const late = Boolean(m.next_action_due && m.next_action_due < today);
                 return (
-                  <li key={m.id} className="border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0">
-                    <span className="block text-13 font-semibold text-[#141414]">{m.next_action}</span>
-                    <Link href={`/firm/matters/${m.id}?tab=edit`} className="mt-0.5 block truncate text-13 text-[#141414] underline underline-offset-2">
-                      {m.title} <span className="font-mono text-[#57534E]">{m.reference}</span>
+                  <li key={m.id} className="border-t border-hairline px-3 py-3.5 first:border-t-0">
+                    <span className="block text-13 font-semibold text-ink-strong">{m.next_action}</span>
+                    <Link href={`/firm/matters/${m.id}?tab=edit`} className="mt-0.5 block truncate text-13 text-ink-strong underline underline-offset-2">
+                      {m.title} <span className="font-mono text-ink-muted">{m.reference}</span>
                     </Link>
-                    <span className="mt-1 block text-11 text-[#57534E]">
-                      {m.next_action_owner_id ? owner.get(m.next_action_owner_id) ?? "A colleague" : <span className="font-semibold text-[#92400E]">Nobody on it</span>}
+                    <span className="mt-1 block text-11 text-ink-muted">
+                      {m.next_action_owner_id ? owner.get(m.next_action_owner_id) ?? "A colleague" : <span className="font-semibold text-waiting-ink">Nobody on it</span>}
                       {" · "}
                       {m.next_action_due
-                        ? <span className={cn(late && "font-semibold text-[#B42318]")}>{late ? "Overdue, was due " : "Due "}{formatDay(m.next_action_due)}</span>
+                        ? <span className={cn(late && "font-semibold text-wrong-ink")}>{late ? "Overdue, was due " : "Due "}{formatDay(m.next_action_due)}</span>
                         : "No due day"}
                     </span>
                   </li>
@@ -122,40 +125,80 @@ export default async function FirmTasks({ searchParams }: { searchParams: Promis
           )}
         </Card>
       ) : (
-      <Card>
+      <section aria-label="Tasks" className="overflow-hidden rounded-card border border-hairline bg-raised">
         {tasks.length === 0 ? (
           <EmptyState
             title={view === "overdue" ? "Nothing is overdue" : view === "mine" ? "Nothing is assigned to you" : view === "unassigned" ? "Every open task has an owner" : view === "done" ? "Nothing closed yet" : "No open tasks"}
-            hint="Tasks are added on a matter's Tasks tab."
+            hint="Tasks belong to a matter. Open the matter and use its Tasks tab to add one, with an owner and a due date."
+            action={<Link href="/firm/matters" className={buttonClasses("ghost", "sm")}>Go to matters</Link>}
           />
         ) : (
-          <ul>
-            {tasks.map((t) => {
-              const late = overdue(t);
-              return (
-                <li key={t.id} className="flex items-start justify-between gap-3 border-t border-[#F0EEEA] px-[15px] py-3.5 first:border-t-0">
-                  <span className="min-w-0">
-                    <span className="block text-13 font-semibold text-[#141414]">{t.title}</span>
-                    {t.matter_id && (
-                      <Link href={`/firm/matters/${t.matter_id}?tab=tasks`} className="mt-0.5 block truncate text-13 text-[#141414] underline underline-offset-2">
-                        {matterTitle.get(t.matter_id) ?? "Open the matter"}
-                      </Link>
-                    )}
-                    <span className="mt-1 block text-11 text-[#57534E]">
-                      {t.assignee_id ? owner.get(t.assignee_id) ?? "A colleague" : <span className="font-semibold text-[#92400E]">Unassigned</span>}
-                      {" · "}
-                      {t.due_at
-                        ? <span className={cn(late && "font-semibold text-[#B42318]")}>{late ? "Overdue, " : "Due "}{relativeLabel(t.due_at, nowMs)} · {fmt.format(new Date(t.due_at))}</span>
-                        : "No due date"}
+          <>
+            <div className="hidden md:block">
+              <Table minWidth="48rem" caption="Tasks">
+                <THead>
+                  <tr>
+                    <TH className="w-[34%]">Task</TH>
+                    <TH>Matter</TH>
+                    <TH>Assignee</TH>
+                    <TH>Due</TH>
+                    <TH>Status</TH>
+                    <TH className="text-right"><span className="sr-only">Action</span></TH>
+                  </tr>
+                </THead>
+                <TBody>
+                  {tasks.map((t) => {
+                    const late = overdue(t);
+                    return (
+                      <TR key={t.id}>
+                        <TD className="font-semibold text-ink-strong">{t.title}</TD>
+                        <TD>
+                          {t.matter_id
+                            ? <Link href={`/firm/matters/${t.matter_id}?tab=tasks`} className="underline-offset-2 hover:underline">{matterTitle.get(t.matter_id) ?? "Open the matter"}</Link>
+                            : <span className="text-ink-muted">No matter</span>}
+                        </TD>
+                        <TD>{t.assignee_id ? owner.get(t.assignee_id) ?? "A colleague" : <span className="font-semibold text-waiting-ink">Unassigned</span>}</TD>
+                        <TD className="whitespace-nowrap">
+                          {t.due_at
+                            ? <span className={cn(late && "font-semibold text-wrong-ink")}>{fmt.format(new Date(t.due_at))}<span className="block text-11 font-normal text-ink-muted">{relativeLabel(t.due_at, nowMs)}</span></span>
+                            : <span className="text-ink-muted">No due date</span>}
+                        </TD>
+                        <TD>{t.status !== "open" ? <StatusPill status="completed" label="Done" /> : late ? <StatusPill status="overdue" /> : <StatusPill status="pending" label="Open" />}</TD>
+                        <TD className="text-right">{t.status === "open" && <CloseTaskButton taskId={t.id} />}</TD>
+                      </TR>
+                    );
+                  })}
+                </TBody>
+              </Table>
+            </div>
+            <ul className="divide-y divide-hairline md:hidden">
+              {tasks.map((t) => {
+                const late = overdue(t);
+                return (
+                  <li key={t.id} className="flex items-start justify-between gap-3 px-3 py-3">
+                    <span className="min-w-0">
+                      <span className="block text-15 font-semibold text-ink-strong">{t.title}</span>
+                      {t.matter_id && (
+                        <Link href={`/firm/matters/${t.matter_id}?tab=tasks`} className="mt-0.5 block truncate text-13 text-ink underline underline-offset-2">
+                          {matterTitle.get(t.matter_id) ?? "Open the matter"}
+                        </Link>
+                      )}
+                      <span className="mt-1 block text-13 text-ink-muted">
+                        {t.assignee_id ? owner.get(t.assignee_id) ?? "A colleague" : <span className="font-semibold text-waiting-ink">Unassigned</span>}
+                        {" · "}
+                        {t.due_at
+                          ? <span className={cn(late && "font-semibold text-wrong-ink")}>{late ? "Overdue, " : "Due "}{relativeLabel(t.due_at, nowMs)}</span>
+                          : "No due date"}
+                      </span>
                     </span>
-                  </span>
-                  {t.status === "open" && <CloseTaskButton taskId={t.id} />}
-                </li>
-              );
-            })}
-          </ul>
+                    {t.status === "open" && <CloseTaskButton taskId={t.id} />}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
         )}
-      </Card>
+      </section>
       )}
     </div>
   );

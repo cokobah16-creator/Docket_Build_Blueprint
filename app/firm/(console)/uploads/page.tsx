@@ -63,7 +63,7 @@ export default async function FirmUploads({ searchParams }: { searchParams: Prom
         </p>
       </div>
 
-      {error && <Alert kind="error" title="This screen could not read the uploads">{error.message}</Alert>}
+      {error && <Alert kind="error" title="Client uploads could not be loaded">Nothing has been changed and no upload was lost. Refresh the page to try again.</Alert>}
 
       <Card>
         {docs.length === 0 ? (

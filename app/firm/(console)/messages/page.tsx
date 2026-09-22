@@ -245,7 +245,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
         <Link href={href("unread")} className={chip(view === "unread")} aria-current={view === "unread" ? "page" : undefined}>Unread by me{unread > 0 && <span className="opacity-70">· {unread}</span>}</Link>
       </nav>
 
-      {error && <Alert kind="error" title="This screen could not read the threads">{error.message}</Alert>}
+      {error && <Alert kind="error" title="Conversations could not be loaded">Nothing has been changed and no message was lost. Refresh the page to try again.</Alert>}
 
       <ListDetail listIsScreen={!open} list={list} detail={detail} />
 

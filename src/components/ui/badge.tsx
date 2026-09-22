@@ -176,7 +176,10 @@ export function MatterStatusChip({
         className,
       )}
     >
-      {hex && <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colour }} />}
+      {/* Status never rests on colour alone: a mark and the word travel together (DESIGN.md). */}
+      {hex
+        ? <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colour }} />
+        : <Icon name={status.is_terminal ? "square" : "dot"} size={12} strokeWidth={2.6} />}
       {status.label}
     </span>
   );
