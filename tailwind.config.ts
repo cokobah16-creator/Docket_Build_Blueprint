@@ -131,10 +131,14 @@ const config: Config = {
       // that would shift 12px -> 16px with nobody having asked for it. These
       // names collide with nothing, so adopting them is always deliberate.
       borderRadius: {
-        chip: "6px", // pills, chips, small tags
-        control: "9px", // buttons, inputs, selects — today's rounded-[9px]
-        card: "12px", // cards, alerts, choice cards — the name already in use
-        sheet: "18px", // modals, the phone More sheet — today's rounded-t-[18px]
+        // Tight on purpose. Records software reads as a tool when its geometry
+        // is close to square; generous radii are what make a screen read as a
+        // consumer app. Tailwind's own rounded-md (6) and rounded-lg (8) land
+        // on this scale, so the 265 older rounded-lg sites are now on it too.
+        chip: "4px", // status labels, chips, small tags
+        control: "6px", // buttons, inputs, selects
+        card: "8px", // panels, alerts, choice cards
+        sheet: "12px", // modals, the phone More sheet
       },
 
       // Elevation. In dark mode a shadow is nearly invisible, so each level

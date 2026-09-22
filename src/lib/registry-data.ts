@@ -101,3 +101,28 @@ export async function registryBatches(supabase: SupabaseClient, registryId: stri
     .order("staged_at", { ascending: false }).limit(limit);
   return (data ?? []) as RegistryNoticeBatchRow[];
 }
+
+export interface RegistryAuditRow {
+  id: number;
+  actor_id: string | null;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  meta: Record<string, unknown>;
+  at: string;
+}
+
+/**
+ * This registry's own audit trail, newest first. audit_log_registry_select (migration 49) is what
+ * lets a member read these lines at all; the filter here narrows them to the registry on screen
+ * for a person who acts for more than one.
+ */
+export async function registryAudit(supabase: SupabaseClient, registryId: string, limit = 200): Promise<RegistryAuditRow[]> {
+  const { data } = await supabase
+    .from("audit_log")
+    .select("id, actor_id, action, entity, entity_id, meta, at")
+    .or(`and(entity.eq.registry,entity_id.eq.${registryId}),meta->>registry_id.eq.${registryId}`)
+    .order("at", { ascending: false })
+    .limit(limit);
+  return (data ?? []) as RegistryAuditRow[];
+}

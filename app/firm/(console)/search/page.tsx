@@ -10,6 +10,7 @@
 // A plain GET form, on purpose. It works with no JavaScript, every result page is a link a lawyer
 // can send to a colleague, and the back button behaves.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
@@ -82,9 +83,7 @@ export default async function FirmSearch({ searchParams }: { searchParams: Promi
   const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId } = ctx;

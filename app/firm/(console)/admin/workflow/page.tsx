@@ -5,6 +5,7 @@
 // install_workflow_pack() and the matter_statuses policies, both admin_w — the screen only shows the
 // buttons to an owner or admin, and the database refuses anyone else regardless.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import { matterStatuses, requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
 import type { FirmWorkflowPackRow, WorkflowPackRow } from "@/lib/db/types";
@@ -17,9 +18,7 @@ export default async function WorkflowPage({ searchParams }: { searchParams: Pro
   const ctx = await staffContext(await requestedFirmId({ firm: firmParam }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId } = ctx;

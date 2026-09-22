@@ -8,6 +8,7 @@
 // current versions of this firm's undeleted documents. It returns counts and nothing else — never
 // a word of anybody's text, and never another firm's figures.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -22,9 +23,7 @@ export default async function DocumentTextPage({ searchParams }: { searchParams:
   const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId, timezone } = ctx;

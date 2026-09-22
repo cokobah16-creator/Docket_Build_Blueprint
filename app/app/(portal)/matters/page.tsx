@@ -80,7 +80,7 @@ export default async function MattersPage({ searchParams }: { searchParams: Prom
                       {m.next_event_note ? ` · ${m.next_event_note}` : ""}
                     </p>
                   )}
-                  {m.next_action && <p className="mt-1 text-13 font-semibold text-brand">Next: {m.next_action}</p>}
+                  {m.last_update?.next_step && <p className="mt-1 text-13 font-semibold text-brand">Next: {m.last_update.next_step}</p>}
                 </Link>
               </li>
             ))}

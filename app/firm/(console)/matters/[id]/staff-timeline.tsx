@@ -16,6 +16,8 @@
 //    cannot read a row inserted by the same statement.
 //  · Timestamps are UTC in the database and rendered in the viewer's zone.
 
+import { UpdateKindMark } from "@/components/ui/update-kind";
+import { Icon } from "@/components/ui/icon";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { NOT_SENT, draftKey, isNetworkFailure, useDeviceDraft } from "@/lib/drafts";
@@ -37,11 +39,6 @@ export interface StaffUpdate extends UpdateRow {
 }
 
 const field = "mt-1 min-h-[44px] w-full rounded-lg border border-edge px-3 py-2 text-base text-ink focus:border-brand focus:outline focus:outline-2 focus:outline-brand";
-
-const KIND_ICON: Record<string, string> = {
-  court_sitting: "⚖", consultation: "🎥", appointment: "📅", filing: "📄", correspondence: "✉",
-  milestone: "★", fee: "₦", document: "📎", note: "✎", status_change: "⇄",
-};
 
 const OUTCOME_LABELS: Record<string, string> = {
   hearing_held: "Hearing held",
@@ -297,14 +294,14 @@ export function StaffTimeline({
             return (
               <li
                 key={u.id}
-                className={cn("flex gap-3 px-4 py-4 sm:px-5", internal && "border-l-4 border-amber-400 bg-amber-50/60")}
+                className={cn("flex gap-3 px-4 py-4 sm:px-5", internal && "border-l-4 border-waiting-line bg-waiting-bg/40")}
               >
-                <span aria-hidden="true" className="mt-0.5 w-6 shrink-0 text-center text-base">{KIND_ICON[u.kind] ?? "•"}</span>
+                <UpdateKindMark kind={u.kind} />
                 <div className="min-w-0 flex-1">
                   {internal && (
                     <p className="mb-1">
-                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400 bg-amber-100 px-2 py-0.5 text-11 font-semibold uppercase tracking-wide text-amber-900">
-                        <span aria-hidden="true">🔒</span> Internal — not shown to your client
+                      <span className="inline-flex items-center gap-1 rounded-chip border border-waiting-line bg-waiting-bg px-2 py-0.5 text-11 font-semibold uppercase tracking-wide text-waiting-ink">
+                        <Icon name="shield" size={12} strokeWidth={2.4} /> Internal — not shown to your client
                       </span>
                     </p>
                   )}

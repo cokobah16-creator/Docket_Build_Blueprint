@@ -13,6 +13,7 @@
 // through formatMoneyMinor; nothing is firm-specific — the firm comes from
 // context; and a client with no email is flagged wherever a receipt depends on it.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { matterStatuses, requestedFirmId, staffContext } from "@/lib/firm-data";
@@ -20,10 +21,10 @@ import { siteOrigin } from "@/lib/site";
 import { formatMoneyMinor } from "@/lib/money";
 import { formatWhen } from "@/lib/time";
 import { Alert } from "@/components/ui/alert";
-import { Badge, StatusPill, type Status } from "@/components/ui/badge";
+import { Badge, MatterStatusChip, StatusPill, type Status } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { cn } from "@/lib/cn";
-import type { MatterStatus, RepresentationRow } from "@/lib/db/types";
+import type { RepresentationRow } from "@/lib/db/types";
 import { RepresentationsPanel } from "@/components/firm/representations-panel";
 import { todayIn } from "@/lib/days";
 
@@ -32,25 +33,6 @@ export const metadata = { title: "Client" };
 const OWING_STATUSES = new Set(["issued", "partially_paid", "overdue"]);
 const SEEN_STATUSES = new Set(["confirmed", "rescheduled", "completed"]);
 const LIVE_STATUSES = new Set(["pending", "awaiting_payment", "confirmed", "rescheduled"]);
-
-/** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
-const TONES: Record<string, string> = {
-  slate: "border-slate-300 bg-slate-50 text-slate-800",
-  gray: "border-edge bg-sunken text-ink",
-  grey: "border-edge bg-sunken text-ink",
-  blue: "border-blue-300 bg-blue-50 text-blue-900",
-  sky: "border-sky-300 bg-sky-50 text-sky-900",
-  indigo: "border-indigo-300 bg-indigo-50 text-indigo-900",
-  violet: "border-violet-300 bg-violet-50 text-violet-900",
-  purple: "border-purple-300 bg-purple-50 text-purple-900",
-  green: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  emerald: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  teal: "border-teal-300 bg-teal-50 text-teal-900",
-  amber: "border-amber-300 bg-amber-50 text-amber-900",
-  orange: "border-orange-300 bg-orange-50 text-orange-900",
-  red: "border-red-300 bg-red-50 text-red-900",
-  rose: "border-rose-300 bg-rose-50 text-rose-900",
-};
 
 const CHANNEL_LABELS: Record<string, string> = {
   in_app: "In the app",
@@ -154,22 +136,6 @@ function moneyLabel(byCurrency: Map<string, number>): string {
     .join(" · ");
 }
 
-function StatusChip({ status }: { status: MatterStatus }) {
-  const colour = (status.colour ?? "").trim();
-  const hex = colour.startsWith("#");
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-13 font-medium",
-        hex ? "bg-raised" : TONES[colour.toLowerCase()] ?? "border-edge bg-sunken text-ink",
-      )}
-      style={hex ? { borderColor: colour, color: colour } : undefined}
-    >
-      {status.label}
-    </span>
-  );
-}
-
 export default async function FirmClientPage({
   params,
   searchParams,
@@ -183,10 +149,7 @@ export default async function FirmClientPage({
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 
@@ -472,7 +435,7 @@ export default async function FirmClientPage({
                             {causeDiffers && <p className="mt-0.5 text-13 italic text-ink-muted">{m.cause_title}</p>}
                           </div>
                           <div className="flex shrink-0 flex-wrap items-center gap-2">
-                            {status && <StatusChip status={status} />}
+                            {status && <MatterStatusChip status={status} />}
                             {m.closed_at && (
                               <span className="inline-flex items-center rounded-full border border-edge bg-sunken px-2.5 py-0.5 text-13 font-medium text-ink">
                                 Closed

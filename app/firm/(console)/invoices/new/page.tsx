@@ -10,6 +10,7 @@
 // the rounding; and nothing is firm-specific — the firm, its VAT rate and its
 // default currency all arrive from staffContext().
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { firmMatters, requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
@@ -46,10 +47,7 @@ export default async function NewInvoicePage({
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

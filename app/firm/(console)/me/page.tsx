@@ -6,6 +6,7 @@
 // depends on aal2, and a lawyer who has dropped to aal1 should find that out
 // here rather than from a refused save.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { staffContext, firmOverview, firmStaff, requestedFirmId, staffLabel } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
@@ -28,10 +29,7 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

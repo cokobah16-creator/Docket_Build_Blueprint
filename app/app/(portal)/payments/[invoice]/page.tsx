@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { safeNotice } from "@/lib/user-error-message";
 import { notFound, redirect } from "next/navigation";
 import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -66,7 +67,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
         <StatusPill status={inv.status as Status} />
       </header>
 
-      {actionError && <Alert kind="error">{actionError}</Alert>}
+      {actionError && <Alert kind="error" title="Not completed">{safeNotice(actionError)}</Alert>}
       {payable && (
         <PayPanel
           amount={fmt(outstanding)}

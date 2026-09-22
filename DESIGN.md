@@ -95,19 +95,52 @@ and re-introduced exactly that.
 
 ## Shape, depth and motion
 
-Radius: `rounded-chip` 6 · `rounded-control` 9 · `rounded-card` 12 ·
-`rounded-sheet` 18. Named rather than `sm/md/lg/xl` because overriding
-Tailwind's own scale would silently move existing callers.
+Radius: `rounded-chip` 4 · `rounded-control` 6 · `rounded-card` 8 ·
+`rounded-sheet` 12. Tight on purpose: records software reads as a tool when
+its geometry is close to square. Tailwind's own `rounded-md` (6) and
+`rounded-lg` (8) land on this scale. `rounded-full` is for avatars, dots and
+switches — not for status labels, tabs or filter chips.
 
-Elevation: `shadow-e1` a card · `shadow-e2` a sticky header · `shadow-e3` a
-sheet or modal. **A shadow is nearly invisible on a dark ground**, so depth in
-dark comes from `bg-raised` sitting above `bg-paper`. Anything elevated must set
-both a surface and a shadow, or it will look flat in one theme.
+Elevation: `shadow-e1` is **flat** — a panel is bounded by its `border-hairline`
+and by `bg-raised` sitting on `bg-paper`, not by a shadow. `shadow-e2` a sticky
+header · `shadow-e3` a sheet, a modal or a popover such as the New menu.
+**A shadow is nearly invisible on a dark ground**, so depth in dark comes from
+the surface step either way.
 
 Motion: `duration-fast` 120ms state · `duration-base` 180ms enter and exit ·
-`duration-slow` 240ms sheets. `app/globals.css` disables animation globally
-under `prefers-reduced-motion`, but it only clamps duration — an animation that
-must not simply freeze mid-way needs to be handled explicitly.
+`duration-slow` 240ms sheets. Nothing lifts, scales or glows on hover; a
+clickable row changes its background (`bg-hover`) and nothing else.
+`app/globals.css` disables animation globally under `prefers-reduced-motion`.
+
+## Patterns
+
+**Card, list or table.** Ask what the information is before reaching for
+`Card`. Records with three or more attributes read as a `Table` from `md` up,
+with a stacked `<ul>` below `md` (see `app/firm/(console)/matters/page.tsx` and
+`tasks/page.tsx`). Facts about one record read as a ruled `<dl>` register (the
+matter header, the client's matter summary). A `Card` is for a genuinely
+separate object, such as the next appointment.
+
+**Status.** Every status goes through `StatusPill` (appointments, invoices, the
+filing and court lifecycle) or `MatterStatusChip` (a firm's own matter stages).
+Never hand-roll a coloured span for a status: the same word must look the same
+on every screen, and it always carries its label.
+
+**Tabs.** An underlined strip (`border-b-2`), never a row of filled pills.
+
+**Errors.** A person reads what was not done, whether anything was saved, and
+what to do next — never Postgres. Server actions go through `userError()`
+(`src/lib/user-error.ts`), client components through `userErrorMessage()`, and a
+message that travels in `?error=` is shown only through `safeNotice()`.
+
+**Empty states.** `EmptyState` answers what this is, why it is empty and what
+to do next. No illustration and no encouragement.
+
+**Icons.** `src/components/ui/icon.tsx` only. An icon helps a reader scan or
+identifies an action; it does not decorate a heading. Never an emoji.
+
+**AI.** If assisted features are added, name the task ("Summarise matter",
+"Extract parties"), never a generic sparkle or "AI" label.
 
 ## Rules that are not negotiable
 

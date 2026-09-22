@@ -6,6 +6,7 @@
 // admits the principal as well as the firm, so ending one here is the client's own act and not a
 // request to anybody.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
@@ -21,7 +22,7 @@ export const metadata = { title: "Who may act for me" };
 export default async function PortalAuthority() {
   const supabase = await supabaseServer();
   if (!supabase) {
-    return <Screen><Alert kind="warning" title="Not configured">Supabase environment variables are not set.</Alert></Screen>;
+    return <Screen><WorkspaceUnavailable audience="client" /></Screen>;
   }
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return <Screen><Alert kind="warning" title="Sign in">Sign in to see this.</Alert></Screen>;

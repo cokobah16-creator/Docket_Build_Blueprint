@@ -19,7 +19,7 @@ export default async function LawyersPage({ params }: { params: Promise<{ firm: 
   const lawyers = await publicLawyers(firm.id);
 
   return (
-    <PageShell title="Our lawyers" intro="Book a consultation with any of them, or let the firm match you.">
+    <PageShell title="Our lawyers" intro="You choose which lawyer to meet when you book a consultation.">
       {lawyers.length === 0 ? (
         <p className="text-ink-muted">Lawyer profiles are being set up.</p>
       ) : (

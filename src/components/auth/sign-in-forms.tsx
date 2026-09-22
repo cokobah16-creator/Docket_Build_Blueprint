@@ -615,7 +615,7 @@ export function SignInForms({
       setEmailCode("");
       lastTriedEmail.current = null;
       armCooldown(address, DEFAULT_RESEND_SECONDS);
-      if (again) setNotice("A new link and code are on the way. The newest ones are the only ones that work.");
+      if (again) setNotice("A new sign-in email is on the way. Only the newest link works.");
     } catch (caught) {
       setFormError(isNetworkFailure(caught) ? SIGN_IN_NOT_SENT : SIGN_IN_TROUBLE);
     } finally {
@@ -1000,13 +1000,23 @@ export function SignInForms({
               opening it on the laptop when the phone asked — failed on a good link with nothing
               said. The code below has no verifier to lose and works from anywhere, so the panel
               offers both and names the link first, because tapping it is still one action. */}
+          {/* What is promised is what is certainly sent: a secure sign-in link. The code is
+              offered as a fallback in words that stay true when the email carries none — a new
+              address receives Supabase's confirmation email, which has the link only, and a
+              project that has not run scripts/configure-providers.sh sends the stock template,
+              which has the link only too. Promising a code that never arrives leaves a person
+              staring at an empty inbox for something that is not coming. */}
           <Alert kind="success" title="Check your email">
-            We sent a sign-in link and a {CODE_LENGTH}-digit code to {sentToEmail}. Tap the link, or type
-            the code here if you are reading the email somewhere else.
+            We sent a secure sign-in link to {sentToEmail}. Open it on this phone or computer to sign in.
+            It works once and expires after a short time.
           </Alert>
+          <p className="text-13 text-ink-muted">
+            Reading the email on another device? If the email also shows a {CODE_LENGTH}-digit code,
+            type it below instead of opening the link.
+          </p>
           <Input
             id={EMAIL_CODE_FIELD_ID}
-            label="Code from the email"
+            label="Code from the email (if it has one)"
             type="text"
             inputMode="numeric"
             pattern="[0-9]*"
@@ -1017,7 +1027,7 @@ export function SignInForms({
             value={emailCode}
             onChange={(e) => onEmailCodeChange(e.target.value)}
             error={emailCodeError ?? undefined}
-            hint={`${CODE_LENGTH} digits, from the same email as the link.`}
+            hint={`${CODE_LENGTH} digits. Not every sign-in email includes one — the link always works.`}
           />
           {/* Never disabled, for the reason the phone one is not: auto-submit means the request is
               normally already in flight when this is tapped, and the in-flight ref makes the extra
@@ -1043,7 +1053,7 @@ export function SignInForms({
               if (sentToEmail) void sendLink(sentToEmail, true);
             }}
           >
-            {emailWait > 0 ? `Send them again in ${emailWait}s` : "Send them again"}
+            {emailWait > 0 ? `Send a new link in ${emailWait}s` : "Send a new link"}
           </Button>
           <Button
             variant="ghost"

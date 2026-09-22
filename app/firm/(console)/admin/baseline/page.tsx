@@ -6,6 +6,7 @@
 // and recording one are both an owner's or administrator's act with a second factor, and the
 // record cannot afterwards be edited.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
 import type { FirmBaselineRow, FirmMetrics } from "@/lib/db/types";
@@ -18,9 +19,7 @@ export default async function BaselinePage({ searchParams }: { searchParams: Pro
   const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId } = ctx;

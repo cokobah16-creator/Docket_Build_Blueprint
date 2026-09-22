@@ -74,8 +74,14 @@ export function activeHref(model: NavModel, pathname: string): string | null {
 }
 
 // ── the staff console ──────────────────────────────────────────────────────
-// Ordered the way a working day runs: what is happening now, then the files it
-// happens to, then the money and the admin behind them.
+// Ordered the way a working day runs: the day itself, then the files and the
+// people they belong to, then the diary and the work queues, then the money,
+// the reporting and the firm's own settings. Every entry is a screen that
+// exists; nothing is here to fill the list.
+//
+// On a phone the four thumbs are the four things a lawyer reaches for between
+// court and chambers: the day, a file, the court diary and the client's last
+// message. Everything else is one tap further, behind More.
 
 export const CONSOLE_NAV: NavModel = {
   sections: [
@@ -83,35 +89,36 @@ export const CONSOLE_NAV: NavModel = {
       title: null,
       items: [
         { href: "/firm", label: "Today", icon: "calendar-today", primary: true, exact: true },
-        { href: "/firm/appointments", label: "Consultations", short: "Consults", icon: "video", primary: true },
-        { href: "/firm/sittings", label: "Sittings", icon: "scale" },
-        { href: "/firm/tasks", label: "Tasks", icon: "check" },
+        { href: "/firm/search", label: "Search", icon: "search" },
       ],
     },
     {
-      title: "Work",
+      title: "Practice",
       items: [
         { href: "/firm/matters", label: "Matters", icon: "folder", primary: true },
-        { href: "/firm/clients", label: "Clients", icon: "clients", primary: true },
-        { href: "/firm/messages", label: "Messages", icon: "mail" },
-        { href: "/firm/uploads", label: "Uploads", icon: "upload" },
-        { href: "/firm/collaborations", label: "Collaborations", short: "Collab", icon: "transfer" },
+        { href: "/firm/clients", label: "Clients", icon: "clients" },
+        { href: "/firm/sittings", label: "Court diary", short: "Diary", icon: "scale", primary: true },
+        { href: "/firm/appointments", label: "Consultations", short: "Consults", icon: "video" },
+        { href: "/firm/tasks", label: "Tasks", icon: "check" },
+        { href: "/firm/messages", label: "Messages", icon: "mail", primary: true },
+        { href: "/firm/uploads", label: "Client uploads", short: "Uploads", icon: "upload" },
       ],
     },
     {
       title: "Firm",
       items: [
+        { href: "/firm/invoices", label: "Billing", icon: "card" },
         { href: "/firm/inbox", label: "Service inbox", short: "Service", icon: "inbox" },
-        { href: "/firm/invoices", label: "Invoices", icon: "card" },
+        { href: "/firm/collaborations", label: "Collaborations", short: "Collab", icon: "transfer" },
+        { href: "/firm/overview", label: "Reports", icon: "chart" },
         { href: "/firm/availability", label: "Availability", short: "Hours", icon: "clock" },
-        { href: "/firm/overview", label: "Overview", icon: "chart" },
-        { href: "/firm/admin", label: "Administration", short: "Admin", icon: "building" },
+        { href: "/firm/admin", label: "Firm settings", short: "Settings", icon: "building" },
       ],
     },
     {
       title: "You",
       items: [
-        { href: "/firm/me", label: "Me & the firm", short: "Me", icon: "user", also: ["/firm/security"] },
+        { href: "/firm/me", label: "Profile & security", short: "Me", icon: "user", also: ["/firm/security"] },
       ],
     },
   ],

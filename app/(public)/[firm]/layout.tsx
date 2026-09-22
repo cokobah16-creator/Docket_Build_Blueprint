@@ -81,7 +81,7 @@ export default async function FirmLayout({
       <header className="firm-site-header bg-raised">
         <div className="bg-brand text-brand-on">
           <div className="mx-auto flex min-h-[34px] max-w-[1180px] items-center justify-between gap-4 px-4 text-11 sm:px-6 lg:px-8">
-            <p className="font-medium">Secure legal services and client access</p>
+            <p className="font-medium">Consultations, bookings and the client portal</p>
             <p className="hidden opacity-75 sm:block">Powered by Docket</p>
           </div>
         </div>
@@ -162,7 +162,7 @@ export default async function FirmLayout({
         <div className="border-t border-white/15">
           <div className="mx-auto flex max-w-[1180px] flex-wrap justify-between gap-3 px-4 py-5 text-11 opacity-[0.65] sm:px-6 lg:px-8">
             <p>© {new Date().getFullYear()} {firm.legal_name ?? firm.name}</p>
-            <p>Client service infrastructure by Docket</p>
+            <p>Booking and client portal by Docket</p>
           </div>
         </div>
       </footer>

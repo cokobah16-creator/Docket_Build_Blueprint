@@ -27,7 +27,7 @@ export async function PracticeOverview({ ctx }: { ctx: StaffContext }) {
       </LedgerPanel>
       <LedgerPanel title="Deadlines" href={`/firm/sittings?${query}`}>
         {deadlines.error ? <p className="ledger-empty">Deadlines could not be loaded. Open the diary to retry.</p> : !deadlines.data?.length ? <p className="ledger-empty">No outstanding deadlines recorded.</p> : (deadlines.data as FirmDeadlineRow[]).map(d => (
-          <LedgerRow key={d.id} href={`/firm/matters/${d.matter_id}?tab=deadlines&${query}`} title={d.title} detail={<>{d.cause_title}<br />{formatDay(d.due_on)}{d.status === "proposed" ? " · Awaiting confirmation" : ""}</>} trailing={<span className={d.due_on < today ? "font-semibold text-red-700" : undefined}>{d.due_on < today ? "Overdue" : d.due_on === today ? "Due today" : "Upcoming"}</span>} />
+          <LedgerRow key={d.id} href={`/firm/matters/${d.matter_id}?tab=deadlines&${query}`} title={d.title} detail={<>{d.cause_title}<br />{formatDay(d.due_on)}{d.status === "proposed" ? " · Awaiting confirmation" : ""}</>} trailing={<span className={d.due_on < today ? "font-semibold text-wrong-ink" : undefined}>{d.due_on < today ? "Overdue" : d.due_on === today ? "Due today" : "Upcoming"}</span>} />
         ))}
       </LedgerPanel>
       <LedgerPanel title="Client messages" href={`/firm/messages?${query}`}>

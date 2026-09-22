@@ -6,6 +6,7 @@
 // they are different: a secretary having read a message does not mean the lawyer has answered it.
 // The Today tile counts the first; the pill on each row is the second.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -33,9 +34,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
   const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const view: View = sp.view === "awaiting" || sp.view === "unread" ? sp.view : "all";
@@ -246,7 +245,7 @@ export default async function FirmMessages({ searchParams }: { searchParams: Pro
         <Link href={href("unread")} className={chip(view === "unread")} aria-current={view === "unread" ? "page" : undefined}>Unread by me{unread > 0 && <span className="opacity-70">· {unread}</span>}</Link>
       </nav>
 
-      {error && <Alert kind="error" title="This screen could not read the threads">{error.message}</Alert>}
+      {error && <Alert kind="error" title="Conversations could not be loaded">Nothing has been changed and no message was lost. Refresh the page to try again.</Alert>}
 
       <ListDetail listIsScreen={!open} list={list} detail={detail} />
 

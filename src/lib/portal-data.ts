@@ -30,7 +30,10 @@ export async function clientMatters(
 ): Promise<MatterSummary[]> {
   let query = supabase
     .from("matters")
-    .select("id, firm_id, reference, title, type, status_id, description, next_action, next_action_due, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
+    // description and next_action are the firm's working notes, not the client's to read; see
+    // app/app/(portal)/matters/[id]/page.tsx. The client's "what happens next" is the next_step
+    // on the latest update written for them.
+    .select("id, firm_id, reference, title, type, status_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
     .is("deleted_at", null);
   if (firmId) query = query.eq("firm_id", firmId);
   const { data } = await query.order("opened_at", { ascending: false }).limit(limit);
@@ -40,7 +43,7 @@ export async function clientMatters(
   const firmIds = Array.from(new Set(matters.map((m) => m.firm_id)));
   const [{ data: statusRows }, { data: updateRows }, { data: lawyerRows }, firmNames] = await Promise.all([
     supabase.from("matter_statuses").select("id, firm_id, key, label, colour, is_terminal").in("firm_id", firmIds),
-    supabase.from("updates").select("id, matter_id, firm_id, kind, title, body, payload, occurred_at, created_at").in("matter_id", ids).order("occurred_at", { ascending: false }).limit(200),
+    supabase.from("updates").select("id, matter_id, firm_id, kind, title, body, payload, occurred_at, created_at, next_step, client_action, action_required").in("matter_id", ids).eq("visibility", "client").order("occurred_at", { ascending: false }).limit(200),
     supabase.from("matter_lawyers").select("matter_id, user_id, is_lead").in("matter_id", ids),
     firmNamesFor(firmIds),
   ]);

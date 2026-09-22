@@ -26,7 +26,21 @@ export type Status =
   | "issued"
   | "draft"
   | "active"
-  | "closed";
+  | "closed"
+  // The legal lifecycle. A filing, a document or a court process moves through
+  // these, and they read the same on every screen that shows one.
+  | "ready"
+  | "submitted"
+  | "received"
+  | "under_review"
+  | "accepted"
+  | "rejected"
+  | "correction_required"
+  | "filed"
+  | "scheduled"
+  | "archived"
+  | "urgent"
+  | "confidential";
 
 /**
  * The grounds a pill may sit on. Anything new picks one rather than inventing —
@@ -58,7 +72,24 @@ const styles: Record<Status, { tone: PillTone; icon: IconName; label: string }> 
   draft: { tone: "quiet", icon: "dot", label: "Draft" },
   active: { tone: "settled", icon: "dot", label: "Active" },
   closed: { tone: "quiet", icon: "square", label: "Closed" },
+  ready: { tone: "informing", icon: "check", label: "Ready for submission" },
+  submitted: { tone: "informing", icon: "upload", label: "Submitted" },
+  received: { tone: "informing", icon: "inbox", label: "Received" },
+  under_review: { tone: "waiting", icon: "clock", label: "Under review" },
+  accepted: { tone: "settled", icon: "check", label: "Accepted" },
+  rejected: { tone: "wrong", icon: "close", label: "Rejected" },
+  correction_required: { tone: "wrong", icon: "warning", label: "Correction required" },
+  filed: { tone: "settled", icon: "file", label: "Filed" },
+  scheduled: { tone: "informing", icon: "calendar", label: "Scheduled" },
+  archived: { tone: "quiet", icon: "square", label: "Archived" },
+  urgent: { tone: "wrong", icon: "alert", label: "Urgent" },
+  confidential: { tone: "over", icon: "shield", label: "Confidential" },
 };
+
+/** Whether a string from the database names a status this table knows. */
+export function isStatus(value: string | null | undefined): value is Status {
+  return Boolean(value && value in styles);
+}
 
 export function StatusPill({
   status,
@@ -73,7 +104,7 @@ export function StatusPill({
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-11 font-semibold",
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-chip border px-2 py-0.5 text-11 font-semibold",
         PILL_TONES[s.tone],
         className,
       )}
@@ -99,13 +130,57 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-11 font-semibold",
+        "inline-flex items-center gap-1.5 whitespace-nowrap rounded-chip border px-2 py-0.5 text-11 font-semibold",
         PILL_TONES[tone],
         className,
       )}
     >
       {icon && <Icon name={icon} size={12} strokeWidth={2.6} />}
       {children}
+    </span>
+  );
+}
+
+// ── a firm's own matter statuses ──────────────────────────────────────────
+// matter_statuses.colour is a colour NAME a firm chose ("green", "amber") or a
+// hex. Three screens each carried their own table of pastel Tailwind classes
+// for it, so "Filed in Court" was a different green on each. The name now picks
+// one of the same six grounds every other status uses, and the label — never
+// the colour — carries the meaning. A hex a firm typed is shown only as a small
+// swatch beside the label, on a neutral ground, because nothing guarantees it
+// clears contrast as text.
+
+const MATTER_TONES: Record<string, PillTone> = {
+  green: "settled", emerald: "settled", teal: "settled",
+  amber: "waiting", orange: "waiting", yellow: "waiting",
+  red: "wrong", rose: "wrong",
+  blue: "informing", sky: "informing", indigo: "informing", violet: "informing", purple: "informing",
+  slate: "quiet", gray: "quiet", grey: "quiet",
+};
+
+export function MatterStatusChip({
+  status,
+  className,
+}: {
+  status: { label: string; colour: string | null; is_terminal?: boolean | null };
+  className?: string;
+}) {
+  const colour = (status.colour ?? "").trim();
+  const hex = /^#[0-9a-f]{3,8}$/i.test(colour);
+  const tone: PillTone = status.is_terminal ? "over" : hex ? "quiet" : MATTER_TONES[colour.toLowerCase()] ?? "quiet";
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-chip border px-2 py-0.5 text-11 font-semibold",
+        PILL_TONES[tone],
+        className,
+      )}
+    >
+      {/* Status never rests on colour alone: a mark and the word travel together (DESIGN.md). */}
+      {hex
+        ? <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: colour }} />
+        : <Icon name={status.is_terminal ? "square" : "dot"} size={12} strokeWidth={2.6} />}
+      {status.label}
     </span>
   );
 }

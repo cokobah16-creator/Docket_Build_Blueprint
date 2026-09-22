@@ -12,6 +12,7 @@
 //  · Nothing firm-specific — the firm arrives from staffContext().
 //  · Every count that is capped says so; none of these are.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { formatWhen } from "@/lib/time";
@@ -87,9 +88,7 @@ export default async function FirmAdminPage({ searchParams }: { searchParams: Pr
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId, timezone: tz } = ctx;

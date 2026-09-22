@@ -15,6 +15,7 @@
 //    carrying two prefixes.
 //  · Nothing firm-specific: every value on this page is read from the firm in context.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { firmStaff, requestedFirmId, staffContext, staffLabel } from "@/lib/firm-data";
 import { deploymentHost } from "@/lib/admin-data";
@@ -82,9 +83,7 @@ export default async function FirmSettingsPage({ searchParams }: { searchParams:
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId } = ctx;
