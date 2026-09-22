@@ -5,6 +5,7 @@
 // overdue view here, every row names an owner or says "Unassigned" in the colour that means
 // something is waiting, and Done is one tap.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, EmptyState } from "@/components/ui/card";
@@ -29,9 +30,7 @@ export default async function FirmTasks({ searchParams }: { searchParams: Promis
   const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const view: View = VIEWS.some(([v]) => v === sp.view) ? (sp.view as View) : "open";

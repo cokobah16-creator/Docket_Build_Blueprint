@@ -5,6 +5,7 @@
 // previews PDFs and images through short signed URLs, lists versions.
 // Low-data mode defers every preview until tapped.
 
+import { userErrorMessage } from "@/lib/user-error-message";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
@@ -109,7 +110,7 @@ export function DocumentsTab({
       // with no row left on screen to remove. Forget it, and send the file as a new document.
       if (upErr && !isAlreadyStored(upErr.message)) {
         if (created === prior) { clearDraft(key); setError("That upload could not be finished — the document it belonged to is gone. Choose the file again to send it as a new one."); }
-        else setError(`Upload failed: ${upErr.message}`);
+        else setError(userErrorMessage(upErr, "The upload"));
         return;
       }
       const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
@@ -164,7 +165,7 @@ export function DocumentsTab({
     setBusy(`Finishing ${doc.name}…`);
     try {
       const { error: upErr } = await supabase.storage.from("documents").upload(path, file, { contentType: file.type || undefined, upsert: false });
-      if (upErr && !isAlreadyStored(upErr.message)) { setError(`Upload failed: ${upErr.message}`); return; }
+      if (upErr && !isAlreadyStored(upErr.message)) { setError(userErrorMessage(upErr, "The upload")); return; }
       const fin = await finalizeDocumentVersion({ documentId: doc.id, versionId, storagePath: path, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
       if (fin?.error && !/duplicate key|already exists/i.test(fin.error)) { setError(fin.error); return; }
       const k = uploadKey(userId, matterId ?? appointmentId ?? "");
@@ -188,7 +189,7 @@ export function DocumentsTab({
     const refused = await recordDocumentOpen(supabase, doc.version.id);
     if (refused) { setError(refused); setPreview(null); return; }
     const { data, error: sErr } = await supabase.storage.from("documents").createSignedUrl(doc.version.storage_path, 120);
-    if (sErr || !data?.signedUrl) { setError(sErr?.message ?? "Could not open the document."); setPreview(null); return; }
+    if (sErr || !data?.signedUrl) { setError(sErr ? "The document could not be opened. Refresh the page and try again." : "Could not open the document."); setPreview(null); return; }
     setPreview({ doc, url: data.signedUrl, loading: false });
   }, [lowData]);
 

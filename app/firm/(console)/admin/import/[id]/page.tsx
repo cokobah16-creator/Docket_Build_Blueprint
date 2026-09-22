@@ -6,6 +6,7 @@
 // sees nothing here); the invitation links are read from invites, which the wall governs; the
 // results file a person downloads carries outcomes and references, never tokens.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { firmStaff, requestedFirmId, staffContext, staffLabel } from "@/lib/firm-data";
@@ -22,7 +23,7 @@ export default async function ImportResultPage({ params, searchParams }: { param
   const { id } = await params;
   const { firm: firmParam } = await searchParams;
   let ctx = await staffContext(await requestedFirmId({ firm: firmParam }));
-  if (!ctx) return <Alert kind="warning" title="Not configured">Supabase environment variables are not set, or this account is not a member of a firm.</Alert>;
+  if (!ctx) return <WorkspaceUnavailable audience="staff" />;
 
   const { data: batchRow } = await ctx.supabase.from("import_batches").select("id, firm_id, kind, source_name, row_count, created_by, created_at, processed_at").eq("id", id).maybeSingle();
   const batch = (batchRow ?? null) as ImportBatchRow | null;

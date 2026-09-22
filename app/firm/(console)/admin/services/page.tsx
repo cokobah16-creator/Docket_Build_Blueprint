@@ -25,6 +25,7 @@
 //    consequence depends on something that does not exist yet — a settlement account, a lawyer's
 //    working week — the screen says so and links to where it is fixed.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { formatMoneyMinor } from "@/lib/money";
@@ -75,10 +76,7 @@ export default async function ServicesPage({
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm. See{" "}
-        <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

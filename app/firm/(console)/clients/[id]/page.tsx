@@ -13,6 +13,7 @@
 // through formatMoneyMinor; nothing is firm-specific — the firm comes from
 // context; and a client with no email is flagged wherever a receipt depends on it.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { matterStatuses, requestedFirmId, staffContext } from "@/lib/firm-data";
@@ -148,10 +149,7 @@ export default async function FirmClientPage({
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

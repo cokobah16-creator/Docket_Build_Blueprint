@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { safeNotice } from "@/lib/user-error-message";
 import { notFound, redirect } from "next/navigation";
 import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -92,7 +93,7 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
           <p className="mt-1 text-13 text-ink-muted">{firm?.name ?? "Your firm"}{lawyers.length ? ` · ${lawyers.map((l) => l.full_name ?? l.title).join(", ")}` : ""}</p>
         </header>
 
-        {actionError && <Alert kind="error">{actionError}</Alert>}
+        {actionError && <Alert kind="error" title="Not completed">{safeNotice(actionError)}</Alert>}
 
         {/* The summary and the next action are above the tabs on a phone, and
             stay beside them from 1280px — so what the matter is never scrolls

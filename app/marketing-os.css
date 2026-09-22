@@ -1,34 +1,11 @@
-/* Public-facing Docket language: editorial, restrained and matter-first. */
+/* Public-facing Docket: the platform landing, the sign-in frame and a firm's
+   public site. Hierarchy comes from type, spacing and rules. There are no
+   background grids, radial glows, perspective tilts, blurred headers or
+   hover lifts here, on purpose: those read as a template, and a legal
+   service is chosen on trust rather than on motion. */
 .platform-site,
 .auth-frame {
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-
-.platform-site .platform-header {
-  backdrop-filter: blur(16px);
-  box-shadow: 0 1px 0 rgb(255 255 255 / 0.06);
-}
-
-.platform-site .platform-grid {
-  background-image:
-    linear-gradient(90deg, rgb(11 25 40 / 0.035) 1px, transparent 1px),
-    linear-gradient(rgb(11 25 40 / 0.035) 1px, transparent 1px),
-    radial-gradient(circle at 84% 18%, rgb(174 134 72 / 0.16), transparent 28%);
-  background-size: 32px 32px, 32px 32px, auto;
-}
-
-.platform-site .platform-preview {
-  transform: perspective(1400px) rotateY(-1.25deg) rotateX(0.5deg);
-  transform-origin: center;
-}
-
-.auth-frame-grid {
-  opacity: 0.5;
-  background-image:
-    linear-gradient(90deg, rgb(255 255 255 / 0.055) 1px, transparent 1px),
-    linear-gradient(rgb(255 255 255 / 0.055) 1px, transparent 1px),
-    radial-gradient(circle at 22% 68%, rgb(174 134 72 / 0.28), transparent 26%);
-  background-size: 48px 48px, 48px 48px, auto;
 }
 
 .auth-frame-content > main {
@@ -42,16 +19,15 @@
 .auth-frame-content > main > :first-child h1,
 .auth-frame-content > main > h1:first-of-type {
   color: #0b1928;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 32px;
-  line-height: 1.12;
-  letter-spacing: -0.025em;
+  font-size: 26px;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
 .auth-frame-content .rounded-card {
   border-color: #d8d2c7;
   background: #fbf9f4;
-  box-shadow: 0 18px 50px rgb(7 18 29 / 0.08);
 }
 
 .auth-frame-content input,
@@ -68,7 +44,7 @@
 .firm-site-os .firm-site-header {
   position: relative;
   z-index: 30;
-  box-shadow: 0 1px 0 rgb(var(--t-ink) / 0.04);
+  border-bottom: 1px solid rgb(var(--t-hairline));
 }
 
 .firm-site-os .firm-site-links > div {
@@ -79,33 +55,20 @@
   display: none;
 }
 
-.firm-site-os .firm-home-hero,
-.firm-site-os .firm-page-hero,
-.firm-site-os .booking-page {
-  background-image:
-    linear-gradient(90deg, rgb(var(--t-ink) / 0.025) 1px, transparent 1px),
-    linear-gradient(rgb(var(--t-ink) / 0.025) 1px, transparent 1px),
-    radial-gradient(circle at 84% 20%, color-mix(in srgb, var(--dk-accent) 15%, transparent), transparent 30%);
-  background-size: 36px 36px, 36px 36px, auto;
-}
-
 .firm-site-os .firm-brief,
 .firm-site-os .booking-workspace {
-  border-radius: 12px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
 .firm-site-os .public-list-card {
   border-color: rgb(var(--t-hairline));
-  border-radius: 12px;
-  box-shadow: var(--t-shadow-e1);
-  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+  border-radius: 8px;
+  transition: border-color 120ms ease;
 }
 
 .firm-site-os a:hover .public-list-card {
-  border-color: var(--dk-primary);
-  box-shadow: var(--t-shadow-e2);
-  transform: translateY(-2px);
+  border-color: rgb(var(--t-edge));
 }
 
 .firm-site-os .booking-wizard > header {
@@ -113,10 +76,6 @@
 }
 
 @media (max-width: 1023px) {
-  .platform-site .platform-preview {
-    transform: none;
-  }
-
   .auth-frame-content > main {
     padding-top: 40px;
     padding-bottom: 40px;

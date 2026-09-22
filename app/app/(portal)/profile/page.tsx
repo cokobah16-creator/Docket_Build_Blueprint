@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { safeNotice } from "@/lib/user-error-message";
 import { redirect } from "next/navigation";
 import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -58,7 +59,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
     <Screen>
       <ScreenTitle>Profile</ScreenTitle>
       {saved && <Alert kind="success">Saved.</Alert>}
-      {error && <Alert kind="error">{error}</Alert>}
+      {error && <Alert kind="error" title="Not saved">{safeNotice(error)}</Alert>}
 
       <Card>
         <CardHeader title="Your details" />

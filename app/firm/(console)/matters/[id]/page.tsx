@@ -16,6 +16,7 @@
 //    reads this file in the firm that owns it.
 //  · No dead ends: every empty tab names the next action.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
@@ -132,10 +133,7 @@ export default async function MatterWorkbench({
   let ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

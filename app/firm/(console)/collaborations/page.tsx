@@ -5,6 +5,7 @@
 // snapshot taken when it was proposed, not the other firm's live matter, which this firm cannot
 // read and will not be able to read after accepting either.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
@@ -20,9 +21,7 @@ export default async function FirmCollaborations({ searchParams }: { searchParam
   const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId, timezone: tz } = ctx;

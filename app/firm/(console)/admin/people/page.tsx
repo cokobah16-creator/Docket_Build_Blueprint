@@ -19,6 +19,7 @@
 //  · Every count that is capped says so.
 //  · Nothing firm-specific: the firm arrives from staffContext().
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { firmStaff, requestedFirmId, staffContext, staffLabel } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
@@ -43,10 +44,7 @@ export default async function PeoplePage({ searchParams }: { searchParams: Promi
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm. See{" "}
-        <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

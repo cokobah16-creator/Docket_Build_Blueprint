@@ -13,6 +13,7 @@
 // More on a phone. Width changes the arrangement and nothing else — a lawyer on
 // a phone is still a lawyer, with the same destinations and the same rights.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { loginPath, mfaPath } from "@/lib/auth-redirect-server";
@@ -47,9 +48,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
   if (!supabase) {
     return (
       <main className="mx-auto max-w-md px-4 py-16">
-        <Alert kind="warning" title="Not configured">
-          Supabase environment variables are not set. See <code>.env.example</code>.
-        </Alert>
+        <WorkspaceUnavailable audience="staff" />
       </main>
     );
   }

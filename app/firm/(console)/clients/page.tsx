@@ -12,6 +12,7 @@
 // firm, its name, its zone and its public booking address all come from context;
 // and the empty state names the next action instead of leaving a dead end.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { staffContext, requestedFirmId } from "@/lib/firm-data";
 import { firmById } from "@/lib/tenant";
@@ -146,10 +147,7 @@ export default async function FirmClientsPage({
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

@@ -38,6 +38,7 @@ import { allow, tooFast } from "@/lib/rate-limit";
 import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
 import type { BookingResult } from "@/lib/db/types";
 import { after } from "next/server";
+import { userError } from "@/lib/user-error";
 
 /** The appointment_mode enum in migration 1. The database is what refuses anything else. */
 export type BookingMode = "virtual" | "in_person" | "phone";
@@ -197,7 +198,13 @@ export async function cancelAppointment(appointmentId: string): Promise<{ error:
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
   const { error } = await supabase.rpc("cancel_appointment", { p_appointment: appointmentId, p_reason: "cancelled by client" });
-  if (error) return { error: error.message };
+  if (error) {
+    // cancel_appointment() raises short developer phrases; these two are the ones a client can
+    // cause by ordinary use, and each gets its own sentence. Anything else is reported and worded.
+    if (/already started/i.test(error.message)) return { error: "This consultation has already started, so it can no longer be cancelled here. Message the firm instead." };
+    if (/appointment already/i.test(error.message)) return { error: "This consultation is already closed, so there is nothing to cancel." };
+    return { error: await userError(error, "The cancellation", "booking: cancel appointment") };
+  }
   revalidatePath(`/app/appointments/${appointmentId}`);
   revalidatePath("/app/appointments");
   return undefined;
@@ -214,6 +221,6 @@ export async function saveContactEmail(email: string): Promise<{ error: string }
   const trimmed = email.trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return { error: "That email address doesn't look right." };
   const { error } = await supabase.from("profiles").update({ email: trimmed }).eq("id", user.id);
-  if (error) return { error: error.message };
+  if (error) return { error: await userError(error, "Your email address", "booking: save contact email") };
   return undefined;
 }

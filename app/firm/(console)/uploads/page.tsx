@@ -5,6 +5,7 @@
 // says how long it has waited, opens at the document itself on the matter's Documents tab, and
 // can be marked as reviewed here — the mark the client sees as "Seen by your firm".
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, EmptyState } from "@/components/ui/card";
@@ -22,9 +23,7 @@ export default async function FirmUploads({ searchParams }: { searchParams: Prom
   const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId, timezone: tz } = ctx;

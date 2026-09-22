@@ -5,6 +5,7 @@
 // A client acting with several firms taps that name to switch, and the whole
 // screen repaints (src/lib/portal-firm.ts).
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { loginPath } from "@/lib/auth-redirect-server";
@@ -35,7 +36,7 @@ export default async function ClientDashboard() {
   if (!supabase) {
     return (
       <Screen>
-        <Alert kind="warning" title="Not configured">Supabase environment variables are not set. See <code>.env.example</code>.</Alert>
+        <WorkspaceUnavailable audience="client" />
       </Screen>
     );
   }

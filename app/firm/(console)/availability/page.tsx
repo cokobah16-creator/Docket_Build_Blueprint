@@ -20,6 +20,7 @@
 //  · Nothing fake. With no active service the wizard can offer nothing at all,
 //    so the preview says exactly that rather than inventing slots.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { firmStaff, requestedFirmId, staffContext, staffLabel, availabilityFor, WEEKDAYS } from "@/lib/firm-data";
 import { zonedDayRange } from "@/lib/time";
@@ -79,10 +80,7 @@ export default async function AvailabilityPage({
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

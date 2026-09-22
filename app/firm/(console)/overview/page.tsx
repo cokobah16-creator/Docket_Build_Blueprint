@@ -8,6 +8,7 @@
 // client; UTC in the database, rendered in ctx.timezone; money is integer minor
 // units through formatMoneyMinor; the firm comes from context, never from code.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import {
   staffContext, firmOverview, firmStaff, firmMatters, staffLabel, requestedFirmId,
@@ -54,10 +55,7 @@ export default async function FirmOverviewPage({ searchParams }: { searchParams:
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

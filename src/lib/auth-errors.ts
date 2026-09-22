@@ -104,8 +104,8 @@ export const CODE_DID_NOT_WORK = "That code did not work. Check the six digits, 
  */
 export const LINK_DID_NOT_WORK =
   "That sign-in link did not work. It may have expired, been used already, or been opened in a " +
-  "different browser from the one that asked for it. Ask for a new one — or type the code from " +
-  "the same email, which works anywhere.";
+  "different browser from the one that asked for it. Ask for a new link and open it in the same " +
+  "browser you asked from.";
 
 /** The send failed at the SMS provider, or the send hook timed out. Same move either way. */
 export const CODE_NOT_SENT = "We could not send a code to that number. Check it, or sign in by email instead.";

@@ -42,14 +42,11 @@ export default async function FirmHome({ params }: { params: Promise<{ firm: str
       <section className="firm-home-hero border-b border-hairline">
         <div className="mx-auto grid max-w-[1180px] gap-12 px-4 py-16 sm:px-6 sm:py-24 lg:grid-cols-[1fr_0.78fr] lg:items-center lg:gap-16 lg:px-8">
           <div>
-            <p className="text-11 font-semibold uppercase tracking-[0.16em] text-brand-accent">
-              Counsel · clarity · continuity
-            </p>
-            <h1 className="mt-5 max-w-[13ch] font-heading text-44 font-semibold leading-[1.02] tracking-[-0.035em] text-brand sm:text-56">
-              {firm.brand.tagline ?? `Legal work handled with clarity by ${firm.name}.`}
+            <h1 className="max-w-[16ch] font-heading text-44 font-semibold leading-[1.02] tracking-[-0.035em] text-brand sm:text-56">
+              {firm.brand.tagline ?? `Book a consultation with ${firm.name}.`}
             </h1>
             <p className="mt-6 max-w-[58ch] text-17 leading-7 text-ink-muted">
-              Begin with a structured consultation, meet the lawyer handling your work, and follow every important development through one secure client record.
+              Choose a service, pick a lawyer and a time, and confirm online. If the firm takes on your matter, you can follow its progress, documents, messages and invoices from your phone.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href={`${base}/book`} className="inline-flex min-h-[50px] items-center rounded-control bg-brand px-6 text-15 font-semibold text-brand-on hover:opacity-90">
@@ -59,33 +56,17 @@ export default async function FirmHome({ params }: { params: Promise<{ firm: str
                 Explore services
               </Link>
             </div>
-            <div className="mt-7 flex flex-wrap gap-x-6 gap-y-2 text-11 font-medium text-ink-muted">
-              <span>Secure online booking</span>
-              <span>Virtual or in-person consultation</span>
-              <span>Mobile client portal</span>
-            </div>
           </div>
 
-          <aside className="firm-brief border border-hairline bg-raised shadow-e2">
+          <aside className="firm-brief border border-hairline bg-raised">
             <div className="border-b border-hairline bg-brand px-5 py-4 text-brand-on">
-              <p className="text-11 font-semibold uppercase tracking-[0.13em] opacity-70">Consultation brief</p>
-              <p className="mt-1 font-heading text-21">Start with the right information</p>
+              <p className="font-heading text-17 font-semibold">Consultation fees</p>
+              <p className="mt-0.5 text-13 opacity-80">{services.length} {services.length === 1 ? "service" : "services"} · {lawyers.length} {lawyers.length === 1 ? "lawyer" : "lawyers"} taking bookings</p>
             </div>
             <div className="p-5">
-              <dl className="grid grid-cols-2 gap-4 border-b border-hairline pb-5">
-                <div>
-                  <dt className="text-11 uppercase tracking-[0.1em] text-ink-muted">Services</dt>
-                  <dd className="mt-1 font-heading text-26 text-brand">{services.length}</dd>
-                </div>
-                <div>
-                  <dt className="text-11 uppercase tracking-[0.1em] text-ink-muted">Lawyers</dt>
-                  <dd className="mt-1 font-heading text-26 text-brand">{lawyers.length}</dd>
-                </div>
-              </dl>
-              <div className="mt-5 space-y-4">
-                {services.slice(0, 3).map((service, index) => (
-                  <div key={service.id} className="grid grid-cols-[28px_1fr_auto] items-start gap-3 border-b border-hairline pb-4 last:border-0 last:pb-0">
-                    <span className="font-heading text-15 text-brand-accent">0{index + 1}</span>
+              <div className="space-y-3">
+                {services.slice(0, 4).map((service) => (
+                  <div key={service.id} className="grid grid-cols-[1fr_auto] items-start gap-3 border-b border-hairline pb-3 last:border-0 last:pb-0">
                     <div>
                       <p className="text-13 font-semibold text-ink">{service.name}</p>
                       <p className="mt-0.5 text-11 text-ink-muted">{service.duration_min} minutes</p>
@@ -173,8 +154,8 @@ export default async function FirmHome({ params }: { params: Promise<{ firm: str
       <section className="mx-auto max-w-[1180px] px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-8 bg-brand px-6 py-10 text-brand-on sm:px-10 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
-            <p className="text-11 font-semibold uppercase tracking-[0.13em] opacity-70">Begin with a consultation</p>
-            <h2 className="mt-3 max-w-[18ch] font-heading text-32 font-semibold leading-tight tracking-[-0.025em]">Tell us what requires attention. We will start from there.</h2>
+            <h2 className="max-w-[24ch] font-heading text-26 font-semibold leading-tight">Book a consultation with {firm.name}</h2>
+            <p className="mt-2 max-w-[56ch] text-15 opacity-85">Pick a service, a lawyer and a time that suits you. Any fee is shown before you confirm the booking.</p>
           </div>
           <Link href={`${base}/book`} className="inline-flex min-h-[50px] items-center justify-center rounded-control bg-brand-on px-6 text-15 font-semibold text-brand">
             {firm.brand.cta ?? "Book a Consultation"}

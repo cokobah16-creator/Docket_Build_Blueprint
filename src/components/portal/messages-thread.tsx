@@ -3,6 +3,7 @@
 // Message thread on a matter or appointment: Realtime inserts, read receipts,
 // document attachments (uploaded through the same documents flow).
 
+import { userErrorMessage } from "@/lib/user-error-message";
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { createDocument, finalizeDocumentVersion, markThreadRead, sendMessage } from "@/lib/actions/portal";
@@ -118,7 +119,7 @@ export function MessagesThread({
       const created = await createDocument({ firmId, matterId, appointmentId, name: file.name, mime: file.type || "application/octet-stream", sizeBytes: file.size });
       if (!created.ok) { setError(created.error); return; }
       const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined });
-      if (upErr) { setError(`Upload failed: ${upErr.message}`); return; }
+      if (upErr) { setError(userErrorMessage(upErr, "The attachment")); return; }
       const fin = await finalizeDocumentVersion({ documentId: created.documentId, versionId: created.versionId, storagePath: created.storagePath, mime: file.type || "application/octet-stream", sizeBytes: file.size, checksum: await sha256Hex(file) });
       if (fin?.error) { setError(fin.error); return; }
       setAttachments((a) => [...a, { document_id: created.documentId, name: file.name, mime: file.type || null }]);
