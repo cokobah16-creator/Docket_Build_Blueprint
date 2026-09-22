@@ -10,6 +10,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { siteOrigin } from "@/lib/site";
+import { userError } from "@/lib/user-error";
 import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
 import { SELECTED_FIRM_COOKIE, clientFirms } from "@/lib/portal-firm";
 import type { MessageAttachment } from "@/lib/db/types";
@@ -70,7 +71,8 @@ export async function startInvoicePayment(invoiceId: string, channel?: PaymentCh
     });
     checkoutUrl = result.checkoutUrl;
   } catch (err) {
-    return { error: err instanceof Error ? `Could not start payment: ${err.message}` : "Could not start payment." };
+    await userError(err, "The payment", "portal: start invoice payment");
+    return { error: "The payment could not be started, and you have not been charged. Please try again in a moment." };
   }
   redirect(checkoutUrl);
 }
@@ -116,7 +118,7 @@ export async function createDocument(input: z.infer<typeof createDocumentSchema>
     client_visible: true,
     uploaded_by: user.id,
   });
-  if (error) return { ok: false, error: error.message };
+  if (error) return { ok: false, error: await userError(error, "The document", "portal: create document") };
   void mime; void sizeBytes;
   return { ok: true, documentId, versionId, storagePath };
 }
@@ -131,7 +133,7 @@ export async function fulfilDocumentRequest(requestId: string, documentId: strin
   const { supabase, user } = await userClient();
   if (!supabase || !user) return { error: "Sign in first." };
   const { error } = await supabase.rpc("fulfil_document_request", { p_request: requestId, p_document: documentId });
-  if (error) return { error: error.message };
+  if (error) return { error: await userError(error, "Your document", "portal: fulfil document request") };
   revalidatePath("/app");
   return undefined;
 }
@@ -156,7 +158,7 @@ export async function finalizeDocumentVersion(input: {
     checksum,
     uploaded_by: user.id,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: await userError(error, "The upload", "portal: finalize document version") };
   revalidatePath("/app");
   revalidatePath("/app/matters");
   return undefined;
@@ -186,7 +188,7 @@ export async function sendMessage(input: {
   // The same message sent twice (a retry whose first reply was lost) is refused by the primary
   // key: that is success, not a failure to show.
   if (error && error.code === "23505" && id) return undefined;
-  if (error) return { error: error.message };
+  if (error) return { error: await userError(error, "Your message", "portal: send message") };
   return undefined;
 }
 
@@ -196,7 +198,7 @@ export async function retireEmptyDocument(documentId: string): Promise<Err> {
   const { supabase, user } = await userClient();
   if (!supabase || !user) return { error: "Sign in first." };
   const { error } = await supabase.rpc("retire_empty_document", { p_document: documentId });
-  if (error) return { error: error.message };
+  if (error) return { error: await userError(error, "The cancelled upload", "portal: retire empty document") };
   revalidatePath("/app");
   revalidatePath("/firm");
   return undefined;
@@ -241,7 +243,7 @@ export async function savePreferences(prefs: z.infer<typeof prefSchema>): Promis
   if (!supabase || !user) return { error: "Sign in first." };
   const rows = parsed.data.map((p) => ({ user_id: user.id, event: p.event, channel: p.channel, enabled: p.enabled }));
   const { error } = await supabase.from("notification_preferences").upsert(rows, { onConflict: "user_id,event,channel" });
-  if (error) return { error: error.message };
+  if (error) return { error: await userError(error, "Your notification settings", "portal: save preferences") };
   revalidatePath("/app/notifications/preferences");
   return undefined;
 }
@@ -266,13 +268,13 @@ export async function updateProfile(formData: FormData): Promise<void> {
     quietStart: formData.get("quietStart") ?? "",
     quietEnd: formData.get("quietEnd") ?? "",
   });
-  if (!parsed.success) redirect(`/app/profile?error=${encodeURIComponent("Check the form: " + parsed.error.issues[0]?.message)}`);
+  if (!parsed.success) redirect(`/app/profile?error=${encodeURIComponent("Check the form: a field was left empty or is not in the expected format.")}`);
   const { supabase, user } = await userClient();
   if (!supabase || !user) redirect(await loginPath("client"));
   try {
     new Intl.DateTimeFormat("en-GB", { timeZone: parsed.data.timezone });
   } catch {
-    redirect(`/app/profile?error=${encodeURIComponent("Unknown timezone.")}`);
+    redirect(`/app/profile?error=${encodeURIComponent("That timezone is not recognised. Choose one from the list.")}`);
   }
   const d = parsed.data;
   const { error } = await supabase
@@ -286,7 +288,7 @@ export async function updateProfile(formData: FormData): Promise<void> {
       quiet_hours_end: d.quietEnd || null,
     })
     .eq("id", user.id);
-  if (error) redirect(`/app/profile?error=${encodeURIComponent(error.message)}`);
+  if (error) redirect(`/app/profile?error=${encodeURIComponent(await userError(error, "Your profile", "portal: update profile"))}`);
   revalidatePath("/app/profile");
   revalidatePath("/app");
   redirect("/app/profile?saved=1");

@@ -113,7 +113,7 @@ if (args.includes("--inventory") && !INVENTORY) {
 // resolves to 9999px and is allowed as "full"; a percentage is not, because the scale has no
 // percentage in it and an arbitrary one is exactly the decay this file exists to stop.
 const RAMP = [11, 13, 15, 17, 21, 26, 32, 44, 56, 88];
-const RADII = [6, 9, 12, 18];
+const RADII = [4, 6, 8, 12];
 
 // A real input under 16px makes iOS Safari zoom the whole page on focus. Every field is
 // therefore pinned at 16px, which is off the ramp by platform constraint rather than by

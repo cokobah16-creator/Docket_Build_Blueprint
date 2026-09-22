@@ -19,6 +19,7 @@
 //    invoice in the firm that raised it.
 //  · No dead ends: an invoice with nothing paid says what happens next.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
@@ -69,10 +70,7 @@ export default async function FirmInvoicePage({
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

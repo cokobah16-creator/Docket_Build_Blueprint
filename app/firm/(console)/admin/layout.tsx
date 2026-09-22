@@ -14,6 +14,7 @@
 // question for the firm it actually resolved. The database asks it a third time, on every write,
 // through admin_w(), and that answer is the one that counts.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Suspense, type ReactNode } from "react";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
@@ -25,10 +26,7 @@ export default async function FirmAdminLayout({ children }: { children: ReactNod
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm. See{" "}
-        <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

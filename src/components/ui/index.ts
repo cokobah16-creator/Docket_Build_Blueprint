@@ -1,7 +1,7 @@
 export { Button, buttonClasses } from "./button";
 export { Input, Select, Textarea, choiceCardClasses, chipClasses } from "./input";
 export { Card, CardHeader, CardBody, CardRow, EmptyState } from "./card";
-export { Badge, StatusPill, PILL_TONES } from "./badge";
+export { Badge, StatusPill, MatterStatusChip, isStatus, PILL_TONES } from "./badge";
 export { Icon } from "./icon";
 export type { IconName } from "./icon";
 export { Alert } from "./alert";

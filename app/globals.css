@@ -80,7 +80,7 @@
   /* Danger, for a destructive control rather than a status. */
   --l-danger: 180 35 24;
   --l-on-danger: 255 255 255;
-  --l-shadow-e1: 0 1px 2px rgb(16 24 40 / 0.04);
+  --l-shadow-e1: 0 0 0 transparent; /* a panel is bounded by its border, not a shadow */
   --l-shadow-e2: 0 1px 3px rgb(16 24 40 / 0.08);
   --l-shadow-e3: 0 -8px 32px rgb(0 0 0 / 0.18);
 
@@ -123,7 +123,7 @@
   /* Danger, for a destructive control rather than a status. */
   --d-danger: 240 130 120;
   --d-on-danger: 26 25 24;
-  --d-shadow-e1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --d-shadow-e1: 0 0 0 transparent;
   --d-shadow-e2: 0 1px 3px rgb(0 0 0 / 0.5);
   --d-shadow-e3: 0 -8px 32px rgb(0 0 0 / 0.6);
 

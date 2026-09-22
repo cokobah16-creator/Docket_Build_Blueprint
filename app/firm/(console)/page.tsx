@@ -20,7 +20,7 @@ import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
 import { PushOptIn } from "@/components/push/push-opt-in";
 import { PracticeOverview } from "@/components/firm/practice-overview";
-import { CardGrid, WithAside } from "@/components/shell/layout";
+import { WithAside } from "@/components/shell/layout";
 import type { SittingDue } from "@/lib/db/types";
 
 export const metadata = { title: "Today" };
@@ -48,9 +48,9 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
+      <Alert kind="warning" title="Your workspace is unavailable">
+        This account is not a member of a firm, or the workspace could not be reached. Ask your
+        firm&apos;s owner to add you, or try again in a moment.
       </Alert>
     );
   }
@@ -91,64 +91,69 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
     nowMs >= new Date(a.starts_at).getTime() - 10 * 60 * 1000 &&
     nowMs <= new Date(a.ends_at).getTime() + 60 * 60 * 1000;
 
-  // Counters are ink-black unless the number means something is late or is
-  // waiting on this firm — the only colour the console spends. Each one opens
-  // the exact queue it counts, filtered to what it counts: five of these used
-  // to land on the bare matters list, where nothing said which matter.
-  const counters = overview
+  // The firm's work queues. Each line is a count and the door to the exact
+  // queue it counts. A count that means something is late or waiting on this
+  // firm says so in words and in its tone; a zero is quiet.
+  type Tone = "quiet" | "waiting" | "wrong";
+  const queues: Array<{ label: string; value: number; href: string; hint: string; tone: Tone }> = overview
     ? [
-        { label: "Open matters", value: String(overview.open_matters), href: "/firm/matters?open=1", hint: "Every live file", ink: "text-[#141414]" },
-        { label: "Court dates, 30 days", value: String(overview.court_dates_30d), href: "/firm/sittings", hint: "The cause list and the chase list", ink: "text-[#141414]" },
-        // Two facts, kept apart: what the firm owes (shared) and what this person has not read.
-        { label: "Awaiting reply", value: String(overview.threads_awaiting_reply ?? 0), href: "/firm/messages?view=awaiting", hint: overview.unread_messages > 0 ? `${overview.unread_messages} unread by you` : "Nothing unread by you", ink: (overview.threads_awaiting_reply ?? 0) > 0 ? "text-[#92400E]" : "text-[#141414]" },
-        { label: "Overdue tasks", value: String(overview.overdue_tasks), href: "/firm/tasks?view=overdue", hint: (overview.next_actions_overdue ?? 0) > 0 ? `${overview.next_actions_overdue} next ${overview.next_actions_overdue === 1 ? "action" : "actions"} overdue too` : "Past their due date", ink: overview.overdue_tasks > 0 || (overview.next_actions_overdue ?? 0) > 0 ? "text-[#B42318]" : "text-[#141414]" },
-        { label: "Uploads to review", value: String(overview.client_uploads), href: "/firm/uploads", hint: "Sent in by clients", ink: overview.client_uploads > 0 ? "text-[#92400E]" : "text-[#141414]" },
-        { label: "Service to acknowledge", value: String(overview.service_to_acknowledge), href: "/firm/inbox", hint: "Served on your firm", ink: overview.service_to_acknowledge > 0 ? "text-[#92400E]" : "text-[#141414]" },
+        { label: "Open matters", value: overview.open_matters, href: "/firm/matters?open=1", hint: "Every live file", tone: "quiet" },
+        { label: "Court dates, next 30 days", value: overview.court_dates_30d, href: "/firm/sittings", hint: "The cause list and the chase list", tone: "quiet" },
+        {
+          label: "Awaiting your firm's reply", value: overview.threads_awaiting_reply ?? 0, href: "/firm/messages?view=awaiting",
+          hint: overview.unread_messages > 0 ? `${overview.unread_messages} unread by you` : "Nothing unread by you",
+          tone: (overview.threads_awaiting_reply ?? 0) > 0 ? "waiting" : "quiet",
+        },
+        {
+          label: "Overdue tasks", value: overview.overdue_tasks, href: "/firm/tasks?view=overdue",
+          hint: (overview.next_actions_overdue ?? 0) > 0 ? `${overview.next_actions_overdue} next ${overview.next_actions_overdue === 1 ? "action" : "actions"} overdue too` : "Past their due date",
+          tone: overview.overdue_tasks > 0 || (overview.next_actions_overdue ?? 0) > 0 ? "wrong" : "quiet",
+        },
+        { label: "Client uploads to review", value: overview.client_uploads, href: "/firm/uploads", hint: "Sent in by clients", tone: overview.client_uploads > 0 ? "waiting" : "quiet" },
+        { label: "Service to acknowledge", value: overview.service_to_acknowledge, href: "/firm/inbox", hint: "Processes served on your firm", tone: overview.service_to_acknowledge > 0 ? "waiting" : "quiet" },
       ]
     : [];
+  const toneInk: Record<Tone, string> = { quiet: "text-ink-strong", waiting: "text-waiting-ink", wrong: "text-wrong-ink" };
 
-
-  // The day's work first, the firm's numbers beside it. On a phone the aside
-  // falls below, so the chase list and the diary are what a thumb reaches
-  // before anything that is merely a total.
   const counterCards = overview && (
-    <>
-      <section aria-label="Firm counters">
-        <CardGrid min="150px">
-          {counters.map((c) => (
-            <Link
-              key={c.label}
-              href={c.href}
-              className="rounded-control border border-[#DDD9D2] bg-raised p-3.5 hover:border-[#141414]"
-            >
-              <p className="text-11 uppercase leading-snug tracking-[0.06em] text-[#57534E]">{c.label}</p>
-              {/* Red and amber are the only colour here, and only for a number
-                  that means something is late or waiting on this firm. */}
-              <p className={cn("mt-1.5 font-heading text-26 font-bold leading-none", c.ink)}>{c.value}</p>
-              <p className="mt-1 text-11 leading-snug text-[#57534E]">{c.hint}</p>
+    <section aria-labelledby="queues-heading" className="overflow-hidden rounded-card border border-hairline bg-raised">
+      <h2 id="queues-heading" className="flex min-h-11 items-center border-b border-hairline bg-sunken px-3 text-13 font-semibold text-ink-strong">
+        Work queues
+      </h2>
+      <ul className="divide-y divide-hairline">
+        {queues.map((q) => (
+          <li key={q.label}>
+            <Link href={q.href} className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 hover:bg-hover">
+              <span className="min-w-0">
+                <span className="block text-13 font-medium text-ink">{q.label}</span>
+                <span className="block text-11 text-ink-muted">{q.hint}</span>
+              </span>
+              <span className={cn("shrink-0 text-17 font-semibold tabular-nums", toneInk[q.tone])}>
+                {q.value}
+                {q.tone !== "quiet" && q.value > 0 && <span className="sr-only"> — needs attention</span>}
+              </span>
             </Link>
-          ))}
-        </CardGrid>
-      </section>
-      <Link
-        href="/firm/invoices"
-        className="flex items-center justify-between gap-3 rounded-control border border-[#DDD9D2] bg-raised px-[15px] py-3.5 hover:border-[#141414]"
-      >
-        <span className="min-w-0">
-          <span className="block text-11 uppercase tracking-[0.06em] text-[#57534E]">Outstanding</span>
-          <span className="mt-1 block font-heading text-21 font-bold text-[#141414]">
-            {formatMoneyByCurrency(overview.outstanding_by_currency, currency)}
-          </span>
-        </span>
-        <span className={buttonClasses("ghost", "sm", "shrink-0 border-[#D6D3CE] text-[#141414]")}>Invoices</span>
-      </Link>
-    </>
+          </li>
+        ))}
+        <li>
+          <Link href="/firm/invoices" className="flex min-h-11 items-center justify-between gap-3 px-3 py-2 hover:bg-hover">
+            <span className="min-w-0">
+              <span className="block text-13 font-medium text-ink">Outstanding fees</span>
+              <span className="block text-11 text-ink-muted">Issued, part-paid or overdue</span>
+            </span>
+            <span className="shrink-0 text-13 font-semibold tabular-nums text-ink-strong">
+              {formatMoneyByCurrency(overview.outstanding_by_currency, currency)}
+            </span>
+          </Link>
+        </li>
+      </ul>
+    </section>
   );
 
   return (
     <div className="flex flex-col gap-4">
       <header className="workspace-heading flex flex-wrap items-center justify-between gap-4">
-        <div><p className="workspace-eyebrow">Practice overview</p><h1 className="workspace-title">Today</h1><p className="text-13 text-ink-muted">{todayLabel} · {ctx.firmName}</p></div>
+        <div><h1 className="workspace-title">Today</h1><p className="text-13 text-ink-muted">{todayLabel} · {ctx.firmName}</p></div>
         <PushOptIn compact />
       </header>
 
@@ -166,24 +171,24 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
         }
       >
         {/* The chase list first: a sitting nobody reported is the firm's biggest exposure. */}
-        <Card className={cn(sittings.length > 0 && "border-[#E7B84B]")}>
+        <Card className={cn(sittings.length > 0 && "border-waiting-line")}>
           {sittings.length === 0 ? (
             <>
               <CardHeader
                 title="Sittings without an update (0)"
-                action={<Link href="/firm/sittings" className="text-13 font-medium text-[#141414] underline underline-offset-2">All</Link>}
+                action={<Link href="/firm/sittings" className="text-13 font-medium text-ink-strong underline underline-offset-2">All</Link>}
               />
               <EmptyState
                 title="Nothing to chase"
                 hint="Every past sitting has an update against it. Post the next one as soon as the court rises."
-                action={<Link href="/firm/sittings" className="text-13 font-medium text-[#141414] underline underline-offset-2">Post a court update</Link>}
+                action={<Link href="/firm/sittings" className="text-13 font-medium text-ink-strong underline underline-offset-2">Post a court update</Link>}
               />
             </>
           ) : (
             <>
-              <div className="flex items-center gap-2 border-b border-[#F3E2B3] bg-[#FFFBEB] px-[15px] py-3">
-                <Icon name="warning" size={16} strokeWidth={1.8} className="shrink-0 text-[#92400E]" />
-                <p className="min-w-0 text-13 font-bold text-[#7A3E0A]">
+              <div className="flex items-center gap-2 border-b border-waiting-line bg-waiting-bg px-3 py-2.5">
+                <Icon name="warning" size={16} strokeWidth={1.8} className="shrink-0 text-waiting-ink" />
+                <p className="min-w-0 text-13 font-semibold text-waiting-ink">
                   Sittings without an update ({sittingsTotal})
                 </p>
               </div>
@@ -191,21 +196,21 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
                 {sittings.map((s: SittingDue) => (
                   <li
                     key={s.court_event_id}
-                    className="flex flex-col gap-2.5 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
+                    className="flex flex-col gap-2.5 border-t border-hairline px-3 py-3 first:border-t-0 sm:flex-row sm:items-start sm:justify-between sm:gap-3"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="text-13 font-semibold leading-snug text-[#141414]">{s.cause_title}</p>
-                      <p className="mt-0.5 text-11 leading-[1.45] text-[#57534E]">
+                      <p className="text-13 font-semibold leading-snug text-ink-strong">{s.cause_title}</p>
+                      <p className="mt-0.5 text-11 leading-[1.45] text-ink-muted">
                         <span className="font-mono">{s.suit_number ?? s.reference}</span>
                         {s.court ? ` · ${s.court}` : ""}
                       </p>
                       {(s.purpose || s.purpose_kind || (s.lawyer_id && staffById.has(s.lawyer_id))) && (
-                        <p className="mt-0.5 text-11 leading-[1.45] text-[#57534E]">
+                        <p className="mt-0.5 text-11 leading-[1.45] text-ink-muted">
                           {s.purpose ?? (s.purpose_kind ?? "").replace("_", " ")}
                           {s.lawyer_id && staffById.has(s.lawyer_id) ? ` · ${staffById.get(s.lawyer_id)}` : ""}
                         </p>
                       )}
-                      <p className="mt-1 text-11 font-semibold text-[#92400E]">
+                      <p className="mt-1 text-11 font-semibold text-waiting-ink">
                         Sat {formatWhen(s.scheduled_at, tz, { dateStyle: "medium", timeStyle: "short" })} · {sinceLabel(s.scheduled_at, nowMs)}
                       </p>
                     </div>
@@ -221,7 +226,7 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
             </>
           )}
           {sittingsTotal > sittings.length && (
-            <p className="border-t border-[#F0EEEA] px-[15px] py-3 text-11 text-[#57534E]">
+            <p className="border-t border-hairline px-3 py-3 text-11 text-ink-muted">
               Showing the {sittings.length} that have waited longest.{" "}
               <Link href="/firm/sittings" className="underline underline-offset-2">See all {sittingsTotal}</Link>.
             </p>
@@ -231,13 +236,13 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
         <Card>
           <CardHeader
             title={`Today's consultations (${appointments.length})`}
-            action={<Link href="/firm/appointments?view=upcoming" className="text-13 font-medium text-[#141414] underline underline-offset-2">All</Link>}
+            action={<Link href="/firm/appointments?view=upcoming" className="text-13 font-medium text-ink-strong underline underline-offset-2">All</Link>}
           />
           {appointments.length === 0 ? (
             <EmptyState
               title="Nothing booked for today"
               hint="Confirmed bookings appear here with a link to the consultation room."
-              action={<Link href="/firm/appointments?view=upcoming" className="text-13 font-medium text-[#141414] underline underline-offset-2">See upcoming consultations</Link>}
+              action={<Link href="/firm/appointments?view=upcoming" className="text-13 font-medium text-ink-strong underline underline-offset-2">See upcoming consultations</Link>}
             />
           ) : (
             <ul>
@@ -246,15 +251,15 @@ export default async function StaffToday({ searchParams }: { searchParams: Promi
                 return (
                   <li
                     key={a.id}
-                    className="flex flex-col gap-2 border-t border-[#F0EEEA] px-[15px] py-3 first:border-t-0 sm:flex-row sm:items-start sm:justify-between sm:gap-2.5"
+                    className="flex flex-col gap-2 border-t border-hairline px-3 py-3 first:border-t-0 sm:flex-row sm:items-start sm:justify-between sm:gap-2.5"
                   >
                     <Link href={`/firm/appointments/${a.id}`} className="flex min-h-11 min-w-0 flex-1 items-start gap-2.5">
-                      <span className="shrink-0 pt-px font-mono text-13 font-bold text-[#141414]">
+                      <span className="shrink-0 pt-px font-mono text-13 font-bold text-ink-strong">
                         {formatWhen(a.starts_at, tz, { timeStyle: "short" })}
                       </span>
                       <span className="min-w-0">
-                        <span className="block text-13 font-semibold text-[#141414]">{a.client?.full_name ?? "Client"}</span>
-                        <span className="mt-0.5 block truncate text-11 text-[#57534E]">
+                        <span className="block text-13 font-semibold text-ink-strong">{a.client?.full_name ?? "Client"}</span>
+                        <span className="mt-0.5 block truncate text-11 text-ink-muted">
                           <span className="font-mono">{a.reference}</span> · {a.service?.name ?? "Consultation"} · {a.mode.replace("_", " ")}
                         </span>
                       </span>

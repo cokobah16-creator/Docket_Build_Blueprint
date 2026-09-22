@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { safeNotice } from "@/lib/user-error-message";
 import { notFound, redirect } from "next/navigation";
 import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -8,7 +9,7 @@ import { formatDay } from "@/lib/days";
 import { formatMoneyMinor } from "@/lib/money";
 import { startInvoicePayment } from "@/lib/actions/portal";
 import { Card, CardBody } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import { MatterStatusChip, StatusPill, type Status } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Timeline } from "@/components/portal/timeline";
 import { DocumentsTab, type DocumentWithVersion } from "@/components/portal/documents-tab";
@@ -34,18 +35,24 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
 
   const { data } = await supabase
     .from("matters")
-    .select("id, firm_id, reference, title, type, status_id, description, next_action, next_action_due, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
+    // Only what a client is meant to read. description and next_action are the firm's own
+    // working notes (migration 26 made next_action a staff work item with an owner and a due
+    // day); "what happens next" for the client comes from the update the lawyer wrote for them.
+    .select("id, firm_id, reference, title, type, status_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
     .eq("id", id)
     .maybeSingle();
   const matter = (data ?? null) as MatterRow | null;
   if (!matter) notFound();
 
-  const [firm, tz, { data: statusRow }, { data: lawyerRows }] = await Promise.all([
+  const [firm, tz, { data: statusRow }, { data: lawyerRows }, { data: latestRows }] = await Promise.all([
     firmById(matter.firm_id),
     clientTimezone(supabase, user.id),
     matter.status_id ? supabase.from("matter_statuses").select("id, firm_id, key, label, colour, is_terminal").eq("id", matter.status_id).maybeSingle() : Promise.resolve({ data: null }),
     supabase.from("matter_lawyers").select("user_id, is_lead").eq("matter_id", matter.id),
+    // RLS returns a party only client-visible updates; the filter says so anyway.
+    supabase.from("updates").select("title, occurred_at, next_step, client_action, action_required").eq("matter_id", id).eq("visibility", "client").order("occurred_at", { ascending: false }).limit(1),
   ]);
+  const latest = ((latestRows ?? []) as Array<Pick<UpdateRow, "title" | "occurred_at" | "next_step" | "client_action" | "action_required">>)[0] ?? null;
   const status = statusRow as MatterStatus | null;
   const lawyerIds = ((lawyerRows ?? []) as Array<{ user_id: string }>).map((l) => l.user_id);
   const { data: lawyerPublic } = lawyerIds.length ? await supabase.from("lawyer_public").select("id, full_name, title").in("id", lawyerIds) : { data: [] };
@@ -53,33 +60,47 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
   const senderNames = Object.fromEntries(lawyers.map((l) => [l.id, l.full_name ?? l.title ?? firm?.name ?? "Your lawyer"]));
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });
 
-  /* What this matter is: its state, its court, and what happens next. */
+  /* Where the matter stands, in plain words: the answers a client wants before any tab. */
+  const lawyerLine = lawyers.map((l) => l.full_name ?? l.title).filter(Boolean).join(", ");
   const overview = (
     <Card>
-      <CardBody className="space-y-2.5">
-        <div className="flex flex-wrap items-center gap-2 text-13 text-ink-muted">
-          {status && <span className="rounded-full border px-2.5 py-0.5 font-semibold" style={status.colour ? { borderColor: status.colour, color: status.colour } : undefined}>{status.label}</span>}
-          <span className="font-mono">{matter.reference}</span>
+      {latest?.action_required && (
+        <div className="border-b border-waiting-line bg-waiting-bg px-4 py-3 text-13 text-waiting-ink">
+          <p className="font-semibold">Your lawyer needs something from you</p>
+          <p className="mt-0.5">{latest.client_action ?? latest.title}</p>
         </div>
-        {matter.court_name && (
-          <p className="text-13 leading-relaxed text-ink-muted">
-            {matter.court_name}
-            {matter.suit_number ? <> · <span className="font-mono">{matter.suit_number}</span></> : null}
-          </p>
-        )}
-        {matter.next_event_at && (
-          <p className="text-13 text-ink">
-            Next court date: <strong>{fmt.format(new Date(matter.next_event_at))}</strong>
-            {matter.next_event_note ? ` · ${matter.next_event_note}` : ""}
-          </p>
-        )}
-        {matter.next_action && (
-          <p className="text-13 font-semibold text-brand">
-            Next action: {matter.next_action}
-            {matter.next_action_due && <span className="font-normal text-ink-muted"> · by {formatDay(matter.next_action_due)}</span>}
-          </p>
-        )}
-      </CardBody>
+      )}
+      <dl className="divide-y divide-hairline text-13">
+        <div className="px-4 py-2.5">
+          <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">Current status</dt>
+          <dd className="mt-1">{status ? <MatterStatusChip status={status} /> : "Not recorded"}</dd>
+        </div>
+        <div className="px-4 py-2.5">
+          <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">Latest update</dt>
+          <dd className="mt-0.5 text-ink">{latest ? <>{latest.title}<span className="block text-ink-muted">{fmt.format(new Date(latest.occurred_at))}</span></> : "No update yet"}</dd>
+        </div>
+        <div className="px-4 py-2.5">
+          <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">What happens next</dt>
+          <dd className="mt-0.5 text-ink">{latest?.next_step ?? "Your lawyer will post the next update here."}</dd>
+        </div>
+        <div className="px-4 py-2.5">
+          <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">Next court date</dt>
+          <dd className="mt-0.5 text-ink">
+            {matter.next_event_at ? <>{fmt.format(new Date(matter.next_event_at))}{matter.next_event_note ? <span className="block text-ink-muted">{matter.next_event_note}</span> : null}</> : "None fixed yet"}
+          </dd>
+        </div>
+        <div className="px-4 py-2.5">
+          <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">Court</dt>
+          <dd className="mt-0.5 text-ink">
+            {matter.court_name ?? "Not recorded"}
+            {matter.suit_number ? <span className="block font-mono text-ink-muted">{matter.suit_number}</span> : null}
+          </dd>
+        </div>
+        <div className="px-4 py-2.5">
+          <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">{lawyers.length === 1 ? "Your lawyer" : "Your lawyers"}</dt>
+          <dd className="mt-0.5 text-ink">{lawyerLine || firm?.name || "Your firm"}</dd>
+        </div>
+      </dl>
     </Card>
   );
 
@@ -92,16 +113,16 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
           <p className="mt-1 text-13 text-ink-muted">{firm?.name ?? "Your firm"}{lawyers.length ? ` · ${lawyers.map((l) => l.full_name ?? l.title).join(", ")}` : ""}</p>
         </header>
 
-        {actionError && <Alert kind="error">{actionError}</Alert>}
+        {actionError && <Alert kind="error" title="Not completed">{safeNotice(actionError)}</Alert>}
 
         {/* The summary and the next action are above the tabs on a phone, and
             stay beside them from 1280px — so what the matter is never scrolls
             away while its detail is read. */}
         <WithAside from="xl" aside={overview}>
-          <nav aria-label="Matter sections" className="-mx-4 flex gap-2 overflow-x-auto px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8 xl:mx-0 xl:px-0">
+          <nav aria-label="Matter sections" className="-mx-4 flex gap-1 overflow-x-auto border-b border-hairline px-4 md:-mx-6 md:px-6 lg:-mx-8 lg:px-8 xl:mx-0 xl:px-0">
             {TABS.map(([key, label]) => (
               <Link key={key} href={`/app/matters/${matter.id}?tab=${key}`} aria-current={tab === key ? "page" : undefined}
-                className={cn("flex min-h-11 shrink-0 items-center rounded-full border px-3.5 text-13 font-medium", tab === key ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink")}>
+                className={cn("-mb-px flex min-h-11 shrink-0 items-center border-b-2 px-3 text-13 font-medium", tab === key ? "border-brand font-semibold text-ink-strong" : "border-transparent text-ink-muted hover:text-ink")}>
                 {label}
               </Link>
             ))}

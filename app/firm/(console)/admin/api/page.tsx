@@ -5,6 +5,7 @@
 // ask admin_w(). A lawyer who types the address reads the same refusal a lawyer would get from the
 // API itself.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -20,9 +21,7 @@ export default async function PartnerApiPage({ searchParams }: { searchParams: P
   const ctx = await staffContext(await requestedFirmId({ firm: sp.firm }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId, timezone: tz, isAdmin } = ctx;

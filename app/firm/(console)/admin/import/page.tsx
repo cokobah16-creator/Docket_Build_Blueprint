@@ -5,6 +5,7 @@
 // wizard needs to warn — the firm's statuses and people — and nothing more; the firm arrives
 // from staffContext(). Only an owner or admin sees the wizard: the policies refuse anyone else.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { firmStaff, matterStatuses, requestedFirmId, staffContext, staffLabel } from "@/lib/firm-data";
 import { formatWhen } from "@/lib/time";
@@ -20,9 +21,7 @@ export default async function ImportPage({ searchParams }: { searchParams: Promi
   const ctx = await staffContext(await requestedFirmId({ firm: firmParam }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   if (!ctx.isAdmin) {

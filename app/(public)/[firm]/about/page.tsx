@@ -23,12 +23,8 @@ export default async function AboutPage({ params }: { params: Promise<{ firm: st
       ) : (
         <div className="space-y-4 text-ink">
           <p>
-            {firm.legal_name ?? firm.name} is a Nigerian law practice built around one idea:
-            clients should always know where their matter stands.
-          </p>
-          <p>
-            From your first consultation to the last court date, you get updates in plain
-            language, on your phone, from the lawyers handling your case.
+            {firm.legal_name ?? firm.name} has not published an About page yet. Its services, its lawyers
+            and their consultation times are listed on this site, and you can book a consultation online.
           </p>
         </div>
       )}

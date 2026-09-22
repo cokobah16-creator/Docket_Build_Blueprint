@@ -13,6 +13,7 @@
 // More on a phone. Width changes the arrangement and nothing else — a lawyer on
 // a phone is still a lawyer, with the same destinations and the same rights.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { loginPath, mfaPath } from "@/lib/auth-redirect-server";
@@ -47,9 +48,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
   if (!supabase) {
     return (
       <main className="mx-auto max-w-md px-4 py-16">
-        <Alert kind="warning" title="Not configured">
-          Supabase environment variables are not set. See <code>.env.example</code>.
-        </Alert>
+        <WorkspaceUnavailable audience="staff" />
       </main>
     );
   }
@@ -187,7 +186,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
           // The two links here are a name and a badge — small things to read,
           // but each is given the full 44px of height the bar can spare, so
           // they are ordinary targets rather than precision work.
-          <header className="sticky top-0 z-20 flex min-h-[52px] items-center justify-between gap-3 border-b border-[#E6E2DB] bg-raised/[0.94] px-4 py-1 backdrop-blur-xl md:hidden">
+          <header className="sticky top-0 z-20 flex min-h-[52px] items-center justify-between gap-3 border-b border-hairline bg-raised px-4 py-1 md:hidden">
             <div className="flex min-w-0 items-center gap-2">
               <Link
                 href="/firm"

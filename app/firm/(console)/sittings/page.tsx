@@ -10,6 +10,7 @@
 // firm-specific is hard-coded — the firm, its courts and its zone come from
 // context.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { courtsFor, firmStaff, requestedFirmId, sittingsDue, staffContext, staffLabel } from "@/lib/firm-data";
@@ -115,10 +116,7 @@ export default async function SittingsPage({
 
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-        See <code>.env.example</code>, or ask a firm owner to add you.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
 

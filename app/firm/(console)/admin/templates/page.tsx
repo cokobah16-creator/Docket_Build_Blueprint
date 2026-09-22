@@ -5,6 +5,7 @@
 // else). A template is filled from the matter's own facts when a document is generated on the
 // matter's Documents tab; a placeholder the matter has no value for stops the generation there.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { Alert } from "@/components/ui/alert";
 import type { DocumentTemplateRow } from "@/lib/db/types";
@@ -17,9 +18,7 @@ export default async function TemplatesPage({ searchParams }: { searchParams: Pr
   const ctx = await staffContext(await requestedFirmId({ firm: firmParam }));
   if (!ctx) {
     return (
-      <Alert kind="warning" title="Not configured">
-        Supabase environment variables are not set, or this account is not a member of a firm.
-      </Alert>
+      <WorkspaceUnavailable audience="staff" />
     );
   }
   const { supabase, firmId } = ctx;

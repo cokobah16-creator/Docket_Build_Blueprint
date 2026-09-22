@@ -7,6 +7,7 @@
 // this screen filtered anything. No firm is named in the call: a client may be a client of more
 // than one firm, and this searches across all of them, saying which firm each result belongs to.
 
+import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
@@ -61,7 +62,7 @@ export default async function PortalSearch({ searchParams }: { searchParams: Pro
   if (!supabase) {
     return (
       <Screen>
-        <Alert kind="warning" title="Not configured">Supabase environment variables are not set.</Alert>
+        <WorkspaceUnavailable audience="client" />
       </Screen>
     );
   }

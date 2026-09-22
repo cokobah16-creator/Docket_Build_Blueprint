@@ -47,7 +47,7 @@ export function SignDialog({ open, name, versionId, storagePath, matterId, profi
       if (refused) { if (!cancelled) { setError(refused); setLoading(false); } return; }
       const { data, error: sErr } = await supabase.storage.from("documents").createSignedUrl(storagePath, 600);
       if (cancelled) return;
-      if (sErr || !data?.signedUrl) { setError(sErr?.message ?? "The document could not be opened."); setLoading(false); return; }
+      if (sErr || !data?.signedUrl) { setError("The document could not be opened. Close this and try again."); setLoading(false); return; }
       setUrl(data.signedUrl); setLoading(false);
     })();
     return () => { cancelled = true; };
