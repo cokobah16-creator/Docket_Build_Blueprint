@@ -302,6 +302,8 @@ export function BookingWizard({
 
   const stepNumber = stepIdx + 1;
   const feeMinor = service?.price_minor ?? 0;
+  const vatMinor = Math.round(feeMinor * Number(firm.vat_rate ?? 0) / 100);
+  const totalMinor = feeMinor + vatMinor;
 
   return (
     <div className="booking-wizard">
@@ -511,7 +513,9 @@ export function BookingWizard({
               />
               <Row label="Duration" value={`${service.duration_min} minutes`} />
               <div className="border-t border-hairline pt-3">
-                <Row label="Fee" value={formatMoneyMinor(service.price_minor, service.currency)} bold />
+                <Row label="Fee" value={formatMoneyMinor(service.price_minor, service.currency)} />
+                {vatMinor > 0 && <Row label={`VAT (${firm.vat_rate}%)`} value={formatMoneyMinor(vatMinor, service.currency)} />}
+                <Row label="Total to pay" value={formatMoneyMinor(totalMinor, service.currency)} bold />
               </div>
             </dl>
 
@@ -577,7 +581,7 @@ export function BookingWizard({
               : !user
                 ? "Sign in to confirm"
                 : feeMinor > 0
-                  ? `Confirm and pay ${formatMoneyMinor(service!.price_minor, service!.currency)}`
+                  ? `Confirm and pay ${formatMoneyMinor(totalMinor, service!.currency)}`
                   : "Confirm booking"}
           </Button>
         ) : (

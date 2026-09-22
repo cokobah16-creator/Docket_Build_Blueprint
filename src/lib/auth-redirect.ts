@@ -48,7 +48,15 @@ export const MFA_PATH = "/firm/security/mfa";
 export function safeNext(raw: string | null | undefined): string | null {
   if (!raw) return null;
   if (!raw.startsWith("/")) return null;
-  if (raw.startsWith("//") || raw.startsWith("/\\")) return null;
+  // URL parsers discard tabs and newlines before resolving the destination. A decoded
+  // ?next=/%09/evil.example would otherwise become a protocol-relative redirect.
+  if (/[\u0000-\u001f\u007f\\]/.test(raw)) return null;
+  try {
+    const resolved = new URL(raw, "https://docket.invalid");
+    if (resolved.origin !== "https://docket.invalid") return null;
+  } catch {
+    return null;
+  }
   // Neither sign-in screen is a destination, and nor is the two-factor one: returning to a page
   // someone has just come through would loop them back into it.
   const path = raw.split("?")[0];

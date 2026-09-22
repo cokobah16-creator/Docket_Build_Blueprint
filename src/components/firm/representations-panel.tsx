@@ -87,7 +87,8 @@ export function RepresentationsPanel({
   }
 
   async function end(id: string) {
-    const reason = window.prompt("Why is this authority ending? (kept on the record)") ?? "";
+    const reason = window.prompt("Why is this authority ending? (kept on the record)");
+    if (reason === null) return;
     setBusy(id); setError(null);
     try {
       const r = await revokeRepresentation(id, reason);

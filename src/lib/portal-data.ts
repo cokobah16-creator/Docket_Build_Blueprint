@@ -29,12 +29,8 @@ export async function clientMatters(
   firmId?: string | null,
 ): Promise<MatterSummary[]> {
   let query = supabase
-    .from("matters")
-    // description and next_action are the firm's working notes, not the client's to read; see
-    // app/app/(portal)/matters/[id]/page.tsx. The client's "what happens next" is the next_step
-    // on the latest update written for them.
-    .select("id, firm_id, reference, title, type, status_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
-    .is("deleted_at", null);
+    .from("portal_matters")
+    .select("id, firm_id, reference, title, type, status_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at");
   if (firmId) query = query.eq("firm_id", firmId);
   const { data } = await query.order("opened_at", { ascending: false }).limit(limit);
   const matters = (data ?? []) as MatterRow[];

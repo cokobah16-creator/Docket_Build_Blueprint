@@ -56,7 +56,8 @@ export function NoticeControls({ noticeId, status, isRegistrar }: { noticeId: st
         )}
         {status === "published" && isRegistrar && (
           <Button size="sm" variant="ghost" disabled={busy} onClick={() => {
-            const reason = window.prompt("Why is this notice withdrawn? The firms that confirmed it read this.") ?? "";
+            const reason = window.prompt("Why is this notice withdrawn? The firms that confirmed it read this.");
+            if (reason === null) return;
             if (reason.trim().length < 3) return;
             void run(() => withdrawRegistryNotice(noticeId, reason));
           }}>Withdraw</Button>

@@ -23,7 +23,7 @@ export default async function CourtDatesPage() {
   const events = (rows ?? []) as CourtEventRow[];
   const matterIds = Array.from(new Set(events.map((e) => e.matter_id)));
   const [{ data: matterRows }, firmNames] = await Promise.all([
-    matterIds.length ? supabase.from("matters").select("id, reference, title").in("id", matterIds) : Promise.resolve({ data: [] }),
+    matterIds.length ? supabase.from("portal_matters").select("id, reference, title").in("id", matterIds) : Promise.resolve({ data: [] }),
     firmNamesFor(events.map((e) => e.firm_id)),
   ]);
   const matters = new Map(((matterRows ?? []) as Array<{ id: string; reference: string; title: string }>).map((m) => [m.id, m]));

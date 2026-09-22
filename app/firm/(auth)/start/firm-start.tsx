@@ -155,11 +155,11 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
             {pending ? "Creating your firm…" : "Create firm and set up two-factor"}
           </Button>
           <p className="text-15 text-ink-muted">
-            No card at sign-up, and every firm is on the free plan while Docket is in
-            build. By continuing you accept the Docket firm terms and act as the data
-            controller for your clients’ information. Fees you charge settle to your
-            own Paystack subaccount, which has to be set before a client can pay you
-            online.
+            No card at sign-up. This workspace is for setup while Docket is in build.
+            Platform terms, privacy information and a data-processing agreement are being
+            prepared. Please do not upload real client files or invite clients before
+            those documents are published and agreed. Fees you charge settle to your own
+            Paystack subaccount, which has to be set before a client can pay online.
           </p>
         </form>
       </CardBody>

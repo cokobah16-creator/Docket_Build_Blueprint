@@ -38,7 +38,7 @@ export async function clientThreads(
   userId: string,
   firmId?: string | null,
 ): Promise<ClientThreads> {
-  let matterQuery = supabase.from("matters").select("id, firm_id, reference, title").is("deleted_at", null);
+  let matterQuery = supabase.from("portal_matters").select("id, firm_id, reference, title");
   let apptQuery = supabase.from("appointments").select("id, firm_id, reference, starts_at, status");
   let msgQuery = supabase.from("messages").select("id, firm_id, matter_id, appointment_id, sender_id, body, attachments, read_at, created_at");
   if (firmId) {

@@ -28,11 +28,6 @@
 //     headers, so the policy is set on the request as well as the response, on BOTH branches
 //     below. The nonce also travels as x-nonce so a page can put it on its own script tag.
 //
-//  5. MINT THE VISITOR COOKIE. The funnel in src/lib/observability counts a visitor from the
-//     moment they land on a firm's site, long before they sign in, and identify() later stitches
-//     that anonymous id to the account. Without a cookie minted here the first two steps of the
-//     funnel have no distinct id at all.
-//
 // Then the original job: rewrite public paths onto the tenant site at app/(public)/[firm].
 
 import { NextResponse, type NextRequest } from "next/server";
@@ -61,9 +56,6 @@ const CLIENT_SPOOFABLE = [
   "content-security-policy",
   "content-security-policy-report-only",
 ];
-
-/** One year. Long enough that a returning visitor is still the same person in the funnel. */
-const VISITOR_MAX_AGE = 60 * 60 * 24 * 365;
 
 
 /** The same URL with a different path — the tenant rewrite target. */
@@ -116,18 +108,6 @@ export async function middleware(request: NextRequest) {
   // the response below carries the other name.
   requestHeaders.set(CSP_REQUEST_HEADER, policy);
 
-  // A visitor who already has an id keeps it; a new one gets it on this response and can be
-  // read on this same render, because it is spliced into the forwarded cookie header too.
-  const existingVisitor = request.cookies.get(VISITOR_COOKIE)?.value;
-  const visitorId = existingVisitor || crypto.randomUUID();
-  if (!existingVisitor) {
-    const cookieHeader = requestHeaders.get("cookie");
-    requestHeaders.set(
-      "cookie",
-      cookieHeader ? `${cookieHeader}; ${VISITOR_COOKIE}=${visitorId}` : `${VISITOR_COOKIE}=${visitorId}`,
-    );
-  }
-
   const tenantPath =
     rewriteToTenant && firm ? `/${firm.slug}${pathname === "/" ? "" : pathname}` : null;
   const response = tenantPath
@@ -167,17 +147,8 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  if (!existingVisitor) {
-    response.cookies.set(VISITOR_COOKIE, visitorId, {
-      path: "/",
-      maxAge: VISITOR_MAX_AGE,
-      sameSite: "lax",
-      // Nothing in the browser reads this id — every funnel event is emitted from server code
-      // (POSTHOG_KEY is server-side only), so script has no reason to see it.
-      httpOnly: true,
-      secure: true,
-    });
-  }
+  // Remove identifiers set by earlier builds. Analytics are paused until consent exists.
+  if (request.cookies.has(VISITOR_COOKIE)) response.cookies.delete(VISITOR_COOKIE);
 
   return response;
 }

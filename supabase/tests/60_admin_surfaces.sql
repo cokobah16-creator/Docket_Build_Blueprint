@@ -463,11 +463,7 @@ begin
   perform t_reset();
 end $$;
 
--- ---------------------------------------------------------------- 8. the write-policy split changed no reads
--- Migration 21 stopped every `for all` write policy from also granting SELECT. That is only
--- safe because each table's own `_select` policy is broader. A member WITHOUT MFA is the proof:
--- staff_w() is false for them, so before the split their reads came from the select policy
--- alone — and they must still work.
+-- ---------------------------------------------------------------- 8. staff reads require MFA as well as writes
 do $$
 declare ow uuid := (select v from fx where k='owner'); f uuid := (select v from fx where k='firm'); m uuid;
 begin
@@ -477,12 +473,11 @@ begin
   insert into court_events (matter_id, firm_id, scheduled_at, court_name) values (m, f, now() + interval '7 days', 'High Court');
 
   perform t_as(ow, 'aal1');   -- signed in, no MFA: every *_write predicate is false
-  perform t_check('a member without MFA still reads matters',       (select count(*) from matters where id = m) = 1);
-  perform t_check('a member without MFA still reads tasks',         (select count(*) from tasks where matter_id = m) = 1);
-  perform t_check('a member without MFA still reads court events',  (select count(*) from court_events where matter_id = m) = 1);
-  perform t_check('a member without MFA still reads services',      (select count(*) from services where firm_id = f) >= 1);
-  perform t_check('a member without MFA still reads memberships',   (select count(*) from firm_members where firm_id = f) >= 1);
-  perform t_check('a member without MFA still reads invoices',      (select count(*) from invoices where firm_id = f) >= 0);
+  perform t_check('a member without MFA sees no matters',           (select count(*) from matters where id = m) = 0);
+  perform t_check('a member without MFA sees no tasks',             (select count(*) from tasks where matter_id = m) = 0);
+  perform t_check('a member without MFA sees no court events',      (select count(*) from court_events where matter_id = m) = 0);
+  perform t_check('a member without MFA sees no memberships',       (select count(*) from firm_members where firm_id = f) = 0);
+  perform t_check('a member without MFA sees no invoices',          (select count(*) from invoices where firm_id = f) = 0);
   perform t_reset();
 
   perform t_as(ow, 'aal1');

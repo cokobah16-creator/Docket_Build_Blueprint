@@ -55,7 +55,8 @@ export function PartnerApiPanel({ firmId, credentials, endpoints, today }: {
   }
 
   async function end(id: string) {
-    const reason = window.prompt("Why is this key ending? (kept on the record)") ?? "";
+    const reason = window.prompt("Why is this key ending? (kept on the record)");
+    if (reason === null) return;
     setBusy(id); setError(null);
     try {
       const r = await revokeApiCredential(id, reason);

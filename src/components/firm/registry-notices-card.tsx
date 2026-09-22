@@ -56,7 +56,8 @@ export function RegistryNoticesCard({ firmId, firmParam, timezone, notices }: {
   }
 
   async function reject(n: FirmRegistryNoticeRow) {
-    const reason = window.prompt("Why is this not yours, or not to be diarised? Kept on the record.") ?? "";
+    const reason = window.prompt("Why is this not yours, or not to be diarised? Kept on the record.");
+    if (reason === null) return;
     if (reason.trim().length < 3) return;
     const k = key(n);
     setBusy(k); setError(null); setDone(null);

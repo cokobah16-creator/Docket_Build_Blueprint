@@ -11,7 +11,6 @@
 // Nothing here identifies a person by name, phone or email. A distinct id is either the signed-in
 // user's id or the anonymous cookie the middleware mints, and firm identity travels as data.
 
-const DEFAULT_HOST = "https://eu.i.posthog.com";
 
 /** The five steps, named once so a typo cannot invent a sixth. */
 export const FUNNEL = {
@@ -38,10 +37,6 @@ export const PLATFORM = {
 export type FunnelEvent = (typeof FUNNEL)[keyof typeof FUNNEL];
 export type PlatformEvent = (typeof PLATFORM)[keyof typeof PLATFORM];
 
-function host(): string {
-  return (process.env.POSTHOG_HOST ?? DEFAULT_HOST).replace(/\/+$/, "");
-}
-
 /**
  * Record one event. Returns true if it was sent.
  *
@@ -49,32 +44,14 @@ function host(): string {
  * Timestamps are UTC — rendering in a person's zone is a screen's job, not telemetry's.
  */
 export async function capture(
-  event: FunnelEvent | PlatformEvent | string,
-  distinctId: string,
-  properties: Record<string, unknown> = {},
+  _event: FunnelEvent | PlatformEvent | string,
+  _distinctId: string,
+  _properties: Record<string, unknown> = {},
 ): Promise<boolean> {
-  const key = process.env.POSTHOG_KEY;
-  if (!key || !distinctId) return false;
-  try {
-    const res = await fetch(`${host()}/capture/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: key,
-        event,
-        distinct_id: distinctId,
-        timestamp: new Date().toISOString(),
-        properties: {
-          ...properties,
-          $lib: "docket",
-          environment: process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "development",
-        },
-      }),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  // The platform has no analytics consent flow. Do not send an event, even if an old
+  // deployment still has POSTHOG_KEY configured. Product telemetry can be restored only
+  // after a per-person consent mechanism is designed and reviewed.
+  return false;
 }
 
 /**

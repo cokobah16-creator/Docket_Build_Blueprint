@@ -154,15 +154,21 @@ Deno.serve(async (req: Request) => {
   }
 
   // 3. Never trust the webhook body for money — ask Paystack directly.
-  const vres = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
-    headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` },
-  });
+  let vres: Response;
+  try {
+    vres = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+      headers: { Authorization: `Bearer ${PAYSTACK_SECRET}` },
+    });
+  } catch (e) {
+    await record({ eventType, providerRef: reference, signatureOk: true, outcome: 'error', error: `verify unavailable: ${String(e)}` });
+    return new Response('verify unavailable', { status: 502 });
+  }
   const v: any = await vres.json().catch(() => ({}));
   if (!vres.ok || !v.status || v.data?.status !== 'success') {
     const why = `paystack verify did not confirm (${vres.status}): ${String(v?.message ?? v?.data?.status ?? 'no reason given')}`;
     console.warn('paystack verify did not confirm', reference, v?.message);
     await record({ eventType, providerRef: reference, signatureOk: true, outcome: 'error', error: why });
-    return new Response('not verified', { status: 200 });
+    return new Response('not verified', { status: 502 });
   }
 
   const invoiceNumber = v.data.metadata?.invoice_number;
@@ -196,7 +202,7 @@ Deno.serve(async (req: Request) => {
     // delivery — burying the failures that a retry WOULD fix. Acknowledge those and keep the 500
     // for a genuine database or connection failure, which is what a retry is for.
     const permanent = /^(unknown invoice|currency mismatch)/i.test(error.message ?? '');
-    if (permanent || !invoiceId) return new Response('permanently unprocessable', { status: 200 });
+    if (permanent) return new Response('permanently unprocessable', { status: 200 });
     return new Response('db error', { status: 500 });   // non-2xx makes Paystack retry
   }
 

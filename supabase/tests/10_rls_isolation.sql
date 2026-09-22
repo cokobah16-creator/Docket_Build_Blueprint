@@ -85,7 +85,7 @@ do $$
 declare a1 uuid := (select v from fx where k='client_a1'); a2 uuid := (select v from fx where k='client_a2'); b1 uuid := (select v from fx where k='client_b1');
 begin
   perform t_as(a1, 'aal1');
-  perform t_check('client A1 sees exactly her matter',            (select count(*) from matters) = 1);
+  perform t_check('client A1 sees only the client matter view',  (select count(*) from matters) = 0 and (select count(*) from portal_matters) = 1);
   perform t_check('client A1 sees only client-visible updates',   (select count(*) from updates) = 1 and (select visibility from updates limit 1) = 'client');
   perform t_check('client A1 sees only client-visible documents', (select count(*) from documents) = 1);
   perform t_check('client A1 sees her invoice',                   (select count(*) from invoices) = 1);
@@ -94,12 +94,12 @@ begin
   perform t_reset();
 
   perform t_as(a2, 'aal1');
-  perform t_check('client A2 (no matter) sees nothing',           (select count(*) from matters) + (select count(*) from updates)
+  perform t_check('client A2 (no matter) sees nothing',           (select count(*) from portal_matters) + (select count(*) from updates)
                                                                   + (select count(*) from documents) + (select count(*) from invoices) = 0);
   perform t_reset();
 
   perform t_as(b1, 'aal1');
-  perform t_check('client B1 sees only firm B matter',            (select count(*) from matters) = 1 and (select reference from matters) = 'FB-M-2026-000001');
+  perform t_check('client B1 sees only firm B matter',            (select count(*) from portal_matters) = 1 and (select reference from portal_matters) = 'FB-M-2026-000001');
   perform t_reset();
 end $$;
 
@@ -120,7 +120,7 @@ begin
   perform t_reset();
 
   perform t_as(la, 'aal1');
-  perform t_check('lawyer A (no MFA) can read firm A',            (select count(*) from matters) = 1 and (select count(*) from updates) = 2);
+  perform t_check('lawyer A without MFA cannot read firm A',     (select count(*) from matters) = 0 and (select count(*) from updates) = 0);
   ok := false;
   begin
     insert into updates (matter_id, firm_id, kind, title, posted_by) values (ma, fa, 'note', 'write without MFA', la);

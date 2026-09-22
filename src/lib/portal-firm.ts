@@ -47,7 +47,7 @@ function plural(n: number, one: string, many: string): string {
  */
 export async function clientFirms(supabase: SupabaseClient): Promise<ClientFirm[]> {
   const [{ data: matterRows }, { data: apptRows }] = await Promise.all([
-    supabase.from("matters").select("firm_id").is("deleted_at", null),
+    supabase.from("portal_matters").select("firm_id"),
     supabase.from("appointments").select("firm_id"),
   ]);
 

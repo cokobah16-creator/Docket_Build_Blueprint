@@ -129,16 +129,20 @@ export async function startPayment(
 
   const { data: appointment } = await supabase
     .from("appointments")
-    .select("id, reference, status, invoice_id, currency")
+    .select("id, reference, status, hold_expires_at, invoice_id, currency")
     .eq("id", appointmentId)
     .maybeSingle();
   const appt = appointment as
-    | { id: string; reference: string; status: string; invoice_id: string | null; currency: Currency | null }
+    | { id: string; reference: string; status: string; hold_expires_at: string | null; invoice_id: string | null; currency: Currency | null }
     | null;
   if (!appt) return { error: "Appointment not found." };
 
   const resultPath = `/app/appointments/${appt.id}/payment-result`;
   if (appt.status === "confirmed" || !appt.invoice_id) redirect(resultPath);
+  if (!['pending', 'awaiting_payment'].includes(appt.status)
+      || (appt.hold_expires_at && new Date(appt.hold_expires_at).getTime() <= Date.now())) {
+    return { error: "This booking is no longer open for payment. Contact the firm if you were charged." };
+  }
 
   const { data: invoiceRow } = await supabase
     .from("invoices")

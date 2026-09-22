@@ -69,6 +69,7 @@ export interface FirmPublic {
   timezone: string;
   default_currency: "NGN" | "USD";
   verified: boolean;
+  vat_rate: number;
 }
 
 /** firms.policies shape (staff-readable; versions drive consent capture). */
