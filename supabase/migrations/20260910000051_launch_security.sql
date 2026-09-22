@@ -136,7 +136,7 @@ begin
     select id into v_profile from profiles where lower(email) = lower(btrim(p_owner_email));
     select id into v_identity from auth.users where lower(email) = lower(btrim(p_owner_email));
     if v_profile is null or v_identity is distinct from v_profile then
-      raise exception 'the owner must sign up with that email before they can be added'
+      raise exception 'the owner must sign up first with that email before they can be added'
         using errcode = '42501';
     end if;
   end if;
