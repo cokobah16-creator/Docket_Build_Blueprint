@@ -16,6 +16,8 @@ import { cn } from "@/lib/cn";
 export interface TabSpec {
   key: string;
   label: string;
+  /** A count shown beside the label — open tasks, documents — when there is one. */
+  count?: number;
 }
 
 export function MatterTabs({
@@ -34,8 +36,8 @@ export function MatterTabs({
   }, [active]);
 
   return (
-    <nav aria-label="Matter sections" className="matter-tabs -mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-      <ul className="flex gap-2 pb-1">
+    <nav aria-label="Matter sections" className="-mx-4 overflow-x-auto border-b border-hairline px-4 sm:mx-0 sm:px-0">
+      <ul className="flex gap-1">
         {tabs.map((t) => {
           const current = t.key === active;
           return (
@@ -45,13 +47,17 @@ export function MatterTabs({
                 href={`${basePath}?tab=${t.key}${extraQuery}`}
                 aria-current={current ? "page" : undefined}
                 className={cn(
-                  "flex min-h-[44px] shrink-0 items-center whitespace-nowrap rounded-full border px-4 text-15 font-medium",
+                  "-mb-px flex min-h-11 shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-13 font-medium",
+                  "focus-visible:outline focus-visible:outline-2 focus-visible:[outline-offset:-2px] focus-visible:outline-ink-strong",
                   current
-                    ? "border-brand bg-brand text-brand-on"
-                    : "border-edge bg-raised text-ink hover:border-brand",
+                    ? "border-ink-strong font-semibold text-ink-strong"
+                    : "border-transparent text-ink-muted hover:border-edge hover:text-ink",
                 )}
               >
                 {t.label}
+                {typeof t.count === "number" && t.count > 0 && (
+                  <span className="rounded-chip bg-sunken px-1.5 text-11 font-semibold text-ink-muted">{t.count}</span>
+                )}
               </Link>
             </li>
           );
@@ -97,7 +103,7 @@ export function CopyButton({
       <button
         type="button"
         onClick={copy}
-        className="inline-flex min-h-[44px] items-center rounded-lg border border-edge px-3 text-15 font-medium text-brand hover:bg-hover"
+        className="inline-flex min-h-11 items-center rounded-control border border-edge bg-raised px-3 text-13 font-semibold text-ink-strong hover:bg-hover"
       >
         {state === "copied" ? "Copied" : label}
       </button>

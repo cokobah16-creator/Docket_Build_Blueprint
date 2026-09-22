@@ -75,21 +75,34 @@ export function CardRow({
   );
 }
 
-/** Empty state with a clear call to action (blueprint: no dead ends). */
+/**
+ * An empty state answers three questions: what this is, why it is empty, and
+ * what to do next. `title` says what is (not) here, `hint` says why and what
+ * follows, `action` is the next step. No illustration and no encouragement —
+ * a lawyer looking at an empty list wants the reason and the door.
+ */
 export function EmptyState({
   title,
   hint,
   action,
+  align = "center",
 }: {
   title: string;
   hint?: string;
   action?: ReactNode;
+  /** `start` for an empty panel inside a dense screen, where centring floats. */
+  align?: "center" | "start";
 }) {
   return (
-    <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
-      <p className="text-15 font-medium text-ink">{title}</p>
-      {hint && <p className="text-15 text-ink-muted">{hint}</p>}
-      {action}
+    <div
+      className={cn(
+        "flex flex-col gap-2 px-4 py-8",
+        align === "center" ? "items-center text-center" : "items-start text-left",
+      )}
+    >
+      <p className="text-15 font-semibold text-ink-strong">{title}</p>
+      {hint && <p className="max-w-[60ch] text-13 text-ink-muted">{hint}</p>}
+      {action && <div className="mt-1">{action}</div>}
     </div>
   );
 }

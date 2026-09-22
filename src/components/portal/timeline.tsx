@@ -3,15 +3,11 @@
 // Matter timeline: client-visible updates, newest first, live via Realtime
 // (RLS decides what the subscription delivers).
 
+import { UpdateKindMark } from "@/components/ui/update-kind";
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import type { UpdateRow } from "@/lib/db/types";
 import { UpdateStructure } from "./update-structure";
-
-const KIND_ICON: Record<string, string> = {
-  court_sitting: "⚖", consultation: "🎥", appointment: "📅", filing: "📄", correspondence: "✉",
-  milestone: "★", fee: "₦", document: "📎", note: "✎", status_change: "⇄",
-};
 
 export function Timeline({ matterId, initial, timezone }: { matterId: string; initial: UpdateRow[]; timezone: string }) {
   const [items, setItems] = useState<UpdateRow[]>(initial);
@@ -43,7 +39,7 @@ export function Timeline({ matterId, initial, timezone }: { matterId: string; in
         const nextDate = typeof p.next_date === "string" ? p.next_date : null;
         return (
           <li key={u.id} className="flex gap-3 px-5 py-4">
-            <span aria-hidden="true" className="mt-0.5 w-6 text-center text-base">{KIND_ICON[u.kind] ?? "•"}</span>
+            <UpdateKindMark kind={u.kind} />
             <div className="min-w-0 flex-1">
               <p className="text-15 font-medium text-ink">{u.title}</p>
               {u.body && <p className="mt-1 whitespace-pre-wrap text-15 text-ink">{u.body}</p>}

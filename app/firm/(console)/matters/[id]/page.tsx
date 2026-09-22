@@ -17,6 +17,7 @@
 //  · No dead ends: every empty tab names the next action.
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { notFound, redirect } from "next/navigation";
 import {
   courtsFor, firmStaff, matterStatuses, requestedFirmId, staffContext, staffLabel,
@@ -28,7 +29,7 @@ import { issueInvoice } from "@/lib/actions/invoices";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import { Badge, MatterStatusChip, StatusPill, type Status } from "@/components/ui/badge";
 import { CounselRoster } from "@/components/firm/counsel-roster";
 import { MessagesThread } from "@/components/portal/messages-thread";
 import { cn } from "@/lib/cn";
@@ -42,7 +43,6 @@ import type {
   ServiceDirectoryRow, TaskRow, CollaborationRow, CollaborationDocumentRow,
 } from "@/lib/db/types";
 import { CollaborationPanel } from "@/components/firm/collaboration-panel";
-import { CardGrid, WithAside } from "@/components/shell/layout";
 import { LedgerPanel, LedgerRow } from "@/components/shell/workspace";
 import { CopyButton, MatterTabs, type TabSpec } from "./matter-tabs";
 import { StaffTimeline, type StaffUpdate } from "./staff-timeline";
@@ -58,35 +58,16 @@ export const metadata = { title: "Matter" };
 const TABS: TabSpec[] = [
   { key: "overview", label: "Overview" },
   { key: "timeline", label: "Timeline" },
+  { key: "parties", label: "Parties" },
   { key: "documents", label: "Documents" },
+  { key: "deadlines", label: "Hearings & deadlines" },
+  { key: "tasks", label: "Tasks" },
   { key: "messages", label: "Messages" },
-  { key: "invoices", label: "Invoices" },
+  { key: "invoices", label: "Billing" },
   { key: "counsel", label: "Counsel" },
   { key: "working", label: "Working with" },
-  { key: "parties", label: "Parties" },
-  { key: "tasks", label: "Tasks" },
-  { key: "deadlines", label: "Deadlines" },
   { key: "edit", label: "Details" },
 ];
-
-/** matter_statuses.colour holds a colour name; Tailwind needs whole class names. */
-const TONES: Record<string, string> = {
-  slate: "border-slate-300 bg-slate-50 text-slate-800",
-  gray: "border-edge bg-sunken text-ink",
-  grey: "border-edge bg-sunken text-ink",
-  blue: "border-blue-300 bg-blue-50 text-blue-900",
-  sky: "border-sky-300 bg-sky-50 text-sky-900",
-  indigo: "border-indigo-300 bg-indigo-50 text-indigo-900",
-  violet: "border-violet-300 bg-violet-50 text-violet-900",
-  purple: "border-purple-300 bg-purple-50 text-purple-900",
-  green: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  emerald: "border-emerald-300 bg-emerald-50 text-emerald-900",
-  teal: "border-teal-300 bg-teal-50 text-teal-900",
-  amber: "border-amber-300 bg-amber-50 text-amber-900",
-  orange: "border-orange-300 bg-orange-50 text-orange-900",
-  red: "border-red-300 bg-red-50 text-red-900",
-  rose: "border-rose-300 bg-rose-50 text-rose-900",
-};
 
 const TYPE_LABELS: Record<string, string> = { ip: "Intellectual property", debt_recovery: "Debt recovery" };
 function typeLabel(type: string): string {
@@ -220,144 +201,156 @@ export default async function MatterWorkbench({
   const handling = matter.handling_lawyer_id ? names[matter.handling_lawyer_id] ?? null : null;
   const originating = matter.originating_lawyer_id ? names[matter.originating_lawyer_id] ?? null : null;
 
-  /* At a glance. Each tile is the fact and the door to it. */
-  const glance = (
-    <section aria-label="At a glance">
-      <CardGrid min="150px">
-        {(() => {
-          const clients = parties.filter((p) => p.role === "client").map((p) => names[p.user_id] ?? "Client");
-          const contacts = parties.filter((p) => p.role !== "client").length;
-          const tiles: Array<{ label: string; value: string; hint: string; href: string; ink?: string }> = [
-            {
-              label: "For",
-              value: clients.length ? clients.join(", ") : "No client on the file",
-              hint: contacts ? `${contacts} other ${contacts === 1 ? "party" : "parties"} on the matter` : "Who may read it, and who may pay",
-              href: `${basePath}?tab=parties${extraQuery}`,
-              ink: clients.length ? undefined : "text-[#92400E]",
-            },
-            {
-              label: "Latest update",
-              value: latest ? latest.title : "Nothing posted yet",
-              hint: latest
-                ? `${relativeLabel(latest.occurred_at, nowMs)}${latest.action_required === true ? " · the client must act" : latest.action_required === false ? " · nothing needed from the client" : ""}`
-                : "The client's timeline is empty",
-              href: `${basePath}?tab=timeline${extraQuery}`,
-              ink: latest ? undefined : "text-[#92400E]",
-            },
-            {
-              label: "Messages",
-              value: thread ? (thread.unread_for_me > 0 ? `${thread.unread_for_me} unread by you` : "Nothing unread by you") : "No thread yet",
-              hint: thread ? (thread.last_from_firm ? `Last from the firm, ${relativeLabel(thread.last_message_at, nowMs)}` : `Awaiting the firm's reply since ${relativeLabel(thread.last_message_at, nowMs)}`) : "The client has not written",
-              href: `${basePath}?tab=messages${extraQuery}`,
-              ink: thread && (!thread.last_from_firm || thread.unread_for_me > 0) ? "text-[#92400E]" : undefined,
-            },
-            {
-              label: "Owed on this matter",
-              value: owed.size ? Array.from(owed.entries()).filter(([, minor]) => minor !== 0).map(([cur, minor]) => formatMoneyMinor(minor, cur)).join(" + ") || "Nothing" : "Nothing",
-              hint: owed.size ? "Issued, part-paid or overdue" : "No invoice is open",
-              href: `${basePath}?tab=invoices${extraQuery}`,
-              ink: owed.size ? "text-[#B42318]" : undefined,
-            },
-          ];
-          return tiles.map((t) => (
-            <Link key={t.label} href={t.href} className="rounded-control border border-[#DDD9D2] bg-raised p-3 hover:border-[#141414]">
-              <p className="text-11 uppercase leading-snug tracking-[0.06em] text-[#57534E]">{t.label}</p>
-              <p className={cn("mt-1 line-clamp-2 text-13 font-semibold leading-snug", t.ink ?? "text-[#141414]")}>{t.value}</p>
-              <p className="mt-1 line-clamp-2 text-11 leading-snug text-[#57534E]">{t.hint}</p>
-            </Link>
-          ));
-        })()}
-      </CardGrid>
-    </section>
-  );
+  const clientNames = parties.filter((p) => p.role === "client").map((p) => names[p.user_id] ?? "Client");
+  const otherParties = parties.filter((p) => p.role !== "client").length;
+  const today = todayIn(ctx.timezone);
+  const owedText = Array.from(owed.entries()).filter(([, minor]) => minor !== 0).map(([cur, minor]) => formatMoneyMinor(minor, cur)).join(" + ");
+  const tabHref = (key: string) => `${basePath}?tab=${key}${extraQuery}`;
+  const conduct = leadLawyerId && names[leadLawyerId] ? names[leadLawyerId] : null;
+
+  /**
+   * The file's facts, as a register rather than a paragraph: every value a
+   * lawyer opening an unfamiliar file asks for first, in the same place on
+   * every matter, each one the door to the tab that holds its detail. A value
+   * that needs attention says so in words, and is tinted as well — never
+   * tinted alone.
+   */
+  const facts: Array<{ label: string; value: ReactNode; href?: string; tone?: "waiting" | "wrong" }> = [
+    {
+      label: clientNames.length === 1 ? "Client" : "Clients",
+      value: clientNames.length ? clientNames.join(", ") : "No client on the file",
+      href: tabHref("parties"),
+      tone: clientNames.length ? undefined : "waiting",
+    },
+    { label: "Suit number", value: matter.suit_number ? <span className="font-mono">{matter.suit_number}</span> : "Not yet assigned" },
+    {
+      label: "Court",
+      value: matter.court_name ? `${matter.court_name}${matter.judicial_division ? `, ${matter.judicial_division}` : ""}` : "Not recorded",
+    },
+    { label: "Judge", value: matter.judge ?? "Not recorded" },
+    { label: "Practice area", value: typeLabel(matter.type) },
+    {
+      label: "Handling lawyer",
+      value: handling ?? conduct ?? "Not recorded",
+      tone: handling || conduct ? undefined : "waiting",
+    },
+    {
+      label: "Next hearing",
+      value: matter.next_event_at
+        ? <>{formatWhen(matter.next_event_at, tz, { dateStyle: "medium", timeStyle: "short" })}{matter.next_event_note ? <span className="block text-ink-muted">{matter.next_event_note}</span> : null}</>
+        : matter.awaiting_date ? "Awaiting a date from the court" : "No date fixed",
+      href: tabHref("deadlines"),
+      tone: !matter.next_event_at && matter.awaiting_date ? "waiting" : undefined,
+    },
+    {
+      label: "Next action",
+      value: matter.next_action
+        ? <>{matter.next_action}<span className="block text-ink-muted">
+            {matter.next_action_owner_id ? (names[matter.next_action_owner_id] ?? "A colleague") : "Nobody assigned"}
+            {matter.next_action_due ? ` · ${matter.next_action_due < today ? "overdue, was due" : "due"} ${formatDay(matter.next_action_due)}` : ""}
+          </span></>
+        : "None recorded",
+      href: tabHref("edit"),
+      tone: matter.next_action_due && matter.next_action_due < today ? "wrong" : !matter.next_action_owner_id && matter.next_action ? "waiting" : undefined,
+    },
+    {
+      label: "Latest client update",
+      value: latest
+        ? <>{latest.title}<span className="block text-ink-muted">{relativeLabel(latest.occurred_at, nowMs)}{latest.action_required ? " · client must act" : ""}</span></>
+        : "Nothing posted yet",
+      href: tabHref("timeline"),
+      tone: latest ? undefined : "waiting",
+    },
+    {
+      label: "Messages",
+      value: thread
+        ? thread.last_from_firm
+          ? `Answered ${relativeLabel(thread.last_message_at, nowMs)}`
+          : `Awaiting reply since ${relativeLabel(thread.last_message_at, nowMs)}`
+        : "No conversation yet",
+      href: tabHref("messages"),
+      tone: thread && !thread.last_from_firm ? "waiting" : undefined,
+    },
+    {
+      label: "Outstanding",
+      value: owedText || "Nothing owed",
+      href: tabHref("invoices"),
+      tone: owedText ? "wrong" : undefined,
+    },
+    {
+      label: "Opened",
+      value: <>{formatWhen(`${matter.opened_at}T00:00:00Z`, "UTC", { dateStyle: "medium" })}{originating ? <span className="block text-ink-muted">Originated by {originating}</span> : null}</>,
+    },
+  ];
+  const toneClass = { waiting: "text-waiting-ink", wrong: "text-wrong-ink" } as const;
 
   return (
-    <div className="space-y-5">
-      <p className="text-15">
-        <Link href={`/firm/matters${sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : ""}`} className="text-brand underline">← Matters</Link>
-      </p>
+    <div className="space-y-4">
+      <nav aria-label="Breadcrumb" className="text-13 text-ink-muted">
+        <ol className="flex flex-wrap items-center gap-1">
+          <li>
+            <Link href={`/firm/matters${sp.firm ? `?firm=${encodeURIComponent(sp.firm)}` : ""}`} className="inline-flex min-h-11 items-center font-medium text-ink underline-offset-2 hover:underline">
+              Matters
+            </Link>
+          </li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page" className="font-mono">{matter.reference}</li>
+        </ol>
+      </nav>
 
-      <header className="workspace-heading space-y-2">
-        <p className="workspace-eyebrow">Matter record · {matter.reference}</p>
+      <header className="space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="workspace-title">{matter.title}</h1>
-            <p className="text-15 text-ink-muted">
-              {matter.reference} · {typeLabel(matter.type)} · opened {formatWhen(`${matter.opened_at}T00:00:00Z`, "UTC", { dateStyle: "medium" })}
-            </p>
+            <h1 className="text-21 font-semibold tracking-[-0.01em] text-ink-strong md:text-26">{matter.title}</h1>
+            {matter.cause_title && matter.cause_title.trim() !== matter.title.trim() && (
+              <p className="mt-0.5 text-15 text-ink-muted">{matter.cause_title}</p>
+            )}
           </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {status && <StatusChip status={status} />}
+          <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+            {status && <MatterStatusChip status={status} />}
             {matter.access === "team" && (
-              <span className="inline-flex items-center rounded-full border border-[#141414] bg-[#141414] px-2.5 py-0.5 text-13 font-medium text-white" title="Only this matter's team can open it">
-                Restricted
-              </span>
+              <Badge tone="over" icon="shield" className="cursor-help">
+                <span title="Only this matter's team can open it">Restricted to team</span>
+              </Badge>
             )}
             {matter.closed_at && <StatusPill status="closed" />}
           </div>
         </div>
 
-        {matter.cause_title && <p className="text-15 font-medium text-ink">{matter.cause_title}</p>}
-
-        <p className="text-15 text-ink">
-          {matter.court_name ?? "No court recorded"}
-          {matter.judicial_division ? `, ${matter.judicial_division}` : ""}
-          {matter.suit_number ? ` · ${matter.suit_number}` : " · no suit number yet"}
-          {matter.judge ? ` · ${matter.judge}` : ""}
-        </p>
-
-        <p className="text-15 text-ink">
-          {matter.next_event_at ? (
-            <>
-              Next in court: <strong>{formatWhen(matter.next_event_at, tz, { dateStyle: "full", timeStyle: "short" })}</strong>
-              {matter.next_event_note ? ` · ${matter.next_event_note}` : ""} <span className="text-ink-muted">({tz})</span>
-            </>
-          ) : matter.awaiting_date ? (
-            <span className="font-medium text-amber-800">Awaiting a date from the court.</span>
-          ) : (
-            <span className="text-ink-muted">No court date fixed.</span>
-          )}
-        </p>
-
-        {matter.next_action && (
-          <p className="text-15 font-medium text-brand">
-            Next action: {matter.next_action}
-            {(matter.next_action_owner_id || matter.next_action_due) && (
-              <span className="font-normal text-ink-muted">
-                {" · "}
-                {matter.next_action_owner_id ? (names[matter.next_action_owner_id] ?? "a colleague") : <span className="text-amber-800">nobody on it</span>}
-                {matter.next_action_due && (
-                  <>
-                    {" · due "}
-                    <span className={matter.next_action_due < todayIn(ctx.timezone) ? "font-semibold text-red-700" : undefined}>
-                      {matter.next_action_due < todayIn(ctx.timezone) ? "overdue, was " : ""}{formatDay(matter.next_action_due)}
-                    </span>
-                  </>
-                )}
-              </span>
-            )}
-          </p>
-        )}
-
-        <p className="text-13 text-ink-muted">
-          Handling: {handling ?? "not recorded"} · Originating: {originating ?? "not recorded"}
-          {leadLawyerId && names[leadLawyerId] ? ` · Conduct: ${names[leadLawyerId]}` : ""}
-        </p>
+        <dl className="grid grid-cols-2 overflow-hidden rounded-card border border-hairline bg-raised sm:grid-cols-3 xl:grid-cols-6">
+          {facts.map((f) => {
+            const body = (
+              <>
+                <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">{f.label}</dt>
+                <dd className={cn("mt-1 text-13 font-medium leading-snug text-ink-strong", f.tone && toneClass[f.tone])}>{f.value}</dd>
+              </>
+            );
+            // A hairline between cells, drawn by each cell's right and bottom
+            // edge so the grid stays ruled at every column count.
+            const cell = "min-w-0 border-b border-r border-hairline px-3 py-2.5";
+            return f.href ? (
+              <div key={f.label} className={cn(cell, "relative hover:bg-hover")}>
+                <Link href={f.href} className="absolute inset-0 focus-visible:outline focus-visible:outline-2 focus-visible:[outline-offset:-2px] focus-visible:outline-ink-strong">
+                  <span className="sr-only">Open {f.label.toLowerCase()}</span>
+                </Link>
+                {body}
+              </div>
+            ) : (
+              <div key={f.label} className={cell}>{body}</div>
+            );
+          })}
+        </dl>
       </header>
 
-      {sp.error && <Alert kind="error" title="That was refused">{sp.error}</Alert>}
+      {sp.error && <Alert kind="error" title="That change was not saved">{sp.error}</Alert>}
       {sp.issued === "1" && <Alert kind="success">Invoice issued. Your client can see it and pay from their app.</Alert>}
 
       {/* The overview stays beside the tabs from 1280px and falls above them
           below that, so the file's shape is on screen while its detail is read. */}
+      <MatterTabs tabs={TABS} active={tab} basePath={basePath} extraQuery={extraQuery} />
       {tab === "overview" ? (
-        <>
-          <MatterTabs tabs={TABS} active={tab} basePath={basePath} extraQuery={extraQuery} />
-          <MatterOverview ctx={ctx} matter={matter} names={names} basePath={basePath} extraQuery={extraQuery} />
-          {glance}
-        </>
-      ) : <WithAside from="xl" aside={glance}>
-        <MatterTabs tabs={TABS} active={tab} basePath={basePath} extraQuery={extraQuery} />
+        <MatterOverview ctx={ctx} matter={matter} names={names} basePath={basePath} extraQuery={extraQuery} />
+      ) : (
 
       <Card>
         {tab === "timeline" && <TimelineSection ctx={ctx} matter={matter} names={names} />}
@@ -373,7 +366,7 @@ export default async function MatterWorkbench({
           <EditSection ctx={ctx} matter={matter} statuses={statuses} staffOptions={staffOptions} leadLawyerId={leadLawyerId} alsoOn={lawyers.filter((l) => !l.is_lead).map((l) => l.user_id)} />
         )}
         </Card>
-      </WithAside>}
+      )}
     </div>
   );
 }
@@ -398,22 +391,6 @@ async function MatterOverview({ ctx, matter, names, basePath, extraQuery }: {
       {tasks.error ? <p className="ledger-empty">Tasks could not be loaded. Open Tasks to retry.</p> : !tasks.data?.length ? <p className="ledger-empty">No open tasks. Add a task to record the next step and its owner.</p> : tasks.data.map(t => <LedgerRow key={t.id} href={path("tasks")} title={t.title} detail={<>{t.assignee_id ? names[t.assignee_id] ?? "Assigned colleague" : "Unassigned"}<br />{t.due_at ? formatWhen(t.due_at, ctx.timezone, { dateStyle: "medium" }) : "No due date"}</>} trailing={t.due_at && new Date(t.due_at).getTime() < Date.now() ? <span className="font-semibold text-red-700">Overdue</span> : "Open"} />)}
     </LedgerPanel>
   </div>;
-}
-
-function StatusChip({ status }: { status: MatterStatus }) {
-  const colour = (status.colour ?? "").trim();
-  const hex = colour.startsWith("#");
-  return (
-    <span
-      className={cn(
-        "inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-13 font-medium",
-        hex ? "bg-raised" : TONES[colour.toLowerCase()] ?? "border-edge bg-sunken text-ink",
-      )}
-      style={hex ? { borderColor: colour, color: colour } : undefined}
-    >
-      {status.label}
-    </span>
-  );
 }
 
 // ---------------------------------------------------------------- timeline
