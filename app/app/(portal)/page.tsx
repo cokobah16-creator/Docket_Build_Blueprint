@@ -1,5 +1,6 @@
-// Client home: welcome, quick actions, next appointment (Join when live),
-// matters, recent documents, outstanding balance, recent notifications.
+// Client home, built around the questions a client actually has: does my
+// lawyer need anything from me, where does my matter stand, what happens next,
+// when is my next date, and do I owe anything. Plain words, no firm jargon.
 //
 // Everything below the welcome belongs to one firm — the one named under it.
 // A client acting with several firms taps that name to switch, and the whole
@@ -15,7 +16,7 @@ import { clientMatters, firmNamesFor, outstandingByCurrency } from "@/lib/portal
 import { formatMoneyMinor } from "@/lib/money";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
-import { StatusPill, type Status } from "@/components/ui/badge";
+import { MatterStatusChip, StatusPill, type Status } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { NotificationsList } from "@/components/portal/notifications-list";
@@ -23,7 +24,6 @@ import { IosInstallHint } from "@/components/portal/pwa-hints";
 import { OfflineBanner } from "@/components/portal/offline-banner";
 import { FirmSwitcher, type FirmChoice } from "@/components/portal/firm-switcher";
 import { Screen } from "@/components/portal/screen";
-import { WithAside } from "@/components/shell/layout";
 import { DEFAULT_TOKENS } from "@/lib/brand";
 import type { DocumentRow, NotificationRow } from "@/lib/db/types";
 
@@ -92,14 +92,39 @@ export default async function ClientDashboard() {
     only ? `/app/matters/${only.id}?tab=${tab}` : matters.length > 1 ? `/app/matters?for=${tab}` : fallback;
   const owing = Object.entries(outstanding);
 
+  // Only actions that go somewhere real. "Join" appears only while a call is
+  // actually open; it used to sit there permanently, pointing at the list.
   const quickActions: Array<{ label: string; href: string; icon: IconName }> = [
-    { label: "Book", href: firm ? `/${firm.slug}/book` : "/app/appointments", icon: "calendar" },
-    { label: "Join", href: nextAppointment && liveNow ? `/app/appointments/${nextAppointment.id}/waiting-room` : "/app/appointments", icon: "video" },
-    { label: "Upload", href: pickOr("documents", "/app/matters"), icon: "paperclip" },
+    ...(nextAppointment && liveNow ? [{ label: "Join call", href: `/app/appointments/${nextAppointment.id}/waiting-room`, icon: "video" as IconName }] : []),
     { label: "Message", href: pickOr("messages", "/app/messages"), icon: "mail" },
+    { label: "Upload", href: pickOr("documents", "/app/matters"), icon: "paperclip" },
+    ...(firm ? [{ label: "Book", href: `/${firm.slug}/book`, icon: "calendar" as IconName }] : []),
     { label: "Pay", href: "/app/payments", icon: "card" },
   ];
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: tz });
+  const fullFmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz });
+
+  const attention: Array<{ key: string; title: string; detail?: string; href: string; cta: string }> = [];
+  if (nextAppointment && liveNow) {
+    attention.push({ key: "live", title: "Your consultation is open", detail: fullFmt.format(new Date(nextAppointment.starts_at)), href: `/app/appointments/${nextAppointment.id}/waiting-room`, cta: "Join now" });
+  }
+  for (const m of matters) {
+    if (m.last_update?.action_required) {
+      attention.push({
+        key: `act-${m.id}`,
+        title: "Your lawyer needs something from you",
+        detail: `${m.last_update.client_action ?? m.last_update.title} · ${m.title}`,
+        href: `/app/matters/${m.id}`,
+        cta: "See what",
+      });
+    }
+  }
+  for (const [cur, minor] of owing) {
+    attention.push({ key: `owe-${cur}`, title: `${formatMoneyMinor(minor, cur)} to pay`, detail: "Issued, part-paid or overdue invoices", href: "/app/payments", cta: "Pay" });
+  }
+  if (unread > 0) {
+    attention.push({ key: "unread", title: `${unread} new ${unread === 1 ? "notification" : "notifications"}`, href: "/app/notifications", cta: "Read" });
+  }
 
   const choices: FirmChoice[] = firms.map((f) => ({
     id: f.id,
@@ -112,7 +137,7 @@ export default async function ClientDashboard() {
 
   const firmLine = firm && (
     <>
-      <span className="workspace-eyebrow block mb-2">Your client workspace</span>
+      <span className="workspace-eyebrow mb-1 block">Client portal</span>
       <span className="workspace-title block">Welcome, {displayName}</span>
       <span className="mt-0.5 block text-13 text-ink-muted">{firm.name}</span>
     </>
@@ -155,135 +180,151 @@ export default async function ClientDashboard() {
         </Link>
       </header>
 
-      {only && (
-        <div className="client-hero-grid">
-          <section className="client-matter">
-            <p className="workspace-eyebrow">Your matter · {only.reference}</p>
-            <h2><Link href={`/app/matters/${only.id}`}>{only.title}</Link></h2>
-            <div className="client-matter-meta">
-              {only.status && <span className="client-matter-status">{only.status.label}</span>}
-              {only.lawyer_names.length > 0 && <span>{only.lawyer_names.join(", ")}</span>}
-            </div>
-            <div className="mt-5 border-t border-white/30 pt-4 text-13 leading-relaxed">
-              <p className="font-semibold">Next court date</p>
-              <p>{only.next_event_at ? new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(only.next_event_at)) : "No date recorded yet"}</p>
-              {only.court_name && <p>{only.court_name}</p>}
-            </div>
-          </section>
-          <section className="client-next">
-            <p className="workspace-eyebrow">Stay informed</p>
-            <h2>{only.last_update?.title ?? "Your matter, in one place"}</h2>
-            <p className="text-13 leading-relaxed text-ink-muted">{only.last_update ? `Updated ${fmt.format(new Date(only.last_update.occurred_at))}. Open your matter to read the update and any instructions from your lawyer.` : "Read your case record, see shared documents or ask your lawyer a question."}</p>
-            <Link className="client-action mt-5" href={`/app/matters/${only.id}`}>View matter <Icon name="chevron-right" size={16} /></Link>
-          </section>
-        </div>
-      )}
-      {matters.length > 1 && <section className="client-next"><p className="workspace-eyebrow">Your matters</p><h2>Choose the file you want to work on</h2><p className="text-13 text-ink-muted">You have several matters with this firm. Select one before sending a message or uploading a document.</p><Link href="/app/matters" className="client-action mt-4">Choose a matter <Icon name="chevron-right" size={16} /></Link></section>}
+      {/* What needs you. The first thing a client asks is whether their lawyer is waiting on
+          them; the answer is a short list, or a sentence saying there is nothing. */}
+      <section aria-labelledby="attention-heading" className="overflow-hidden rounded-card border border-hairline bg-raised">
+        <h2 id="attention-heading" className="border-b border-hairline bg-sunken px-4 py-2.5 text-13 font-semibold text-ink-strong">
+          Needs your attention
+        </h2>
+        {attention.length === 0 ? (
+          <p className="px-4 py-3 text-13 text-ink-muted">
+            Nothing needs you right now. Your lawyer will let you know here, and by message, when something does.
+          </p>
+        ) : (
+          <ul className="divide-y divide-hairline">
+            {attention.map((item) => (
+              <li key={item.key}>
+                <Link href={item.href} className="flex min-h-11 items-center justify-between gap-3 px-4 py-2.5 hover:bg-hover">
+                  <span className="min-w-0">
+                    <span className="block text-15 font-semibold text-ink-strong">{item.title}</span>
+                    {item.detail && <span className="block text-13 text-ink-muted">{item.detail}</span>}
+                  </span>
+                  <span className="shrink-0 text-13 font-semibold text-brand">{item.cta}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
-      {/* Five actions share the width on a phone and grow into buttons with
-          room to breathe on a laptop — the same five, never a different set. */}
-      <nav aria-label="Quick actions" className="grid grid-cols-5 gap-[7px] md:gap-3">
+      {/* Where each matter stands, in the client's words: status, what happened last, what
+          happens next, the next date and who is handling it. */}
+      <section aria-labelledby="matters-heading" className="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h2 id="matters-heading" className="text-17 font-semibold text-ink-strong">{matters.length === 1 ? "Your matter" : "Your matters"}</h2>
+          {matters.length > 1 && <Link href="/app/matters" className="inline-flex min-h-11 items-center text-13 font-medium text-brand underline underline-offset-2">See all</Link>}
+        </div>
+        {matters.length === 0 ? (
+          <div className="rounded-card border border-hairline bg-raised">
+            <EmptyState
+              title="No matters yet"
+              hint="When your firm opens a matter for you, it appears here with its latest update, next court date and the lawyer handling it."
+              action={firm ? <Link href={`/${firm.slug}/book`} className={buttonClasses("primary", "md")}>Book a consultation</Link> : undefined}
+            />
+          </div>
+        ) : (
+          matters.map((m) => (
+            <article key={m.id} className="overflow-hidden rounded-card border border-hairline bg-raised">
+              <header className="flex flex-wrap items-start justify-between gap-2 border-b border-hairline px-4 py-3">
+                <div className="min-w-0">
+                  <h3 className="text-17 font-semibold leading-snug text-ink-strong">
+                    <Link href={`/app/matters/${m.id}`} className="underline-offset-2 hover:underline">{m.title}</Link>
+                  </h3>
+                  <p className="mt-0.5 text-13 text-ink-muted"><span className="font-mono">{m.suit_number ?? m.reference}</span>{m.court_name ? ` · ${m.court_name}` : ""}</p>
+                </div>
+                {m.status && <MatterStatusChip status={m.status} />}
+              </header>
+              <dl className="grid gap-x-6 gap-y-3 px-4 py-3 text-13 sm:grid-cols-2">
+                <div>
+                  <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">Latest update</dt>
+                  <dd className="mt-0.5 text-ink">
+                    {m.last_update ? <>{m.last_update.title}<span className="block text-ink-muted">{fmt.format(new Date(m.last_update.occurred_at))}</span></> : "No update yet"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">What happens next</dt>
+                  <dd className="mt-0.5 text-ink">{m.last_update?.next_step ?? "Your lawyer will post the next update here"}</dd>
+                </div>
+                <div>
+                  <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">Next court date</dt>
+                  <dd className="mt-0.5 text-ink">{m.next_event_at ? fullFmt.format(new Date(m.next_event_at)) : "None fixed yet"}</dd>
+                </div>
+                <div>
+                  <dt className="text-11 font-semibold uppercase tracking-[0.06em] text-ink-muted">{m.lawyer_names.length === 1 ? "Your lawyer" : "Your lawyers"}</dt>
+                  <dd className="mt-0.5 text-ink">{m.lawyer_names.length ? m.lawyer_names.join(", ") : "Not yet assigned"}</dd>
+                </div>
+              </dl>
+              <footer className="flex flex-wrap gap-2 border-t border-hairline px-4 py-2.5">
+                <Link href={`/app/matters/${m.id}`} className={buttonClasses("primary", "sm")}>Open matter</Link>
+                <Link href={`/app/matters/${m.id}?tab=messages`} className={buttonClasses("ghost", "sm")}>Message your lawyer</Link>
+                <Link href={`/app/matters/${m.id}?tab=documents`} className={buttonClasses("ghost", "sm")}>Documents</Link>
+              </footer>
+            </article>
+          ))
+        )}
+      </section>
+
+      <nav aria-label="Quick actions" className="grid gap-2" style={{ gridTemplateColumns: `repeat(${quickActions.length}, minmax(0, 1fr))` }}>
         {quickActions.map((a) => (
           <Link
             key={a.label}
             href={a.href}
-            className="flex min-h-16 flex-col items-center justify-center gap-1.5 rounded-control border border-hairline bg-raised px-0.5 py-2.5 text-center text-11 font-semibold leading-tight text-brand hover:bg-hover md:min-h-[72px] md:rounded-xl md:text-13"
+            className="flex min-h-14 flex-col items-center justify-center gap-1 rounded-control border border-hairline bg-raised px-0.5 py-2 text-center text-11 font-semibold leading-tight text-ink hover:bg-hover md:flex-row md:gap-2 md:text-13"
           >
-            <Icon name={a.icon} size={21} strokeWidth={1.6} className="md:size-6" />
+            <Icon name={a.icon} size={19} strokeWidth={1.6} className="text-brand" />
             {a.label}
           </Link>
         ))}
       </nav>
 
-      <WithAside
-        from="xl"
-        aside={
-          <>
-            {owing.length > 0 && (
-              <Card>
-                <CardHeader title="Outstanding balance" action={<Link href="/app/payments" className="text-13 font-medium text-brand underline underline-offset-2">Pay</Link>} />
-                <CardBody>
-                  {owing.map(([cur, minor]) => <p key={cur} className="font-heading text-26 font-semibold text-brand">{formatMoneyMinor(minor, cur)}</p>)}
-                </CardBody>
-              </Card>
-            )}
-
-            <Card>
-              <CardHeader title="Recent documents" />
-              {documents.length === 0 ? (
-                <EmptyState title="No documents have been shared yet" hint="Documents you upload or your lawyer shares will show here." />
-              ) : (
-                <ul>
-                  {documents.map((d) => (
-                    <li key={d.id}>
-                      <Link href={d.matter_id ? `/app/matters/${d.matter_id}?tab=documents` : `/app/appointments/${d.appointment_id}`} className="flex items-center justify-between gap-3 border-t border-hairline px-[17px] py-3 hover:bg-sunken">
-                        <span className="flex min-w-0 items-center gap-2.5">
-                          <Icon name="file" size={17} strokeWidth={1.6} className="shrink-0 text-ink-muted" />
-                          <span className="truncate text-13 text-ink">{d.name}</span>
-                        </span>
-                        <span className="shrink-0 text-11 text-ink-muted">{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: tz }).format(new Date(d.created_at))}</span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Card>
-
-            <Card>
-              <CardHeader title="Recent notifications" action={<Link href="/app/notifications" className="text-13 font-medium text-brand underline underline-offset-2">All</Link>} />
-              <NotificationsList rows={notifications} firmNames={firmNames} timezone={tz} compact />
-            </Card>
-          </>
-        }
-      >
+      <div className="grid gap-4 lg:grid-cols-2">
         <Card>
           <CardHeader title="Next appointment" action={<Link href="/app/appointments" className="text-13 font-medium text-brand underline underline-offset-2">All</Link>} />
           {nextAppointment ? (
-            <CardBody className="space-y-2.5">
-              <p className="text-15 font-semibold leading-snug text-ink md:text-base">{new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(nextAppointment.starts_at))}</p>
+            <CardBody className="space-y-2">
+              <p className="text-15 font-semibold leading-snug text-ink">{fullFmt.format(new Date(nextAppointment.starts_at))}</p>
               <p className="text-13 text-ink-muted"><span className="font-mono">{nextAppointment.reference}</span> · {nextAppointment.mode.replace("_", " ")}</p>
               <div className="flex flex-wrap items-center gap-3">
                 <StatusPill status={nextAppointment.status as Status} />
-                {liveNow ? (
-                  <Link href={`/app/appointments/${nextAppointment.id}/waiting-room`} className={buttonClasses("primary", "md")}>Join now</Link>
-                ) : (
-                  <Link
-                    href={`/app/appointments/${nextAppointment.id}`}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center text-13 font-medium text-brand underline underline-offset-2"
-                  >
-                    Details
-                  </Link>
-                )}
+                <Link
+                  href={liveNow ? `/app/appointments/${nextAppointment.id}/waiting-room` : `/app/appointments/${nextAppointment.id}`}
+                  className={liveNow ? buttonClasses("primary", "sm") : "inline-flex min-h-11 items-center text-13 font-medium text-brand underline underline-offset-2"}
+                >
+                  {liveNow ? "Join now" : "Details"}
+                </Link>
               </div>
             </CardBody>
           ) : (
-            <EmptyState title="No upcoming consultations" hint="Book one and meet your lawyer face to face." action={firm && <Link href={`/${firm.slug}/book`} className={buttonClasses("primary", "md")}>Book a Consultation</Link>} />
+            <EmptyState align="start" title="No upcoming appointments" hint="Consultations you book with your firm appear here, with a link to join when it is time." />
           )}
         </Card>
 
         <Card>
-          <CardHeader title="My matters" action={matters.length > 0 ? <Link href="/app/matters" className="text-13 font-medium text-brand underline underline-offset-2">All</Link> : undefined} />
-          {matters.length === 0 ? (
-            <EmptyState title="No matters yet" hint="When your firm opens a matter for you, it appears here with its full timeline." />
+          <CardHeader title="Recent documents" />
+          {documents.length === 0 ? (
+            <EmptyState align="start" title="No documents yet" hint="Documents your lawyer shares with you, and ones you upload, appear here." />
           ) : (
             <ul>
-              {matters.map((m) => (
-                <li key={m.id}>
-                  <Link href={`/app/matters/${m.id}`} className="block border-t border-hairline px-[17px] py-[13px] hover:bg-sunken">
-                    <div className="flex items-start justify-between gap-2.5">
-                      <p className="text-15 font-semibold leading-snug text-ink">{m.title}</p>
-                      {m.status && <span className="shrink-0 whitespace-nowrap rounded-full border border-brand-accent px-2.5 py-0.5 text-11 font-semibold text-brand-accent" style={m.status.colour ? { borderColor: m.status.colour, color: m.status.colour } : undefined}>{m.status.label}</span>}
-                    </div>
-                    <p className="mt-1 text-13 text-ink-muted"><span className="font-mono">{m.reference}</span>{m.lawyer_names.length ? ` · ${m.lawyer_names[0]}` : ""}</p>
-                    {m.last_update && <p className="mt-0.5 truncate text-13 text-ink-muted">{m.last_update.title} · {fmt.format(new Date(m.last_update.occurred_at))}</p>}
-                    {m.next_action && <p className="mt-1 text-13 font-semibold text-brand">Next: {m.next_action}</p>}
+              {documents.map((d) => (
+                <li key={d.id}>
+                  <Link href={d.matter_id ? `/app/matters/${d.matter_id}?tab=documents` : `/app/appointments/${d.appointment_id}`} className="flex min-h-11 items-center justify-between gap-3 border-t border-hairline px-4 py-2.5 first:border-t-0 hover:bg-hover">
+                    <span className="flex min-w-0 items-center gap-2.5">
+                      <Icon name="file" size={17} strokeWidth={1.6} className="shrink-0 text-ink-muted" />
+                      <span className="truncate text-13 text-ink">{d.name}</span>
+                    </span>
+                    <span className="shrink-0 text-11 text-ink-muted">{new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeZone: tz }).format(new Date(d.created_at))}</span>
                   </Link>
                 </li>
               ))}
             </ul>
           )}
         </Card>
-      </WithAside>
+
+        <Card className="lg:col-span-2">
+          <CardHeader title="Recent notifications" action={<Link href="/app/notifications" className="text-13 font-medium text-brand underline underline-offset-2">All</Link>} />
+          <NotificationsList rows={notifications} firmNames={firmNames} timezone={tz} compact />
+        </Card>
+      </div>
 
       <p className="pt-0.5 text-center text-11 text-ink-muted">
         <Link href="/app/search" className="underline underline-offset-2">Search</Link> · <Link href="/app/authority" className="underline underline-offset-2">Who may act for me</Link> · <Link href="/app/court-dates" className="underline underline-offset-2">Court dates</Link> · <Link href="/app/payments" className="underline underline-offset-2">Payments</Link> · <Link href="/app/profile" className="underline underline-offset-2">Profile</Link>
