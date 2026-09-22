@@ -331,7 +331,7 @@ begin
   perform t_reset();
 
   perform t_as(a2, 'aal1');
-  perform t_check('the client sees her new matter and its first entry',  (select count(*) from matters where id = m) = 1
+  perform t_check('the client sees her new matter and its first entry',  (select count(*) from portal_matters where id = m) = 1
                                                                          and (select count(*) from updates where matter_id = m and title like 'Matter opened:%') = 1
                                                                          and (select count(*) from notifications where event = 'matter_update' and (payload ->> 'matter_id')::uuid = m) >= 1);
   perform t_reset();
