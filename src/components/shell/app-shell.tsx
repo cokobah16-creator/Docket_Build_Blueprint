@@ -6,7 +6,10 @@
 // working. An inner scroll container would break both.
 //
 // The reserved space matches the rail and sidebar widths in primary-nav.tsx:
-// 68px from 768px, 248px from 1024px.
+// 68px from 768px, 248px from 1024px — plus the left safe-area inset, which
+// both widen by, so a phone held sideways keeps the rail clear of the notch.
+// The right inset is kept by the page and the command bar themselves, so the
+// bar's dark ground still runs to the glass edge.
 
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
@@ -60,7 +63,7 @@ export function AppShell({
         context={navContext}
       />
 
-      <div className="md:pl-[68px] lg:pl-[248px]">
+      <div className="md:pl-[calc(68px+env(safe-area-inset-left))] lg:pl-[calc(248px+env(safe-area-inset-left))]">
         {commandBar}
         {header}
         {banner}
@@ -70,6 +73,7 @@ export function AppShell({
           // it rather than under it. No reserve once the bar is gone.
           className={cn(
             "mx-auto w-full px-4 pb-[calc(72px+env(safe-area-inset-bottom))] pt-3.5 md:px-6 md:pb-10 md:pt-5 lg:px-8",
+            "pr-[max(16px,env(safe-area-inset-right))] md:pr-[max(24px,env(safe-area-inset-right))] lg:pr-[max(32px,env(safe-area-inset-right))]",
             width === "reading" ? "max-w-3xl" : "max-w-[1400px]",
           )}
         >
