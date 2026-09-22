@@ -99,7 +99,7 @@ begin
   perform t_check('...nor its version',           not exists (select 1 from document_versions where id = ver_id));
   perform t_check('...nor open it for reading',   t_refused(format('select open_document_version(%L)', ver_id), '42501'));
   perform t_check('...but the matter itself is still theirs to see, which is what a contact is for',
-    exists (select 1 from matters where id = (select v from fx where k='matter')));
+    exists (select 1 from portal_matters where id = (select v from fx where k='matter')));
   perform t_reset();
   perform t_as(cl, 'aal1');
   perform t_check('the client, whose switch is on, reads it as before',
@@ -161,12 +161,12 @@ begin
   perform t_check('the invitation link in the wrong hands binds nobody',
     t_refused(format('select accept_representation(%L)', (select v from tk where k='token')), '42501'));
   perform t_check('...and that person has no access of any kind',
-    not exists (select 1 from matters where id = m) and not acts_for_matter(m, 'base'));
+    not exists (select 1 from portal_matters where id = m) and not acts_for_matter(m, 'base'));
   perform t_reset();
 
   perform t_as((select v from fx where k='agent'), 'aal1');
   perform t_check('nor has the person the firm did name, before redeeming: being the right person is not itself access',
-    not exists (select 1 from matters where id = m) and not acts_for_matter(m, 'base'));
+    not exists (select 1 from portal_matters where id = m) and not acts_for_matter(m, 'base'));
   perform t_reset();
 end $$;
 
@@ -185,7 +185,7 @@ begin
 
   perform t_as(ag, 'aal1');
   perform accept_representation(tok);
-  perform t_check('once redeemed, the representative reads the matter',        exists (select 1 from matters where id = m));
+  perform t_check('once redeemed, the representative reads the matter',        exists (select 1 from portal_matters where id = m));
   perform t_check('...and the timeline written for the client',                exists (select 1 from updates where matter_id = m));
   insert into messages (firm_id, matter_id, sender_id, body)
     values ((select v from fx where k='firm'), m, auth.uid(), 'Acting for Acme: any news?');
@@ -197,7 +197,7 @@ begin
   perform t_check('...nor an invoice, because the firm did not give that either',
     not exists (select 1 from invoices where matter_id = m));
   perform t_check('and the other matter of the same client is NOT covered: this authority named one',
-    not exists (select 1 from matters where id = (select v from fx where k='matter2')));
+    not exists (select 1 from portal_matters where id = (select v from fx where k='matter2')));
   perform t_check('the same token cannot be redeemed twice', t_fails(format('select accept_representation(%L)', tok), 'not valid'));
   perform t_reset();
 end $$;
@@ -251,16 +251,16 @@ begin
                              expires_on = (now() at time zone 'Africa/Lagos')::date - 1 where id = rep;
   perform t_as(ag, 'aal1');
   perform t_check('an expired authority grants nothing, the moment it expires',
-    not exists (select 1 from matters where id = m) and not acts_for_matter(m, 'base'));
+    not exists (select 1 from portal_matters where id = m) and not acts_for_matter(m, 'base'));
   perform t_reset();
   update representations set expires_on = (now() at time zone 'Africa/Lagos')::date + 30 where id = rep;
   perform t_as(ag, 'aal1');
-  perform t_check('and it is live again for a day still to come', exists (select 1 from matters where id = m));
+  perform t_check('and it is live again for a day still to come', exists (select 1 from portal_matters where id = m));
   perform t_reset();
   -- Starting tomorrow is not starting today.
   update representations set starts_on = (now() at time zone 'Africa/Lagos')::date + 1 where id = rep;
   perform t_as(ag, 'aal1');
-  perform t_check('an authority that starts tomorrow grants nothing today', not exists (select 1 from matters where id = m));
+  perform t_check('an authority that starts tomorrow grants nothing today', not exists (select 1 from portal_matters where id = m));
   perform t_reset();
   update representations set starts_on = (now() at time zone 'Africa/Lagos')::date where id = rep;
 end $$;
@@ -284,7 +284,7 @@ begin
 
   perform t_as(ag, 'aal1');
   perform t_check('and from that moment the representative reads nothing',
-    not exists (select 1 from matters where id = m)
+    not exists (select 1 from portal_matters where id = m)
     and not exists (select 1 from documents where id = (select v from fx where k='doc'))
     and not exists (select 1 from invoices where matter_id = m));
   perform t_reset();
@@ -305,20 +305,20 @@ begin
   perform t_as(ag2, 'aal1');
   perform accept_representation(r ->> 'token');
   perform t_check('a firm-wide authority reaches every matter the principal is a party to',
-    exists (select 1 from matters where id = m2) and exists (select 1 from matters where id = (select v from fx where k='matter')));
+    exists (select 1 from portal_matters where id = m2) and exists (select 1 from portal_matters where id = (select v from fx where k='matter')));
   perform t_reset();
 
   -- A matter opened after the authority was granted is covered without anything being written.
   insert into matters (firm_id, reference, title, type) values (f, 'DC-M-2026-000003', 'Acme trademark', 'corporate') returning id into m3;
   insert into matter_parties (matter_id, firm_id, user_id, role) values (m3, f, cl, 'client');
   perform t_as(ag2, 'aal1');
-  perform t_check('...including one opened after it was granted', exists (select 1 from matters where id = m3));
+  perform t_check('...including one opened after it was granted', exists (select 1 from portal_matters where id = m3));
   perform t_reset();
 
   -- And a matter of the same firm the principal is NOT on is still out of reach.
   insert into matters (firm_id, reference, title, type) values (f, 'DC-M-2026-000004', 'Someone else entirely', 'litigation') returning id into m3;
   perform t_as(ag2, 'aal1');
-  perform t_check('...and never a matter the principal is not on', not exists (select 1 from matters where id = m3));
+  perform t_check('...and never a matter the principal is not on', not exists (select 1 from portal_matters where id = m3));
   perform t_reset();
 end $$;
 
@@ -410,7 +410,7 @@ begin
   insert into matter_lawyers (matter_id, firm_id, user_id, is_lead) values (m, f, ow, true);
   update matters set access = 'team' where id = m;
   perform t_reset();
-  perform t_check('the matter is walled to the owner''s team', (select access = 'team' from matters where id = m));
+  perform t_check('the matter is walled to the owner''s team', (select access = 'team' from public.matters where id = m));
 
   perform t_as(l);   -- the lawyer is NOT on that team
   perform t_check('a lawyer outside the team cannot grant an authority over all of the client''s matters',
@@ -421,7 +421,7 @@ begin
   -- The one accepted in section 9 is firm-wide and live; it must have lost the walled matter.
   perform t_as(imp, 'aal1');
   perform t_check('and a standing all-matters authority does not reach a matter walled afterwards',
-    not acts_for_matter(m, 'base') and not exists (select 1 from matters where id = m));
+    not acts_for_matter(m, 'base') and not exists (select 1 from portal_matters where id = m));
   perform t_check('...while the client''s unwalled matter is still reached',
     acts_for_matter((select v from fx where k='matter2'), 'base'));
   perform t_reset();

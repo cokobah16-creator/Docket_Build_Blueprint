@@ -41,10 +41,11 @@ begin
   perform t_reset();
 
   perform t_as(cl, 'aal1');
-  perform t_check('the client reads the next action and its due day', (select next_action_due is not null from matters where id = m));
+  perform t_check('the client sees the matter without its staff task',
+    exists (select 1 from portal_matters where id = m) and not exists (select 1 from matters where id = m));
   ok := t_refused(format('update matters set next_action_due = null where id = %L', m), '42501');
-  perform t_check('and cannot change it', ok or (select next_action_due is not null from matters where id = m));
   perform t_reset();
+  perform t_check('and cannot change it', ok or (select next_action_due is not null from matters where id = m));
 end $$;
 
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;

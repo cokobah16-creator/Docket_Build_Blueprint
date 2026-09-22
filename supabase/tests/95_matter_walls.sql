@@ -111,7 +111,7 @@ begin
   perform t_as(ad);
   perform t_check('an admin outside the team cannot see the matter — a wall partners can walk through is not a wall', not exists (select 1 from matters where id = m));
   perform t_reset(); perform t_as(cl, 'aal1');
-  perform t_check('the client still sees their matter', exists (select 1 from matters where id = m));
+  perform t_check('the client still sees their matter', exists (select 1 from portal_matters where id = m));
   perform t_check('and its client-visible update', exists (select 1 from updates where matter_id = m and visibility = 'client'));
   perform t_check('and their document', can_access_document(d));
   perform t_check('and the thread', exists (select 1 from firm_threads where matter_id = m));
