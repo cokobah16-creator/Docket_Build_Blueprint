@@ -93,6 +93,7 @@ const createDocumentSchema = z.object({
   name: z.string().min(1).max(200),
   mime: z.string().max(100),
   sizeBytes: z.number().int().positive().max(26_214_400),
+  purpose: z.enum(["client_upload", "message_attachment"]).default("client_upload"),
 });
 
 /**
@@ -108,7 +109,7 @@ export async function createDocument(input: z.infer<typeof createDocumentSchema>
   if (!parsed.success) return { ok: false, error: "Invalid upload." };
   const { supabase, user } = await userClient();
   if (!supabase || !user) return { ok: false, error: "Sign in first." };
-  const { matterId, appointmentId, firmId, name, mime, sizeBytes } = parsed.data;
+  const { matterId, appointmentId, firmId, name, mime, sizeBytes, purpose } = parsed.data;
   if (!matterId && !appointmentId) return { ok: false, error: "Choose a matter." };
 
   const documentId = crypto.randomUUID();
@@ -122,8 +123,10 @@ export async function createDocument(input: z.infer<typeof createDocumentSchema>
     matter_id: matterId,
     appointment_id: appointmentId,
     name,
-    category: "client_upload",
-    client_visible: true,
+    category: purpose,
+    // Message attachments are correspondence, not general matter documents. Migration 52
+    // resolves the one counterparty and keeps the bytes private to that exchange.
+    client_visible: purpose !== "message_attachment",
     uploaded_by: user.id,
   });
   if (error) return { ok: false, error: await userError(error, "The document", "portal: create document") };
