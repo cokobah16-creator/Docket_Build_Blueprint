@@ -36,7 +36,7 @@ tests/99_collaboration.sql	49
 tests/99_court_registry.sql	154
 tests/99_delegation.sql	69
 tests/99_document_text.sql	51
-tests/99_launch_security.sql	8
+tests/99_launch_security.sql	15
 tests/99_legal_diary.sql	54
 tests/99_notifications.sql	47
 tests/99_onboarding_import.sql	73
