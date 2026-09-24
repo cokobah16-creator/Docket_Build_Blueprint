@@ -145,4 +145,76 @@ begin
     and exists (select 1 from messages where id = staff_msg));
   perform t_reset();
 end $$;
+-- One active provider checkout per invoice. A double click must not create two references,
+-- and a different client must not be able to claim the invoice.
+do $$
+declare
+  f uuid := (select v from fx where k='firm');
+  victim uuid := (select v from fx where k='launch-victim');
+  other_client uuid := (select v from fx where k='launch-other-client');
+  inv uuid;
+  first_claim jsonb;
+  second_claim jsonb;
+  ready_claim jsonb;
+  replacement jsonb;
+  old_attempt uuid;
+  refused boolean := false;
+begin
+  perform t_reset();
+  insert into invoices (
+    firm_id, number, client_id, currency, subtotal_minor, vat_minor,
+    total_minor, paid_minor, status, issued_at
+  ) values (
+    f, 'LS-INV-2026-000001', victim, 'NGN', 100000, 0,
+    100000, 0, 'issued', now()
+  ) returning id into inv;
+
+  perform t_as(victim, 'aal1');
+  first_claim := claim_payment_checkout(inv, 'card');
+  perform t_check('the first checkout claim reserves one provider transaction',
+    first_claim ->> 'state' = 'create'
+    and nullif(first_claim ->> 'provider_ref', '') is not null
+    and (first_claim ->> 'amount_minor')::bigint = 100000);
+
+  second_claim := claim_payment_checkout(inv, 'card');
+  perform t_check('a second request while initialization is in flight is blocked',
+    second_claim ->> 'state' = 'busy');
+
+  perform complete_payment_checkout(
+    (first_claim ->> 'attempt_id')::uuid,
+    'https://checkout.example/one'
+  );
+  ready_claim := claim_payment_checkout(inv, 'bank_transfer');
+  perform t_check('a later request reuses the existing provider checkout instead of creating another',
+    ready_claim ->> 'state' = 'reuse'
+    and ready_claim ->> 'checkout_url' = 'https://checkout.example/one'
+    and ready_claim ->> 'provider_ref' = first_claim ->> 'provider_ref');
+  perform t_check('there is exactly one active checkout for the invoice',
+    (select count(*) = 1
+       from payment_checkout_attempts
+      where invoice_id = inv and status in ('initializing','ready')));
+
+  old_attempt := (first_claim ->> 'attempt_id')::uuid;
+  perform t_reset();
+  update payment_checkout_attempts
+     set lease_expires_at = now() - interval '1 second'
+   where id = old_attempt;
+
+  perform t_as(victim, 'aal1');
+  replacement := claim_payment_checkout(inv, 'bank_transfer');
+  perform t_check('an expired checkout is retired and a fresh reference may be created',
+    replacement ->> 'state' = 'create'
+    and replacement ->> 'provider_ref' <> first_claim ->> 'provider_ref');
+  perform t_reset();
+
+  perform t_as(other_client, 'aal1');
+  begin
+    perform claim_payment_checkout(inv, 'card');
+  exception when insufficient_privilege then
+    refused := true;
+  end;
+  perform t_check('another client cannot claim someone else''s invoice checkout', refused);
+  perform t_reset();
+end $$;
+
 rollback;
