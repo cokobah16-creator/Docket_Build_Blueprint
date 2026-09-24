@@ -31,6 +31,7 @@ tests/95_matter_walls.sql	45
 tests/96_document_reads.sql	13
 tests/97_document_requests.sql	15
 tests/98_conflict_checks.sql	50
+tests/99_booking_consent.sql	32
 tests/99_calendar_feed.sql	35
 tests/99_collaboration.sql	49
 tests/99_court_registry.sql	154

@@ -2297,6 +2297,7 @@ export type Database = {
         }
         Returns: string
       }
+      record_consent: { Args: { p_firm: string }; Returns: Json }
       record_payment: {
         Args: {
           p_amount_minor: number
