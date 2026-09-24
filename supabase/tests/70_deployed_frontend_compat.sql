@@ -19,10 +19,9 @@
 -- lists below are kept so that a reader can see the contract without running anything; the
 -- script is what keeps them honest.
 --
--- THE SHARP CHECKS ARE THE ONES AT aal1. A client never holds MFA, so anything the portal reads or
--- writes must work at aal1 — and the console layout on main reads firm_members BEFORE it checks
--- assurance, so that read must work at aal1 too, or every staff member lands on "no membership"
--- instead of the enrolment page.
+-- THE SHARP CHECKS ARE THE ONES AT aal1. A client never holds MFA, so anything the deployed portal
+-- reads or writes must work at aal1. Staff are different: the console checks assurance before it
+-- reads membership, so firm data should remain invisible until aal2.
 --
 -- Run alone or with the others: scripts/db-test-local.sh. Rolls back.
 
@@ -156,6 +155,13 @@ begin
     select full_name, phone, email, timezone, preferred_channel, quiet_hours_start, quiet_hours_end
     from profiles where id = cl) x;
   perform t_check('a client at aal1 reads their own profile with every column the portal names', n = 1);
+
+  -- Rollout bridge: the frontend currently serving from main still reads its narrow field list
+  -- from matters. The branch frontend has already moved to portal_matters, but migrations deploy
+  -- first, so this row must remain readable until that frontend is live.
+  select count(*) into n from matters m
+   where exists (select 1 from matter_parties mp where mp.matter_id = m.id and mp.user_id = cl);
+  perform t_check('the deployed client portal can still read its matter row during the view cutover', n >= 1);
 
   -- The one write a client makes on their first visit: accepting a firm's terms and privacy
   -- notice. Migration 21 rewrote both consent_records policies; a client never holds MFA.
