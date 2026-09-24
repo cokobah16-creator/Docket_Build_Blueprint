@@ -12,9 +12,12 @@ import { staffContext, firmOverview, firmStaff, requestedFirmId, staffLabel } fr
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { SettingRow } from "@/components/ui/switch";
 import { PushOptIn } from "@/components/push/push-opt-in";
+import { CookieSettingsButton } from "@/components/ui/cookie-banner";
+import { analyticsConfigured } from "@/lib/consent-cookie";
 import { staffSignOut } from "@/lib/actions/staff";
 import { ProfileEditor, type PractitionerProfile } from "./profile-editor";
 import { CalendarFeedPanel } from "./calendar-feed-panel";
@@ -117,6 +120,16 @@ export default async function StaffMe({ searchParams }: { searchParams: Promise<
           <div className="border-t border-[#F0EEEA] pt-3">
             <PushOptIn />
           </div>
+          {/* The console's way back to the cookie question. The answer decides whether a staff
+              sign-in here is linked to this browser's visits, and whether firm_registered is sent.
+              Only where the banner can appear (POSTHOG_KEY set), so it never opens nothing. */}
+          {analyticsConfigured() && (
+            <div className="border-t border-[#F0EEEA] pt-3">
+              <SettingRow title="Cookies" hint="Choose whether Docket may use analytics in this browser." divided={false}>
+                <CookieSettingsButton className={buttonClasses("ghost", "sm", "shrink-0")} />
+              </SettingRow>
+            </div>
+          )}
         </div>
       </Card>
 
