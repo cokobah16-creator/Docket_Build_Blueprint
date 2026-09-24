@@ -6,16 +6,11 @@
 //
 // TWO THINGS SLICE 5 ADDED, AND WHY THEY ARE BOTH HERE
 //
-// 1. THE RATE LIMITS (migration 21's rate_limit_hit, via src/lib/rate-limit.ts). Both buckets
-//    protect something that costs: a booking takes a slot out of a lawyer's diary, and a
-//    checkout creates a live transaction at Paystack. A limit is only worth having where the
-//    caller cannot walk around it, which means server-side — a browser calling the RPC directly
-//    can simply not call rate_limit_hit first. So bookAppointment() below wraps the RPC and asks
-//    the bucket first. Said plainly, because it matters: the booking wizard
-//    (app/(public)/[firm]/book/booking-wizard.tsx) still calls supabase.rpc("book_appointment")
-//    from the browser, and until that one call becomes bookAppointment(), the booking bucket
-//    counts nothing and booking_started is emitted for nobody. The checkout bucket in
-//    startPayment() below is live now, because the wizard already calls that action.
+// 1. THE RATE LIMITS. Booking is enforced INSIDE book_appointment() (migration 23), so a caller
+//    using Supabase directly cannot walk around it. Do not call allow(..., "booking") here too:
+//    rate_limit_hit increments the bucket, and doing both would make one real booking consume two
+//    attempts. Checkout is different: this server action is the only door to the provider secret,
+//    so its limit lives here.
 //
 // 2. STEP TWO OF THE FUNNEL, booking_started, emitted after book_appointment() returns — a
 //    booking the database refused is not a booking that started. The distinct id is the same
@@ -73,16 +68,15 @@ export type BookAppointmentResult = { error: string } | { booking: BookingResult
  * book_appointment() is a security-definer function that runs as the signed-in client: it
  * re-checks the service, the lawyer's availability and the slot, mints the reference, raises the
  * invoice and decides whether the appointment is confirmed outright or awaiting payment. This
- * action adds exactly two things around it — the booking rate limit before, and the funnel event
- * after — and passes every refusal back in the database's own words.
+ * action adds the funnel event after it succeeds. The booking rate limit is already inside the
+ * RPC itself, where it cannot be bypassed, and every refusal is passed back in the database's own words.
  */
 export async function bookAppointment(input: BookAppointmentInput): Promise<BookAppointmentResult> {
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
 
-  // Keyed on auth.uid() inside the function, where it cannot be forged.
-  if (!(await allow(supabase, "booking", true))) return { error: tooFast("booking") };
-
+  // book_appointment() itself owns the booking bucket. Calling allow() here as well would
+  // increment the same counter twice for one booking.
   const { data, error } = await supabase.rpc("book_appointment", {
     p_firm: input.firmId,
     p_service: input.serviceId,
