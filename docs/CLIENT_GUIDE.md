@@ -2,7 +2,7 @@
 
 *For a client of a firm that works on Docket. It covers signing in, booking and paying for a
 consultation, joining it, following your matter, and — just as importantly — what your firm can
-and cannot see, and what nobody else can see at all.*
+and cannot see, and what Docket's own operators can see.*
 
 Docket is built for a phone. Everything below works in a phone browser, and you can add it to your
 home screen so it opens like an app.
@@ -11,8 +11,8 @@ home screen so it opens like an app.
 
 ## Signing in
 
-**There is no password.** You sign in with a code, which is safer for you and one less thing to
-forget.
+**There is no password.** You sign in with a one-time code or link sent to your phone or email,
+so there is nothing to remember.
 
 Go to **`/app/login`** (or follow the link your firm sent you) and choose:
 
@@ -60,7 +60,9 @@ A few things worth knowing:
   accepted it. You can see your whole list at any time under **your profile**.
 - **If the firm changes a document, you will be asked again.** That is not a glitch. It means the
   document has actually changed, and you are agreeing to the new one rather than being assumed to.
-- **The record cannot be altered.** Not by the firm, not by Docket. It can only be added to.
+- **The record cannot be edited or deleted through the app or its API.** Not by you, not by the
+  firm. It can only be added to. It is deleted along with your account, or the firm's, if either
+  is deleted.
 
 You accept each firm's documents separately. Working with two firms on Docket means two sets.
 
@@ -133,8 +135,8 @@ sent.
 
 Two things to be clear about:
 
-- **Consultations are never recorded.** Not by your firm, not by Docket. There is no recording
-  button, and no setting that turns one on.
+- **Docket does not turn recording on.** It never asks the video service to record your room. If
+  you want to know whether your firm records calls in some other way, ask it.
 - **The room expires an hour after your consultation ends.** The link cannot be reused afterwards.
 
 Afterwards, your lawyer writes up a summary. **You see that summary** on the appointment. Your
@@ -205,11 +207,12 @@ consultations, not your documents, not your invoices. If you work with two firms
 knows the other exists. This is enforced by the database itself on every single read — not by the
 app remembering to ask.
 
-**Docket's own staff cannot see your matters at all.** Not the documents, not the messages, not the
-timeline, not the invoices, and not what any notification said. Docket's operators can see that a
-firm exists, whether it is active, whether it is verified, and whether messages are failing — and
-nothing about anybody's case. That is not a promise about behaviour; there is simply no way in the
-database for them to read it.
+**Docket's operator screens do not show your case.** Not the documents, not the messages, not the
+timeline, not what an invoice is for, and not what any notification said. Those screens are about
+firms: whether a firm is active and verified, how many open matters it has, and whether its
+messages are failing. For a payment that has not gone through, they also show the invoice number
+and the amount, so that money sent to the wrong account can be traced. These limits on an
+operator's account are set in the database, not left to good behaviour.
 
 ## What you cannot see, and why
 
@@ -230,8 +233,9 @@ database for them to read it.
   for one. Guessing at a link gets nowhere.
 - **Every view is a fresh, short-lived permission.** When you tap a document, Docket checks who you
   are and what you are entitled to, then issues a link that works for **two minutes** and stops.
-  Within those two minutes the link is the key, so do not forward it; after them it opens nothing,
-  for anybody.
+  A document you open to sign gets a link that works for **ten minutes**, so you have time to read
+  it. While it works the link is the key, so do not forward it; after that it opens nothing, for
+  anybody.
 - **Every version is kept**, with a fingerprint of the file. Nothing is quietly replaced.
 - **Documents are never hard-deleted** through the app. Legal records stay records.
 - **You can upload too** — on a matter, or on a consultation. What you upload is visible to your
@@ -287,7 +291,8 @@ saying so, with **Read and sign**.
 | **My slot expired while I was paying** | The fifteen-minute hold ran out. Nothing was charged. Book again |
 | **The Join button is not there** | It appears ten minutes before the start time, and only for a confirmed consultation |
 | **I cannot get past the terms screen** | Both boxes must be ticked. If the firm has just published a new version, you are being asked again on purpose |
-| **A document will not open** | The two-minute link has expired. Tap it again to get a new one |
+| **A document will not open** | The link has expired: it works for two minutes, or ten when you open a document to sign. Tap it again to get a new one |
 | **The app looks empty** | Every list says what to do next when it has nothing in it. If it does not, tell your firm |
 
-Your firm is the right first call for anything about your matter. Docket cannot see it.
+Your firm is the right first call for anything about your matter. Docket's operator screens do not
+show it.
