@@ -355,6 +355,11 @@ Each document has three things you fill in:
 - the **text**, or
 - a **link** to where the document is published on your own site. The link must be `https://`.
 
+Once the version is published, your site's terms and privacy pages show the text, with your link
+beneath it if you gave one. With a link and no text, the page points to the link. The consent
+screen in your clients' portal links each document to your link if you gave one, and to that page
+on your site if you did not.
+
 Angle brackets are stripped from everything you type, and text is capped at 60,000 characters.
 Docket stores four documents — terms, privacy, engagement and cancellation — and silently drops
 anything else, so use those four.

@@ -1035,7 +1035,7 @@ function PolicyFields({
       <Labelled
         label="Text"
         htmlFor={`${idPrefix}-text`}
-        hint="The wording recorded against this version. Angle brackets are removed by the database as it stores this."
+        hint="The wording recorded against this version. Once the version is published, your public page shows this text. Angle brackets are removed by the database as it stores this."
       >
         <textarea id={`${idPrefix}-text`} className={AREA} value={doc.text} onChange={(e) => set({ text: e.target.value })} rows={8} />
       </Labelled>
