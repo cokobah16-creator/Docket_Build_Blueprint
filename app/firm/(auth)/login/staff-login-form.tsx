@@ -62,8 +62,8 @@ export function StaffLoginForm({
       //
       // WHAT THIS BUYS TODAY, STATED HONESTLY: nothing in the funnel yet. Every funnel event names
       // a client — site_viewed and booking_started carry the anonymous cookie, and matter_opened
-      // carries the CLIENT's id even though a lawyer is the one who opened the matter
-      // (src/lib/actions/matters.ts). No event has ever been attributed to a staff account, so
+      // carried the CLIENT's id even though a lawyer opened the matter (it is not sent now; see
+      // src/lib/actions/matters.ts). No client-funnel event is attributed to a staff account, so
       // this joins a visitor to an identity that has no events of its own. It is a join waiting
       // for an event rather than one repairing a broken funnel, and it is here so that the day a
       // staff-side event is added — a firm registering, a console first used — the join is already

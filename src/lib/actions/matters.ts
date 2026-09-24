@@ -17,8 +17,6 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { isE164, normalizeNigerianPhone } from "@/lib/nigeria";
 import { MATTER_TYPES } from "@/lib/db/types";
-import { FUNNEL, capture } from "@/lib/observability";
-import { after } from "next/server";
 
 type Err = { error: string } | undefined;
 
@@ -117,27 +115,16 @@ export async function openMatter(input: OpenMatterInput): Promise<OpenMatterResu
   const result = (data ?? null) as { matter_id?: string; reference?: string } | null;
   if (!result?.matter_id || !result.reference) return { error: "The matter could not be opened. Try again." };
 
-  // The last step of the funnel: a visitor who found the firm's site has become a matter.
-  //
-  // The distinct id is the CLIENT, not the staff member who typed this in. The funnel follows
-  // one person from site_viewed to here, and the browser doing the typing belongs to the lawyer
-  // — using their visitor cookie would file the client's journey under the wrong person. A
-  // matter opened with no client attached is a real matter but not the end of anyone's journey,
-  // so it is left uncounted rather than attributed to somebody made up. The properties are facts
-  // about the matter; nothing about the person travels with it. Fired and ignored: telemetry
-  // never gets to fail a matter that the database has already opened.
-  // Bound to a const first: inside the after() closure TypeScript can no longer prove that
-  // d.clientId is still the string the `if` tested, because a property is not a narrowing that
-  // survives into a callback.
-  const clientId = d.clientId;
-  if (clientId) {
-    after(() =>
-      capture(FUNNEL.matterOpened, clientId, {
-        firm_id: d.firmId,
-        matter_type: d.type,
-      }).catch(() => undefined),
-    );
-  }
+  // NO ANALYTICS EVENT HERE, ON PURPOSE. matter_opened, the last step of the funnel, used to be
+  // sent from this spot, keyed to the CLIENT's account id and carrying the matter type. Both
+  // halves were wrong to send without the client's say-so:
+  //  · the type can be "criminal" or "family", which is exactly what should never reach an
+  //    analytics processor tied to a person;
+  //  · the only consent Docket can read is the docket_consent cookie of the browser making the
+  //    request, and that browser is the lawyer's. The lawyer's choice says nothing about the
+  //    client's, so there is no consent to check.
+  // Until the client's own choice is stored where the server can read it (legal readiness
+  // checklist, item 5), the event is not sent at all. Without consent, nothing is sent.
 
   refreshMatter(result.matter_id);
   return { matterId: result.matter_id, reference: result.reference };
