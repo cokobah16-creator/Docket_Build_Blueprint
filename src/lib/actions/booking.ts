@@ -39,6 +39,7 @@ import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
 import type { BookingResult } from "@/lib/db/types";
 import { after } from "next/server";
 import { userError } from "@/lib/user-error";
+import { claimPaymentCheckout, completePaymentCheckout, failPaymentCheckout } from "@/lib/payment-checkout";
 
 /** The appointment_mode enum in migration 1. The database is what refuses anything else. */
 export type BookingMode = "virtual" | "in_person" | "phone";
@@ -168,19 +169,32 @@ export async function startPayment(
   const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
   if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
 
-  // Everything above this line is a read or a redirect. From here a real transaction is created
-  // at the provider, so the checkout bucket is asked last — a client sent back to a result page
-  // they have already paid for has not spent a checkout.
-  if (!(await allow(supabase, "checkout", true))) return { error: tooFast("checkout") };
+  // Reserve the invoice before creating a provider transaction. Two simultaneous requests now
+  // line up on the invoice row: one creates the Paystack reference, the other reuses it (or waits
+  // while the first request is still obtaining its checkout URL).
+  const claim = await claimPaymentCheckout(supabase, invoice.id, channel ?? null);
+  if ("error" in claim) return { error: claim.error };
+  if (claim.state === "paid") redirect(resultPath);
+  if (claim.state === "reuse") redirect(claim.checkoutUrl);
+  if (claim.state === "busy") {
+    return { error: "A payment checkout is already being opened for this invoice. Use that window, or try again in a few minutes." };
+  }
+
+  // Only a genuinely new provider transaction spends the checkout rate-limit bucket.
+  if (!(await allow(supabase, "checkout", true))) {
+    await failPaymentCheckout(supabase, claim.attemptId, "checkout rate limit");
+    return { error: tooFast("checkout") };
+  }
 
   const origin = await siteOrigin();
   let checkoutUrl: string;
   try {
-    const provider = paymentProviderFor(invoice.currency);
+    const provider = paymentProviderFor(claim.currency);
     const result = await provider.initialize({
       invoiceNumber: invoice.number,
-      amountMinor: invoice.total_minor,
-      currency: invoice.currency,
+      providerRef: claim.providerRef,
+      amountMinor: claim.amountMinor,
+      currency: claim.currency,
       email,
       description: `Consultation ${appt.reference}`,
       callbackUrl: `${origin}${resultPath}`,
@@ -189,8 +203,16 @@ export async function startPayment(
       channel: channel ?? null,
     });
     checkoutUrl = result.checkoutUrl;
+
+    // If this bookkeeping write fails, still send the client to the one transaction that was
+    // created. The five-minute "initializing" lease continues to block a duplicate retry.
+    const completeError = await completePaymentCheckout(supabase, claim.attemptId, checkoutUrl);
+    if (completeError) {
+      await userError(new Error(completeError), "The payment checkout", "booking: save checkout lease");
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not start payment.";
+    await failPaymentCheckout(supabase, claim.attemptId, message);
     return { error: message.includes("PAYSTACK_SECRET_KEY") || message.includes("initialize failed")
       ? `Could not start payment: ${message}`
       : "Could not start payment. Please try again." };
