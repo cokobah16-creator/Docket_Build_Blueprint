@@ -27,22 +27,27 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(await loginPath("client"));
 
-  const { data } = await supabase
+  const invoiceResult = await supabase
     .from("invoices")
     .select("id, firm_id, number, status, currency, subtotal_minor, vat_minor, total_minor, paid_minor, issued_at, due_at")
     .eq("id", id)
     .maybeSingle();
-  const inv = (data ?? null) as Invoice | null;
+  if (invoiceResult.error) throw new Error(`Invoice could not be loaded: ${invoiceResult.error.message}`);
+  const inv = (invoiceResult.data ?? null) as Invoice | null;
   if (!inv) notFound();
 
-  const [{ data: itemRows }, { data: paymentRows }, firm, { data: appointment }] = await Promise.all([
+  const [itemResult, paymentResult, firm, appointmentResult] = await Promise.all([
     supabase.from("invoice_items").select("id, description, quantity, unit_minor").eq("invoice_id", inv.id),
     supabase.from("payments").select("id, provider, provider_ref, status, amount_minor, paid_at").eq("invoice_id", inv.id).order("paid_at", { ascending: false }),
     firmById(inv.firm_id),
     supabase.from("appointments").select("hold_expires_at").eq("invoice_id", inv.id).maybeSingle(),
   ]);
-  const items = (itemRows ?? []) as Item[];
-  const payments = (paymentRows ?? []) as Payment[];
+  if (itemResult.error) throw new Error(`Invoice items could not be loaded: ${itemResult.error.message}`);
+  if (paymentResult.error) throw new Error(`Payment history could not be loaded: ${paymentResult.error.message}`);
+  if (appointmentResult.error) throw new Error(`Consultation hold could not be loaded: ${appointmentResult.error.message}`);
+  const items = (itemResult.data ?? []) as Item[];
+  const payments = (paymentResult.data ?? []) as Payment[];
+  const appointment = appointmentResult.data;
   const fmt = (m: number) => formatMoneyMinor(m, inv.currency);
   const outstanding = Math.max(0, inv.total_minor - inv.paid_minor);
   const payable = ["issued", "partially_paid", "overdue"].includes(inv.status) && outstanding > 0;
