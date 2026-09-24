@@ -128,7 +128,7 @@ const createDocumentSchema = z.object({
  * documents/{firm}/{document}/{version}.{ext}. No RETURNING: the select
  * policy's helper cannot see a row inserted by the same statement.
  */
-export async function createDocument(input: z.infer<typeof createDocumentSchema>): Promise<
+export async function createDocument(input: z.input<typeof createDocumentSchema>): Promise<
   { ok: true; documentId: string; versionId: string; storagePath: string } | { ok: false; error: string }
 > {
   const parsed = createDocumentSchema.safeParse(input);
