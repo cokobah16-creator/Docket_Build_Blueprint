@@ -122,12 +122,15 @@ export async function startPayment(
   } = await supabase.auth.getUser();
   if (!user) redirect(`/app/login`);
 
-  const { data: appointment } = await supabase
+  const appointmentResult = await supabase
     .from("appointments")
     .select("id, reference, status, hold_expires_at, invoice_id, currency")
     .eq("id", appointmentId)
     .maybeSingle();
-  const appt = appointment as
+  if (appointmentResult.error) {
+    return { error: await userError(appointmentResult.error, "The booking", "booking: load appointment for payment") };
+  }
+  const appt = appointmentResult.data as
     | { id: string; reference: string; status: string; hold_expires_at: string | null; invoice_id: string | null; currency: Currency | null }
     | null;
   if (!appt) return { error: "Appointment not found." };
@@ -139,12 +142,15 @@ export async function startPayment(
     return { error: "This booking is no longer open for payment. Contact the firm if you were charged." };
   }
 
-  const { data: invoiceRow } = await supabase
+  const invoiceResult = await supabase
     .from("invoices")
     .select("id, number, total_minor, currency, status")
     .eq("id", appt.invoice_id)
     .maybeSingle();
-  const invoice = invoiceRow as
+  if (invoiceResult.error) {
+    return { error: await userError(invoiceResult.error, "The invoice", "booking: load invoice for payment") };
+  }
+  const invoice = invoiceResult.data as
     | { id: string; number: string; total_minor: number; currency: Currency; status: string }
     | null;
   if (!invoice) return { error: "Invoice not found." };
@@ -152,15 +158,21 @@ export async function startPayment(
 
   let email = user.email ?? null;
   if (!email) {
-    const { data: profile } = await supabase.from("profiles").select("email").eq("id", user.id).maybeSingle();
-    email = (profile as { email: string | null } | null)?.email ?? null;
+    const profileResult = await supabase.from("profiles").select("email").eq("id", user.id).maybeSingle();
+    if (profileResult.error) {
+      return { error: await userError(profileResult.error, "Your profile", "booking: load receipt email") };
+    }
+    email = (profileResult.data as { email: string | null } | null)?.email ?? null;
   }
   if (!email) return { error: "We need an email address to send your receipt. Add one and try again." };
 
   // Fees settle to the firm's own Paystack subaccount. Only the invoice's client (or the
   // firm) can ask for it, and the database refuses to record a payment settled anywhere else.
-  const { data: settlement } = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
-  const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
+  const settlementResult = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
+  if (settlementResult.error) {
+    return { error: await userError(settlementResult.error, "The payment", "booking: load settlement account") };
+  }
+  const subaccount = (settlementResult.data as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
   if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
 
   // Reserve the invoice before creating a provider transaction. Two simultaneous requests now
