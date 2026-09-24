@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { firmBySlug } from "@/lib/tenant";
 import { publishedContent } from "@/lib/public-data";
+import { SEEDED_POLICY_TEXT } from "@/lib/db/types";
 import { ContentBody, PageShell } from "./page-shell";
 
 /** Terms / privacy, first match wins: published CMS content; the text the firm saved under
@@ -9,7 +10,9 @@ import { ContentBody, PageShell } from "./page-shell";
  *
  *  A version that starts "0-" is Docket's mark for "not published yet" (seed_firm_defaults
  *  writes '0-draft' with holding text for every new firm). That text is not the firm's notice,
- *  and the version is not one anybody is asked to accept, so neither is shown. */
+ *  and the version is not one anybody is asked to accept, so neither is shown. The holding text
+ *  can outlive the draft version (a firm publishes by changing only the version), so it is
+ *  treated as no text at all, whatever the version. */
 export async function PolicyPage({
   slug,
   kind,
@@ -25,7 +28,13 @@ export async function PolicyPage({
   const version = policy?.version ? String(policy.version) : null;
   const published = version !== null && !version.startsWith("0-");
   const savedText = policy?.text;
-  const text = published && typeof savedText === "string" && savedText.trim() !== "" ? savedText : null;
+  const text =
+    published &&
+    typeof savedText === "string" &&
+    savedText.trim() !== "" &&
+    savedText.trim() !== SEEDED_POLICY_TEXT
+      ? savedText
+      : null;
   const url = policy?.url ? String(policy.url) : null;
   const page = await publishedContent(firm.id, "page", kind);
   const firmName = firm.legal_name ?? firm.name;
