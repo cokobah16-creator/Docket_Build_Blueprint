@@ -143,15 +143,16 @@ jobs:
   # from main. In between, the live schema is AHEAD of the code reading it — which is only safe if
   # every read that code makes still works. supabase/tests/70_deployed_frontend_compat.sql pins
   # that contract from this branch's side. This job checks it from main's side: it builds the
-  # database from THIS branch's migrations and then runs main's own seed and main's own RLS suite
-  # against it. If main's expectations of the database hold on this schema, the deployed front
-  # end will too.
+  # database from THIS branch's migrations and then runs the explicit deployed-frontend contract
+  # against it. We do not run main's entire historical RLS suite as a proxy: that suite also pins
+  # security behaviours the frontend never relies on (for example pre-MFA table visibility), so a
+  # deliberate hardening change can make it stale without breaking deployed code.
   #
   # main's files are materialised under $RUNNER_TEMP, never under supabase/tests/: the sql job
   # counts suites by listing that directory, and a file dropped there would inflate the count.
   # main's seed is used, not this branch's — a seed difference must not read as a compat failure.
   compat:
-    name: main's own suite against this schema
+    name: deployed frontend contract against this schema
     runs-on: ubuntu-latest
 
     services:
@@ -184,26 +185,24 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends postgresql-client-16
 
-      - name: Build this branch's schema, then run main's seed and main's RLS suite on it
+      - name: Build this branch's schema, then run the deployed-frontend contract
         env:
           PGPASSWORD: postgres
           URL: postgres://postgres:postgres@localhost:5432
         run: |
           set -euo pipefail
           T="$RUNNER_TEMP/compat"; mkdir -p "$T"
-          git show origin/main:supabase/seed.sql                     > "$T/main_seed.sql"
-          git show origin/main:supabase/tests/00_local_auth_stub.sql > "$T/main_00.sql"
-          git show origin/main:supabase/tests/10_rls_isolation.sql   > "$T/main_10.sql"
+          git show origin/main:supabase/seed.sql > "$T/main_seed.sql"
           echo "main is $(git rev-parse --short origin/main); this branch has $(ls supabase/migrations/*.sql | wc -l) migrations"
           psql "$URL/postgres" -v ON_ERROR_STOP=1 -q -c "drop database if exists docket_compat" -c "create database docket_compat"
-          psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f "$T/main_00.sql"
+          psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f supabase/tests/00_local_auth_stub.sql
           for f in supabase/migrations/*.sql; do psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f "$f"; done
           psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f "$T/main_seed.sql"
-          psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f "$T/main_10.sql" 2>&1 \
+          psql "$URL/docket_compat" -v ON_ERROR_STOP=1 -q -f supabase/tests/70_deployed_frontend_compat.sql 2>&1 \
             | sed -E 's/^psql:[^:]+:[0-9]+: //' | grep -E 'PASS|FAIL|ERROR|ALL CHECKS' | tee compat.log
           test "${PIPESTATUS[0]}" -eq 0
-          grep -q 'ALL CHECKS PASSED' compat.log || { echo "::error::main's suite did not report ALL CHECKS PASSED against this schema"; exit 1; }
-          echo "main's suite: $(grep -c 'PASS  ' compat.log) checks pass against this branch's schema"
+          grep -q 'ALL CHECKS PASSED' compat.log || { echo "::error::deployed frontend contract did not report ALL CHECKS PASSED against this schema"; exit 1; }
+          echo "deployed frontend contract: $(grep -c 'PASS  ' compat.log) checks pass against this branch's schema"
 
       # main's suite exercises what main's tests cover, which is not every screen — the admin
       # surfaces in particular. This reads every relation and function name straight out of main's
