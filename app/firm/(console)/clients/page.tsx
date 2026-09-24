@@ -157,7 +157,7 @@ export default async function FirmClientsPage({
     ? (sp.filter as Filter)
     : "all";
 
-  const [{ data: apptRows }, { data: partyRows }, { data: matterRows }, { data: invoiceRows }, { data: updateRows }, firm] =
+  const [apptResult, partyResult, matterResult, invoiceResult, updateResult, firm] =
     await Promise.all([
       supabase
         .from("appointments")
@@ -190,12 +190,17 @@ export default async function FirmClientsPage({
         .limit(UPDATE_SCAN),
       firmById(firmId),
     ]);
+  if (apptResult.error) throw new Error(`Client consultations could not be loaded: ${apptResult.error.message}`);
+  if (partyResult.error) throw new Error(`Client matter parties could not be loaded: ${partyResult.error.message}`);
+  if (matterResult.error) throw new Error(`Client matters could not be loaded: ${matterResult.error.message}`);
+  if (invoiceResult.error) throw new Error(`Client balances could not be loaded: ${invoiceResult.error.message}`);
+  if (updateResult.error) throw new Error(`Client activity could not be loaded: ${updateResult.error.message}`);
 
-  const appointments = (apptRows ?? []) as unknown as AppointmentScanRow[];
-  const parties = (partyRows ?? []) as unknown as PartyScanRow[];
-  const matters = (matterRows ?? []) as Array<{ id: string; closed_at: string | null }>;
-  const invoices = (invoiceRows ?? []) as InvoiceScanRow[];
-  const updates = (updateRows ?? []) as Array<{ matter_id: string; occurred_at: string }>;
+  const appointments = (apptResult.data ?? []) as unknown as AppointmentScanRow[];
+  const parties = (partyResult.data ?? []) as unknown as PartyScanRow[];
+  const matters = (matterResult.data ?? []) as Array<{ id: string; closed_at: string | null }>;
+  const invoices = (invoiceResult.data ?? []) as InvoiceScanRow[];
+  const updates = (updateResult.data ?? []) as Array<{ matter_id: string; occurred_at: string }>;
 
   const matterById = new Map(matters.map((m) => [m.id, m]));
 
