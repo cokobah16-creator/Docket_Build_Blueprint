@@ -253,8 +253,13 @@ begin
 
   perform t_as(newbie, 'aal1');
   res := accept_staff_invite(tok);
+  -- Acceptance is allowed before the new staff member enrolls a second factor, but migration 51
+  -- deliberately hides firm/staff rows from aal1. Verify the write outside that read policy, then
+  -- return to the same aal1 identity to prove the token was consumed.
+  perform t_reset();
   perform t_check('invited lawyer joins the firm',                         (res ->> 'role') = 'lawyer' and (select role from firm_members where firm_id = fu and user_id = newbie) = 'lawyer');
   perform t_check('invited lawyer gets a private profile to complete',    (select is_public from lawyer_profiles where firm_id = fu and user_id = newbie) = false);
+  perform t_as(newbie, 'aal1');
   ok := false;
   begin
     res := accept_staff_invite(tok);
