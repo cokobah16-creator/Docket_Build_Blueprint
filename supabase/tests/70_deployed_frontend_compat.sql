@@ -172,22 +172,23 @@ begin
   perform t_reset();
 end $$;
 
--- ---------------------------------------------------------------- 6. staff, at aal1 — the read the console makes BEFORE it checks MFA
--- app/firm/(console)/layout.tsx on main reads memberships first and redirects to enrolment only
--- afterwards. If this read ever became MFA-gated, a staff member without a factor would see "no
--- firm membership" instead of the page that lets them add one — a dead end for every new hire.
+-- ---------------------------------------------------------------- 6. staff assurance — MFA is checked before membership
+-- app/firm/(console)/layout.tsx asks Supabase for the assurance level first and redirects to the
+-- MFA flow before staffContext() reads firm_members. The database must therefore refuse firm data
+-- at aal1 and make the membership available once the same session reaches aal2.
 do $$
 declare st uuid := (select v from fx where k='staff'); n int;
 begin
   perform t_as(st, 'aal1');
   select count(*) into n from (select firm_id, role from firm_members where user_id = st) x;
-  perform t_check('a staff member at aal1 reads their memberships (the console reads before it checks MFA)', n = 1);
-  select count(*) into n from (select firm_id, user_id, role from firm_members) x;
-  perform t_check('with every column the console names', n >= 1);
+  perform t_check('a staff member at aal1 cannot read firm membership before MFA', n = 0);
   perform t_reset();
+
   perform t_as(st, 'aal2');
+  select count(*) into n from (select firm_id, user_id, role from firm_members where user_id = st) x;
+  perform t_check('after MFA the console can read every membership column it names', n >= 1);
   select count(*) into n from (select user_id, role from firm_members where user_id = st) x;
-  perform t_check('and still at aal2', n = 1);
+  perform t_check('the member is visible at aal2', n = 1);
   perform t_reset();
 end $$;
 
