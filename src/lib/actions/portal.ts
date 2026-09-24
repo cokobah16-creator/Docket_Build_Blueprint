@@ -14,6 +14,8 @@ import { userError } from "@/lib/user-error";
 import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
 import { SELECTED_FIRM_COOKIE, clientFirms } from "@/lib/portal-firm";
 import type { MessageAttachment } from "@/lib/db/types";
+import { allow, tooFast } from "@/lib/rate-limit";
+import { claimPaymentCheckout, completePaymentCheckout, failPaymentCheckout } from "@/lib/payment-checkout";
 
 type Err = { error: string } | undefined;
 
@@ -63,13 +65,28 @@ export async function startInvoicePayment(invoiceId: string, channel?: PaymentCh
   const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
   if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
 
+  const claim = await claimPaymentCheckout(supabase, invoice.id, channel ?? null);
+  if ("error" in claim) return { error: claim.error };
+  if (claim.state === "paid") redirect(resultPath);
+  if (claim.state === "reuse") redirect(claim.checkoutUrl);
+  if (claim.state === "busy") {
+    return { error: "A payment checkout is already being opened for this invoice. Use that window, or try again in a few minutes." };
+  }
+
+  // The rate limit applies only when this request actually owns the new provider transaction.
+  if (!(await allow(supabase, "checkout", true))) {
+    await failPaymentCheckout(supabase, claim.attemptId, "checkout rate limit");
+    return { error: tooFast("checkout") };
+  }
+
   const origin = await siteOrigin();
   let checkoutUrl: string;
   try {
-    const result = await paymentProviderFor(invoice.currency).initialize({
+    const result = await paymentProviderFor(claim.currency).initialize({
       invoiceNumber: invoice.number,
-      amountMinor: outstanding,
-      currency: invoice.currency,
+      providerRef: claim.providerRef,
+      amountMinor: claim.amountMinor,
+      currency: claim.currency,
       email,
       description: `Invoice ${invoice.number}`,
       callbackUrl: `${origin}${resultPath}`,
@@ -78,7 +95,16 @@ export async function startInvoicePayment(invoiceId: string, channel?: PaymentCh
       channel: channel ?? null,
     });
     checkoutUrl = result.checkoutUrl;
+    const completeError = await completePaymentCheckout(supabase, claim.attemptId, checkoutUrl);
+    if (completeError) {
+      await userError(new Error(completeError), "The payment checkout", "portal: save checkout lease");
+    }
   } catch (err) {
+    await failPaymentCheckout(
+      supabase,
+      claim.attemptId,
+      err instanceof Error ? err.message : "checkout initialization failed",
+    );
     await userError(err, "The payment", "portal: start invoice payment");
     return { error: "The payment could not be started, and you have not been charged. Please try again in a moment." };
   }
