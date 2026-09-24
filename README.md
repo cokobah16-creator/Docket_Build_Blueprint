@@ -212,6 +212,7 @@ Platform domain · platform entity · which entity holds the platform Paystack a
 | `docs/DEPLOYMENT_RUNBOOK.md` | a project from nothing to serving, and what to check after each deploy |
 | `docs/RESTORE_RUNBOOK.md` | PITR, the restore rehearsal, and the RPO/RTO this platform commits to |
 | `docs/COMPLIANCE_PACK.md` | the privacy notice and DPA wired to `firms.policies`, the DSR and breach runbooks, the NDPC checklist |
+| `docs/LEGAL_READINESS_CHECKLIST.md` | 20 common legal-readiness items: where Docket stands on each, the file-level steps to close each gap, and the decisions to make first |
 | `docs/ONBOARDING_A_FIRM.md` | taking a new firm from registration to live |
 | `docs/CLIENT_MONEY_DESIGN.md` | **a proposal, not a build**: how Docket would record a firm's client account without ever holding the money — for the accounting adviser to answer before anything is written |
 
