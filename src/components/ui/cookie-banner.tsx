@@ -7,6 +7,12 @@
 // only after it too (src/lib/observability/consent.ts). The sign-in cookies, dk_firm and
 // dk_staff_firm are strictly necessary and are set whatever the answer.
 //
+// WHERE IT SITS. z-40: over the page, under every overlay. Dialogs, bottom sheets, the firm
+// switcher, toasts and the consultation room are all z-50, so the card never covers a sheet's
+// buttons or a call's mute and leave; the room simply hides it until the call is over. The app
+// shell's phone bottom bar is also z-40, so where that bar is drawn, app/globals.css lifts the card
+// above it rather than over it, and on a wide screen it moves the card clear of the sidebar.
+//
 // WHEN IT SHOWS. Only when the server says analytics is configured (the analyticsEnabled prop,
 // from POSTHOG_KEY in app/layout.tsx), and then only when no choice for the current version is
 // stored. It reads the choice from document.cookie because the platform landing page is
@@ -103,7 +109,9 @@ export function CookieBanner({ analyticsEnabled }: { analyticsEnabled: boolean }
       tabIndex={-1}
       aria-labelledby={titleId}
       onKeyDown={onKeyDown}
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4 focus:outline-none"
+      // dk-cookie-banner is the hook app/globals.css uses to lift the card above the phone bottom
+      // bar and clear of the sidebar. See WHERE IT SITS above.
+      className="dk-cookie-banner pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[max(16px,env(safe-area-inset-bottom))] pt-4 focus:outline-none"
     >
       <div className="pointer-events-auto mx-auto max-w-[560px] rounded-card border border-hairline bg-raised p-4 text-ink shadow-e3">
         <h2 id={titleId} className="text-15 font-semibold text-ink-strong">

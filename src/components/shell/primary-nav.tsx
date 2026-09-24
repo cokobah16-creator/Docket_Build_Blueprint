@@ -178,8 +178,11 @@ export function PrimaryNav({
       </nav>
 
       {/* ── phone: a bottom bar of five ────────────────────────────────── */}
+      {/* data-dk-bottom-bar lets app/globals.css lift the cookie card above this bar
+          instead of over it. Its height there is this bar's: min-h-14 plus the border. */}
       <nav
         aria-label={label}
+        data-dk-bottom-bar=""
         className={cn(
           "fixed inset-x-0 bottom-0 z-40 border-t bg-raised pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] md:hidden",
           edge,
