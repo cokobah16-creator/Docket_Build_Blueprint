@@ -15,8 +15,11 @@ export function paystackProvider(secretKey = process.env.PAYSTACK_SECRET_KEY!): 
   return {
     name: 'paystack',
     async initialize(a: InitializePaymentArgs): Promise<InitializePaymentResult> {
-      // reference must be unique per attempt; the invoice number travels in metadata
-      const reference = `${a.invoiceNumber}-${Date.now().toString(36)}`.replace(/[^A-Za-z0-9.=-]/g, '-');
+      // New checkout flows reserve a provider reference in Postgres before reaching Paystack,
+      // so two simultaneous clicks cannot mint two transactions. Keep the fallback for callers
+      // that have not migrated yet.
+      const reference = (a.providerRef
+        ?? `${a.invoiceNumber}-${Date.now().toString(36)}`).replace(/[^A-Za-z0-9.=-]/g, '-');
       const res = await fetch(`${API}/transaction/initialize`, {
         method: 'POST', headers,
         body: JSON.stringify({
