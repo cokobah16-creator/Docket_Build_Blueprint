@@ -217,4 +217,50 @@ begin
   perform t_reset();
 end $$;
 
+-- The invoice register may display only 200 rows, but its counts and fee totals must cover
+-- the whole firm. Build a 205-invoice register so a UI-sized query cannot accidentally pass.
+do $$
+declare
+  st uuid := (select v from fx where k='launch-staff');
+  client uuid := (select v from fx where k='launch-victim');
+  f uuid;
+  n bigint;
+  billed bigint;
+begin
+  perform t_reset();
+  insert into firms (slug, name, reference_prefix, timezone)
+  values ('launch-report-firm', 'Launch Report Firm', 'LRF', 'Africa/Lagos')
+  returning id into f;
+  insert into firm_members (firm_id, user_id, role) values (f, st, 'owner');
+
+  insert into invoices (
+    firm_id, number, client_id, currency, subtotal_minor, vat_minor,
+    total_minor, paid_minor, status
+  )
+  select f,
+         format('LRF-INV-2026-%s', lpad(gs::text, 6, '0')),
+         client,
+         'NGN',
+         1000,
+         0,
+         1000,
+         0,
+         'draft'
+    from generate_series(1, 205) gs;
+
+  perform t_as(st);
+  select invoice_count, billed_minor
+    into n, billed
+    from invoice_register_summary(f)
+   where view_key = 'draft' and currency = 'NGN';
+  perform t_check('invoice summary counts beyond the 200-row display limit', n = 205);
+  perform t_check('invoice summary totals the full register beyond the display limit', billed = 205000);
+  perform t_reset();
+
+  perform t_as(client, 'aal1');
+  perform t_check('a client cannot read a firm-wide invoice register summary',
+    not exists (select 1 from invoice_register_summary(f)));
+  perform t_reset();
+end $$;
+
 rollback;
