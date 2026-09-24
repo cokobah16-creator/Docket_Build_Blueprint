@@ -15,18 +15,22 @@ export default async function CourtDatesPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(await loginPath("client"));
 
-  const [{ data: rows }, tz] = await Promise.all([
+  const [courtResult, tz] = await Promise.all([
     // A vacated date is not a date: the registry took it off. It stays on the timeline as history.
     supabase.from("court_events").select("id, matter_id, firm_id, scheduled_at, court_name, purpose, outcome_update_id, vacated_at, source, source_document_id, source_ref, registry_notice_id, registry_withdrawn_at").is("vacated_at", null).order("scheduled_at", { ascending: true }).limit(200),
     clientTimezone(supabase, user.id),
   ]);
-  const events = (rows ?? []) as CourtEventRow[];
+  if (courtResult.error) throw new Error(`Court dates could not be loaded: ${courtResult.error.message}`);
+  const events = (courtResult.data ?? []) as CourtEventRow[];
   const matterIds = Array.from(new Set(events.map((e) => e.matter_id)));
-  const [{ data: matterRows }, firmNames] = await Promise.all([
-    matterIds.length ? supabase.from("portal_matters").select("id, reference, title").in("id", matterIds) : Promise.resolve({ data: [] }),
+  const [matterResult, firmNames] = await Promise.all([
+    matterIds.length
+      ? supabase.from("portal_matters").select("id, reference, title").in("id", matterIds)
+      : Promise.resolve({ data: [] as Array<{ id: string; reference: string; title: string }>, error: null }),
     firmNamesFor(events.map((e) => e.firm_id)),
   ]);
-  const matters = new Map(((matterRows ?? []) as Array<{ id: string; reference: string; title: string }>).map((m) => [m.id, m]));
+  if (matterResult.error) throw new Error(`Court-date matters could not be loaded: ${matterResult.error.message}`);
+  const matters = new Map(((matterResult.data ?? []) as Array<{ id: string; reference: string; title: string }>).map((m) => [m.id, m]));
   const now = Date.now();
   const upcoming = events.filter((e) => new Date(e.scheduled_at).getTime() >= now);
   const past = events.filter((e) => new Date(e.scheduled_at).getTime() < now).reverse();
