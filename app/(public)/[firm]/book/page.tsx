@@ -1,7 +1,7 @@
 // Booking wizard entry: service → format → day and time → details → review
 // → book_appointment() → payment. Everything the wizard needs is loaded here
-// through the anon-safe views; the wizard itself is a client component that
-// talks to available_slots / book_appointment via RPC.
+// through the anon-safe views. The client asks available_slots() directly for browsing, then
+// submits the booking through the server action; book_appointment() enforces its own rate limit.
 
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
