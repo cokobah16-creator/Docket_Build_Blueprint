@@ -32,19 +32,26 @@ export async function startInvoicePayment(invoiceId: string, channel?: PaymentCh
   if (!supabase) return { error: "Payments are not configured yet." };
   if (!user) redirect(await loginPath("client"));
 
-  const { data: row } = await supabase
+  const invoiceResult = await supabase
     .from("invoices")
     .select("id, number, total_minor, paid_minor, currency, status, appointment_id")
     .eq("id", invoiceId)
     .maybeSingle();
-  const invoice = row as { id: string; number: string; total_minor: number; paid_minor: number; currency: Currency; status: string; appointment_id: string | null } | null;
+  if (invoiceResult.error) {
+    return { error: await userError(invoiceResult.error, "The invoice", "portal: load invoice for payment") };
+  }
+  const invoice = invoiceResult.data as { id: string; number: string; total_minor: number; paid_minor: number; currency: Currency; status: string; appointment_id: string | null } | null;
   if (!invoice) return { error: "Invoice not found." };
   const resultPath = `/app/payments/${invoice.id}/payment-result`;
   if (invoice.status === "paid") redirect(resultPath);
   if (invoice.status === "cancelled") return { error: "This invoice was cancelled." };
   if (invoice.appointment_id) {
-    const { data: appt } = await supabase.from("appointments")
+    const apptResult = await supabase.from("appointments")
       .select("status, hold_expires_at").eq("id", invoice.appointment_id).maybeSingle();
+    if (apptResult.error) {
+      return { error: await userError(apptResult.error, "The booking", "portal: load booking for payment") };
+    }
+    const appt = apptResult.data;
     if (!appt || !["pending", "awaiting_payment"].includes(appt.status)
         || (appt.hold_expires_at && new Date(appt.hold_expires_at).getTime() <= Date.now())) {
       return { error: "This booking is no longer open for payment. Contact the firm if you were charged." };
@@ -55,14 +62,20 @@ export async function startInvoicePayment(invoiceId: string, channel?: PaymentCh
 
   let email = user.email ?? null;
   if (!email) {
-    const { data: profile } = await supabase.from("profiles").select("email").eq("id", user.id).maybeSingle();
-    email = (profile as { email: string | null } | null)?.email ?? null;
+    const profileResult = await supabase.from("profiles").select("email").eq("id", user.id).maybeSingle();
+    if (profileResult.error) {
+      return { error: await userError(profileResult.error, "Your profile", "portal: load receipt email") };
+    }
+    email = (profileResult.data as { email: string | null } | null)?.email ?? null;
   }
   if (!email) return { error: "Add an email address on your profile first so we can send your receipt." };
 
   // Fees settle to the firm's own Paystack subaccount; record_payment() refuses money settled anywhere else.
-  const { data: settlement } = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
-  const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
+  const settlementResult = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
+  if (settlementResult.error) {
+    return { error: await userError(settlementResult.error, "The payment", "portal: load settlement account") };
+  }
+  const subaccount = (settlementResult.data as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
   if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
 
   const claim = await claimPaymentCheckout(supabase, invoice.id, channel ?? null);
