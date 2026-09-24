@@ -44,7 +44,8 @@ export async function PolicyPage({
       ) : text ? (
         <div className="space-y-6">
           <ContentBody body={text} keepLineBreaks />
-          {link ? <p className="text-ink">The same document is also at {link}.</p> : null}
+          {/* Labelled as the firm labels it in settings: "Link to the full document". */}
+          {link ? <p className="text-ink">Full document: {link}</p> : null}
         </div>
       ) : link ? (
         <p className="text-ink">
