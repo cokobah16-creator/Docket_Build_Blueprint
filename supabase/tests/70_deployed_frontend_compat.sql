@@ -59,6 +59,11 @@ insert into fx select 'staff',    id from auth.users where email = 'staff@compat
 insert into fx select 'platform', id from auth.users where email = 'platform@compat.test';
 insert into firm_members (firm_id, user_id, role) values ((select v from fx where k='firm'), (select v from fx where k='staff'), 'lawyer');
 insert into platform_admins (user_id) values ((select v from fx where k='platform'));
+insert into matters (firm_id, reference, title, type)
+values ((select v from fx where k='firm'), 'COMPAT-M-2026-000001', 'Compatibility matter', 'litigation');
+insert into matter_parties (matter_id, firm_id, user_id, role)
+select m.id, m.firm_id, (select v from fx where k='client'), 'client'
+  from matters m where m.reference = 'COMPAT-M-2026-000001';
 
 -- ---------------------------------------------------------------- 1. every relation main reads still exists
 do $$
