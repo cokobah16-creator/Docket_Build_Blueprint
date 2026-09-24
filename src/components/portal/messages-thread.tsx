@@ -116,7 +116,15 @@ export function MessagesThread({
     setError(null);
     setBusy(`Attaching ${file.name}…`);
     try {
-      const created = await createDocument({ firmId, matterId, appointmentId, name: file.name, mime: file.type || "application/octet-stream", sizeBytes: file.size });
+      const created = await createDocument({
+        firmId,
+        matterId,
+        appointmentId,
+        name: file.name,
+        mime: file.type || "application/octet-stream",
+        sizeBytes: file.size,
+        purpose: "message_attachment",
+      });
       if (!created.ok) { setError(created.error); return; }
       const { error: upErr } = await supabase.storage.from("documents").upload(created.storagePath, file, { contentType: file.type || undefined });
       if (upErr) { setError(userErrorMessage(upErr, "The attachment")); return; }

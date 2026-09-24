@@ -342,6 +342,14 @@ Deno.serve(async (req: Request) => {
         }
       }
 
+      // External notifications can be seen on a lock screen or a shared inbox. Matter,
+      // document, court and client details belong behind sign-in, including when a firm
+      // supplied its own template with a {title}, {name} or {court_name} placeholder.
+      if (/^(matter_|court_|deadline_|document_|collaboration_|registry_|process_|service_|representation_|client_contact_|payment_review_)/.test(r.event)) {
+        subject = 'Docket: private update';
+        text = 'You have a private update in Docket. Sign in to read it.';
+      }
+
       const appUrl = (Deno.env.get('APP_URL') ?? '') + url;
       let result: Sent;
       let segments = 1;

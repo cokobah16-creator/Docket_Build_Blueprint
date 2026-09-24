@@ -188,7 +188,7 @@ begin
   perform t_check('the client cannot read the invitations table',        (select count(*) from invites) = 0);
   perform accept_invite(tok);
   perform t_check('accepting the invitation adds the client as a party', (select count(*) from matter_parties where matter_id = m and user_id = cl) = 1);
-  perform t_check('the client now sees the matter',                      (select count(*) from matters where id = m) = 1);
+  perform t_check('the client now sees the matter',                      (select count(*) from portal_matters where id = m) = 1);
   perform t_reset();
 
   -- a second invitation for someone already on the matter is refused

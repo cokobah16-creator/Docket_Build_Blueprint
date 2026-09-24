@@ -41,6 +41,7 @@ begin
   f := (res ->> 'firm_id')::uuid;
   perform t_check('create_firm returns the new firm',                      f is not null and res ->> 'slug' = 'ubuntu-partners');
   perform t_check('reference prefix derived from the name',                res ->> 'reference_prefix' = 'UP');
+  perform t_as(o1, 'aal2'); -- the account can now see firm records only after MFA
   perform t_check('creator is the owner',                                  (select role from firm_members where firm_id = f and user_id = o1) = 'owner');
   perform t_check('owner reads her firm',                                  (select count(*) from firms where id = f) = 1);
   perform t_check('new firm gets the 15 default matter statuses',          (select count(*) from matter_statuses where firm_id = f) = 15);
@@ -50,14 +51,13 @@ begin
   perform t_check('new firm has a versioned policies skeleton',            (select policies -> 'terms' ->> 'version' from firms where id = f) = '0-draft');
   perform t_check('the registrant has a private practitioner profile with her SCN', (select scn || '|' || is_public::text from lawyer_profiles where firm_id = f and user_id = o1) = 'SCN445566|false');
 
-  ok := false;
+  perform t_as(o1, 'aal1');
   begin
     update firms set name = 'renamed' where id = f;
-    ok := (select name from firms where id = f) <> 'renamed';          -- RLS filters the row: 0 rows updated
-  exception when insufficient_privilege then ok := true;
+  exception when insufficient_privilege then null;
   end;
-  perform t_check('owner without MFA cannot change firm settings',         ok);
   perform t_reset();
+  perform t_check('owner without MFA cannot change firm settings',         (select name from firms where id = f) = 'Ubuntu & Partners');
 
   perform t_as(o1, 'aal2');
   update firms set name = 'Ubuntu & Partners LP' where id = f;
@@ -122,6 +122,7 @@ begin
   exception when others then ok := sqlerrm like '%maximum%';
   end;
   perform t_check('an account owns at most three firms',                  ok);
+  perform t_as(o2, 'aal2');
   perform t_check('owner two sees only her own firms',                    (select count(*) from firms) = 3 and (select count(*) from firms where slug = 'ubuntu-partners') = 0);
   perform t_reset();
 
@@ -252,8 +253,13 @@ begin
 
   perform t_as(newbie, 'aal1');
   res := accept_staff_invite(tok);
+  -- Acceptance is allowed before the new staff member enrolls a second factor, but migration 51
+  -- deliberately hides firm/staff rows from aal1. Verify the write outside that read policy, then
+  -- return to the same aal1 identity to prove the token was consumed.
+  perform t_reset();
   perform t_check('invited lawyer joins the firm',                         (res ->> 'role') = 'lawyer' and (select role from firm_members where firm_id = fu and user_id = newbie) = 'lawyer');
   perform t_check('invited lawyer gets a private profile to complete',    (select is_public from lawyer_profiles where firm_id = fu and user_id = newbie) = false);
+  perform t_as(newbie, 'aal1');
   ok := false;
   begin
     res := accept_staff_invite(tok);

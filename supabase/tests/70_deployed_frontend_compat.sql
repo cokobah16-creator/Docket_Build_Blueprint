@@ -19,10 +19,9 @@
 -- lists below are kept so that a reader can see the contract without running anything; the
 -- script is what keeps them honest.
 --
--- THE SHARP CHECKS ARE THE ONES AT aal1. A client never holds MFA, so anything the portal reads or
--- writes must work at aal1 — and the console layout on main reads firm_members BEFORE it checks
--- assurance, so that read must work at aal1 too, or every staff member lands on "no membership"
--- instead of the enrolment page.
+-- THE SHARP CHECKS ARE THE ONES AT aal1. A client never holds MFA, so anything the deployed portal
+-- reads or writes must work at aal1. Staff are different: the console checks assurance before it
+-- reads membership, so firm data should remain invisible until aal2.
 --
 -- Run alone or with the others: scripts/db-test-local.sh. Rolls back.
 
@@ -60,6 +59,11 @@ insert into fx select 'staff',    id from auth.users where email = 'staff@compat
 insert into fx select 'platform', id from auth.users where email = 'platform@compat.test';
 insert into firm_members (firm_id, user_id, role) values ((select v from fx where k='firm'), (select v from fx where k='staff'), 'lawyer');
 insert into platform_admins (user_id) values ((select v from fx where k='platform'));
+insert into matters (firm_id, reference, title, type)
+values ((select v from fx where k='firm'), 'COMPAT-M-2026-000001', 'Compatibility matter', 'litigation');
+insert into matter_parties (matter_id, firm_id, user_id, role)
+select m.id, m.firm_id, (select v from fx where k='client'), 'client'
+  from matters m where m.reference = 'COMPAT-M-2026-000001';
 
 -- ---------------------------------------------------------------- 1. every relation main reads still exists
 do $$
@@ -157,6 +161,13 @@ begin
     from profiles where id = cl) x;
   perform t_check('a client at aal1 reads their own profile with every column the portal names', n = 1);
 
+  -- Rollout bridge: the frontend currently serving from main still reads its narrow field list
+  -- from matters. The branch frontend has already moved to portal_matters, but migrations deploy
+  -- first, so this row must remain readable until that frontend is live.
+  select count(*) into n from matters m
+   where exists (select 1 from matter_parties mp where mp.matter_id = m.id and mp.user_id = cl);
+  perform t_check('the deployed client portal can still read its matter row during the view cutover', n >= 1);
+
   -- The one write a client makes on their first visit: accepting a firm's terms and privacy
   -- notice. Migration 21 rewrote both consent_records policies; a client never holds MFA.
   ok := true;
@@ -172,22 +183,23 @@ begin
   perform t_reset();
 end $$;
 
--- ---------------------------------------------------------------- 6. staff, at aal1 — the read the console makes BEFORE it checks MFA
--- app/firm/(console)/layout.tsx on main reads memberships first and redirects to enrolment only
--- afterwards. If this read ever became MFA-gated, a staff member without a factor would see "no
--- firm membership" instead of the page that lets them add one — a dead end for every new hire.
+-- ---------------------------------------------------------------- 6. staff assurance — MFA is checked before membership
+-- app/firm/(console)/layout.tsx asks Supabase for the assurance level first and redirects to the
+-- MFA flow before staffContext() reads firm_members. The database must therefore refuse firm data
+-- at aal1 and make the membership available once the same session reaches aal2.
 do $$
 declare st uuid := (select v from fx where k='staff'); n int;
 begin
   perform t_as(st, 'aal1');
   select count(*) into n from (select firm_id, role from firm_members where user_id = st) x;
-  perform t_check('a staff member at aal1 reads their memberships (the console reads before it checks MFA)', n = 1);
-  select count(*) into n from (select firm_id, user_id, role from firm_members) x;
-  perform t_check('with every column the console names', n >= 1);
+  perform t_check('a staff member at aal1 cannot read firm membership before MFA', n = 0);
   perform t_reset();
+
   perform t_as(st, 'aal2');
+  select count(*) into n from (select firm_id, user_id, role from firm_members where user_id = st) x;
+  perform t_check('after MFA the console can read every membership column it names', n >= 1);
   select count(*) into n from (select user_id, role from firm_members where user_id = st) x;
-  perform t_check('and still at aal2', n = 1);
+  perform t_check('the member is visible at aal2', n = 1);
   perform t_reset();
 end $$;
 

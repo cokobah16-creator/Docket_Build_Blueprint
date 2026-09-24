@@ -69,6 +69,7 @@ export interface FirmPublic {
   timezone: string;
   default_currency: "NGN" | "USD";
   verified: boolean;
+  vat_rate: number;
 }
 
 /** firms.policies shape (staff-readable; versions drive consent capture). */
@@ -542,6 +543,8 @@ export interface DocumentRow {
   client_visible: boolean;
   current_version_id: string | null;
   uploaded_by: string | null;
+  /** Message attachments may be visible only to this counterparty (migration 52). */
+  private_recipient_id?: string | null;
   /** When staff marked a client upload as looked at; null keeps it on the review counter. */
   reviewed_at: string | null;
   reviewed_by: string | null;
@@ -819,6 +822,8 @@ export interface MessageRow {
   matter_id: string | null;
   appointment_id: string | null;
   sender_id: string | null;
+  /** One intended counterparty. Null only on ambiguous legacy messages (migration 52). */
+  recipient_id: string | null;
   body: string | null;
   attachments: MessageAttachment[];
   /** First read from across the firm/client line — "seen by the other side". Never who. */

@@ -17,12 +17,13 @@ export default async function PaymentsPage() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect(await loginPath("client"));
 
-  const { data } = await supabase
+  const invoiceResult = await supabase
     .from("invoices")
     .select("id, number, status, total_minor, currency, issued_at")
     .order("issued_at", { ascending: false })
     .limit(50);
-  const invoices = (data ?? []) as InvoiceRow[];
+  if (invoiceResult.error) throw new Error(`Payments could not be loaded: ${invoiceResult.error.message}`);
+  const invoices = (invoiceResult.data ?? []) as InvoiceRow[];
 
   return (
     <Screen>

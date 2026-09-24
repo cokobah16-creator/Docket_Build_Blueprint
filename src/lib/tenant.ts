@@ -11,24 +11,21 @@ const cache = new Map<string, { value: FirmPublic | null; expires: number }>();
 async function fetchFirmPublic(filter: string): Promise<FirmPublic | null> {
   const url = supabaseUrl();
   const key = supabaseAnonKey();
-  if (!url || !key) return null;
+  if (!url || !key) throw new Error("Public tenant data is not configured.");
 
   const cached = cache.get(filter);
   if (cached && cached.expires > Date.now()) return cached.value;
 
-  let value: FirmPublic | null = null;
-  try {
-    const res = await fetch(
-      `${url}/rest/v1/firm_public?select=id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency,verified&${filter}&limit=1`,
-      { headers: restHeaders(key) },
-    );
-    if (res.ok) {
-      const rows = (await res.json()) as FirmPublic[];
-      value = rows[0] ?? null;
-    }
-  } catch {
-    value = null;
-  }
+  const res = await fetch(
+    `${url}/rest/v1/firm_public?select=id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency,verified,vat_rate&${filter}&limit=1`,
+    { headers: restHeaders(key) },
+  );
+  if (!res.ok) throw new Error(`Public tenant lookup failed with status ${res.status}.`);
+
+  const rows = (await res.json()) as FirmPublic[];
+  const value = rows[0] ?? null;
+  // A successful "no such firm" is cacheable. A transport/HTTP failure never reaches here, so an
+  // outage is not cached as a fake 404 for the next minute.
   cache.set(filter, { value, expires: Date.now() + CACHE_TTL_MS });
   return value;
 }

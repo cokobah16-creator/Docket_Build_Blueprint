@@ -10,6 +10,7 @@ export type PaymentChannel = 'card' | 'bank_transfer' | 'ussd';
 
 export interface InitializePaymentArgs {
   invoiceNumber: string;          // becomes provider metadata; the webhook maps it back to the invoice
+  providerRef?: string | null;     // pre-claimed idempotent provider reference when Docket reserved this checkout
   amountMinor: number;            // kobo or cents — always the invoice total
   currency: Currency;
   email: string;

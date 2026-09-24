@@ -18,8 +18,8 @@ export function savedCopyUrls(matterIds: string[]): string[] {
 
 async function controller(): Promise<ServiceWorker | null> {
   if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
-  const registration = await navigator.serviceWorker.ready;
-  return registration.active ?? navigator.serviceWorker.controller;
+  const registration = await navigator.serviceWorker.getRegistration();
+  return registration?.active ?? navigator.serviceWorker.controller;
 }
 
 /** When the copy on this device was taken, or null if there isn't one. */

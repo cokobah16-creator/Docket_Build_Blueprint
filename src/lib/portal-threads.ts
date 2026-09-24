@@ -38,7 +38,7 @@ export async function clientThreads(
   userId: string,
   firmId?: string | null,
 ): Promise<ClientThreads> {
-  let matterQuery = supabase.from("matters").select("id, firm_id, reference, title").is("deleted_at", null);
+  let matterQuery = supabase.from("portal_matters").select("id, firm_id, reference, title");
   let apptQuery = supabase.from("appointments").select("id, firm_id, reference, starts_at, status");
   let msgQuery = supabase.from("messages").select("id, firm_id, matter_id, appointment_id, sender_id, body, attachments, read_at, created_at");
   if (firmId) {
@@ -47,16 +47,19 @@ export async function clientThreads(
     msgQuery = msgQuery.eq("firm_id", firmId);
   }
 
-  const [{ data: matterRows }, { data: apptRows }, { data: msgRows }, timezone] = await Promise.all([
+  const [matterResult, apptResult, msgResult, timezone] = await Promise.all([
     matterQuery.order("opened_at", { ascending: false }).limit(50),
     apptQuery.order("starts_at", { ascending: false }).limit(20),
     msgQuery.order("created_at", { ascending: false }).limit(300),
     clientTimezone(supabase, userId),
   ]);
+  if (matterResult.error) throw new Error(`Message matters could not be loaded: ${matterResult.error.message}`);
+  if (apptResult.error) throw new Error(`Consultations could not be loaded: ${apptResult.error.message}`);
+  if (msgResult.error) throw new Error(`Messages could not be loaded: ${msgResult.error.message}`);
 
-  const matters = (matterRows ?? []) as Array<{ id: string; firm_id: string; reference: string; title: string }>;
-  const appts = (apptRows ?? []) as Array<{ id: string; firm_id: string; reference: string; starts_at: string; status: string }>;
-  const messages = (msgRows ?? []) as MessageRow[];
+  const matters = (matterResult.data ?? []) as Array<{ id: string; firm_id: string; reference: string; title: string }>;
+  const appts = (apptResult.data ?? []) as Array<{ id: string; firm_id: string; reference: string; starts_at: string; status: string }>;
+  const messages = (msgResult.data ?? []) as MessageRow[];
   const firmNames = await firmNamesFor([...matters.map((m) => m.firm_id), ...appts.map((a) => a.firm_id)]);
   const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
 

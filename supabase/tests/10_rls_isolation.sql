@@ -85,7 +85,8 @@ do $$
 declare a1 uuid := (select v from fx where k='client_a1'); a2 uuid := (select v from fx where k='client_a2'); b1 uuid := (select v from fx where k='client_b1');
 begin
   perform t_as(a1, 'aal1');
-  perform t_check('client A1 sees exactly her matter',            (select count(*) from matters) = 1);
+  perform t_check('client A1 has the narrow portal view while the rollout bridge keeps the old row readable',
+    (select count(*) from portal_matters) = 1 and (select count(*) from matters) = 1);
   perform t_check('client A1 sees only client-visible updates',   (select count(*) from updates) = 1 and (select visibility from updates limit 1) = 'client');
   perform t_check('client A1 sees only client-visible documents', (select count(*) from documents) = 1);
   perform t_check('client A1 sees her invoice',                   (select count(*) from invoices) = 1);
@@ -94,12 +95,12 @@ begin
   perform t_reset();
 
   perform t_as(a2, 'aal1');
-  perform t_check('client A2 (no matter) sees nothing',           (select count(*) from matters) + (select count(*) from updates)
+  perform t_check('client A2 (no matter) sees nothing',           (select count(*) from portal_matters) + (select count(*) from updates)
                                                                   + (select count(*) from documents) + (select count(*) from invoices) = 0);
   perform t_reset();
 
   perform t_as(b1, 'aal1');
-  perform t_check('client B1 sees only firm B matter',            (select count(*) from matters) = 1 and (select reference from matters) = 'FB-M-2026-000001');
+  perform t_check('client B1 sees only firm B matter',            (select count(*) from portal_matters) = 1 and (select reference from portal_matters) = 'FB-M-2026-000001');
   perform t_reset();
 end $$;
 
@@ -120,7 +121,7 @@ begin
   perform t_reset();
 
   perform t_as(la, 'aal1');
-  perform t_check('lawyer A (no MFA) can read firm A',            (select count(*) from matters) = 1 and (select count(*) from updates) = 2);
+  perform t_check('lawyer A without MFA cannot read firm A',     (select count(*) from matters) = 0 and (select count(*) from updates) = 0);
   ok := false;
   begin
     insert into updates (matter_id, firm_id, kind, title, posted_by) values (ma, fa, 'note', 'write without MFA', la);
@@ -238,7 +239,10 @@ begin
   declare slot2 timestamptz; r jsonb;
   begin
     select s.starts_at into slot2 from available_slots((select v from fx where k='firm_a'), la, (select service_id from appointments where id = ap), current_date + 14, ap) s order by 1 limit 1;
+    -- Fixture setup is privileged; API roles cannot rewrite an appointment row.
+    perform t_reset();
     update appointments set reminders_sent = '{24h}' where id = ap;
+    perform t_as(la, 'aal2');
     r := reschedule_appointment(ap, slot2, 'court clash');
     perform t_check('appointment rescheduled to a valid slot',              (select status from appointments where id = ap) = 'rescheduled' and (select starts_at from appointments where id = ap) = slot2);
     perform t_check('reschedule resets reminders',                          (select reminders_sent from appointments where id = ap) = '{}');
@@ -292,6 +296,11 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------- 7. opening a matter
+-- A person who already booked with the firm may be linked to a later matter.
+insert into appointments (firm_id, reference, client_id, lawyer_id, service_id, mode, status, starts_at, ends_at, currency)
+values ((select v from fx where k='firm_a'), 'FA-2026-900099', (select v from fx where k='client_a2'),
+        (select v from fx where k='lawyer_a'), (select v from fx where k='svc_a'), 'virtual', 'completed',
+        now() - interval '20 days', now() - interval '20 days' + interval '45 minutes', 'NGN');
 do $$
 declare la uuid := (select v from fx where k='lawyer_a'); lb uuid := (select v from fx where k='lawyer_b'); a2 uuid := (select v from fx where k='client_a2');
         fa uuid := (select v from fx where k='firm_a'); res jsonb; m uuid; ok bool;
@@ -323,7 +332,7 @@ begin
   perform t_reset();
 
   perform t_as(a2, 'aal1');
-  perform t_check('the client sees her new matter and its first entry',  (select count(*) from matters where id = m) = 1
+  perform t_check('the client sees her new matter and its first entry',  (select count(*) from portal_matters where id = m) = 1
                                                                          and (select count(*) from updates where matter_id = m and title like 'Matter opened:%') = 1
                                                                          and (select count(*) from notifications where event = 'matter_update' and (payload ->> 'matter_id')::uuid = m) >= 1);
   perform t_reset();

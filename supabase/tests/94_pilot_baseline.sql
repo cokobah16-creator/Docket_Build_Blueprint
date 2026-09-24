@@ -73,6 +73,11 @@ insert into matters (id, firm_id, reference, title, type, created_at, opened_at)
 values (gen_random_uuid(), (select v from fx where k='firm'), 'BL-M-2026-000001', 'Okonkwo v Bello', 'litigation',
         now() - interval '17 days', (now() - interval '17 days')::date);
 insert into fx select 'matter', id from matters where reference = 'BL-M-2026-000001';
+-- Recipient-scoped correspondence requires a real lawyer on the matter. The baseline fixture
+-- already treats bl-lawyer as the handling lawyer in every surrounding fact; record it instead
+-- of relying on the old broadcast-thread model.
+insert into matter_lawyers (matter_id, firm_id, user_id, is_lead) values
+  ((select v from fx where k='matter'), (select v from fx where k='firm'), (select v from fx where k='lawyer'), true);
 insert into matter_parties (matter_id, firm_id, user_id, role) values
   ((select v from fx where k='matter'), (select v from fx where k='firm'), (select v from fx where k='client'), 'client');
 

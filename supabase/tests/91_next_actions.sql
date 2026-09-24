@@ -41,10 +41,21 @@ begin
   perform t_reset();
 
   perform t_as(cl, 'aal1');
-  perform t_check('the client reads the next action and its due day', (select next_action_due is not null from matters where id = m));
+  perform t_check('the client portal projection contains the matter but no staff task fields',
+    exists (select 1 from portal_matters where id = m)
+    and not exists (
+      select 1
+        from information_schema.columns
+       where table_schema = 'public'
+         and table_name = 'portal_matters'
+         and column_name in ('next_action', 'next_action_owner_id', 'next_action_due')
+    ));
+  -- During the staged rollout, the old deployed portal is temporarily allowed to read the raw
+  -- matter row until the portal_matters frontend reaches main. That bridge is read-only: a client
+  -- still cannot clear or rewrite the firm's next action.
   ok := t_refused(format('update matters set next_action_due = null where id = %L', m), '42501');
-  perform t_check('and cannot change it', ok or (select next_action_due is not null from matters where id = m));
   perform t_reset();
+  perform t_check('and cannot change it', ok or (select next_action_due is not null from matters where id = m));
 end $$;
 
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;

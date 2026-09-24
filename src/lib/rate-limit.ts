@@ -17,10 +17,9 @@
 // underneath directly — every signed-in user can — so a limit that lives only here is a
 // convenience, not a rule. Each entry below says where the rule actually is:
 //
-//   booking     — INSIDE book_appointment() (migration 23), same bucket, same count. This check is
-//                 the front door; the function refuses on its own. It is the one surface where the
-//                 database bounded nothing else: a direct caller could take every free slot as a
-//                 fifteen-minute hold, and again when the holds released.
+//   booking     — INSIDE book_appointment() (migration 23). Do not call allow() for booking in the
+//                 app as well: rate_limit_hit increments, so two checks would count one booking
+//                 twice. The function refuses direct callers on its own.
 //   checkout    — this action is the only door. Starting a Paystack transaction needs the secret
 //                 key, which never reaches a browser.
 //   firm_start  — create_firm() refuses a fourth firm per account (migration 9). This slows a

@@ -93,7 +93,7 @@ begin
   insert into fx values ('held', a);
 
   perform t_as(l);
-  perform t_check('staff cannot confirm it by hand', t_fails(format('update appointments set status = ''confirmed'' where id = %L', a), 'once what it asked for is in'));
+  perform t_check('staff cannot confirm it by direct API write', t_fails(format('update appointments set status = ''confirmed'' where id = %L', a), 'permission denied'));
   perform t_check('nor through the door', t_fails(format('select confirm_appointment(%L)', a), 'not ready'));
   -- the firm asks for a document on the consultation
   insert into document_requests (firm_id, appointment_id, title, why, requested_by) values (f, a, 'Your tenancy agreement', 'So we read it before we meet', l) returning id into rq;
@@ -265,11 +265,11 @@ begin
 
   -- Every way into a live state meets the same rule, not only an update naming 'confirmed'.
   perform t_as(l);
-  perform t_check('staff cannot make a held booking live by calling it rescheduled',
-    t_fails(format('update appointments set status = ''rescheduled'' where id = %L', a), 'only once what it asked for is in'));
-  perform t_check('nor by inserting one live outright',
+  perform t_check('staff cannot make a held booking live by direct rewrite',
+    t_fails(format('update appointments set status = ''rescheduled'' where id = %L', a), 'permission denied'));
+  perform t_check('nor by inserting a live row outright',
     t_fails(format('insert into appointments (firm_id, reference, client_id, lawyer_id, service_id, mode, status, starts_at, ends_at, client_timezone, fee_minor, currency) values (%L, ''CK-2026-900011'', %L, %L, %L, ''virtual'', ''confirmed'', now() + interval ''11 days'', now() + interval ''11 days 30 minutes'', ''Africa/Lagos'', 0, ''NGN'')',
-                   f, cl, l, (select v from fx where k='svc_free')), 'only once what it asked for is in'));
+                   f, cl, l, (select v from fx where k='svc_free')), 'permission denied'));
   perform t_reset();
 
   -- A request is on a matter or on a consultation, never both. Both of this firm's own, so it

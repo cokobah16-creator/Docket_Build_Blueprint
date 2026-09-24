@@ -23,9 +23,10 @@ export function describeNotification(event: string, payload: Record<string, unkn
     case "appointment_completed": return { title: "Consultation completed", body: "Your lawyer's summary is on the appointment page.", url: appt };
     case "invoice_issued": return { title: `Invoice ${p.invoice_number ?? ""}`, body: firmName, url: p.invoice_id ? `/app/payments/${p.invoice_id}` : "/app/payments" };
     case "payment_confirmed": return { title: "Payment received", body: `Invoice ${p.invoice_number ?? ""}`, url: "/app/payments" };
-    case "matter_update": return { title: String(p.title ?? "Update on your matter"), body: firmName, url: `${matter}?tab=timeline` };
-    case "court_date_t3": return { title: "Court date in 3 days", body: `${when}${p.purpose ? ` · ${p.purpose}` : ""}`, url: "/app/court-dates" };
-    case "court_date_t1": return { title: "Court date tomorrow", body: `${when}${p.court_name ? ` · ${p.court_name}` : ""}`, url: "/app/court-dates" };
+    case "payment_review_required": return { title: "Payment needs review", body: `Invoice ${p.invoice_number ?? ""} · ${p.reason ?? "check payment"}`, url: p.invoice_id ? `/firm/invoices/${p.invoice_id}` : "/firm/invoices" };
+    case "matter_update": return { title: "Update on your matter", body: "Open Docket to read it.", url: `${matter}?tab=timeline` };
+    case "court_date_t3": return { title: "Court date in 3 days", body: "Open Docket for details.", url: "/app/court-dates" };
+    case "court_date_t1": return { title: "Court date tomorrow", body: "Open Docket for details.", url: "/app/court-dates" };
     case "deadline_due_t7": return { title: `${p.title ?? "A deadline"} in a week`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
     case "deadline_due_t1": return { title: `${p.title ?? "A deadline"} tomorrow`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };
     case "deadline_due_t0": return { title: `${p.title ?? "A deadline"} today`, body: `Due ${p.due_on ?? ""}`, url: `/firm/matters/${p.matter_id ?? ""}?tab=deadlines` };

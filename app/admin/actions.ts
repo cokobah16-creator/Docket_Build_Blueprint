@@ -43,6 +43,18 @@ export type DomainRequestState = { error?: string; done?: string; notice?: strin
 
 const NOT_CONFIGURED = "Supabase is not configured on this deployment, so nothing can be saved.";
 
+// Server actions are callable by ID without rendering /admin. Check the caller before any
+// provider request: the database's write guard runs too late to protect the Vercel token.
+async function requirePlatformOperator(supabase: NonNullable<Awaited<ReturnType<typeof supabaseServer>>>) {
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) return false;
+  const [{ data: admin, error: adminError }, { data: mfa, error: mfaError }] = await Promise.all([
+    supabase.rpc("is_platform_admin"),
+    supabase.rpc("mfa_ok"),
+  ]);
+  return !adminError && !mfaError && admin === true && mfa === true;
+}
+
 function firstIssue(error: z.ZodError): { error: string; fieldErrors: Record<string, string> } {
   const fieldErrors: Record<string, string> = {};
   for (const issue of error.issues) {
@@ -249,6 +261,7 @@ export async function setFirmDomain(_prev: FirmWriteState, formData: FormData): 
   const supabase = await supabaseServer();
   if (!supabase) return { error: NOT_CONFIGURED };
   const { firmId, domain, currentDomain, note } = parsed.data;
+  if (!(await requirePlatformOperator(supabase))) return { error: "Platform administrator and two-factor verification required." };
   const force = parsed.data.force === "on";
 
   // ---- unmapping. The database first this time, and on purpose: a hostname Vercel still holds
@@ -464,6 +477,8 @@ export async function startDomainRequest(
   if (!parsed.success) return { error: "Invalid request." };
 
   const supabase = await supabaseServer();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  if (!(await requirePlatformOperator(supabase))) return { error: "Platform administrator and two-factor verification required." };
   const found = await openRequest(supabase, parsed.data.requestId);
   if ("error" in found) return { error: found.error };
   const row = found.row;
@@ -530,6 +545,8 @@ export async function completeDomainRequest(
   const force = parsed.data.force === "on";
 
   const supabase = await supabaseServer();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  if (!(await requirePlatformOperator(supabase))) return { error: "Platform administrator and two-factor verification required." };
   const found = await openRequest(supabase, parsed.data.requestId);
   if ("error" in found) return { error: found.error };
   const row = found.row;
@@ -628,6 +645,8 @@ export async function rejectDomainRequest(
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Invalid request." };
 
   const supabase = await supabaseServer();
+  if (!supabase) return { error: NOT_CONFIGURED };
+  if (!(await requirePlatformOperator(supabase))) return { error: "Platform administrator and two-factor verification required." };
   const found = await openRequest(supabase, parsed.data.requestId);
   if ("error" in found) return { error: found.error };
   const row = found.row;

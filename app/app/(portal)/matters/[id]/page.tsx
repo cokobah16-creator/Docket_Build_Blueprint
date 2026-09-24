@@ -34,10 +34,8 @@ export default async function MatterPage({ params, searchParams }: { params: Pro
   if (!user) redirect(await loginPath("client"));
 
   const { data } = await supabase
-    .from("matters")
-    // Only what a client is meant to read. description and next_action are the firm's own
-    // working notes (migration 26 made next_action a staff work item with an owner and a due
-    // day); "what happens next" for the client comes from the update the lawyer wrote for them.
+    .from("portal_matters")
+    // The view enforces the client field list in the database, including direct API calls.
     .select("id, firm_id, reference, title, type, status_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at")
     .eq("id", id)
     .maybeSingle();

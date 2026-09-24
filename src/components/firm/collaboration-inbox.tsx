@@ -40,7 +40,8 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
   }
 
   async function answer(id: string, accept: boolean) {
-    const reason = accept ? null : (window.prompt("Why are you declining? (the other firm sees this)") ?? "");
+    const reason = accept ? null : window.prompt("Why are you declining? (the other firm sees this)");
+    if (!accept && reason === null) return;
     setBusy(id); setError(null);
     try {
       const r = await respondToCollaboration(id, accept, reason);
@@ -50,7 +51,8 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
   }
 
   async function finish(id: string) {
-    const reason = window.prompt("Why is this ending? (kept on the record, and the other firm sees it)") ?? "";
+    const reason = window.prompt("Why is this ending? (kept on the record, and the other firm sees it)");
+    if (reason === null) return;
     setBusy(id); setError(null);
     try {
       const r = await endCollaboration(id, reason);

@@ -7,17 +7,14 @@ import type { ContentRow, IntakeForm, LawyerPublic, ServiceRow } from "@/lib/db/
 async function rest<T>(path: string, revalidate = 120): Promise<T[]> {
   const url = supabaseUrl();
   const key = supabaseAnonKey();
-  if (!url || !key) return [];
-  try {
-    const res = await fetch(`${url}/rest/v1/${path}`, {
-      headers: restHeaders(key),
-      next: { revalidate },
-    });
-    if (!res.ok) return [];
-    return (await res.json()) as T[];
-  } catch {
-    return [];
-  }
+  if (!url || !key) throw new Error("Public Docket data is not configured.");
+
+  const res = await fetch(`${url}/rest/v1/${path}`, {
+    headers: restHeaders(key),
+    next: { revalidate },
+  });
+  if (!res.ok) throw new Error(`Public data could not be loaded (status ${res.status}).`);
+  return (await res.json()) as T[];
 }
 
 const SERVICE_COLS =

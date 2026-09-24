@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:security": "node --experimental-strip-types --test tests/unit/auth-redirect.test.mjs",
     "db:test:local": "bash scripts/db-test-local.sh",
     "test:e2e": "playwright test",
     "test:layout": "node tests/fixtures/shots.mjs",

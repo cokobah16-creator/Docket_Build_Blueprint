@@ -27,8 +27,7 @@ import type { InvoiceRow } from "@/lib/db/types";
 
 export const metadata = { title: "Invoices" };
 
-/** How far back the screen reads. A cap that bites is said out loud on the page. */
-const SCAN = 400;
+/** The register totals are database aggregates; only the visible rows are capped. */
 const SHOW = 200;
 
 const OWING = new Set(["issued", "partially_paid", "overdue"]);
@@ -47,6 +46,14 @@ interface ListInvoice extends InvoiceRow {
   client_name: string | null;
   matter_reference: string | null;
   matter_title: string | null;
+}
+
+interface InvoiceSummaryRow {
+  view_key: View;
+  currency: string;
+  invoice_count: number | string;
+  billed_minor: number | string;
+  outstanding_minor: number | string;
 }
 
 /** A date column is a calendar day, not an instant: render it as the day it is. */
@@ -77,44 +84,54 @@ export default async function FirmInvoicesPage({
 
   const { supabase, firmId, timezone: tz } = ctx;
   const view: View = (VIEWS.map((v) => v[0]) as string[]).includes(sp.view ?? "") ? (sp.view as View) : "all";
+  const { ymd: today } = zonedDayRange(tz);
 
-  const [overview, { data: firmRow }, { data: invoiceRows }] = await Promise.all([
+  // Filter in Postgres BEFORE the display limit. The old screen fetched the newest 400 first and
+  // filtered in JavaScript, so an older draft/overdue invoice could disappear even when the filter
+  // said it existed.
+  let invoiceQuery = supabase
+    .from("invoices")
+    .select("id, firm_id, number, client_id, matter_id, appointment_id, currency, subtotal_minor, vat_minor, total_minor, paid_minor, status, issued_at, due_at, created_at")
+    .eq("firm_id", firmId);
+  if (view === "outstanding") invoiceQuery = invoiceQuery.in("status", ["issued", "partially_paid", "overdue"]);
+  if (view === "overdue") {
+    invoiceQuery = invoiceQuery
+      .in("status", ["issued", "partially_paid", "overdue"])
+      .or(`status.eq.overdue,due_at.lt.${today}`);
+  }
+  if (view === "draft") invoiceQuery = invoiceQuery.eq("status", "draft");
+  if (view === "paid") invoiceQuery = invoiceQuery.eq("status", "paid");
+
+  const [overview, firmResult, invoiceResult, summaryResult] = await Promise.all([
     firmOverview(supabase, firmId),
     // firm_public excludes any firm that is not active, so the firm's own row is
     // what a pending or suspended firm must be read from — otherwise every money
     // figure on this screen would silently claim naira.
     supabase.from("firms").select("default_currency").eq("id", firmId).maybeSingle(),
-    supabase
-      .from("invoices")
-      .select("id, firm_id, number, client_id, matter_id, appointment_id, currency, subtotal_minor, vat_minor, total_minor, paid_minor, status, issued_at, due_at, created_at")
-      .eq("firm_id", firmId)
-      .order("created_at", { ascending: false })
-      .limit(SCAN),
+    invoiceQuery.order("created_at", { ascending: false }).limit(SHOW),
+    supabase.rpc("invoice_register_summary", { p_firm: firmId }),
   ]);
+  if (firmResult.error) throw new Error(`Firm currency could not be loaded: ${firmResult.error.message}`);
+  if (invoiceResult.error) throw new Error(`Invoices could not be loaded: ${invoiceResult.error.message}`);
 
-  const firmCurrency = (firmRow as { default_currency: string } | null)?.default_currency ?? "NGN";
-  const rows = (invoiceRows ?? []) as InvoiceRow[];
-
-  // firm_overview sums every invoice the firm has ever raised, whatever currency
-  // it was raised in. Whether that sum mixes currencies cannot be told from the
-  // page of invoices scanned below — a firm's only dollar invoices may be older
-  // than the window — so ask the database directly.
-  const { data: otherCurrencyRows } = await supabase
-    .from("invoices")
-    .select("currency")
-    .eq("firm_id", firmId)
-    .neq("currency", firmCurrency)
-    .limit(1);
+  const firmCurrency = (firmResult.data as { default_currency: string } | null)?.default_currency ?? "NGN";
+  const rows = (invoiceResult.data ?? []) as InvoiceRow[];
+  const summaries = (summaryResult.data ?? []) as InvoiceSummaryRow[];
+  const summaryError = summaryResult.error;
 
   // The people billed and the matters billed on, so every line names them.
   const clientIds = Array.from(new Set(rows.map((r) => r.client_id)));
   const matterIds = Array.from(new Set(rows.map((r) => r.matter_id).filter((id): id is string => Boolean(id))));
-  const { data: profileRows } = clientIds.length
+  const profileResult = clientIds.length
     ? await supabase.from("profiles").select("id, full_name, company_name").in("id", clientIds)
-    : { data: [] as Array<{ id: string; full_name: string | null; company_name: string | null }> };
-  const { data: matterRows } = matterIds.length
+    : { data: [] as Array<{ id: string; full_name: string | null; company_name: string | null }>, error: null };
+  const matterResult = matterIds.length
     ? await supabase.from("matters").select("id, reference, title").in("id", matterIds)
-    : { data: [] as Array<{ id: string; reference: string; title: string }> };
+    : { data: [] as Array<{ id: string; reference: string; title: string }>, error: null };
+  if (profileResult.error) throw new Error(`Invoice clients could not be loaded: ${profileResult.error.message}`);
+  if (matterResult.error) throw new Error(`Invoice matters could not be loaded: ${matterResult.error.message}`);
+  const profileRows = profileResult.data;
+  const matterRows = matterResult.data;
   const nameById = new Map(
     ((profileRows ?? []) as Array<{ id: string; full_name: string | null; company_name: string | null }>).map(
       (p): [string, string | null] => [p.id, p.full_name?.trim() || p.company_name?.trim() || null],
@@ -135,42 +152,45 @@ export default async function FirmInvoicesPage({
 
   // The daily job marks an invoice overdue at 00:15; between the due date passing
   // and that run, the date itself is the truth, so both count as overdue here.
-  const { ymd: today } = zonedDayRange(tz);
   const outstandingOf = (inv: ListInvoice) => Math.max(0, Number(inv.total_minor) - Number(inv.paid_minor));
   const isOwing = (inv: ListInvoice) => OWING.has(inv.status) && outstandingOf(inv) > 0;
   const isOverdue = (inv: ListInvoice) =>
     isOwing(inv) && (inv.status === "overdue" || Boolean(inv.due_at && inv.due_at < today));
 
-  const counts: Record<View, number> = {
-    all: invoices.length,
-    outstanding: invoices.filter(isOwing).length,
-    overdue: invoices.filter(isOverdue).length,
-    draft: invoices.filter((i) => i.status === "draft").length,
-    paid: invoices.filter((i) => i.status === "paid").length,
-  };
-
-  const matching = invoices.filter((inv) => {
+  // The query is already filtered before LIMIT. The small JS checks only defend against a row
+  // whose stored status and paid amount disagree; they no longer decide which 200 records exist.
+  const shown = invoices.filter((inv) => {
     if (view === "outstanding") return isOwing(inv);
     if (view === "overdue") return isOverdue(inv);
-    if (view === "draft") return inv.status === "draft";
-    if (view === "paid") return inv.status === "paid";
     return true;
   });
-  const shown = matching.slice(0, SHOW);
 
-  // Totals for what is on screen, in the currency each invoice was raised in.
-  const shownTotals = new Map<string, number>();
-  const shownOutstanding = new Map<string, number>();
+  const counts: Record<View, number> = { all: 0, outstanding: 0, overdue: 0, draft: 0, paid: 0 };
+  const registerTotals = new Map<string, number>();
+  const registerOutstanding = new Map<string, number>();
   const currencies = new Set<string>();
-  for (const inv of matching) {
-    currencies.add(inv.currency);
-    shownTotals.set(inv.currency, (shownTotals.get(inv.currency) ?? 0) + Number(inv.total_minor));
-    if (isOwing(inv)) {
-      shownOutstanding.set(inv.currency, (shownOutstanding.get(inv.currency) ?? 0) + outstandingOf(inv));
+  for (const row of summaries) {
+    counts[row.view_key] += Number(row.invoice_count);
+    if (row.view_key === "all") currencies.add(row.currency);
+    if (row.view_key === view) {
+      registerTotals.set(row.currency, Number(row.billed_minor));
+      registerOutstanding.set(row.currency, Number(row.outstanding_minor));
     }
   }
-  for (const inv of invoices) currencies.add(inv.currency);
-  const mixedCurrencies = currencies.size > 1 || (otherCurrencyRows ?? []).length > 0;
+
+  // If the aggregate RPC itself is unavailable, never present the capped page as a complete
+  // financial total. We can still show the rows and explicitly label their subtotal as this page.
+  const pageTotals = new Map<string, number>();
+  const pageOutstanding = new Map<string, number>();
+  for (const inv of shown) {
+    pageTotals.set(inv.currency, (pageTotals.get(inv.currency) ?? 0) + Number(inv.total_minor));
+    if (isOwing(inv)) {
+      pageOutstanding.set(inv.currency, (pageOutstanding.get(inv.currency) ?? 0) + outstandingOf(inv));
+    }
+  }
+  const totalLabel = summaryError ? pageTotals : registerTotals;
+  const outstandingLabel = summaryError ? pageOutstanding : registerOutstanding;
+  const mixedCurrencies = currencies.size > 1;
 
   const query = (patch: Record<string, string | null>) => {
     const params = new URLSearchParams();
@@ -197,8 +217,8 @@ export default async function FirmInvoicesPage({
     ? [
         { label: "Outstanding", value: formatMoneyByCurrency(overview.outstanding_by_currency, firmCurrency), hint: "Issued, part-paid and overdue" },
         { label: "Collected this month", value: formatMoneyByCurrency(overview.collected_this_month_by_currency, firmCurrency), hint: "Payments received since the 1st" },
-        { label: "Drafts", value: String(counts.draft), hint: "Raised but not sent to the client" },
-        { label: "Overdue", value: String(counts.overdue), hint: "Past the day they fell due" },
+        { label: "Drafts", value: summaryError ? "—" : String(counts.draft), hint: "Raised but not sent to the client" },
+        { label: "Overdue", value: summaryError ? "—" : String(counts.overdue), hint: "Past the day they fell due" },
       ]
     : [];
 
@@ -236,6 +256,13 @@ export default async function FirmInvoicesPage({
         </Alert>
       )}
 
+      {summaryError && (
+        <Alert kind="warning" title="Register totals unavailable">
+          The invoice rows below loaded, but the full-register aggregate did not. Docket is not treating this capped
+          page as the firm's complete fee total; retry the page before relying on the counts.
+        </Alert>
+      )}
+
       {overview && mixedCurrencies && (
         <Alert kind="info" title="This firm bills in more than one currency">
           The totals above are kept apart, one figure per currency, because minor units of one currency cannot be
@@ -251,14 +278,16 @@ export default async function FirmInvoicesPage({
             aria-current={view === key ? "page" : undefined}
             className={chipClass(view === key)}
           >
-            {label} ({counts[key]})
+            {label}{summaryError ? "" : ` (${counts[key]})`}
           </Link>
         ))}
       </nav>
 
       <Card>
         <CardHeader
-          title={view === "all" ? `All invoices (${matching.length})` : `${VIEWS.find((v) => v[0] === view)?.[1]} (${matching.length})`}
+          title={summaryError
+            ? (view === "all" ? "All invoices" : VIEWS.find((v) => v[0] === view)?.[1] ?? "Invoices")
+            : (view === "all" ? `All invoices (${counts.all})` : `${VIEWS.find((v) => v[0] === view)?.[1]} (${counts[view]})`)}
           action={<Link href={raiseHref} className="text-15 text-brand underline">Raise an invoice →</Link>}
         />
 
@@ -357,15 +386,14 @@ export default async function FirmInvoicesPage({
         {shown.length > 0 && (
           <CardBody className="border-t border-hairline text-13 text-ink-muted">
             <p>
-              Listed: {moneyLabel(shownTotals) || formatMoneyMinor(0, firmCurrency)} billed
-              {shownOutstanding.size > 0 ? `, of which ${moneyLabel(shownOutstanding)} is outstanding` : ", none of it outstanding"}.
+              {summaryError ? "This page" : "Full register"}: {moneyLabel(totalLabel) || formatMoneyMinor(0, firmCurrency)} billed
+              {outstandingLabel.size > 0 ? `, of which ${moneyLabel(outstandingLabel)} is outstanding` : ", none of it outstanding"}.
               Each figure is in the currency the invoice was raised in.
             </p>
             <p className="mt-1">
               An invoice counts as overdue once the day it fell due has passed in {tz}; the nightly job then marks it
               overdue in the database as well.
-              {matching.length > SHOW ? ` Showing the ${SHOW} most recent of ${matching.length}.` : ""}
-              {rows.length === SCAN ? ` This screen reads the ${SCAN} most recently raised invoices; an older one may not appear.` : ""}
+              {!summaryError && counts[view] > shown.length ? ` Showing the ${shown.length} most recent of ${counts[view]} in this filter.` : ""}
             </p>
           </CardBody>
         )}

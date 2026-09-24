@@ -52,8 +52,9 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
   // offer a lawyer the owner's buttons and let the database refuse them one by
   // one. Ask the database for the firm's people through firmStaff(); here, only
   // the caller's own memberships count.
-  const { data: rows } = await supabase.from("firm_members").select("firm_id, user_id, role").eq("user_id", user.id);
-  const memberships = (rows ?? []) as FirmMembership[];
+  const membershipResult = await supabase.from("firm_members").select("firm_id, user_id, role").eq("user_id", user.id);
+  if (membershipResult.error) throw new Error(`Firm membership could not be loaded: ${membershipResult.error.message}`);
+  const memberships = (membershipResult.data ?? []) as FirmMembership[];
   if (memberships.length === 0) return null;
 
   // `?firm=` is documented as a slug and middleware resolves it that way, while the
@@ -68,11 +69,12 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
       chosen = byId;
     } else {
       const wanted = preferredFirmId.toLowerCase();
-      const { data: firmRows } = await supabase
+      const firmResult = await supabase
         .from("firms")
         .select("id, slug")
         .in("id", memberships.map((m) => m.firm_id));
-      const match = ((firmRows ?? []) as Array<{ id: string; slug: string }>).find((f) => f.slug === wanted);
+      if (firmResult.error) throw new Error(`Firm selection could not be loaded: ${firmResult.error.message}`);
+      const match = ((firmResult.data ?? []) as Array<{ id: string; slug: string }>).find((f) => f.slug === wanted);
       const bySlug = match ? memberships.find((m) => m.firm_id === match.id) : undefined;
       // A firm was named and it is not one of theirs. Refuse rather than act as
       // another firm behind a URL that says otherwise.
@@ -80,18 +82,20 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
       chosen = bySlug;
     }
   }
-  const [{ data: profile }, { data: overview }] = await Promise.all([
+  const [profileResult, overviewResult] = await Promise.all([
     supabase.from("profiles").select("timezone").eq("id", user.id).maybeSingle(),
     supabase.from("firm_overview").select("firm_id, name").eq("firm_id", chosen.firm_id).maybeSingle(),
   ]);
+  if (profileResult.error) throw new Error(`Staff profile could not be loaded: ${profileResult.error.message}`);
+  if (overviewResult.error) throw new Error(`Firm overview could not be loaded: ${overviewResult.error.message}`);
 
   return {
     supabase,
     userId: user.id,
     firmId: chosen.firm_id,
-    firmName: (overview as { name: string } | null)?.name ?? "Your firm",
+    firmName: (overviewResult.data as { name: string } | null)?.name ?? "Your firm",
     role: chosen.role,
-    timezone: (profile as { timezone: string } | null)?.timezone ?? "Africa/Lagos",
+    timezone: (profileResult.data as { timezone: string } | null)?.timezone ?? "Africa/Lagos",
     memberships,
     isAdmin: chosen.role === "owner" || chosen.role === "admin",
   };
@@ -105,36 +109,41 @@ export async function firmOverview(supabase: SupabaseClient, firmId: string): Pr
 
 /** Past court dates with no update posted — the standing chase list. */
 export async function sittingsDue(supabase: SupabaseClient, firmId: string, limit = 25): Promise<SittingDue[]> {
-  const { data } = await supabase
+  const result = await supabase
     .from("firm_sittings_due")
     .select("*")
     .eq("firm_id", firmId)
     .order("scheduled_at", { ascending: true })
     .limit(limit);
-  return (data ?? []) as SittingDue[];
+  if (result.error) throw new Error(`Sittings due could not be loaded: ${result.error.message}`);
+  return (result.data ?? []) as SittingDue[];
 }
 
 export async function matterStatuses(supabase: SupabaseClient, firmId: string): Promise<MatterStatus[]> {
-  const { data } = await supabase
+  const result = await supabase
     .from("matter_statuses")
     .select("id, firm_id, key, label, colour, is_terminal, sort, pack_key, pack_version, matter_types, default_next_action")
     .eq("firm_id", firmId)
     .order("sort", { ascending: true });
-  return (data ?? []) as MatterStatus[];
+  if (result.error) throw new Error(`Matter statuses could not be loaded: ${result.error.message}`);
+  return (result.data ?? []) as MatterStatus[];
 }
 
 /** Everyone who can be a handling lawyer, an assignee or an invitee's contact. */
 export async function firmStaff(supabase: SupabaseClient, firmId: string): Promise<StaffMember[]> {
-  const { data: members } = await supabase.from("firm_members").select("user_id, role").eq("firm_id", firmId);
-  const rows = (members ?? []) as Array<{ user_id: string; role: FirmRoleName }>;
+  const memberResult = await supabase.from("firm_members").select("user_id, role").eq("firm_id", firmId);
+  if (memberResult.error) throw new Error(`Firm staff could not be loaded: ${memberResult.error.message}`);
+  const rows = (memberResult.data ?? []) as Array<{ user_id: string; role: FirmRoleName }>;
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.user_id);
-  const [{ data: profiles }, { data: lawyers }] = await Promise.all([
+  const [profileResult, lawyerResult] = await Promise.all([
     supabase.from("profiles").select("id, full_name, email, phone").in("id", ids),
     supabase.from("lawyer_profiles").select("user_id, scn, title").eq("firm_id", firmId).in("user_id", ids),
   ]);
-  const byId = new Map(((profiles ?? []) as Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }>).map((p) => [p.id, p]));
-  const lawyerById = new Map(((lawyers ?? []) as Array<{ user_id: string; scn: string | null; title: string | null }>).map((l) => [l.user_id, l]));
+  if (profileResult.error) throw new Error(`Staff profiles could not be loaded: ${profileResult.error.message}`);
+  if (lawyerResult.error) throw new Error(`Lawyer profiles could not be loaded: ${lawyerResult.error.message}`);
+  const byId = new Map(((profileResult.data ?? []) as Array<{ id: string; full_name: string | null; email: string | null; phone: string | null }>).map((p) => [p.id, p]));
+  const lawyerById = new Map(((lawyerResult.data ?? []) as Array<{ user_id: string; scn: string | null; title: string | null }>).map((l) => [l.user_id, l]));
   return rows.map((r) => ({
     user_id: r.user_id,
     role: r.role,
@@ -152,7 +161,7 @@ export function staffLabel(m: Pick<StaffMember, "full_name" | "email" | "title">
 
 /** Courts this firm may point a matter at: the platform directory plus its own. */
 export async function courtsFor(supabase: SupabaseClient, firmId: string): Promise<CourtRow[]> {
-  const { data } = await supabase
+  const result = await supabase
     .from("courts")
     .select("id, firm_id, level, name, short_name, state_code, division, city, suit_number_hint, is_active")
     .eq("is_active", true)
@@ -160,7 +169,8 @@ export async function courtsFor(supabase: SupabaseClient, firmId: string): Promi
     .order("sort", { ascending: true })
     .order("name", { ascending: true })
     .limit(1000);
-  return (data ?? []) as CourtRow[];
+  if (result.error) throw new Error(`Court directory could not be loaded: ${result.error.message}`);
+  return (result.data ?? []) as CourtRow[];
 }
 
 export interface MatterListRow extends MatterRow {
@@ -234,6 +244,8 @@ export async function firmMatters(
   let matters: Fetched[];
   if (opts.lawyerId) {
     const [assigned, team] = await Promise.all([assignedQuery(), teamQuery(opts.lawyerId)]);
+    if (assigned.error) throw new Error(`Assigned matters could not be loaded: ${assigned.error.message}`);
+    if (team.error) throw new Error(`Matter team could not be loaded: ${team.error.message}`);
     const byId = new Map<string, Fetched>();
     const rows = [
       ...((assigned.data ?? []) as unknown as Fetched[]),
@@ -244,26 +256,30 @@ export async function firmMatters(
       .sort((a, b) => (a.opened_at < b.opened_at ? 1 : a.opened_at > b.opened_at ? -1 : 0))
       .slice(0, limit);
   } else {
-    const { data } = await assignedQuery();
-    matters = (data ?? []) as unknown as Fetched[];
+    const result = await assignedQuery();
+    if (result.error) throw new Error(`Matters could not be loaded: ${result.error.message}`);
+    matters = (result.data ?? []) as unknown as Fetched[];
   }
 
   if (matters.length === 0) return [];
 
   const ids = matters.map((m) => m.id);
-  const [statuses, { data: leads }, { data: parties }] = await Promise.all([
+  const [statuses, leadResult, partyResult] = await Promise.all([
     matterStatuses(supabase, firmId),
     supabase.from("matter_lawyers").select("matter_id, user_id, is_lead").in("matter_id", ids),
     supabase.from("matter_parties").select("matter_id, user_id, role").in("matter_id", ids),
   ]);
+  if (leadResult.error) throw new Error(`Matter lawyers could not be loaded: ${leadResult.error.message}`);
+  if (partyResult.error) throw new Error(`Matter parties could not be loaded: ${partyResult.error.message}`);
   const statusById = new Map(statuses.map((s) => [s.id, s]));
-  const leadRows = (leads ?? []) as Array<{ matter_id: string; user_id: string; is_lead: boolean }>;
-  const partyRows = (parties ?? []) as Array<{ matter_id: string; user_id: string; role: string }>;
+  const leadRows = (leadResult.data ?? []) as Array<{ matter_id: string; user_id: string; is_lead: boolean }>;
+  const partyRows = (partyResult.data ?? []) as Array<{ matter_id: string; user_id: string; role: string }>;
   const partyIds = Array.from(new Set(partyRows.map((p) => p.user_id)));
-  const { data: partyProfiles } = partyIds.length
+  const partyProfileResult = partyIds.length
     ? await supabase.from("profiles").select("id, full_name").in("id", partyIds)
-    : { data: [] as Array<{ id: string; full_name: string | null }> };
-  const nameById = new Map(((partyProfiles ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [p.id, p.full_name]));
+    : { data: [] as Array<{ id: string; full_name: string | null }>, error: null };
+  if (partyProfileResult.error) throw new Error(`Matter client names could not be loaded: ${partyProfileResult.error.message}`);
+  const nameById = new Map(((partyProfileResult.data ?? []) as Array<{ id: string; full_name: string | null }>).map((p) => [p.id, p.full_name]));
 
   return matters.map((m) => ({
     ...m,
@@ -275,14 +291,15 @@ export async function firmMatters(
 
 /** Weekly availability for one lawyer, Sunday-first. */
 export async function availabilityFor(supabase: SupabaseClient, firmId: string, lawyerId: string): Promise<AvailabilityRule[]> {
-  const { data } = await supabase
+  const result = await supabase
     .from("availability_rules")
     .select("id, firm_id, lawyer_id, weekday, start_time, end_time, break_start, break_end, slot_min, max_per_day")
     .eq("firm_id", firmId)
     .eq("lawyer_id", lawyerId)
     .order("weekday", { ascending: true })
     .order("start_time", { ascending: true });
-  return (data ?? []) as AvailabilityRule[];
+  if (result.error) throw new Error(`Availability could not be loaded: ${result.error.message}`);
+  return (result.data ?? []) as AvailabilityRule[];
 }
 
 /**

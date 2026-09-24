@@ -46,15 +46,17 @@ export default async function AppointmentsPage() {
     .from("appointments")
     .select("id, reference, starts_at, ends_at, status, mode, client_timezone, service_id");
   if (firm) query = query.eq("firm_id", firm.id);
-  const { data } = await query.order("starts_at", { ascending: false }).limit(20);
-  const appointments = (data ?? []) as AppointmentRow[];
+  const appointmentResult = await query.order("starts_at", { ascending: false }).limit(20);
+  if (appointmentResult.error) throw new Error(`Appointments could not be loaded: ${appointmentResult.error.message}`);
+  const appointments = (appointmentResult.data ?? []) as AppointmentRow[];
 
   // One lookup for the service names rather than one per row.
   const serviceIds = Array.from(new Set(appointments.map((a) => a.service_id).filter((v): v is string => Boolean(v))));
-  const { data: serviceRows } = serviceIds.length
+  const serviceResult = serviceIds.length
     ? await supabase.from("services").select("id, name").in("id", serviceIds)
-    : { data: [] as Array<{ id: string; name: string }> };
-  const serviceName = new Map(((serviceRows ?? []) as Array<{ id: string; name: string }>).map((s) => [s.id, s.name]));
+    : { data: [] as Array<{ id: string; name: string }>, error: null };
+  if (serviceResult.error) throw new Error(`Appointment services could not be loaded: ${serviceResult.error.message}`);
+  const serviceName = new Map(((serviceResult.data ?? []) as Array<{ id: string; name: string }>).map((s) => [s.id, s.name]));
 
   // One read, split in two: what is still to come, soonest first, and what has
   // been. The agenda a client actually wants is the first of those.

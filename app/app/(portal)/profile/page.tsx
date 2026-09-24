@@ -12,6 +12,7 @@ import { Alert } from "@/components/ui/alert";
 import { PushOptIn } from "@/components/push/push-opt-in";
 import { LowDataToggle } from "@/components/portal/pwa-hints";
 import { OfflineCopy } from "@/components/portal/offline-copy";
+import { SignOutButtons } from "@/components/portal/sign-out-buttons";
 import { FirmRow, type FirmChoice } from "@/components/portal/firm-switcher";
 import { Screen, ScreenTitle } from "@/components/portal/screen";
 import { signOut } from "../actions";
@@ -32,7 +33,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const [{ data }, { data: consentRows }, { data: matterRows }, firm] = await Promise.all([
     supabase.from("profiles").select("full_name, phone, email, timezone, preferred_channel, quiet_hours_start, quiet_hours_end").eq("id", user.id).maybeSingle(),
     supabase.from("consent_records").select("id, firm_id, kind, version, accepted_at").eq("user_id", user.id).order("accepted_at", { ascending: false }).limit(50),
-    supabase.from("matters").select("id").is("deleted_at", null).order("opened_at", { ascending: false }).limit(20),
+    supabase.from("portal_matters").select("id").order("opened_at", { ascending: false }).limit(20),
     selectedFirm(supabase, firms),
   ]);
   const profile = (data ?? null) as { full_name: string | null; phone: string | null; email: string | null; timezone: string; preferred_channel: string; quiet_hours_start: string | null; quiet_hours_end: string | null } | null;
@@ -157,10 +158,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         </CardBody>
       </Card>
 
-      <div className="flex gap-2.5">
-        <form action={signOut} className="flex-1"><Button type="submit" variant="ghost" size="lg" className="w-full">Sign out</Button></form>
-        <form action={signOutEverywhere} className="flex-1"><Button type="submit" variant="ghost" size="lg" className="w-full">Sign out everywhere</Button></form>
-      </div>
+      <SignOutButtons local={signOut} everywhere={signOutEverywhere} />
     </Screen>
   );
 }

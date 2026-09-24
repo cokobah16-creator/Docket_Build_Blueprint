@@ -85,7 +85,8 @@ export function CollaborationPanel({
   }
 
   async function finish(id: string) {
-    const reason = window.prompt("Why is this ending? (the other firm sees it)") ?? "";
+    const reason = window.prompt("Why is this ending? (the other firm sees it)");
+    if (reason === null) return;
     setBusy(id); setError(null);
     try {
       const r = await endCollaboration(id, reason);

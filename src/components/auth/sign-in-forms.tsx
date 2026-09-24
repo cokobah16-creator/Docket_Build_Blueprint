@@ -922,53 +922,11 @@ export function SignInForms({
       )}
 
       {mode === "email" && !signedIn && emailSent && sentToEmail && (
-        <form onSubmit={(e) => { e.preventDefault(); void submitEmailCode(emailCode); }} className="space-y-3">
-          {/* It no longer says "open it on this device". That sentence was true and that was the
-              problem: the link carries a PKCE code whose verifier lives in the browser that asked
-              for it, so the commonest way an email is read — tapping the link inside Gmail, or
-              opening it on the laptop when the phone asked — failed on a good link with nothing
-              said. The code below has no verifier to lose and works from anywhere, so the panel
-              offers both and names the link first, because tapping it is still one action. */}
-          {/* What is promised is what is certainly sent: a secure sign-in link. The code is
-              offered as a fallback in words that stay true when the email carries none — a new
-              address receives Supabase's confirmation email, which has the link only, and a
-              project that has not run scripts/configure-providers.sh sends the stock template,
-              which has the link only too. Promising a code that never arrives leaves a person
-              staring at an empty inbox for something that is not coming. */}
+        <div className="space-y-3">
           <Alert kind="success" title="Check your email">
             We sent a secure sign-in link to {sentToEmail}. Open it on this phone or computer to sign in.
             It works once and expires after a short time.
           </Alert>
-          <p className="text-13 text-ink-muted">
-            Reading the email on another device? If the email also shows a {CODE_LENGTH}-digit code,
-            type it below instead of opening the link.
-          </p>
-          <Input
-            id={EMAIL_CODE_FIELD_ID}
-            label="Code from the email (if it has one)"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            autoComplete="one-time-code"
-            enterKeyHint="go"
-            placeholder="123456"
-            className="text-center font-mono tracking-[0.3em] indent-[0.3em]"
-            value={emailCode}
-            onChange={(e) => onEmailCodeChange(e.target.value)}
-            error={emailCodeError ?? undefined}
-            hint={`${CODE_LENGTH} digits. Not every sign-in email includes one — the link always works.`}
-          />
-          {/* Never disabled, for the reason the phone one is not: auto-submit means the request is
-              normally already in flight when this is tapped, and the in-flight ref makes the extra
-              press a no-op. Its name matches neither resend button below it. */}
-          <Button
-            type="submit"
-            size="lg"
-            className={busy ? "w-full opacity-70" : "w-full"}
-            aria-busy={busy}
-          >
-            {busy ? "Verifying…" : "Verify and continue"}
-          </Button>
           {/* The email path had no way back at all: a link sent to an address with a typo in it was
               unrecoverable without switching tabs twice. The frequency limit is per address and the
               same shape as the SMS one, so it gets the same countdown. */}

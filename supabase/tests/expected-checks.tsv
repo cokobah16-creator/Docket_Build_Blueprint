@@ -20,7 +20,7 @@ tests/30_nigeria.sql	51
 tests/40_counsel_service.sql	54
 tests/50_staff_console.sql	46
 tests/60_admin_surfaces.sql	90
-tests/70_deployed_frontend_compat.sql	14
+tests/70_deployed_frontend_compat.sql	15
 tests/80_doors.sql	19
 tests/90_message_reads.sql	28
 tests/91_next_actions.sql	7
@@ -36,6 +36,7 @@ tests/99_collaboration.sql	49
 tests/99_court_registry.sql	154
 tests/99_delegation.sql	69
 tests/99_document_text.sql	51
+tests/99_launch_security.sql	24
 tests/99_legal_diary.sql	54
 tests/99_notifications.sql	47
 tests/99_onboarding_import.sql	73

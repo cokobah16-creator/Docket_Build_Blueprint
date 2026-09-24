@@ -19,7 +19,7 @@ export async function GET() {
   const { data: rows } = await supabase.from("court_events").select("id, matter_id, firm_id, scheduled_at, court_name, purpose, outcome_update_id, vacated_at").is("vacated_at", null).order("scheduled_at").limit(500);
   const events = (rows ?? []) as CourtEventRow[];
   const matterIds = Array.from(new Set(events.map((e) => e.matter_id)));
-  const { data: matterRows } = matterIds.length ? await supabase.from("matters").select("id, reference, title").in("id", matterIds) : { data: [] };
+  const { data: matterRows } = matterIds.length ? await supabase.from("portal_matters").select("id, reference, title").in("id", matterIds) : { data: [] };
   const matters = new Map(((matterRows ?? []) as Array<{ id: string; reference: string; title: string }>).map((m) => [m.id, m]));
 
   const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Docket//Court dates//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:Court dates"];

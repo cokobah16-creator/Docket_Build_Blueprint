@@ -6,16 +6,11 @@
 //
 // TWO THINGS SLICE 5 ADDED, AND WHY THEY ARE BOTH HERE
 //
-// 1. THE RATE LIMITS (migration 21's rate_limit_hit, via src/lib/rate-limit.ts). Both buckets
-//    protect something that costs: a booking takes a slot out of a lawyer's diary, and a
-//    checkout creates a live transaction at Paystack. A limit is only worth having where the
-//    caller cannot walk around it, which means server-side — a browser calling the RPC directly
-//    can simply not call rate_limit_hit first. So bookAppointment() below wraps the RPC and asks
-//    the bucket first. Said plainly, because it matters: the booking wizard
-//    (app/(public)/[firm]/book/booking-wizard.tsx) still calls supabase.rpc("book_appointment")
-//    from the browser, and until that one call becomes bookAppointment(), the booking bucket
-//    counts nothing and booking_started is emitted for nobody. The checkout bucket in
-//    startPayment() below is live now, because the wizard already calls that action.
+// 1. THE RATE LIMITS. Booking is enforced INSIDE book_appointment() (migration 23), so a caller
+//    using Supabase directly cannot walk around it. Do not call allow(..., "booking") here too:
+//    rate_limit_hit increments the bucket, and doing both would make one real booking consume two
+//    attempts. Checkout is different: this server action is the only door to the provider secret,
+//    so its limit lives here.
 //
 // 2. STEP TWO OF THE FUNNEL, booking_started, emitted after book_appointment() returns — a
 //    booking the database refused is not a booking that started. The distinct id is the same
@@ -39,6 +34,7 @@ import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
 import type { BookingResult } from "@/lib/db/types";
 import { after } from "next/server";
 import { userError } from "@/lib/user-error";
+import { claimPaymentCheckout, completePaymentCheckout, failPaymentCheckout } from "@/lib/payment-checkout";
 
 /** The appointment_mode enum in migration 1. The database is what refuses anything else. */
 export type BookingMode = "virtual" | "in_person" | "phone";
@@ -72,16 +68,15 @@ export type BookAppointmentResult = { error: string } | { booking: BookingResult
  * book_appointment() is a security-definer function that runs as the signed-in client: it
  * re-checks the service, the lawyer's availability and the slot, mints the reference, raises the
  * invoice and decides whether the appointment is confirmed outright or awaiting payment. This
- * action adds exactly two things around it — the booking rate limit before, and the funnel event
- * after — and passes every refusal back in the database's own words.
+ * action adds the funnel event after it succeeds. The booking rate limit is already inside the
+ * RPC itself, where it cannot be bypassed, and every refusal is passed back in the database's own words.
  */
 export async function bookAppointment(input: BookAppointmentInput): Promise<BookAppointmentResult> {
   const supabase = await supabaseServer();
   if (!supabase) return { error: "Not configured." };
 
-  // Keyed on auth.uid() inside the function, where it cannot be forged.
-  if (!(await allow(supabase, "booking", true))) return { error: tooFast("booking") };
-
+  // book_appointment() itself owns the booking bucket. Calling allow() here as well would
+  // increment the same counter twice for one booking.
   const { data, error } = await supabase.rpc("book_appointment", {
     p_firm: input.firmId,
     p_service: input.serviceId,
@@ -127,25 +122,35 @@ export async function startPayment(
   } = await supabase.auth.getUser();
   if (!user) redirect(`/app/login`);
 
-  const { data: appointment } = await supabase
+  const appointmentResult = await supabase
     .from("appointments")
-    .select("id, reference, status, invoice_id, currency")
+    .select("id, reference, status, hold_expires_at, invoice_id, currency")
     .eq("id", appointmentId)
     .maybeSingle();
-  const appt = appointment as
-    | { id: string; reference: string; status: string; invoice_id: string | null; currency: Currency | null }
+  if (appointmentResult.error) {
+    return { error: await userError(appointmentResult.error, "The booking", "booking: load appointment for payment") };
+  }
+  const appt = appointmentResult.data as
+    | { id: string; reference: string; status: string; hold_expires_at: string | null; invoice_id: string | null; currency: Currency | null }
     | null;
   if (!appt) return { error: "Appointment not found." };
 
   const resultPath = `/app/appointments/${appt.id}/payment-result`;
   if (appt.status === "confirmed" || !appt.invoice_id) redirect(resultPath);
+  if (!['pending', 'awaiting_payment'].includes(appt.status)
+      || (appt.hold_expires_at && new Date(appt.hold_expires_at).getTime() <= Date.now())) {
+    return { error: "This booking is no longer open for payment. Contact the firm if you were charged." };
+  }
 
-  const { data: invoiceRow } = await supabase
+  const invoiceResult = await supabase
     .from("invoices")
     .select("id, number, total_minor, currency, status")
     .eq("id", appt.invoice_id)
     .maybeSingle();
-  const invoice = invoiceRow as
+  if (invoiceResult.error) {
+    return { error: await userError(invoiceResult.error, "The invoice", "booking: load invoice for payment") };
+  }
+  const invoice = invoiceResult.data as
     | { id: string; number: string; total_minor: number; currency: Currency; status: string }
     | null;
   if (!invoice) return { error: "Invoice not found." };
@@ -153,30 +158,49 @@ export async function startPayment(
 
   let email = user.email ?? null;
   if (!email) {
-    const { data: profile } = await supabase.from("profiles").select("email").eq("id", user.id).maybeSingle();
-    email = (profile as { email: string | null } | null)?.email ?? null;
+    const profileResult = await supabase.from("profiles").select("email").eq("id", user.id).maybeSingle();
+    if (profileResult.error) {
+      return { error: await userError(profileResult.error, "Your profile", "booking: load receipt email") };
+    }
+    email = (profileResult.data as { email: string | null } | null)?.email ?? null;
   }
   if (!email) return { error: "We need an email address to send your receipt. Add one and try again." };
 
   // Fees settle to the firm's own Paystack subaccount. Only the invoice's client (or the
   // firm) can ask for it, and the database refuses to record a payment settled anywhere else.
-  const { data: settlement } = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
-  const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
+  const settlementResult = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
+  if (settlementResult.error) {
+    return { error: await userError(settlementResult.error, "The payment", "booking: load settlement account") };
+  }
+  const subaccount = (settlementResult.data as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
   if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
 
-  // Everything above this line is a read or a redirect. From here a real transaction is created
-  // at the provider, so the checkout bucket is asked last — a client sent back to a result page
-  // they have already paid for has not spent a checkout.
-  if (!(await allow(supabase, "checkout", true))) return { error: tooFast("checkout") };
+  // Reserve the invoice before creating a provider transaction. Two simultaneous requests now
+  // line up on the invoice row: one creates the Paystack reference, the other reuses it (or waits
+  // while the first request is still obtaining its checkout URL).
+  const claim = await claimPaymentCheckout(supabase, invoice.id, channel ?? null);
+  if ("error" in claim) return { error: claim.error };
+  if (claim.state === "paid") redirect(resultPath);
+  if (claim.state === "reuse") redirect(claim.checkoutUrl);
+  if (claim.state === "busy") {
+    return { error: "A payment checkout is already being opened for this invoice. Use that window, or try again in a few minutes." };
+  }
+
+  // Only a genuinely new provider transaction spends the checkout rate-limit bucket.
+  if (!(await allow(supabase, "checkout", true))) {
+    await failPaymentCheckout(supabase, claim.attemptId, "checkout rate limit");
+    return { error: tooFast("checkout") };
+  }
 
   const origin = await siteOrigin();
   let checkoutUrl: string;
   try {
-    const provider = paymentProviderFor(invoice.currency);
+    const provider = paymentProviderFor(claim.currency);
     const result = await provider.initialize({
       invoiceNumber: invoice.number,
-      amountMinor: invoice.total_minor,
-      currency: invoice.currency,
+      providerRef: claim.providerRef,
+      amountMinor: claim.amountMinor,
+      currency: claim.currency,
       email,
       description: `Consultation ${appt.reference}`,
       callbackUrl: `${origin}${resultPath}`,
@@ -185,8 +209,16 @@ export async function startPayment(
       channel: channel ?? null,
     });
     checkoutUrl = result.checkoutUrl;
+
+    // If this bookkeeping write fails, still send the client to the one transaction that was
+    // created. The five-minute "initializing" lease continues to block a duplicate retry.
+    const completeError = await completePaymentCheckout(supabase, claim.attemptId, checkoutUrl);
+    if (completeError) {
+      await userError(new Error(completeError), "The payment checkout", "booking: save checkout lease");
+    }
   } catch (err) {
     const message = err instanceof Error ? err.message : "Could not start payment.";
+    await failPaymentCheckout(supabase, claim.attemptId, message);
     return { error: message.includes("PAYSTACK_SECRET_KEY") || message.includes("initialize failed")
       ? `Could not start payment: ${message}`
       : "Could not start payment. Please try again." };
