@@ -7,7 +7,10 @@ import { firmNamesFor } from "@/lib/portal-data";
 import { clientFirms, selectedFirm } from "@/lib/portal-firm";
 import { DEFAULT_TOKENS } from "@/lib/brand";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Button, buttonClasses } from "@/components/ui/button";
+import { SettingRow } from "@/components/ui/switch";
+import { CookieSettingsButton } from "@/components/ui/cookie-banner";
+import { analyticsConfigured } from "@/lib/consent-cookie";
 import { Alert } from "@/components/ui/alert";
 import { PushOptIn } from "@/components/push/push-opt-in";
 import { LowDataToggle } from "@/components/portal/pwa-hints";
@@ -122,6 +125,12 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           <PushOptIn />
           <LowDataToggle />
           <OfflineCopy matterIds={matterIds} />
+          {/* Only where the cookie banner can appear (POSTHOG_KEY set), so it never opens nothing. */}
+          {analyticsConfigured() && (
+            <SettingRow title="Cookies" hint="Choose whether Docket may set its analytics cookie in this browser.">
+              <CookieSettingsButton className={buttonClasses("ghost", "sm", "shrink-0")} />
+            </SettingRow>
+          )}
         </CardBody>
       </Card>
 

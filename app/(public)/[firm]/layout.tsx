@@ -11,17 +11,23 @@
 // later stitches that anonymous id to the account. Only firm_id and firm_slug travel with the
 // event — data about which site was viewed, never anything about who viewed it.
 //
+// ONLY WITH CONSENT. consentedVisitorId() returns an id only when POSTHOG_KEY is set and this
+// visitor chose "Allow analytics" in the cookie banner. Otherwise nothing is sent.
+//
 // Reading cookies() here also settles how this route renders: a Dynamic API makes the whole
 // tenant subtree render per request, which is the only way a server-side capture can fire on
 // every visit. A statically rendered route would emit this once, at build time, and never again.
+// consentedVisitorId() reads cookies() on every call, analytics on or off, so this still holds.
 
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { firmBySlug } from "@/lib/tenant";
 import { brandFontsUrl, brandStyle, tenantAllowsDark } from "@/lib/brand";
-import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
+import { FUNNEL, capture } from "@/lib/observability";
+import { consentedVisitorId } from "@/lib/observability/consent";
+import { analyticsConfigured } from "@/lib/consent-cookie";
+import { CookieSettingsButton } from "@/components/ui/cookie-banner";
 import { after } from "next/server";
 
 const NAV = [
@@ -42,9 +48,9 @@ export default async function FirmLayout({
   const firm = await firmBySlug(slug);
   if (!firm) notFound();
 
-  // Fired and ignored. A visitor with no cookie (a request the middleware matcher never saw)
-  // is simply not counted rather than counted as somebody made up.
-  const visitorId = (await cookies()).getAll().find((c) => c.name === VISITOR_COOKIE)?.value;
+  // Fired and ignored. A visitor with no id (no consent, or a request the middleware matcher
+  // never saw) is simply not counted rather than counted as somebody made up.
+  const visitorId = await consentedVisitorId();
   if (visitorId) {
     // after() runs this once the response has been sent. An un-awaited fetch in a serverless
     // function is not guaranteed to finish — the instance can be frozen the moment the response
@@ -156,6 +162,11 @@ export default async function FirmLayout({
               <Link href="/app/login" className="opacity-80 hover:opacity-100">Client portal</Link>
               <Link href={`${base}/privacy`} className="opacity-80 hover:opacity-100">Privacy notice</Link>
               <Link href={`${base}/terms`} className="opacity-80 hover:opacity-100">Terms of service</Link>
+              {/* Only where the banner can appear, so the control never opens nothing. The
+                  negative margin keeps the 44px target without widening the list's rhythm. */}
+              {analyticsConfigured() && (
+                <CookieSettingsButton className="-my-3 inline-flex min-h-[44px] items-center text-left opacity-80 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" />
+              )}
             </div>
           </div>
         </div>
