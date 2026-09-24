@@ -10,6 +10,7 @@ import { after } from "next/server";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PLATFORM, capture } from "@/lib/observability";
+import { analyticsAllowed } from "@/lib/observability/consent";
 import { NG_STATES } from "@/lib/nigeria";
 import type { CreateFirmResult } from "@/lib/db/types";
 
@@ -104,13 +105,18 @@ export async function createFirm(
   //
   // Facts about the firm, never about the person: an id and the state it practises in. No name,
   // no RC number, no SCN, no email.
+  //
+  // Only if the owner chose "Allow analytics" in this browser. The browser making this request is
+  // theirs and the id is theirs, so their own cookie choice is the one that counts.
   const firmId = result.firm_id;
-  after(() =>
-    capture(PLATFORM.firmRegistered, user.id, {
-      firm_id: firmId,
-      state_code: parsed.data.stateCode || null,
-    }).catch(() => undefined),
-  );
+  if (await analyticsAllowed()) {
+    after(() =>
+      capture(PLATFORM.firmRegistered, user.id, {
+        firm_id: firmId,
+        state_code: parsed.data.stateCode || null,
+      }).catch(() => undefined),
+    );
+  }
 
   // Owner writes need an MFA-verified session: enrol before the console.
   redirect("/firm/security/mfa");
