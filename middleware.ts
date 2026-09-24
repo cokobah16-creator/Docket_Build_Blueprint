@@ -84,10 +84,36 @@ export async function middleware(request: NextRequest) {
   // else. request.nextUrl, not the rewritten path — this is a destination, not an implementation.
   requestHeaders.set(PATHNAME_HEADER, `${pathname}${request.nextUrl.search}`);
 
-  const firm = await resolveFirm(
-    request.headers.get("host"),
-    searchParams.get("firm"),
-  );
+  let firm;
+  try {
+    firm = await resolveFirm(
+      request.headers.get("host"),
+      searchParams.get("firm"),
+    );
+  } catch {
+    // Tenant resolution runs in middleware, above Next's error boundaries. A failed public-data
+    // lookup must not become either a fake "firm not found" or an opaque edge exception.
+    const nonce = newNonce();
+    const policy = contentSecurityPolicy(nonce, { prerendered: false });
+    const response = new NextResponse(
+      `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Docket temporarily unavailable</title></head><body><main><h1>Docket is temporarily unavailable</h1><p>We could not load the firm information needed for this page. Please try again in a moment.</p></main></body></html>`,
+      {
+        status: 503,
+        headers: {
+          "content-type": "text/html; charset=utf-8",
+          "cache-control": "no-store",
+          "retry-after": "30",
+          [cspHeaderName()]: policy,
+          [CSP_NONCE_HEADER]: nonce,
+          "Strict-Transport-Security": "max-age=63072000",
+        },
+      },
+    );
+    for (const cookie of sessionCookies) {
+      response.cookies.set(cookie.name, cookie.value, cookie.options);
+    }
+    return response;
+  }
   if (firm) {
     requestHeaders.set("x-firm-id", firm.id);
     requestHeaders.set("x-firm-slug", firm.slug);
