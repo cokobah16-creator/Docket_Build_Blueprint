@@ -102,7 +102,7 @@ export default async function FirmInvoicesPage({
   if (view === "draft") invoiceQuery = invoiceQuery.eq("status", "draft");
   if (view === "paid") invoiceQuery = invoiceQuery.eq("status", "paid");
 
-  const [overview, { data: firmRow }, { data: invoiceRows }, summaryResult] = await Promise.all([
+  const [overview, firmResult, invoiceResult, summaryResult] = await Promise.all([
     firmOverview(supabase, firmId),
     // firm_public excludes any firm that is not active, so the firm's own row is
     // what a pending or suspended firm must be read from — otherwise every money
@@ -111,21 +111,27 @@ export default async function FirmInvoicesPage({
     invoiceQuery.order("created_at", { ascending: false }).limit(SHOW),
     supabase.rpc("invoice_register_summary", { p_firm: firmId }),
   ]);
+  if (firmResult.error) throw new Error(`Firm currency could not be loaded: ${firmResult.error.message}`);
+  if (invoiceResult.error) throw new Error(`Invoices could not be loaded: ${invoiceResult.error.message}`);
 
-  const firmCurrency = (firmRow as { default_currency: string } | null)?.default_currency ?? "NGN";
-  const rows = (invoiceRows ?? []) as InvoiceRow[];
+  const firmCurrency = (firmResult.data as { default_currency: string } | null)?.default_currency ?? "NGN";
+  const rows = (invoiceResult.data ?? []) as InvoiceRow[];
   const summaries = (summaryResult.data ?? []) as InvoiceSummaryRow[];
   const summaryError = summaryResult.error;
 
   // The people billed and the matters billed on, so every line names them.
   const clientIds = Array.from(new Set(rows.map((r) => r.client_id)));
   const matterIds = Array.from(new Set(rows.map((r) => r.matter_id).filter((id): id is string => Boolean(id))));
-  const { data: profileRows } = clientIds.length
+  const profileResult = clientIds.length
     ? await supabase.from("profiles").select("id, full_name, company_name").in("id", clientIds)
-    : { data: [] as Array<{ id: string; full_name: string | null; company_name: string | null }> };
-  const { data: matterRows } = matterIds.length
+    : { data: [] as Array<{ id: string; full_name: string | null; company_name: string | null }>, error: null };
+  const matterResult = matterIds.length
     ? await supabase.from("matters").select("id, reference, title").in("id", matterIds)
-    : { data: [] as Array<{ id: string; reference: string; title: string }> };
+    : { data: [] as Array<{ id: string; reference: string; title: string }>, error: null };
+  if (profileResult.error) throw new Error(`Invoice clients could not be loaded: ${profileResult.error.message}`);
+  if (matterResult.error) throw new Error(`Invoice matters could not be loaded: ${matterResult.error.message}`);
+  const profileRows = profileResult.data;
+  const matterRows = matterResult.data;
   const nameById = new Map(
     ((profileRows ?? []) as Array<{ id: string; full_name: string | null; company_name: string | null }>).map(
       (p): [string, string | null] => [p.id, p.full_name?.trim() || p.company_name?.trim() || null],
