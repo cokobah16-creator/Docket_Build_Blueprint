@@ -59,13 +59,15 @@ export default async function ServiceInboxPage({ searchParams }: { searchParams:
     ctx.memberships.filter((m) => m.role === "owner" || m.role === "admin").map((m) => m.firm_id),
   );
 
-  const [{ data: inbox }, { data: directory }] = await Promise.all([
+  const [inboxResult, directoryResult] = await Promise.all([
     supabase.from("service_inbox").select("*").order("served_at", { ascending: false }).limit(100),
     supabase.from("firm_service_directory").select("id, name"),
   ]);
-  const rows = (inbox ?? []) as ServiceInboxRow[];
+  if (inboxResult.error) throw new Error(`Service inbox could not be loaded: ${inboxResult.error.message}`);
+  if (directoryResult.error) throw new Error(`Firm service directory could not be loaded: ${directoryResult.error.message}`);
+  const rows = (inboxResult.data ?? []) as ServiceInboxRow[];
   const firmNames = new Map<string, string>(
-    ((directory ?? []) as Array<{ id: string; name: string }>).map((f): [string, string] => [f.id, f.name]),
+    ((directoryResult.data ?? []) as Array<{ id: string; name: string }>).map((f): [string, string] => [f.id, f.name]),
   );
   const firmName = (id: string) => firmNames.get(id) ?? "a firm on Docket";
 
