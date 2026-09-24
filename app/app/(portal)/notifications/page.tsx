@@ -24,11 +24,12 @@ export default async function NotificationsPage() {
     .eq("channel", "in_app");
   if (firm) query = query.eq("firm_id", firm.id);
 
-  const [{ data }, tz] = await Promise.all([
+  const [notificationResult, tz] = await Promise.all([
     query.order("created_at", { ascending: false }).limit(100),
     clientTimezone(supabase, user.id),
   ]);
-  const rows = (data ?? []) as NotificationRow[];
+  if (notificationResult.error) throw new Error(`Notifications could not be loaded: ${notificationResult.error.message}`);
+  const rows = (notificationResult.data ?? []) as NotificationRow[];
   const firmNames = await firmNamesFor(rows.map((r) => r.firm_id ?? "").filter(Boolean));
 
   return (
