@@ -85,7 +85,8 @@ do $$
 declare a1 uuid := (select v from fx where k='client_a1'); a2 uuid := (select v from fx where k='client_a2'); b1 uuid := (select v from fx where k='client_b1');
 begin
   perform t_as(a1, 'aal1');
-  perform t_check('client A1 sees only the client matter view',  (select count(*) from matters) = 0 and (select count(*) from portal_matters) = 1);
+  perform t_check('client A1 has the narrow portal view while the rollout bridge keeps the old row readable',
+    (select count(*) from portal_matters) = 1 and (select count(*) from matters) = 1);
   perform t_check('client A1 sees only client-visible updates',   (select count(*) from updates) = 1 and (select visibility from updates limit 1) = 'client');
   perform t_check('client A1 sees only client-visible documents', (select count(*) from documents) = 1);
   perform t_check('client A1 sees her invoice',                   (select count(*) from invoices) = 1);
