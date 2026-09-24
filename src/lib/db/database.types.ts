@@ -2126,30 +2126,42 @@ export type Database = {
           custom_domain: string | null
           default_currency: Database["public"]["Enums"]["currency"] | null
           id: string | null
+          legal_name: string | null
           name: string | null
           policies: Json | null
+          rc_number: string | null
           slug: string | null
           timezone: string | null
+          vat_rate: number | null
+          verified: boolean | null
         }
         Insert: {
           brand?: Json | null
           custom_domain?: string | null
           default_currency?: Database["public"]["Enums"]["currency"] | null
           id?: string | null
+          legal_name?: string | null
           name?: string | null
           policies?: Json | null
+          rc_number?: string | null
           slug?: string | null
           timezone?: string | null
+          vat_rate?: number | null
+          verified?: boolean | null
         }
         Update: {
           brand?: Json | null
           custom_domain?: string | null
           default_currency?: Database["public"]["Enums"]["currency"] | null
           id?: string | null
+          legal_name?: string | null
           name?: string | null
           policies?: Json | null
+          rc_number?: string | null
           slug?: string | null
           timezone?: string | null
+          vat_rate?: number | null
+          verified?: boolean | null
         }
         Relationships: []
       }

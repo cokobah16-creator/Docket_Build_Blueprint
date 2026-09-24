@@ -20,7 +20,7 @@ tests/30_nigeria.sql	51
 tests/40_counsel_service.sql	54
 tests/50_staff_console.sql	46
 tests/60_admin_surfaces.sql	90
-tests/70_deployed_frontend_compat.sql	14
+tests/70_deployed_frontend_compat.sql	23
 tests/80_doors.sql	19
 tests/90_message_reads.sql	28
 tests/91_next_actions.sql	7

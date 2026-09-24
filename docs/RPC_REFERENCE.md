@@ -1082,7 +1082,7 @@ one of them.
 
 | View | Who sees rows | Holds |
 |---|---|---|
-| `firm_public` | anyone, including `anon` | **active** firms only: id, slug, name, legal name, brand, policies, custom domain, timezone, currency, `verified`. A `pending` firm is absent — read `firms` directly for a firm setting itself up |
+| `firm_public` | anyone, including `anon` | **active** firms only: id, slug, name, legal name, brand, policies, custom domain, timezone, currency, `verified`, `vat_rate`, `rc_number` (migration 51; never `tin`). A `pending` firm is absent — read `firms` directly for a firm setting itself up |
 | `lawyer_public` | anyone | published practitioner profiles |
 | `firm_service_directory` | firm staff | active firms' addresses for service and whether they accept platform service |
 | `firm_admin` | platform admins | the platform's **whole** read of firms: lifecycle, plan, RC number, state, `has_settlement_account`, member count, owners with their enrolment numbers, `policies_published` |
