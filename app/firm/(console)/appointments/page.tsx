@@ -38,8 +38,9 @@ export default async function FirmAppointments({ searchParams }: { searchParams:
     if (view === "today") q = q.gte("starts_at", startUtc.toISOString()).lt("starts_at", endUtc.toISOString()).order("starts_at", { ascending: true });
     if (view === "upcoming") q = q.gte("starts_at", endUtc.toISOString()).order("starts_at", { ascending: true }).limit(50);
     if (view === "past") q = q.lt("starts_at", startUtc.toISOString()).order("starts_at", { ascending: false }).limit(50);
-    const { data } = await q;
-    rows = (data ?? []) as unknown as Row[];
+    const result = await q;
+    if (result.error) throw new Error(`Consultations could not be loaded: ${result.error.message}`);
+    rows = (result.data ?? []) as unknown as Row[];
   }
 
   const time = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeStyle: "short", timeZone: tz }).format(new Date(iso));
