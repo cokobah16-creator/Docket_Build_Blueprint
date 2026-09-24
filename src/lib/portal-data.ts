@@ -32,24 +32,33 @@ export async function clientMatters(
     .from("portal_matters")
     .select("id, firm_id, reference, title, type, status_id, court_name, suit_number, next_event_at, next_event_note, opened_at, closed_at");
   if (firmId) query = query.eq("firm_id", firmId);
-  const { data } = await query.order("opened_at", { ascending: false }).limit(limit);
+  const { data, error } = await query.order("opened_at", { ascending: false }).limit(limit);
+  if (error) throw new Error(`Client matters could not be loaded: ${error.message}`);
   const matters = (data ?? []) as MatterRow[];
   if (matters.length === 0) return [];
   const ids = matters.map((m) => m.id);
   const firmIds = Array.from(new Set(matters.map((m) => m.firm_id)));
-  const [{ data: statusRows }, { data: updateRows }, { data: lawyerRows }, firmNames] = await Promise.all([
+  const [statusResult, updateResult, lawyerResult, firmNames] = await Promise.all([
     supabase.from("matter_statuses").select("id, firm_id, key, label, colour, is_terminal").in("firm_id", firmIds),
     supabase.from("updates").select("id, matter_id, firm_id, kind, title, body, payload, occurred_at, created_at, next_step, client_action, action_required").in("matter_id", ids).eq("visibility", "client").order("occurred_at", { ascending: false }).limit(200),
     supabase.from("matter_lawyers").select("matter_id, user_id, is_lead").in("matter_id", ids),
     firmNamesFor(firmIds),
   ]);
+  if (statusResult.error) throw new Error(`Matter status could not be loaded: ${statusResult.error.message}`);
+  if (updateResult.error) throw new Error(`Matter updates could not be loaded: ${updateResult.error.message}`);
+  if (lawyerResult.error) throw new Error(`Matter lawyers could not be loaded: ${lawyerResult.error.message}`);
+  const statusRows = statusResult.data;
+  const updateRows = updateResult.data;
+  const lawyerRows = lawyerResult.data;
   const statuses = new Map(((statusRows ?? []) as MatterStatus[]).map((s) => [s.id, s]));
   const lastUpdate = new Map<string, UpdateRow>();
   for (const u of (updateRows ?? []) as UpdateRow[]) if (!lastUpdate.has(u.matter_id)) lastUpdate.set(u.matter_id, u);
   const lawyerIds = Array.from(new Set(((lawyerRows ?? []) as Array<{ user_id: string }>).map((l) => l.user_id)));
-  const { data: lawyerPublic } = lawyerIds.length
+  const lawyerPublicResult = lawyerIds.length
     ? await supabase.from("lawyer_public").select("id, full_name, title").in("id", lawyerIds)
-    : { data: [] as Array<{ id: string; full_name: string | null; title: string | null }> };
+    : { data: [] as Array<{ id: string; full_name: string | null; title: string | null }>, error: null };
+  if (lawyerPublicResult.error) throw new Error(`Lawyer details could not be loaded: ${lawyerPublicResult.error.message}`);
+  const lawyerPublic = lawyerPublicResult.data;
   const lawyerName = new Map(((lawyerPublic ?? []) as Array<{ id: string; full_name: string | null; title: string | null }>).map((l) => [l.id, l.full_name ?? l.title ?? "Your lawyer"]));
   return matters.map((m) => ({
     ...m,
