@@ -127,7 +127,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           <OfflineCopy matterIds={matterIds} />
           {/* Only where the cookie banner can appear (POSTHOG_KEY set), so it never opens nothing. */}
           {analyticsConfigured() && (
-            <SettingRow title="Cookies" hint="Choose whether Docket may set its analytics cookie in this browser.">
+            <SettingRow title="Cookies" hint="Choose whether Docket may use analytics in this browser.">
               <CookieSettingsButton className={buttonClasses("ghost", "sm", "shrink-0")} />
             </SettingRow>
           )}

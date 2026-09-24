@@ -2,10 +2,15 @@
 
 // The analytics cookie question, asked once per site address.
 //
-// WHAT IT GOVERNS. One cookie: docket_did, the anonymous visitor id middleware.ts mints for the
-// PostHog funnel. It is minted only after "Allow analytics", and every event and $identify is sent
-// only after it too (src/lib/observability/consent.ts). The sign-in cookies, dk_firm and
-// dk_staff_firm are strictly necessary and are set whatever the answer.
+// WHAT IT GOVERNS. One cookie and everything PostHog hears. docket_did, the anonymous visitor id
+// middleware.ts mints, exists only after "Allow analytics". So does every event: site_viewed,
+// booking_started, firm_registered (sent under the owner's account id, with no cookie at all), and
+// the $identify that links docket_did to the account at sign-in (src/lib/observability/consent.ts).
+// The copy below says all of that, because a choice is only informed if it names what it allows.
+// The sign-in cookies, dk_firm, dk_staff_firm and docket_consent itself are strictly necessary
+// and are set whatever the answer; the copy says that too. There is no link to a cookie notice
+// yet, because no notice page exists; add one here when it does (${base}/cookies on a firm's
+// site, /docket/cookies elsewhere).
 //
 // WHERE IT SITS. z-40: over the page, under every overlay. Dialogs, bottom sheets, the firm
 // switcher, toasts and the consultation room are all z-50, so the card never covers a sheet's
@@ -118,8 +123,13 @@ export function CookieBanner({ analyticsEnabled }: { analyticsEnabled: boolean }
           Cookies
         </h2>
         <p className="mt-1 text-13 text-ink">
-          If you allow it, Docket sets one analytics cookie of its own, docket_did, for one year.
-          Sign-in cookies are always used, because the app needs them to work.
+          If you allow analytics, Docket sets one cookie of its own, docket_did, for one year.
+          Docket then tells PostHog, an analytics service, when you view a firm&apos;s site, start a
+          booking or register a firm. When you sign in, these are linked to your account.
+        </p>
+        <p className="mt-1 text-13 text-ink">
+          Cookies the site needs to work are always used. They keep you signed in, remember which
+          firm you are using, and store this choice.
         </p>
         {stored.decided && (
           <p className="mt-1 text-13 text-ink-muted">
