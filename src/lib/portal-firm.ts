@@ -46,13 +46,15 @@ function plural(n: number, one: string, many: string): string {
  * a directory of firms on Docket.
  */
 export async function clientFirms(supabase: SupabaseClient): Promise<ClientFirm[]> {
-  const [{ data: matterRows }, { data: apptRows }] = await Promise.all([
+  const [matterResult, apptResult] = await Promise.all([
     supabase.from("portal_matters").select("firm_id"),
     supabase.from("appointments").select("firm_id"),
   ]);
+  if (matterResult.error) throw new Error(`Client firms could not be loaded from matters: ${matterResult.error.message}`);
+  if (apptResult.error) throw new Error(`Client firms could not be loaded from consultations: ${apptResult.error.message}`);
 
-  const matters = countBy((matterRows ?? []) as Array<{ firm_id: string | null }>);
-  const appointments = countBy((apptRows ?? []) as Array<{ firm_id: string | null }>);
+  const matters = countBy((matterResult.data ?? []) as Array<{ firm_id: string | null }>);
+  const appointments = countBy((apptResult.data ?? []) as Array<{ firm_id: string | null }>);
   const ids = Array.from(new Set([...matters.keys(), ...appointments.keys()]));
 
   const firms = await Promise.all(ids.map((id) => firmById(id)));
