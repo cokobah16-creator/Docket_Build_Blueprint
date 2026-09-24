@@ -82,17 +82,17 @@ begin
   perform t_reset();
 end $$;
 
-do $
+do $$
 declare f uuid := (select v from fx where k='firm'); other uuid; a text; b text;
 begin
   insert into firms (slug, name, reference_prefix) values ('launch-other-firm', 'Another AK firm', 'AK') returning id into other;
   a := next_reference(f, 'invoice'); b := next_reference(other, 'invoice');
   perform t_check('firms with the same initials mint different global invoice numbers', a <> b);
-end $;
+end $$;
 
 -- Recipient-scoped correspondence: two clients may share a legal matter without sharing each
 -- other's private conversation with the firm.
-do $
+do $$
 declare
   f uuid := (select v from fx where k='firm');
   m uuid := (select v from fx where k='matter');
@@ -144,5 +144,5 @@ begin
     exists (select 1 from messages where id = client_msg)
     and exists (select 1 from messages where id = staff_msg));
   perform t_reset();
-end $;
+end $$;
 rollback;
