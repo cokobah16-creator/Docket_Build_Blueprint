@@ -85,6 +85,8 @@ const FIRM = {
   timezone: "Africa/Lagos",
   default_currency: "NGN",
   verified: true,
+  vat_rate: 0,
+  rc_number: null,
   status: "active",
 };
 
@@ -166,7 +168,7 @@ const TABLES = {
   matter_parties: [{ matter_id: MATTER_ID, user_id: USER_ID, firm_id: FIRM_ID, role: "client", client: { id: USER_ID, full_name: "Adaeze Okonkwo", phone: "+2348034110982", email: "adaeze.o@example.test", client_type: "individual", company_name: null } }],
   lawyer_public: [{ id: USER_ID, full_name: "B. Okafor", title: "Associate" }],
   lawyer_profiles: [{ user_id: USER_ID, firm_id: FIRM_ID, scn: "SCN/2018/044182", title: "Associate" }],
-  services: [{ id: "svc1", firm_id: FIRM_ID, slug: "legal-consultation", name: "Legal Consultation", description: "A 45-minute consultation.", price_minor: 5_000_000, currency: "NGN", duration_min: 45, virtual_available: true, is_active: true }],
+  services: [{ id: "svc1", firm_id: FIRM_ID, slug: "legal-consultation", name: "Legal Consultation", description: "A 45-minute consultation.", price_minor: 5_000_000, currency: "NGN", duration_min: 45, virtual_available: true, requires_prepayment: true, is_active: true }],
   updates: [{ id: "u1", matter_id: MATTER_ID, firm_id: FIRM_ID, kind: "court", title: "Adjourned for continuation", body: "The court adjourned for continuation of hearing.", payload: {}, occurred_at: past, created_at: past, meaning: "The case did not finish today.", next_step: "Come back on the next date.", client_action: null, action_required: false, next_update_by: null }],
   documents: [{ id: "d1", firm_id: FIRM_ID, matter_id: MATTER_ID, appointment_id: null, name: "Deed of Assignment — Ikoyi.pdf", category: "evidence", client_visible: true, current_version_id: "v1", uploaded_by: USER_ID, reviewed_at: null, reviewed_by: null, created_at: past, deleted_at: null, locked_version_id: null, locked_at: null, signature_requested_at: null, signature_requested_by: null }],
   document_versions: [{ id: "v1", document_id: "d1", storage_path: "p/1", mime: "application/pdf", size_bytes: 184_320, uploaded_by: USER_ID, created_at: past, checksum: "abc", kind: "original", executed_on: null }],

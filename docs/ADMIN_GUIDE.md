@@ -403,7 +403,8 @@ For each service you set:
 
 Your VAT rate (**Settings → Operations**) is applied on top at booking, and the screen shows you
 the figure the client's invoice will actually carry — worked out exactly the way the booking does
-it, so there are no rounding surprises.
+it, so there are no rounding surprises. Clients see the same figure: your public site marks each
+price "incl. VAT", and the booking review lists the fee, the VAT and the total before they confirm.
 
 **Four things must all be true before a client can book:**
 

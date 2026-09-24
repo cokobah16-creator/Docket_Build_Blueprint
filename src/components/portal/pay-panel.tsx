@@ -17,7 +17,7 @@ import type { PaymentChannel } from "@/lib/providers/payments";
 
 const METHODS: Array<{ key: PaymentChannel; label: string; hint: string; icon: IconName }> = [
   { key: "card", label: "Card", hint: "Verve, Mastercard or Visa", icon: "card" },
-  { key: "bank_transfer", label: "Bank transfer", hint: "One-time account · confirms in under a minute", icon: "transfer" },
+  { key: "bank_transfer", label: "Bank transfer", hint: "Transfer to a one-time account from your bank", icon: "transfer" },
   { key: "ussd", label: "USSD", hint: "Dial from the phone you are holding", icon: "ussd" },
 ];
 

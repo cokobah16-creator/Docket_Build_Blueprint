@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { formatMoneyMinor } from "@/lib/money";
+import { formatMoneyMinor, formatPriceWithVat, vatMinor } from "@/lib/money";
+import { publishedPolicyText } from "@/lib/policy-text";
 import type {
   AppointmentSlot,
   BookingResult,
@@ -120,6 +121,18 @@ export function BookingWizard({
 
   const service = services.find((s) => s.id === serviceId);
   const lawyer = lawyers.find((l) => l.id === lawyerId);
+  // The firm's VAT rate, as a percentage. book_appointment() adds vatMinor(price, rate) to a priced
+  // booking and raises the invoice for the total, so every figure a client is asked to confirm
+  // here is that total, worked out the same way.
+  const vatRate = Number(firm.vat_rate) || 0;
+  const feeMinor = service?.price_minor ?? 0;
+  const vatOnFee = vatMinor(feeMinor, vatRate);
+  const totalMinor = feeMinor + vatOnFee;
+  // requires_prepayment defaults to true in the database, so only an explicit false is "invoiced
+  // after". A prepaid booking waits for payment with a 15-minute hold; any other priced booking is
+  // made at once with its invoice already raised, and nothing is paid here.
+  const paysNow = feeMinor > 0 && service?.requires_prepayment !== false;
+  const invoicedAfter = feeMinor > 0 && service?.requires_prepayment === false;
   const form = service ? forms.find((f) => f.service_id === service.id) ?? forms.find((f) => f.service_id === null) : undefined;
   const lawyerTz = lawyer?.timezone ?? firm.timezone;
 
@@ -277,11 +290,19 @@ export function BookingWizard({
       }
       const result = booked.booking;
       try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
-      if (result.status === "awaiting_payment") {
+      // The button promised a figure; the database raised the invoice for its own. They differ only
+      // when the firm's price or VAT rate changed after the figures on this page were read (the
+      // firm row and the catalogue are cached for a minute or two). Then no checkout is opened for
+      // an amount the client never agreed to: the appointment page shows the invoice total, and
+      // the client pays from there or does not.
+      const totalChanged =
+        result.invoice_id !== null &&
+        (Number(result.amount_minor) !== totalMinor || result.currency !== service.currency);
+      if (result.status === "awaiting_payment" && !totalChanged) {
         const r = await startPayment(result.appointment_id);
         if (r?.error) throw new Error(r.error);
       } else {
-        router.push(`/app/appointments/${result.appointment_id}`);
+        router.push(`/app/appointments/${result.appointment_id}${totalChanged ? "?total=changed" : ""}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -301,7 +322,7 @@ export function BookingWizard({
   }
 
   const stepNumber = stepIdx + 1;
-  const feeMinor = service?.price_minor ?? 0;
+  const cancellationText = publishedPolicyText(firm.policies.cancellation);
 
   return (
     <div className="booking-wizard">
@@ -346,7 +367,7 @@ export function BookingWizard({
                 <span className="block text-15 font-semibold text-ink">{s.name}</span>
                 {s.description && <span className="mt-1 block text-13 leading-[1.45] text-ink-muted">{s.description}</span>}
                 <span className="mt-1.5 block text-13 font-semibold text-brand">
-                  {formatMoneyMinor(s.price_minor, s.currency)} · {s.duration_min} minutes
+                  {formatPriceWithVat(s.price_minor, s.currency, vatRate)} · {s.duration_min} minutes
                 </span>
               </button>
             ))}
@@ -394,7 +415,7 @@ export function BookingWizard({
             <p className="text-13 leading-relaxed text-ink-muted">
               Times are shown in your timezone ({visitorTz})
               {visitorTz !== lawyerTz ? `, and the lawyer's (${lawyerTz}) under each` : ", the same as the lawyer's"}.
-              The slot is held for fifteen minutes while you pay.
+              {paysNow ? " The slot is held for fifteen minutes while you pay." : ""}
             </p>
 
             {/* The lawyer decides which slots exist, so the choice sits here. */}
@@ -495,7 +516,7 @@ export function BookingWizard({
 
         {step === "review" && service && slot && mode && (
           <>
-            <StepTitle>Review and {feeMinor > 0 ? "pay" : "confirm"}</StepTitle>
+            <StepTitle>Review and {paysNow ? "pay" : "confirm"}</StepTitle>
             <dl className="flex flex-col gap-3 rounded-card border border-hairline bg-raised px-4 py-[15px] text-13">
               <Row label="Service" value={service.name} />
               <Row label="Lawyer" value={lawyerName(lawyer, firm.name)} />
@@ -510,15 +531,26 @@ export function BookingWizard({
                 }
               />
               <Row label="Duration" value={`${service.duration_min} minutes`} />
-              <div className="border-t border-hairline pt-3">
-                <Row label="Fee" value={formatMoneyMinor(service.price_minor, service.currency)} bold />
+              <div className="flex flex-col gap-3 border-t border-hairline pt-3">
+                <Row label="Fee" value={formatMoneyMinor(feeMinor, service.currency)} bold={feeMinor === 0} />
+                {feeMinor > 0 && vatRate > 0 && (
+                  <Row label={`VAT at ${vatRate}%`} value={formatMoneyMinor(vatOnFee, service.currency)} />
+                )}
+                {feeMinor > 0 && <Row label="Total" value={formatMoneyMinor(totalMinor, service.currency)} bold />}
               </div>
             </dl>
 
-            {feeMinor > 0 && (
+            {paysNow && (
               <Alert kind="notice">
                 Your slot is held for <strong>15 minutes</strong> while you pay. The fee settles to{" "}
                 {firm.name}&apos;s own account — Docket never holds it.
+              </Alert>
+            )}
+            {invoicedAfter && (
+              <Alert kind="notice">
+                Nothing is paid now. Booking raises an invoice for{" "}
+                <strong>{formatMoneyMinor(totalMinor, service.currency)}</strong>. You will find it on the
+                appointment page and under Payments.
               </Alert>
             )}
 
@@ -549,8 +581,8 @@ export function BookingWizard({
               />
             )}
 
-            {firm.policies.cancellation?.text ? (
-              <p className="text-11 leading-relaxed text-ink-muted">{String(firm.policies.cancellation.text)}</p>
+            {cancellationText ? (
+              <p className="text-11 leading-relaxed text-ink-muted">{cancellationText}</p>
             ) : null}
             {firm.policies.disclaimer?.text ? (
               <p className="text-11 leading-relaxed text-ink-muted">{String(firm.policies.disclaimer.text)}</p>
@@ -576,9 +608,11 @@ export function BookingWizard({
               ? "Holding your slot…"
               : !user
                 ? "Sign in to confirm"
-                : feeMinor > 0
-                  ? `Confirm and pay ${formatMoneyMinor(service!.price_minor, service!.currency)}`
-                  : "Confirm booking"}
+                : paysNow
+                  ? `Confirm and pay ${formatMoneyMinor(totalMinor, service!.currency)}`
+                  : invoicedAfter
+                    ? `Confirm booking: ${formatMoneyMinor(totalMinor, service!.currency)} will be invoiced`
+                    : "Confirm booking"}
           </Button>
         ) : (
           <Button size="lg" className="w-full" onClick={next} disabled={!canProceed}>
@@ -711,7 +745,7 @@ function IntakeField({
         onChange={(e) => onFiles(Array.from<File>(e.target.files ?? []).slice(0, q.max_files ?? 1))}
       />
       {files.length > 0 && <p className="text-11 text-ink-muted">{files.map((f) => f.name).join(", ")}</p>}
-      <p className="text-11 text-ink-muted">PDF or images, up to 25 MB each. Uploaded securely after you sign in.</p>
+      <p className="text-11 text-ink-muted">PDF or images, up to 25 MB each. Uploaded to private storage for the firm when you confirm.</p>
     </div>
   );
 }

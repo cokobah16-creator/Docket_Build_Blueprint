@@ -70,8 +70,8 @@ You accept each firm's documents separately. Working with two firms on Docket me
 
 From your firm's website, choose **Book**. The steps are:
 
-1. **The service** — what you need, how long it takes, and what it costs. The price shown is the
-   price, with VAT already worked out where the firm charges it.
+1. **The service** — what you need, how long it takes, and what it costs. Where the firm charges
+   VAT, the price shown already includes it and says "incl. VAT".
 2. **How** — video, in person, or by phone. Only the options that firm offers appear.
 3. **Which lawyer.**
 4. **A day, then a time.** The times you are offered are real: Docket has already checked that
@@ -81,7 +81,10 @@ From your firm's website, choose **Book**. The steps are:
 5. **The firm's questions**, if it asks any. Answer what you can; only the questions marked
    required must be filled in.
 6. **Sign in**, if you have not already — right there, without losing your place.
-7. **Confirm.**
+7. **Confirm.** For a paid consultation, the last screen shows the fee, the VAT if the firm
+   charges it, and the total. If the fee is paid in advance, the button reads **Confirm and pay**
+   with the total. If the firm invoices it after booking, nothing is paid there, and the button says
+   the total will be invoiced.
 
 ### Before your consultation
 
@@ -96,7 +99,8 @@ confirms the booking from its side, and you are told when it does.
 
 If the consultation is paid in advance, your slot is **held for fifteen minutes** while you pay.
 You go to Paystack's own checkout page — Docket never sees your card — and come back when it is
-done.
+done. If the invoice turns out to be for a different total from the one you were shown, you go to
+the appointment page instead, so you can check the amount before you pay.
 
 **The money goes to your firm**, into its own account. Docket does not hold it and cannot touch it.
 
@@ -106,6 +110,9 @@ before worrying. Your reference number is on the appointment.
 
 If you do not pay within fifteen minutes the hold is released and the time goes back to whoever
 wants it. Nothing is charged and you can simply book again.
+
+If the firm invoices the fee after booking, you book without paying. The invoice for the total is
+raised at once, and you find it on the appointment page and under **Payments**.
 
 If the consultation is free, it is confirmed straight away.
 
@@ -284,7 +291,7 @@ saying so, with **Read and sign**.
 |---|---|
 | **The sign-in code has not arrived** | Wait a minute and ask once more. If it still does not come, ask your firm to check the number it holds for you |
 | **I paid and it still says awaiting payment** | Wait a minute and refresh. Confirmation waits for Paystack, not for the page. If it does not clear, tell your firm your reference and the Paystack receipt |
-| **My slot expired while I was paying** | The fifteen-minute hold ran out. Nothing was charged. Book again |
+| **My slot expired while I was paying** | The fifteen-minute hold ran out, and the slot is released soon after. If no payment went through, book again. If Paystack took a payment and the appointment now says cancelled, tell your firm your reference and the Paystack receipt |
 | **The Join button is not there** | It appears ten minutes before the start time, and only for a confirmed consultation |
 | **I cannot get past the terms screen** | Both boxes must be ticked. If the firm has just published a new version, you are being asked again on purpose |
 | **A document will not open** | The two-minute link has expired. Tap it again to get a new one |
