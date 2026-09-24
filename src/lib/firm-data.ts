@@ -52,8 +52,9 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
   // offer a lawyer the owner's buttons and let the database refuse them one by
   // one. Ask the database for the firm's people through firmStaff(); here, only
   // the caller's own memberships count.
-  const { data: rows } = await supabase.from("firm_members").select("firm_id, user_id, role").eq("user_id", user.id);
-  const memberships = (rows ?? []) as FirmMembership[];
+  const membershipResult = await supabase.from("firm_members").select("firm_id, user_id, role").eq("user_id", user.id);
+  if (membershipResult.error) throw new Error(`Firm membership could not be loaded: ${membershipResult.error.message}`);
+  const memberships = (membershipResult.data ?? []) as FirmMembership[];
   if (memberships.length === 0) return null;
 
   // `?firm=` is documented as a slug and middleware resolves it that way, while the
@@ -68,11 +69,12 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
       chosen = byId;
     } else {
       const wanted = preferredFirmId.toLowerCase();
-      const { data: firmRows } = await supabase
+      const firmResult = await supabase
         .from("firms")
         .select("id, slug")
         .in("id", memberships.map((m) => m.firm_id));
-      const match = ((firmRows ?? []) as Array<{ id: string; slug: string }>).find((f) => f.slug === wanted);
+      if (firmResult.error) throw new Error(`Firm selection could not be loaded: ${firmResult.error.message}`);
+      const match = ((firmResult.data ?? []) as Array<{ id: string; slug: string }>).find((f) => f.slug === wanted);
       const bySlug = match ? memberships.find((m) => m.firm_id === match.id) : undefined;
       // A firm was named and it is not one of theirs. Refuse rather than act as
       // another firm behind a URL that says otherwise.
@@ -80,18 +82,20 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
       chosen = bySlug;
     }
   }
-  const [{ data: profile }, { data: overview }] = await Promise.all([
+  const [profileResult, overviewResult] = await Promise.all([
     supabase.from("profiles").select("timezone").eq("id", user.id).maybeSingle(),
     supabase.from("firm_overview").select("firm_id, name").eq("firm_id", chosen.firm_id).maybeSingle(),
   ]);
+  if (profileResult.error) throw new Error(`Staff profile could not be loaded: ${profileResult.error.message}`);
+  if (overviewResult.error) throw new Error(`Firm overview could not be loaded: ${overviewResult.error.message}`);
 
   return {
     supabase,
     userId: user.id,
     firmId: chosen.firm_id,
-    firmName: (overview as { name: string } | null)?.name ?? "Your firm",
+    firmName: (overviewResult.data as { name: string } | null)?.name ?? "Your firm",
     role: chosen.role,
-    timezone: (profile as { timezone: string } | null)?.timezone ?? "Africa/Lagos",
+    timezone: (profileResult.data as { timezone: string } | null)?.timezone ?? "Africa/Lagos",
     memberships,
     isAdmin: chosen.role === "owner" || chosen.role === "admin",
   };
