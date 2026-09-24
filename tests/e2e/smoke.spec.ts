@@ -21,7 +21,9 @@ test("tenant public home renders with the firm's branding", async ({ page }) => 
   // having checked nothing about any firm. Every assertion below is one the landing page cannot
   // satisfy: the CTA must point INTO this firm, and the brand tokens must be set inline, which
   // only the tenant layout does (brandStyle() in src/lib/brand.ts).
-  await page.goto(`/?firm=${firmSlug}`);
+  // Use the tenant's real public route. ?firm= is intentionally ignored in production-mode
+  // resolution, which is exactly how CI serves this application.
+  await page.goto(`/${firmSlug}`);
   const cta = page.locator(`a[href="/${firmSlug}/book"]`).first();
   await expect(cta).toBeVisible();
   await expect(page.locator('[style*="--dk-primary"]').first()).toBeAttached();
@@ -78,7 +80,23 @@ test("client login renders both sign-in methods", async ({ page }) => {
     // The production provider sends a magic link, not a numeric email OTP. Stub the provider call
     // so this smoke test proves the post-send contract without delivering a real message.
     await page.route("**/auth/v1/otp*", async (route) => {
-      await route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+      // Supabase Auth is cross-origin in this smoke run. A browser performs a CORS preflight
+      // before the POST, so the mock has to behave like the auth server rather than merely
+      // returning JSON to whichever request it sees first.
+      const cors = {
+        "access-control-allow-origin": "*",
+        "access-control-allow-methods": "POST, OPTIONS",
+        "access-control-allow-headers": "apikey, authorization, content-type, x-client-info",
+      };
+      if (route.request().method() === "OPTIONS") {
+        await route.fulfill({ status: 204, headers: cors, body: "" });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        headers: { ...cors, "content-type": "application/json" },
+        body: "{}",
+      });
     });
     await page.getByRole("tab", { name: "Email" }).click();
     await page.getByLabel("Email address").fill("client@example.com");
