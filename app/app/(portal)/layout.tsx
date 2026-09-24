@@ -80,8 +80,10 @@ async function consentGateFor(
         firmName={firm.name}
         termsVersion={termsVersion}
         privacyVersion={privacyVersion}
-        termsUrl={(firm.policies.terms?.url as string | null) ?? null}
-        privacyUrl={(firm.policies.privacy?.url as string | null) ?? null}
+        // The firm's own document where it has linked one, otherwise its page on Docket, which
+        // shows whatever text the firm has published. A box is never offered with nothing to read.
+        termsUrl={(firm.policies.terms?.url as string | null) || `/${firm.slug}/terms`}
+        privacyUrl={(firm.policies.privacy?.url as string | null) || `/${firm.slug}/privacy`}
       />
     </Screen>
   );

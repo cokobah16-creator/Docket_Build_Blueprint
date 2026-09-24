@@ -152,6 +152,41 @@ Refuses:
 - `this firm is not yet set up to receive payments` — a prepaid, priced service at a firm with no `paystack_subaccount`
 - `slot unavailable` — raised twice: once when the time is not in `available_slots()`, and again if the lawyer's overlap exclusion constraint fires in the race between the two
 
+It does not yet check that the client has accepted the firm's terms and privacy notice. The
+booking wizard records that acceptance through `record_consent()` before it calls this; the
+database starts refusing a booking without it in a later migration (see below).
+
+### `record_consent(p_firm uuid)`
+Returns `jsonb`: `terms_version`, `privacy_version` (the versions recorded) and `rows_written`
+(0, 1 or 2).
+
+**Who:** any signed-in person, for themselves, at aal1 (clients never hold MFA). `public` and
+`anon` are revoked. Migration 52.
+
+Records the caller's acceptance of the firm's terms of service and privacy notice: a `terms` row
+and a `privacy` row in `consent_records`, for `auth.uid()`, at the versions in `firms.policies`
+for that firm at the moment of the call. It takes no user and no version, so a caller cannot
+record an acceptance in someone else's name or at a version the firm never published. A row the
+caller already holds for that kind, version and firm is not written again, so a second call
+writes nothing; an advisory lock on (caller, firm) keeps two calls at once to one acceptance.
+When it writes anything it adds one `consent.recorded` audit line with both versions, beside the
+per-row lines `audit_row_change()` writes.
+
+Called by the booking wizard's review step (`recordBookingConsent` in
+`src/lib/actions/booking.ts`) and the portal consent gate (`recordConsent` in
+`app/app/(portal)/actions.ts`), both through `src/lib/consent.ts`. That helper first reads the
+firm's versions fresh and records nothing if they differ from the versions the page showed,
+because the page read the firm through a one-minute cache.
+
+Refuses:
+- `not authenticated` *(42501)*
+- `this firm is not active on Docket` — the firm is missing or its status is not `active`
+- `this firm has not published its terms and privacy notice yet` — `firm_policies_published()` is false: a version is missing, empty or still a `0-` draft
+
+**Staged.** Direct inserts into `consent_records` are still allowed (see *Writes with no RPC*),
+because the frontend deployed from `main` still inserts there and main's compat suite asserts it
+can. A later migration revokes that insert and makes `book_appointment()` require both rows.
+
 ### `cancel_appointment(p_appointment uuid, p_reason text = null)`
 Returns `void`. **Who:** the appointment's own client, or `staff_w(firm)`.
 
@@ -1157,7 +1192,7 @@ Not everything needs a function. These are plain table writes, guarded by policy
 | `matters`, `tasks`, `updates`, `documents`, `messages`, `invoices`, `invoice_items`, `court_events`, `matter_parties`, `matter_lawyers`, `matter_court_numbers`, `conflict_checks`, `invites`, `consultation_notes`, `consultation_internal_notes` | `staff_w(firm_id)` | |
 | `availability_rules`, `availability_exceptions`, `lawyer_profiles` | own row with `staff_w`, or `admin_w` | a lawyer keeps their own diary; an administrator may edit anybody's |
 | `domain_requests` | update only, `is_platform_admin() and mfa_ok()` | a firm inserts through `request_firm_domain()` and can only reach `withdrawn` |
-| `consent_records` | insert where `user_id = auth.uid()` | append-only in practice: there is no update or delete policy |
+| `consent_records` | insert where `user_id = auth.uid()` | append-only in practice: there is no update or delete policy. The version is not checked here, so the app records through `record_consent()` instead. This insert stays open only until the deployed frontend stops using it |
 | `notification_preferences`, `push_subscriptions` | `user_id = auth.uid()` | |
 | `rate_limits`, `firm_counters` | **no policy at all** | only definer functions touch them |
 | `audit_log` | select only | `insert`, `update` and `delete` are revoked from every API role; `audit()` is the only writer |

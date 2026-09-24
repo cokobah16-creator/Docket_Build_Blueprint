@@ -28,7 +28,7 @@ import { Input, Select, chipClasses, choiceCardClasses } from "@/components/ui/i
 import { Alert } from "@/components/ui/alert";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
-import { bookAppointment, startPayment, saveContactEmail } from "@/lib/actions/booking";
+import { bookAppointment, recordBookingConsent, startPayment, saveContactEmail } from "@/lib/actions/booking";
 
 type Step = "service" | "mode" | "when" | "intake" | "review";
 type Mode = "virtual" | "in_person" | "phone";
@@ -118,6 +118,10 @@ export function BookingWizard({
   const [pendingResume, setPendingResume] = useState(resume);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Two boxes, never ticked for the client, and not remembered across the sign-in round trip:
+  // the acceptance is given on the screen where it is recorded.
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
   const service = services.find((s) => s.id === serviceId);
   const lawyer = lawyers.find((l) => l.id === lawyerId);
@@ -135,6 +139,14 @@ export function BookingWizard({
   const invoicedAfter = feeMinor > 0 && service?.requires_prepayment === false;
   const form = service ? forms.find((f) => f.service_id === service.id) ?? forms.find((f) => f.service_id === null) : undefined;
   const lawyerTz = lawyer?.timezone ?? firm.timezone;
+  // The versions the client is asked to accept. A '0-' version is the unpublished skeleton every
+  // firm starts with, and book_appointment() refuses to book until both are published, so the
+  // boxes are only offered when there is something to accept.
+  const termsVersion = firm.policies.terms?.version ? String(firm.policies.terms.version) : null;
+  const privacyVersion = firm.policies.privacy?.version ? String(firm.policies.privacy.version) : null;
+  const policiesPublished =
+    termsVersion !== null && privacyVersion !== null && !termsVersion.startsWith("0-") && !privacyVersion.startsWith("0-");
+  const consentGiven = policiesPublished && acceptTerms && acceptPrivacy;
 
   const steps = useMemo<Step[]>(() => {
     const s: Step[] = ["service", "mode", "when"];
@@ -247,9 +259,20 @@ export function BookingWizard({
 
   async function submit() {
     if (!supabase || !user || !service || !lawyerId || !slot || !mode) return;
+    if (!consentGiven || !termsVersion || !privacyVersion) return;
     setSubmitting(true);
     setError(null);
     try {
+      // The acceptance is recorded first, so a refusal stops here: no file has been uploaded
+      // and no slot has been taken.
+      const consent = await recordBookingConsent({
+        firmId: firm.id,
+        acceptTerms,
+        acceptPrivacy,
+        termsVersion,
+        privacyVersion,
+      });
+      if (consent?.error) throw new Error(consent.error);
       if (needEmail) {
         const r = await saveContactEmail(contactEmail);
         if (r?.error) throw new Error(r.error);
@@ -592,28 +615,86 @@ export function BookingWizard({
                 relationship. Formal legal advice and representation begin only on a signed engagement.
               </p>
             )}
+
+            {policiesPublished ? (
+              <fieldset className="flex flex-col gap-3 rounded-card border border-hairline bg-raised px-4 py-[15px]">
+                <legend className="sr-only">Terms and privacy</legend>
+                <label htmlFor="booking-accept-terms" className="flex items-start gap-3 text-13 leading-relaxed text-ink">
+                  <input
+                    id="booking-accept-terms"
+                    name="acceptTerms"
+                    type="checkbox"
+                    className="mt-0.5 size-4 shrink-0"
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    disabled={submitting}
+                  />
+                  <span>
+                    I accept the{" "}
+                    <a href={`/${firm.slug}/terms`} target="_blank" rel="noreferrer" className="font-medium text-brand underline">
+                      terms of service
+                    </a>{" "}
+                    (version {termsVersion}).
+                  </span>
+                </label>
+                <label htmlFor="booking-accept-privacy" className="flex items-start gap-3 text-13 leading-relaxed text-ink">
+                  <input
+                    id="booking-accept-privacy"
+                    name="acceptPrivacy"
+                    type="checkbox"
+                    className="mt-0.5 size-4 shrink-0"
+                    checked={acceptPrivacy}
+                    onChange={(e) => setAcceptPrivacy(e.target.checked)}
+                    disabled={submitting}
+                  />
+                  <span>
+                    I have read the{" "}
+                    <a href={`/${firm.slug}/privacy`} target="_blank" rel="noreferrer" className="font-medium text-brand underline">
+                      privacy notice
+                    </a>{" "}
+                    (version {privacyVersion}).
+                  </span>
+                </label>
+                <p className="text-11 leading-relaxed text-ink-muted">
+                  Both open in a new tab. Your acceptance is recorded with your account when you confirm.
+                </p>
+              </fieldset>
+            ) : (
+              <Alert kind="info">
+                {firm.name} has not published its terms of service and privacy notice yet, so it cannot
+                take bookings online. Please contact the firm directly.
+              </Alert>
+            )}
           </>
         )}
       </div>
 
       <div className="pt-5">
         {step === "review" ? (
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={submit}
-            disabled={!user || submitting || (needEmail && !contactEmail)}
-          >
-            {submitting
-              ? "Holding your slot…"
-              : !user
-                ? "Sign in to confirm"
-                : paysNow
-                  ? `Confirm and pay ${formatMoneyMinor(totalMinor, service!.currency)}`
-                  : invoicedAfter
-                    ? `Confirm booking: ${formatMoneyMinor(totalMinor, service!.currency)} will be invoiced`
-                    : "Confirm booking"}
-          </Button>
+          <>
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={submit}
+              disabled={!user || submitting || (needEmail && !contactEmail) || !consentGiven}
+              aria-describedby={user && policiesPublished && !consentGiven ? "booking-consent-needed" : undefined}
+            >
+              {submitting
+                ? "Holding your slot…"
+                : !user
+                  ? "Sign in to confirm"
+                  : paysNow
+                    ? `Confirm and pay ${formatMoneyMinor(totalMinor, service!.currency)}`
+                    : invoicedAfter
+                      ? `Confirm booking: ${formatMoneyMinor(totalMinor, service!.currency)} will be invoiced`
+                      : "Confirm booking"}
+            </Button>
+            {user && policiesPublished && !consentGiven && (
+              <p id="booking-consent-needed" className="mt-2 text-center text-11 text-ink-muted">
+                Tick both boxes above to confirm.
+              </p>
+            )}
+          </>
         ) : (
           <Button size="lg" className="w-full" onClick={next} disabled={!canProceed}>
             Continue

@@ -621,7 +621,7 @@ export default async function FirmClientPage({
             {consents.length === 0 ? (
               <EmptyState
                 title="No consent recorded"
-                hint="A consent is written when the client accepts your terms, your privacy notice or a recording — usually as they book or as they first open the client app."
+                hint="A consent is written when the client accepts your terms of service and privacy notice: when they book online, or when they first open the client app."
               />
             ) : (
               <>

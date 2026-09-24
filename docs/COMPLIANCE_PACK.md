@@ -111,7 +111,7 @@ circumstances, finances. Treat every matter record as capable of holding sensiti
 | Table | Personal data | Note |
 |---|---|---|
 | `audit_log` | `actor_id`, `action`, `entity`, `entity_id`, `meta` | **Append-only**: insert, update and delete are revoked from every API role; `audit()` is the only writer. **No address column**: there was one, never populated, and it was dropped (migration 24) rather than filled — Postgres cannot see a request's address, and a value a caller can forge has no place in a table people read as forensic |
-| `consent_records` | see §2 | The `ip` and `user_agent` columns are likewise **never populated** — `recordConsent` in `app/app/(portal)/actions.ts` writes `user_id`, `firm_id`, `kind` and `version` only |
+| `consent_records` | see §2 | The `ip` and `user_agent` columns are likewise **never populated** — `record_consent()` (migration 52), which the portal gate and the booking wizard both call, writes `user_id`, `firm_id`, `kind` and `version` only |
 | `rate_limits` | For a signed-in caller the key **is** `auth.uid()`; for an anonymous one it is a SHA-256 digest of the client address, computed in `src/lib/rate-limit.ts` — **the address itself never reaches the database** | No RLS policy at all: only `rate_limit_hit()` touches it. Rows older than a day are swept opportunistically inside that function |
 | `webhook_events` | provider, event type, provider reference, outcome, firm, invoice | Never the body of a verified event |
 | `domain_requests` | `requested_by`, `decided_by` | |
@@ -155,7 +155,11 @@ Three buckets (migration 4). Object paths carry the tenant, and the storage poli
 - **Read** is `user_id = auth.uid() or is_firm_member(firm_id)` — the person, and the firm. Matter content (the matter, its documents and their bytes, updates, messages, tasks, court events, parties, counsel, process served, invoices) is further gated by `can_see_matter()` since migration 29: a matter a firm has restricted to its team is readable and writable only by that team — owners and admins included — and every definer function that takes a matter asks the same. Off by default; a firm switches it on.
 - **There is no update policy and no delete policy.** In practice the table is append-only: a
   consent record cannot be altered or removed through the API.
-- `ip` and `user_agent` columns exist and are **not populated** by the portal's consent action.
+- `ip` and `user_agent` columns exist and are **not populated** by `record_consent()`.
+- The app records through `record_consent(firm)` (migration 52): it writes both rows for `auth.uid()`
+  at the versions in `firms.policies` at that moment, refuses a firm that is not active or has not
+  published, and writes nothing when the caller already holds those versions. Direct inserts are
+  still allowed while the frontend deployed from `main` uses them; a later migration removes them.
 
 ### The version chain
 
@@ -174,6 +178,9 @@ A firm's policy documents live in `firms.policies`, and **each document carries 
    version shows the consent gate and the client goes no further until they accept.
 5. Accepting writes two rows — one `terms`, one `privacy` — each stamped with the exact version
    string in force at that moment.
+6. The booking wizard's review step shows the same two boxes, unticked, and records the acceptance
+   the same way before it uploads a file or books. `book_appointment()` does not yet refuse a
+   booking without it.
 
 **Changing a version string is therefore a deliberate act with a consequence**: every client of
 that firm is asked to consent again at their next sign-in, and none of them can use the portal
