@@ -924,8 +924,8 @@ export function SignInForms({
       {mode === "email" && !signedIn && emailSent && sentToEmail && (
         <div className="space-y-3">
           <Alert kind="success" title="Check your email">
-            We sent a secure sign-in link to {sentToEmail}. Open it on this phone or computer to sign in.
-            It works once and expires after a short time.
+            We sent a sign-in link to {sentToEmail}. Open it on this device, in the same browser,
+            to continue. It works once and expires after a short time.
           </Alert>
           {/* The email path had no way back at all: a link sent to an address with a typo in it was
               unrecoverable without switching tabs twice. The frequency limit is per address and the
