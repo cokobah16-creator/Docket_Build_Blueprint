@@ -16,21 +16,23 @@ async function fetchFirmPublic(filter: string): Promise<FirmPublic | null> {
   const cached = cache.get(filter);
   if (cached && cached.expires > Date.now()) return cached.value;
 
-  let value: FirmPublic | null = null;
+  // Only an answer is cached: a firm, or "no such firm". A failed request (a network error, or
+  // PostgREST refusing the select, as it does with 42703 when the app is deployed ahead of a
+  // migration that adds a column named above) returns null this time and is asked again on the
+  // next request. Caching it would show "no such firm" for every tenant for the whole minute.
   try {
     const res = await fetch(
       `${url}/rest/v1/firm_public?select=id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency,verified,vat_rate,rc_number&${filter}&limit=1`,
       { headers: restHeaders(key) },
     );
-    if (res.ok) {
-      const rows = (await res.json()) as FirmPublic[];
-      value = rows[0] ?? null;
-    }
+    if (!res.ok) return null;
+    const rows = (await res.json()) as FirmPublic[];
+    const value = rows[0] ?? null;
+    cache.set(filter, { value, expires: Date.now() + CACHE_TTL_MS });
+    return value;
   } catch {
-    value = null;
+    return null;
   }
-  cache.set(filter, { value, expires: Date.now() + CACHE_TTL_MS });
-  return value;
 }
 
 export async function firmBySlug(slug: string): Promise<FirmPublic | null> {

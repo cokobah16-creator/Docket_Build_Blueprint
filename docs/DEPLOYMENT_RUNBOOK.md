@@ -790,6 +790,33 @@ select proname, proacl from pg_proc where proname in ('registry_notice_fanout', 
 `registry_notice_fanout` may be executable by nobody but the definer; `registry_pilot_health` by
 `authenticated` (it refuses inside, by `is_platform_admin()`).
 
+**51 and 52 go before the app.** App first breaks every tenant site and every booking.
+
+- **51.** The tenant resolver (`src/lib/tenant.ts`) selects `vat_rate` and `rc_number` from
+  `firm_public`, and those two columns exist only after 51. Middleware resolves every firm host
+  through it, and so do the portal and console pages that load a firm by id. Against a schema
+  without them, PostgREST answers 42703 and no firm resolves: each firm's public site, its booking
+  page and those pages behave as if the firm did not exist.
+- **52.** The booking wizard's confirm step and the portal's consent gate both call
+  `record_consent(p_firm, p_terms_version, p_privacy_version)`, which exists only after 52.
+  Without it, every booking stops at "Your acceptance was not saved", and a client who has not
+  yet accepted the firm's current versions cannot get past the gate.
+
+Schema first is harmless. 51 appends two columns to `firm_public`, and the deployed resolver names
+its own columns, so it does not see them. 52 adds a function the deployed front end never calls,
+and leaves direct insert on `consent_records` open, so the deployed gate keeps working.
+
+A failed read of `firm_public` is not cached, so the sites come back on the first request after
+51 lands. A successful read, including "no such firm", is still cached for a minute.
+
+Apply 51 and 52, then deploy. To confirm afterwards:
+
+```sql
+select vat_rate, rc_number from firm_public limit 1;                       -- no error
+select pg_get_function_identity_arguments('public.record_consent'::regproc);
+-- p_firm uuid, p_terms_version text, p_privacy_version text
+```
+
 | | As of 13 Sep 2026, 16:05 UTC | Reconciled against |
 |---|---|---|
 | **App** | `68439d9` (the merge of PR #23), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
