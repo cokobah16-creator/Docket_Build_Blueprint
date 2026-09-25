@@ -1,11 +1,14 @@
 "use client";
 
 // First-login consent capture (NDPA): the client accepts the firm's current
-// terms and privacy notice; versions are recorded in consent_records by the
-// recordConsent server action.
+// terms and privacy notice. The recordConsent server action records it through
+// record_consent(), which is given the versions shown here. It writes both rows
+// for the signed-in person only when those are the versions the firm has
+// published, so a change the client has not seen is refused, not recorded.
 
-import { useState } from "react";
-import { recordConsent } from "./actions";
+import { useActionState } from "react";
+import { recordConsent, type ConsentState } from "./actions";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 
@@ -24,24 +27,24 @@ export function ConsentGate({
   termsUrl: string | null;
   privacyUrl: string | null;
 }) {
-  const [busy, setBusy] = useState(false);
+  const [state, action, pending] = useActionState<ConsentState, FormData>(recordConsent, {});
 
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4 py-12">
       <Card>
         <CardHeader title={`Before you continue with ${firmName}`} />
         <CardBody>
-          <form
-            action={recordConsent}
-            onSubmit={() => setBusy(true)}
-            className="space-y-4"
-          >
+          <form action={action} className="space-y-4">
             <input type="hidden" name="firmId" value={firmId} />
-            <input type="hidden" name="termsVersion" value={termsVersion} />
-            <input type="hidden" name="privacyVersion" value={privacyVersion} />
+            <input type="hidden" name="shownTermsVersion" value={termsVersion} />
+            <input type="hidden" name="shownPrivacyVersion" value={privacyVersion} />
 
-            <label className="flex items-start gap-3 text-15 text-ink">
-              <input type="checkbox" required className="mt-1 h-4 w-4" />
+            {state.error && (
+              <Alert kind="error">{state.error}</Alert>
+            )}
+
+            <label htmlFor="consent-accept-terms" className="flex items-start gap-3 text-15 text-ink">
+              <input id="consent-accept-terms" name="acceptTerms" type="checkbox" required className="mt-1 h-4 w-4" />
               <span>
                 I accept the{" "}
                 {termsUrl ? (
@@ -55,8 +58,8 @@ export function ConsentGate({
               </span>
             </label>
 
-            <label className="flex items-start gap-3 text-15 text-ink">
-              <input type="checkbox" required className="mt-1 h-4 w-4" />
+            <label htmlFor="consent-accept-privacy" className="flex items-start gap-3 text-15 text-ink">
+              <input id="consent-accept-privacy" name="acceptPrivacy" type="checkbox" required className="mt-1 h-4 w-4" />
               <span>
                 I have read the{" "}
                 {privacyUrl ? (
@@ -70,8 +73,8 @@ export function ConsentGate({
               </span>
             </label>
 
-            <Button type="submit" size="lg" className="w-full" disabled={busy}>
-              {busy ? "Saving…" : "Agree and continue"}
+            <Button type="submit" size="lg" className="w-full" disabled={pending}>
+              {pending ? "Saving…" : "Agree and continue"}
             </Button>
           </form>
         </CardBody>

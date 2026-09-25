@@ -938,7 +938,8 @@ function PoliciesSection({ firmId, policies, policyDocumentsAtRisk }: FirmSettin
           A document with no version, or one whose version begins “0-” — Docket's mark for “not
           published yet” — counts as unpublished, and while either stands every booking is refused
           with: “this firm has not published its terms and privacy notice yet”. Give both documents
-          a real version to open bookings.
+          a real version, and their text or a link to them, to open bookings. Clients read the
+          document before they accept that version.
         </Alert>
       )}
 

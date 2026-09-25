@@ -11,7 +11,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
-import { formatMoneyMinor } from "@/lib/money";
+import { formatMoneyMinor, formatPriceWithVat, vatMinor } from "@/lib/money";
+import { policyDocumentHref, publishedPolicyText } from "@/lib/policy-text";
 import type {
   AppointmentSlot,
   BookingResult,
@@ -27,7 +28,7 @@ import { Input, Select, chipClasses, choiceCardClasses } from "@/components/ui/i
 import { Alert } from "@/components/ui/alert";
 import { Icon, type IconName } from "@/components/ui/icon";
 import { cn } from "@/lib/cn";
-import { bookAppointment, startPayment, saveContactEmail } from "@/lib/actions/booking";
+import { bookAppointment, recordBookingConsent, startPayment, saveContactEmail } from "@/lib/actions/booking";
 
 type Step = "service" | "mode" | "when" | "intake" | "review";
 type Mode = "virtual" | "in_person" | "phone";
@@ -117,11 +118,35 @@ export function BookingWizard({
   const [pendingResume, setPendingResume] = useState(resume);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  // Two boxes, never ticked for the client, and not remembered across the sign-in round trip:
+  // the acceptance is given on the screen where it is recorded.
+  const [acceptTerms, setAcceptTerms] = useState(false);
+  const [acceptPrivacy, setAcceptPrivacy] = useState(false);
 
   const service = services.find((s) => s.id === serviceId);
   const lawyer = lawyers.find((l) => l.id === lawyerId);
+  // The firm's VAT rate, as a percentage. book_appointment() adds vatMinor(price, rate) to a priced
+  // booking and raises the invoice for the total, so every figure a client is asked to confirm
+  // here is that total, worked out the same way.
+  const vatRate = Number(firm.vat_rate) || 0;
+  const feeMinor = service?.price_minor ?? 0;
+  const vatOnFee = vatMinor(feeMinor, vatRate);
+  const totalMinor = feeMinor + vatOnFee;
+  // requires_prepayment defaults to true in the database, so only an explicit false is "invoiced
+  // after". A prepaid booking waits for payment with a 15-minute hold; any other priced booking is
+  // made at once with its invoice already raised, and nothing is paid here.
+  const paysNow = feeMinor > 0 && service?.requires_prepayment !== false;
+  const invoicedAfter = feeMinor > 0 && service?.requires_prepayment === false;
   const form = service ? forms.find((f) => f.service_id === service.id) ?? forms.find((f) => f.service_id === null) : undefined;
   const lawyerTz = lawyer?.timezone ?? firm.timezone;
+  // The versions the client is asked to accept. A '0-' version is the unpublished skeleton every
+  // firm starts with, and book_appointment() refuses to book until both are published, so the
+  // boxes are only offered when there is something to accept.
+  const termsVersion = firm.policies.terms?.version ? String(firm.policies.terms.version) : null;
+  const privacyVersion = firm.policies.privacy?.version ? String(firm.policies.privacy.version) : null;
+  const policiesPublished =
+    termsVersion !== null && privacyVersion !== null && !termsVersion.startsWith("0-") && !privacyVersion.startsWith("0-");
+  const consentGiven = policiesPublished && acceptTerms && acceptPrivacy;
 
   const steps = useMemo<Step[]>(() => {
     const s: Step[] = ["service", "mode", "when"];
@@ -234,9 +259,20 @@ export function BookingWizard({
 
   async function submit() {
     if (!supabase || !user || !service || !lawyerId || !slot || !mode) return;
+    if (!consentGiven || !termsVersion || !privacyVersion) return;
     setSubmitting(true);
     setError(null);
     try {
+      // The acceptance is recorded first, so a refusal stops here: no file has been uploaded
+      // and no slot has been taken.
+      const consent = await recordBookingConsent({
+        firmId: firm.id,
+        acceptTerms,
+        acceptPrivacy,
+        termsVersion,
+        privacyVersion,
+      });
+      if (consent?.error) throw new Error(consent.error);
       if (needEmail) {
         const r = await saveContactEmail(contactEmail);
         if (r?.error) throw new Error(r.error);
@@ -277,11 +313,27 @@ export function BookingWizard({
       }
       const result = booked.booking;
       try { sessionStorage.removeItem(storageKey); } catch { /* ignore */ }
-      if (result.status === "awaiting_payment") {
+      // The button promised a figure; the database raised the invoice for its own. They differ only
+      // when the firm's price or VAT rate changed after the figures on this page were read (the
+      // firm row and the catalogue are cached for a minute or two). Then no checkout is opened for
+      // an amount the client never agreed to: the appointment page shows the invoice total, and
+      // the client pays from there or does not.
+      const totalChanged =
+        result.invoice_id !== null &&
+        (Number(result.amount_minor) !== totalMinor || result.currency !== service.currency);
+      // The same goes for WHETHER to pay now. Checkout opens only when this page said so
+      // (paysNow) and the database agrees (awaiting_payment). When the two differ, the service
+      // changed after the page read it, and the appointment page says what happens instead.
+      const paymentChanged = (result.status === "awaiting_payment") !== paysNow;
+      if (result.status === "awaiting_payment" && paysNow && !totalChanged) {
         const r = await startPayment(result.appointment_id);
         if (r?.error) throw new Error(r.error);
       } else {
-        router.push(`/app/appointments/${result.appointment_id}`);
+        const flags = new URLSearchParams();
+        if (totalChanged) flags.set("total", "changed");
+        if (paymentChanged) flags.set("payment", "changed");
+        const query = flags.toString();
+        router.push(`/app/appointments/${result.appointment_id}${query ? `?${query}` : ""}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
@@ -301,7 +353,7 @@ export function BookingWizard({
   }
 
   const stepNumber = stepIdx + 1;
-  const feeMinor = service?.price_minor ?? 0;
+  const cancellationText = publishedPolicyText(firm.policies.cancellation);
 
   return (
     <div className="booking-wizard">
@@ -346,7 +398,7 @@ export function BookingWizard({
                 <span className="block text-15 font-semibold text-ink">{s.name}</span>
                 {s.description && <span className="mt-1 block text-13 leading-[1.45] text-ink-muted">{s.description}</span>}
                 <span className="mt-1.5 block text-13 font-semibold text-brand">
-                  {formatMoneyMinor(s.price_minor, s.currency)} · {s.duration_min} minutes
+                  {formatPriceWithVat(s.price_minor, s.currency, vatRate)} · {s.duration_min} minutes
                 </span>
               </button>
             ))}
@@ -394,7 +446,7 @@ export function BookingWizard({
             <p className="text-13 leading-relaxed text-ink-muted">
               Times are shown in your timezone ({visitorTz})
               {visitorTz !== lawyerTz ? `, and the lawyer's (${lawyerTz}) under each` : ", the same as the lawyer's"}.
-              The slot is held for fifteen minutes while you pay.
+              {paysNow ? " The slot is held for fifteen minutes while you pay." : ""}
             </p>
 
             {/* The lawyer decides which slots exist, so the choice sits here. */}
@@ -495,7 +547,7 @@ export function BookingWizard({
 
         {step === "review" && service && slot && mode && (
           <>
-            <StepTitle>Review and {feeMinor > 0 ? "pay" : "confirm"}</StepTitle>
+            <StepTitle>Review and {paysNow ? "pay" : "confirm"}</StepTitle>
             <dl className="flex flex-col gap-3 rounded-card border border-hairline bg-raised px-4 py-[15px] text-13">
               <Row label="Service" value={service.name} />
               <Row label="Lawyer" value={lawyerName(lawyer, firm.name)} />
@@ -510,15 +562,26 @@ export function BookingWizard({
                 }
               />
               <Row label="Duration" value={`${service.duration_min} minutes`} />
-              <div className="border-t border-hairline pt-3">
-                <Row label="Fee" value={formatMoneyMinor(service.price_minor, service.currency)} bold />
+              <div className="flex flex-col gap-3 border-t border-hairline pt-3">
+                <Row label="Fee" value={formatMoneyMinor(feeMinor, service.currency)} bold={feeMinor === 0} />
+                {feeMinor > 0 && vatRate > 0 && (
+                  <Row label={`VAT at ${vatRate}%`} value={formatMoneyMinor(vatOnFee, service.currency)} />
+                )}
+                {feeMinor > 0 && <Row label="Total" value={formatMoneyMinor(totalMinor, service.currency)} bold />}
               </div>
             </dl>
 
-            {feeMinor > 0 && (
+            {paysNow && (
               <Alert kind="notice">
                 Your slot is held for <strong>15 minutes</strong> while you pay. The fee settles to{" "}
                 {firm.name}&apos;s own account — Docket never holds it.
+              </Alert>
+            )}
+            {invoicedAfter && (
+              <Alert kind="notice">
+                Nothing is paid now. Booking raises an invoice for{" "}
+                <strong>{formatMoneyMinor(totalMinor, service.currency)}</strong>. You will find it on the
+                appointment page and under Payments.
               </Alert>
             )}
 
@@ -549,8 +612,8 @@ export function BookingWizard({
               />
             )}
 
-            {firm.policies.cancellation?.text ? (
-              <p className="text-11 leading-relaxed text-ink-muted">{String(firm.policies.cancellation.text)}</p>
+            {cancellationText ? (
+              <p className="text-11 leading-relaxed text-ink-muted">{cancellationText}</p>
             ) : null}
             {firm.policies.disclaimer?.text ? (
               <p className="text-11 leading-relaxed text-ink-muted">{String(firm.policies.disclaimer.text)}</p>
@@ -560,26 +623,86 @@ export function BookingWizard({
                 relationship. Formal legal advice and representation begin only on a signed engagement.
               </p>
             )}
+
+            {policiesPublished ? (
+              <fieldset className="flex flex-col gap-3 rounded-card border border-hairline bg-raised px-4 py-[15px]">
+                <legend className="sr-only">Terms and privacy</legend>
+                <label htmlFor="booking-accept-terms" className="flex min-h-[44px] items-center gap-3 text-13 leading-relaxed text-ink">
+                  <input
+                    id="booking-accept-terms"
+                    name="acceptTerms"
+                    type="checkbox"
+                    className="size-4 shrink-0"
+                    checked={acceptTerms}
+                    onChange={(e) => setAcceptTerms(e.target.checked)}
+                    disabled={submitting}
+                  />
+                  <span>
+                    I accept the{" "}
+                    <a href={policyDocumentHref(firm.policies.terms, `/${firm.slug}/terms`)} target="_blank" rel="noreferrer" className="font-medium text-brand underline">
+                      terms of service
+                    </a>{" "}
+                    (version {termsVersion}).
+                  </span>
+                </label>
+                <label htmlFor="booking-accept-privacy" className="flex min-h-[44px] items-center gap-3 text-13 leading-relaxed text-ink">
+                  <input
+                    id="booking-accept-privacy"
+                    name="acceptPrivacy"
+                    type="checkbox"
+                    className="size-4 shrink-0"
+                    checked={acceptPrivacy}
+                    onChange={(e) => setAcceptPrivacy(e.target.checked)}
+                    disabled={submitting}
+                  />
+                  <span>
+                    I have read the{" "}
+                    <a href={policyDocumentHref(firm.policies.privacy, `/${firm.slug}/privacy`)} target="_blank" rel="noreferrer" className="font-medium text-brand underline">
+                      privacy notice
+                    </a>{" "}
+                    (version {privacyVersion}).
+                  </span>
+                </label>
+                <p className="text-11 leading-relaxed text-ink-muted">
+                  Both open in a new tab. Your acceptance is recorded with your account when you confirm.
+                </p>
+              </fieldset>
+            ) : (
+              <Alert kind="info">
+                {firm.name} has not published its terms of service and privacy notice yet, so it cannot
+                take bookings online. Please contact the firm directly.
+              </Alert>
+            )}
           </>
         )}
       </div>
 
       <div className="pt-5">
         {step === "review" ? (
-          <Button
-            size="lg"
-            className="w-full"
-            onClick={submit}
-            disabled={!user || submitting || (needEmail && !contactEmail)}
-          >
-            {submitting
-              ? "Holding your slot…"
-              : !user
-                ? "Sign in to confirm"
-                : feeMinor > 0
-                  ? `Confirm and pay ${formatMoneyMinor(service!.price_minor, service!.currency)}`
-                  : "Confirm booking"}
-          </Button>
+          <>
+            <Button
+              size="lg"
+              className="w-full"
+              onClick={submit}
+              disabled={!user || submitting || (needEmail && !contactEmail) || !consentGiven}
+              aria-describedby={user && policiesPublished && !consentGiven ? "booking-consent-needed" : undefined}
+            >
+              {submitting
+                ? "Holding your slot…"
+                : !user
+                  ? "Sign in to confirm"
+                  : paysNow
+                    ? `Confirm and pay ${formatMoneyMinor(totalMinor, service!.currency)}`
+                    : invoicedAfter
+                      ? `Confirm booking: ${formatMoneyMinor(totalMinor, service!.currency)} will be invoiced`
+                      : "Confirm booking"}
+            </Button>
+            {user && policiesPublished && !consentGiven && (
+              <p id="booking-consent-needed" className="mt-2 text-center text-11 text-ink-muted">
+                Tick both boxes above to confirm.
+              </p>
+            )}
+          </>
         ) : (
           <Button size="lg" className="w-full" onClick={next} disabled={!canProceed}>
             Continue
@@ -711,7 +834,7 @@ function IntakeField({
         onChange={(e) => onFiles(Array.from<File>(e.target.files ?? []).slice(0, q.max_files ?? 1))}
       />
       {files.length > 0 && <p className="text-11 text-ink-muted">{files.map((f) => f.name).join(", ")}</p>}
-      <p className="text-11 text-ink-muted">PDF or images, up to 25 MB each. Uploaded securely after you sign in.</p>
+      <p className="text-11 text-ink-muted">PDF or images, up to 25 MB each. Uploaded to private storage for the firm when you confirm.</p>
     </div>
   );
 }

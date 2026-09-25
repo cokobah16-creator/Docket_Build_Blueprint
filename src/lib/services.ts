@@ -9,7 +9,7 @@ export async function activeServices(firmId: string): Promise<ServiceRow[]> {
   if (!url || !key) return [];
   try {
     const res = await fetch(
-      `${url}/rest/v1/services?select=id,slug,name,description,price_minor,currency,duration_min,virtual_available,is_active,sort,firm_id` +
+      `${url}/rest/v1/services?select=id,slug,name,description,price_minor,currency,duration_min,virtual_available,requires_prepayment,is_active,sort,firm_id` +
         `&firm_id=eq.${encodeURIComponent(firmId)}&is_active=eq.true&order=sort.asc`,
       {
         headers: restHeaders(key),
@@ -22,5 +22,3 @@ export async function activeServices(firmId: string): Promise<ServiceRow[]> {
     return [];
   }
 }
-
-export { formatMoneyMinor } from "@/lib/money";

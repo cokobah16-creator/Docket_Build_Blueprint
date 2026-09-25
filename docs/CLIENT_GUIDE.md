@@ -48,9 +48,12 @@ and a message cannot be unsent.
 
 ## Agreeing to your firm's terms
 
-The first time you open the portal for a firm, you are asked to accept **that firm's** terms of
-service and privacy notice. You cannot go further until you do — and that is the point: you should
-know what you are agreeing to before your lawyer starts work.
+You are asked to accept **that firm's** terms of service and privacy notice in two places: on the
+last step of booking a consultation (see *Booking a consultation*, step 7), and when you open the
+portal for that firm. The portal asks only if you have not already accepted the versions the firm
+has published, so if you accepted them when you booked, it does not ask again. You cannot go
+further until you do — and that is the point: you should know what you are agreeing to before your
+lawyer starts work.
 
 A few things worth knowing:
 
@@ -72,8 +75,8 @@ You accept each firm's documents separately. Working with two firms on Docket me
 
 From your firm's website, choose **Book**. The steps are:
 
-1. **The service** — what you need, how long it takes, and what it costs. The price shown is the
-   price, with VAT already worked out where the firm charges it.
+1. **The service** — what you need, how long it takes, and what it costs. Where the firm charges
+   VAT, the price shown already includes it and says "incl. VAT".
 2. **How** — video, in person, or by phone. Only the options that firm offers appear.
 3. **Which lawyer.**
 4. **A day, then a time.** The times you are offered are real: Docket has already checked that
@@ -83,7 +86,19 @@ From your firm's website, choose **Book**. The steps are:
 5. **The firm's questions**, if it asks any. Answer what you can; only the questions marked
    required must be filled in.
 6. **Sign in**, if you have not already — right there, without losing your place.
-7. **Confirm.**
+7. **Confirm.** For a paid consultation, the last screen shows the fee, the VAT if the firm
+   charges it, and the total. If the fee is paid in advance, the button reads **Confirm and pay**
+   with the total. If the firm invoices it after booking, nothing is paid there, and the button says
+   the total will be invoiced.
+
+   Just above the button are two boxes: one to accept the firm's terms of service, and one to say
+   you have read its privacy notice. Each shows the version you are accepting. The name of each
+   document is a link that opens it in a new tab, so you keep your place. Neither box is ticked for
+   you, and the button stays off until you tick both. Your acceptance is recorded when you press
+   the button, before anything is booked. If the firm has published a new version since the page
+   was loaded, nothing is recorded or booked, and you are asked to reload the page and read the new
+   version. If the firm has not published its terms and privacy notice yet, there are no boxes: a
+   note says the firm cannot take bookings online, and the button stays off.
 
 ### Before your consultation
 
@@ -98,7 +113,10 @@ confirms the booking from its side, and you are told when it does.
 
 If the consultation is paid in advance, your slot is **held for fifteen minutes** while you pay.
 You go to Paystack's own checkout page — Docket never sees your card — and come back when it is
-done.
+done. If the invoice turns out to be for a different total from the one you were shown, you go to
+the appointment page instead, so you can check the amount before you pay. You also go there, and
+not to checkout, if the booking turns out to need payment now when the page said it would not, or
+the other way round. The appointment page says which.
 
 **The money goes to your firm**, into its own account. Docket does not hold it and cannot touch it.
 
@@ -107,14 +125,20 @@ page finishes loading. If you have paid and the app has not caught up, wait a mi
 before worrying. Your reference number is on the appointment.
 
 If you do not pay within fifteen minutes the hold is released and the time goes back to whoever
-wants it. Nothing is charged and you can simply book again.
+wants it, and you can simply book again. Do not finish a payment after that: the money still
+reaches the firm, and only the firm can refund it.
+
+If the firm invoices the fee after booking, you book without paying. The invoice for the total is
+raised at once, and you find it on the appointment page and under **Payments**.
 
 If the consultation is free, it is confirmed straight away.
 
 ### Changing or cancelling
 
-You can cancel a consultation you have booked, as long as it has not started. Your firm's own
-cancellation policy — including any free-cancellation window — is in its policy documents.
+You can cancel a consultation you have booked, as long as it has not started. Cancelling does
+not refund a payment by itself: any refund is the firm's to make. If your firm has published a
+cancellation policy, it appears when you book and with the consultation, and usually on the
+firm's terms page too; otherwise ask the firm.
 
 To **move** a consultation, ask the firm: rescheduling is theirs to do, so that the new time is
 checked against the lawyer's diary properly.
@@ -288,7 +312,7 @@ saying so, with **Read and sign**.
 |---|---|
 | **The sign-in code has not arrived** | Wait a minute and ask once more. If it still does not come, ask your firm to check the number it holds for you |
 | **I paid and it still says awaiting payment** | Wait a minute and refresh. Confirmation waits for Paystack, not for the page. If it does not clear, tell your firm your reference and the Paystack receipt |
-| **My slot expired while I was paying** | The fifteen-minute hold ran out. Nothing was charged. Book again |
+| **My slot expired while I was paying** | The fifteen-minute hold ran out, and the slot is released soon after. If no payment went through, book again. If Paystack took a payment and the appointment now says cancelled, tell your firm your reference and the Paystack receipt |
 | **The Join button is not there** | It appears ten minutes before the start time, and only for a confirmed consultation |
 | **I cannot get past the terms screen** | Both boxes must be ticked. If the firm has just published a new version, you are being asked again on purpose |
 | **A document will not open** | The link has expired: it works for two minutes, or ten when you open a document to sign. Tap it again to get a new one |

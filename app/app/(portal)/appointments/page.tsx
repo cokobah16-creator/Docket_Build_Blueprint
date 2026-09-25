@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { selectedFirm } from "@/lib/portal-firm";
+import { publishedPolicyText } from "@/lib/policy-text";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
 import { StatusPill, type Status } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -64,6 +65,9 @@ export default async function AppointmentsPage() {
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at));
   const past = appointments.filter((a) => new Date(a.ends_at).getTime() < now);
   const bookHref = firm ? `/${firm.slug}/book` : null;
+  // The list shows one firm's appointments when a firm is selected, so its own published
+  // cancellation text applies to every row. A "0-" draft is not the firm's policy and is not shown.
+  const cancellationText = firm ? publishedPolicyText(firm.policies.cancellation) : null;
 
   const row = (a: AppointmentRow) => {
     const live = isLive(a, now);
@@ -122,9 +126,10 @@ export default async function AppointmentsPage() {
                 Join then; there is nothing to install.
               </p>
               <p className="text-13 leading-relaxed text-ink-muted">
-                Rescheduling and cancellation are on each appointment, free of charge up to 24
-                hours before it.
+                You can cancel an upcoming consultation from its page. To move it to another time,
+                contact the firm.
               </p>
+              {cancellationText && <p className="text-13 leading-relaxed text-ink-muted">{cancellationText}</p>}
             </div>
           </Card>
         }

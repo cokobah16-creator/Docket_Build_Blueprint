@@ -74,6 +74,15 @@ export interface FirmPublic {
   timezone: string;
   default_currency: "NGN" | "USD";
   verified: boolean;
+  /**
+   * firms.vat_rate as a percentage (7.5 means 7.5%), numeric(5,2) in the database. Zero means
+   * the firm adds no VAT. book_appointment() adds vatMinor(price_minor, vat_rate) to a priced
+   * booking, so the public site shows the same total (src/lib/money.ts). Added to the view by
+   * migration 51.
+   */
+  vat_rate: number;
+  /** The firm's CAC RC/BN number, if it has given one. Added to the view by migration 51. */
+  rc_number: string | null;
 }
 
 /** firms.policies shape (staff-readable; versions drive consent capture). */
@@ -225,6 +234,12 @@ export interface ServiceRow {
   currency: "NGN" | "USD";
   duration_min: number;
   virtual_available: boolean;
+  /**
+   * True: the fee is paid when booking, and the slot is held for 15 minutes while the client
+   * pays. False: the booking is made without paying, and the invoice for the fee plus VAT is
+   * raised at once for the client to pay later (book_appointment(), migration 35).
+   */
+  requires_prepayment: boolean;
   is_active: boolean;
   sort: number;
 }
@@ -284,9 +299,10 @@ export interface AppointmentSlot {
 export interface BookingResult {
   appointment_id: string;
   reference: string;
-  status: "awaiting_payment" | "confirmed";
+  status: "awaiting_payment" | "pending" | "confirmed";
   invoice_id: string | null;
   invoice_number: string | null;
+  /** The invoice total the database raised: the fee plus the firm's VAT. Zero for a free booking. */
   amount_minor: number;
   currency: "NGN" | "USD";
   hold_expires_at: string | null;

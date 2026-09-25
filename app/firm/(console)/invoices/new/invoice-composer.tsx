@@ -27,7 +27,7 @@ import { useMemo, useRef, useState, useTransition, type SyntheticEvent } from "r
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createInvoice } from "@/lib/actions/invoices";
-import { formatMoneyMinor } from "@/lib/money";
+import { formatMoneyMinor, vatMinor } from "@/lib/money";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -138,7 +138,7 @@ export function InvoiceComposer({
       if (!Number.isFinite(quantity) || !Number.isFinite(unit) || quantity <= 0 || unit < 0) continue;
       subtotal += Math.round(toMinorUnits(unit) * quantity);
     }
-    const vat = Math.round((subtotal * vatRate) / 100);
+    const vat = vatMinor(subtotal, vatRate);
     return { subtotal, vat, total: subtotal + vat };
   }, [lines, vatRate]);
 

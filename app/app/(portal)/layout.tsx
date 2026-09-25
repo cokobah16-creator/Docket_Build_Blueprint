@@ -20,6 +20,7 @@ import { currentFirm, currentFirmSlug } from "@/lib/firm";
 import { selectedFirm } from "@/lib/portal-firm";
 import { isProductionDeployment } from "@/lib/env";
 import { firmSiteHref } from "@/lib/tenant";
+import { policyDocumentHref } from "@/lib/policy-text";
 import { brandFontsUrl, brandStyle } from "@/lib/brand";
 import { ToastProvider } from "@/components/ui/toast";
 import { ServiceWorkerRegistrar } from "@/components/portal/sw-registrar";
@@ -98,10 +99,8 @@ async function consentGateFor(
 
   // Every box the client ticks links a document they can read: the firm's own link when it gave
   // one, else the firm's page for it.
-  const linkOf = async (kind: "terms" | "privacy") => {
-    const url = firm.policies[kind]?.url;
-    return typeof url === "string" && url !== "" ? url : firmDocumentHref(firm, kind);
-  };
+  const linkOf = async (kind: "terms" | "privacy") =>
+    policyDocumentHref(firm.policies[kind], await firmDocumentHref(firm, kind));
   const [termsUrl, privacyUrl] = await Promise.all([linkOf("terms"), linkOf("privacy")]);
 
   return (

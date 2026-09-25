@@ -790,6 +790,37 @@ select proname, proacl from pg_proc where proname in ('registry_notice_fanout', 
 `registry_notice_fanout` may be executable by nobody but the definer; `registry_pilot_health` by
 `authenticated` (it refuses inside, by `is_platform_admin()`).
 
+**51 and 52 go before the app.** The app still works without them, but in a reduced way.
+
+- **51.** The tenant resolver (`src/lib/tenant.ts`) selects `vat_rate` and `rc_number` from
+  `firm_public`, and those two columns exist only after 51. Against a schema without them,
+  PostgREST answers 42703. The resolver then asks again without the two columns and serves the
+  firm with a VAT rate of 0, so the public site shows prices as it did before 51: the fee alone,
+  with no "incl. VAT". The booking wizard opens no checkout when the invoice total differs from
+  the total it showed, so a client is never charged VAT they were not shown.
+- **52.** The booking wizard's confirm step and the portal's consent gate both call
+  `record_consent(p_firm, p_terms_version, p_privacy_version)`, which exists only after 52.
+  Without it, PostgREST answers PGRST202. `src/lib/consent.ts` then checks the versions shown
+  against `firm_public` itself and inserts the rows directly, as the gate did before 52. That
+  check cannot lock the firm's row the way 52 does.
+
+Schema first is harmless. 51 appends two columns to `firm_public`, and the deployed resolver names
+its own columns, so it does not see them. 52 adds a function the deployed front end never calls,
+and leaves direct insert on `consent_records` open, so the deployed gate keeps working. 53 is
+reserved and not written yet. It will revoke that direct insert, so it must wait until the app
+that calls `record_consent()` is live.
+
+A failed read of `firm_public` is not cached. A successful read, including "no such firm", is
+cached for a minute, so the VAT rate appears within a minute of 51 landing.
+
+Apply 51 and 52, then deploy. To confirm afterwards:
+
+```sql
+select vat_rate, rc_number from firm_public limit 1;                       -- no error
+select pg_get_function_identity_arguments('public.record_consent'::regproc);
+-- p_firm uuid, p_terms_version text, p_privacy_version text
+```
+
 | | As of 13 Sep 2026, 16:05 UTC | Reconciled against |
 |---|---|---|
 | **App** | `68439d9` (the merge of PR #23), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
