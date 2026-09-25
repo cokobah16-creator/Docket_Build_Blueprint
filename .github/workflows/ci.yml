@@ -392,12 +392,13 @@ jobs:
 
   # ---------------------------------------------------------------- browser smoke tests
   #
-  # tests/e2e/smoke.spec.ts has four tests: the platform landing, a tenant's public home,
-  # /firm/start and /app/login. Without a configured Supabase the tenant test SKIPS itself
-  # outright, and two of the others drop their real assertions — the sign-in forms render a
-  # "not configured" notice instead of the Phone and Email tabs, because a tenant is resolved
-  # from firm_public and there is nothing to resolve against. What is left is one page load.
-  # That is a green tick that proves nothing, so this job is gated instead of run empty.
+  # tests/e2e/smoke.spec.ts has five tests: the platform landing, no analytics cookie without
+  # consent, a tenant's public home, /firm/start and /app/login. Without a configured Supabase
+  # the tenant test SKIPS itself outright, and two of the others drop their real assertions — the
+  # sign-in forms render a "not configured" notice instead of the Phone and Email tabs, because a
+  # tenant is resolved from firm_public and there is nothing to resolve against. What is left is
+  # one page load and the cookie check. That is a green tick that proves little, so this job is
+  # gated instead of run nearly empty.
   #
   # TO TURN IT ON, set three repository secrets:
   #   NEXT_PUBLIC_SUPABASE_URL       the project URL

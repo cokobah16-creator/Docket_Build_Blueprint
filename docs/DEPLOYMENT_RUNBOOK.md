@@ -389,7 +389,7 @@ Set these in **Settings → Environment Variables** (values and what reads each 
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | the push opt-in. The same public key as the function secret |
 | `DAILY_DOMAIN` | **build-time.** Names the room origin in `Permissions-Policy` so the consultation iframe may use the camera and microphone. Unset, that policy falls back to `*` for those features — it works, but wider than necessary. Changing it needs a redeploy |
 | `VERCEL_TOKEN`, `VERCEL_PROJECT_ID`, `VERCEL_TEAM_ID` | mapping custom domains from `/admin`. `VERCEL_TEAM_ID` only if the project is under a team |
-| `SENTRY_DSN`, `POSTHOG_KEY`, `POSTHOG_HOST` | optional; each is inert when unset |
+| `SENTRY_DSN`, `POSTHOG_KEY`, `POSTHOG_HOST` | optional; each is inert when unset. Setting `POSTHOG_KEY` also turns on the cookie banner, and PostHog then hears only from visitors who choose "Allow analytics". The prerendered landing page reads it at build time, so change it with a redeploy |
 
 **Never set `SUPABASE_SERVICE_ROLE_KEY` on Vercel.** Nothing in `app/` or `src/` reads it and
 nothing may: the only clients there run as the signed-in person so that RLS decides.

@@ -28,10 +28,14 @@
 //     headers, so the policy is set on the request as well as the response, on BOTH branches
 //     below. The nonce also travels as x-nonce so a page can put it on its own script tag.
 //
-//  5. MINT THE VISITOR COOKIE. The funnel in src/lib/observability counts a visitor from the
-//     moment they land on a firm's site, long before they sign in, and identify() later stitches
-//     that anonymous id to the account. Without a cookie minted here the first two steps of the
-//     funnel have no distinct id at all.
+//  5. MINT THE VISITOR COOKIE, BUT ONLY WITH CONSENT. The funnel in src/lib/observability counts a
+//     visitor from the moment they land on a firm's site, long before they sign in, and
+//     identify() later stitches that anonymous id to the account. That id is an analytics
+//     cookie, so it is minted only when POSTHOG_KEY is set AND the visitor has chosen "Allow
+//     analytics" (the docket_consent cookie, src/lib/consent-cookie.ts). Otherwise an id the
+//     browser already holds is expired and kept out of the headers the app reads, so no server
+//     code can count this request under it. The sign-in cookies, dk_firm and dk_staff_firm are
+//     strictly necessary and are not touched by this step.
 //
 // Then the original job: rewrite public paths onto the tenant site at app/(public)/[firm].
 
@@ -46,6 +50,7 @@ import {
   newNonce,
 } from "@/lib/csp";
 import { VISITOR_COOKIE } from "@/lib/observability";
+import { CONSENT_COOKIE, analyticsConfigured, parseConsent } from "@/lib/consent-cookie";
 import { STAFF_FIRM_COOKIE, STAFF_FIRM_MAX_AGE } from "@/lib/staff-firm";
 import { PATHNAME_HEADER } from "@/lib/auth-redirect";
 import { refreshSession } from "@/lib/supabase/middleware";
@@ -65,6 +70,15 @@ const CLIENT_SPOOFABLE = [
 /** One year. Long enough that a returning visitor is still the same person in the funnel. */
 const VISITOR_MAX_AGE = 60 * 60 * 24 * 365;
 
+/** A Cookie header without one cookie in it, or null when nothing is left. */
+function withoutCookie(header: string | null, name: string): string | null {
+  if (!header) return null;
+  const kept = header
+    .split(";")
+    .map((part) => part.trim())
+    .filter((part) => part && part.split("=", 1)[0].trim() !== name);
+  return kept.length > 0 ? kept.join("; ") : null;
+}
 
 /** The same URL with a different path — the tenant rewrite target. */
 function withPathname(request: NextRequest, pathname: string) {
@@ -116,16 +130,30 @@ export async function middleware(request: NextRequest) {
   // the response below carries the other name.
   requestHeaders.set(CSP_REQUEST_HEADER, policy);
 
-  // A visitor who already has an id keeps it; a new one gets it on this response and can be
-  // read on this same render, because it is spliced into the forwarded cookie header too.
+  // The visitor id is an analytics cookie: it exists only while analytics is on for this
+  // deployment and this visitor has allowed it.
+  const analyticsOn =
+    analyticsConfigured() && parseConsent(request.cookies.get(CONSENT_COOKIE)?.value).analytics;
   const existingVisitor = request.cookies.get(VISITOR_COOKIE)?.value;
-  const visitorId = existingVisitor || crypto.randomUUID();
-  if (!existingVisitor) {
-    const cookieHeader = requestHeaders.get("cookie");
+  // With consent, a visitor who already has an id keeps it; a new one gets it on this response
+  // and can be read on this same render, because it is spliced into the forwarded cookie header.
+  const mintedVisitor = analyticsOn && !existingVisitor ? crypto.randomUUID() : null;
+  if (mintedVisitor) {
+    // An empty docket_did= would otherwise be read before the new id.
+    const cookieHeader = withoutCookie(requestHeaders.get("cookie"), VISITOR_COOKIE);
     requestHeaders.set(
       "cookie",
-      cookieHeader ? `${cookieHeader}; ${VISITOR_COOKIE}=${visitorId}` : `${VISITOR_COOKIE}=${visitorId}`,
+      cookieHeader ? `${cookieHeader}; ${VISITOR_COOKIE}=${mintedVisitor}` : `${VISITOR_COOKIE}=${mintedVisitor}`,
     );
+  }
+  // Without consent, an id the browser still holds (minted before this rule, or before the
+  // visitor said no) is taken out of what the app sees here and expired on the response below.
+  // After refreshSession(), because that rewrites the forwarded header from the raw request.
+  const dropVisitor = !analyticsOn && request.cookies.has(VISITOR_COOKIE);
+  if (dropVisitor) {
+    const stripped = withoutCookie(requestHeaders.get("cookie"), VISITOR_COOKIE);
+    if (stripped) requestHeaders.set("cookie", stripped);
+    else requestHeaders.delete("cookie");
   }
 
   const tenantPath =
@@ -167,8 +195,8 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  if (!existingVisitor) {
-    response.cookies.set(VISITOR_COOKIE, visitorId, {
+  if (mintedVisitor) {
+    response.cookies.set(VISITOR_COOKIE, mintedVisitor, {
       path: "/",
       maxAge: VISITOR_MAX_AGE,
       sameSite: "lax",
@@ -177,6 +205,8 @@ export async function middleware(request: NextRequest) {
       httpOnly: true,
       secure: true,
     });
+  } else if (dropVisitor) {
+    response.cookies.delete({ name: VISITOR_COOKIE, path: "/" });
   }
 
   return response;

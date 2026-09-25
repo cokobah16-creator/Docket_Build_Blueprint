@@ -369,6 +369,38 @@ body {
   }
 }
 
+/* The cookie card (src/components/ui/cookie-banner.tsx) and the app shell's
+   fixed chrome (src/components/shell/primary-nav.tsx).
+
+   The card is z-40, under every overlay (dialogs, sheets, toasts and the
+   consultation room are z-50). The shell's phone bottom bar is z-40 too, and at
+   a tie the card, the last thing in body, paints over it: over the only way to
+   move between screens. So where that bar is drawn, the card sits on top of it
+   instead. The bar is 57px (min-h-14 plus its 1px border) plus the safe-area
+   inset it pads itself by, and the card keeps its usual 16px gap above that.
+
+   From 1024px the shell draws a 248px sidebar instead, and a centred 560px card
+   would clip its edge on a narrow desktop. There the card centres in the space
+   beside the sidebar.
+
+   Without :has() both corrections drop out and the card keeps its plain place
+   at the foot of the screen, over the bar, until the visitor answers. That is in
+   the way, but every control on it still works, and overlays still cover it. */
+@supports selector(:has(*)) {
+  @media not all and (min-width: 768px) {
+    body:has([data-dk-bottom-bar]) .dk-cookie-banner {
+      bottom: calc(57px + env(safe-area-inset-bottom));
+      padding-bottom: 16px;
+    }
+  }
+
+  @media (min-width: 1024px) {
+    body:has(.dk-sidebar) .dk-cookie-banner {
+      padding-left: calc(248px + 16px + env(safe-area-inset-left));
+    }
+  }
+}
+
 /* Screens rise a few pixels as they arrive, so a tap reads as a move rather
    than a repaint. The waiting indicator breathes. Both are motion for its own
    sake, so both stop for anyone who has asked them to. */

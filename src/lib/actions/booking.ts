@@ -22,7 +22,8 @@
 //    visitor cookie the tenant site counted on arrival, so the two steps join up without this
 //    file needing to know who the person is; identify() at /auth/callback ties that id to the
 //    account. Properties are facts about the booking (firm, service, amount, currency), never
-//    a name, phone or email. Step three, booking_paid, is NOT emitted anywhere in app/ or src/:
+//    a name, phone or email. It is sent only when this browser chose "Allow analytics"
+//    (consentedVisitorId()). Step three, booking_paid, is NOT emitted anywhere in app/ or src/:
 //    the only honest source is the Paystack webhook after record_payment() succeeds.
 //
 // Nothing here decides anything. book_appointment() checks the firm, the service, the slot and
@@ -30,24 +31,18 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { cookies } from "next/headers";
 import { supabaseServer } from "@/lib/supabase/server";
 import { siteOrigin } from "@/lib/site";
 import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
 import { allow, tooFast } from "@/lib/rate-limit";
-import { FUNNEL, VISITOR_COOKIE, capture } from "@/lib/observability";
+import { FUNNEL, capture } from "@/lib/observability";
+import { consentedVisitorId } from "@/lib/observability/consent";
 import type { BookingResult } from "@/lib/db/types";
 import { after } from "next/server";
 import { userError } from "@/lib/user-error";
 
 /** The appointment_mode enum in migration 1. The database is what refuses anything else. */
 export type BookingMode = "virtual" | "in_person" | "phone";
-
-/** The anonymous id the tenant site was counted under, so the funnel stays one chain. */
-async function visitorId(): Promise<string | null> {
-  const jar = await cookies();
-  return jar.getAll().find((c) => c.name === VISITOR_COOKIE)?.value ?? null;
-}
 
 export interface BookAppointmentInput {
   firmId: string;
@@ -97,7 +92,9 @@ export async function bookAppointment(input: BookAppointmentInput): Promise<Book
   const booking = (data ?? null) as BookingResult | null;
   if (!booking?.appointment_id) return { error: "The booking could not be completed. Try again." };
 
-  const visitor = await visitorId();
+  // The anonymous id the tenant site was counted under, so the funnel stays one chain. Null
+  // without consent, and then nothing is sent.
+  const visitor = await consentedVisitorId();
   if (visitor) {
     // after() so the event survives the response. An un-awaited fetch in a serverless function
     // can be cut off the instant the response flushes.
