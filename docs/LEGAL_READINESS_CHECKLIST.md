@@ -10,16 +10,16 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 
 ## Progress
 
-*Updated 25 September 2026.* The fixes that needed no business or legal decision are in the code. Each item below has a **Done in the code** paragraph that says which steps are done and which remain.
+*Updated 25 September 2026.* Some of the fixes that need no business or legal decision are now in the code, listed below. Others are still open. Examples: item 4's sign-out steps (5 to 7), item 5 step 15, item 7 steps 3 and 14 to 16, item 12 steps 3 and 4, and item 15. Items 1, 5, 6, 7, 10, 12 and 16 each have a **Done in the code** paragraph that says which steps are done and which remain. Item 3 step 13 is done too, as item 12 steps 6 and 7.
 
 | Change | Items | Where |
 |---|---|---|
-| Firm policy text rendered, and the gate always links a readable page | 1, 6 | Lane dF, merge `42180c4`, in PR #40 |
+| Firm policy text rendered, and the gate always links a page | 1, 6 | Lane dF, merge `42180c4`, in PR #40 |
 | False video, message and guide claims removed | 12 | Lane dF, merge `42180c4`, in PR #40 |
 | Analytics only with consent, cookie banner and settings control, `matter_opened` dropped | 5, 7 | Lane dE, merge `14c8fd0`, in PR #40 |
 | VAT-inclusive totals, money claims removed, migration `051` | 10, 12, 16 | Lane dD, merge `4a11f82` |
 | Booking consent on the review step, `record_consent()` in migration `052` | 6 | Lane dD, merge `4a11f82` |
-| Sign-in panel repaired after a bad merge on `main`, so CI is green again | none | `3a6bd85`, `92b0088` |
+| Sign-in panel repaired. A bad merge (`6147a96`, which reached `main` in PR #36) broke Typecheck and Build. CI passes with these commits, and `main` stays red until they land | none | `3a6bd85`, `92b0088` |
 | Tenant sites and booking keep working if the app deploys before `051` or `052` | 6, 10 | `f9f7681` |
 | A policy version needs text, a link or a page; the review step and gate link the same document | 1, 6 | `aa75837` |
 
@@ -84,14 +84,14 @@ Still waiting on a deployment: `053`, the enforcement pass for item 6, which fol
 14. Update `docs/COMPLIANCE_PACK.md` §4 from `src/lib/subprocessors.json`.
 15. Publish tenant #1's notice through `/firm/admin/settings`, not through `seed.sql`.
 
-**Done in the code (merged in PR #40, lane dF).** Steps 1 to 3 are done, for the terms page as well as the privacy page.
+**Done in the code (lane dF, merge `42180c4` in PR #40; the last three points below in `aa75837`).** Steps 1 to 3 are done, for the terms page as well as the privacy page.
 - `PolicyPage` renders the text a firm saves once its version is published, and a link given alongside it is shown beneath.
 - A `0-` draft is skipped, and so is the seeded holding sentence "To be published by the firm before go-live."
 - The placeholder says the version is accepted when the client books online or first opens the portal.
-- The portal consent gate and the booking review step link the same document (`policyDocumentHref` in `src/lib/policy-text.ts`). They use the firm's URL when one is set. Otherwise they link the firm's own `/{slug}/terms` and `/{slug}/privacy`, on the firm's own address.
-- Settings refuses to publish a version with no text, no link and no published page, so a client is never asked to accept a document they cannot read.
+- The portal consent gate and the booking review step link the same document (`policyDocumentHref` in `src/lib/policy-text.ts`). They use the firm's URL when one is set. Otherwise they link the firm's own `/{slug}/terms` and `/{slug}/privacy` page on the current host. In production, when the portal is open on another firm's host, the gate uses the firm's own address instead.
+- Settings refuses to publish a version with no text, no link and no published page. The check runs only when settings saves. The database does not enforce it, and the gate and the review step do not check again. So a version saved before this check, a version written outside settings, or a version whose page is later unpublished can still ask a client to accept a document they cannot read.
 
-Steps 4 to 15, Docket's own notice and its links, wait on the controller and entity decisions.
+Steps 4 to 15, Docket's own notice and its links, wait on the controller and entity decisions. The exception is the firm half of step 11. Once the firm has published, the booking review step that holds `SignInForms` links the firm's privacy notice from its consent box. Only the `/docket/privacy` link is left.
 
 **How to check it.**
 - Extend `tests/e2e/smoke.spec.ts`. On `/`, `/app/login`, `/firm/start` and `/{slug}/book`, a privacy link must exist and return 200.
@@ -236,7 +236,7 @@ Steps 4 to 15, Docket's own notice and its links, wait on the controller and ent
 17. When nothing loads from Google any more, delete `FONT_CSS` and `FONT_FILES` from `src/lib/csp.ts:161-165,221-222`. Also delete the waivers at `tests/fixtures/shots.mjs:104,139` and `tests/fixtures/README.md:273`.
 18. Update `docs/COMPLIANCE_PACK.md`. Mark the PostHog row in §4 as consent-only, add the list from step 13, and add `analytics` and `decision` to §2 (lines 151-152 and 184-192).
 
-**Done in the code (merged in PR #40, lane dE).** Steps 1 to 5, 10, 11 and 14 are done, and so are the cookie parts of steps 9 and 18.
+**Done in the code (merged in PR #40, lane dE).** Steps 1 to 5, 11 and 14 are done. So is step 10, except its link to the cookie notice, and so are the cookie parts of steps 9 and 18.
 - `src/lib/consent-cookie.ts` and `src/lib/observability/consent.ts` exist, and `middleware.ts` mints `docket_did` only with consent and `POSTHOG_KEY`.
 - Without consent, an id the browser still holds is dropped from the forwarded header and expired on the response.
 - `booking_started`, `site_viewed`, `firm_registered` and the sign-in `$identify` send nothing without consent.
@@ -253,11 +253,11 @@ Steps 4 to 15, Docket's own notice and its links, wait on the controller and ent
 Still open:
 - Steps 6 and 7, and the signed-in record in step 9, need migration `056`.
 - Steps 12 and 13 need item 4's cookie notice. The banner links none yet.
-- Steps 15 to 17 are the Google Fonts decision.
+- Step 15, self-hosting the console's fonts with `next/font`, needs no decision and is still open. Steps 16 and 17 wait on the tenant fonts decision.
 
 **How to check it.**
 - Add `supabase/tests/99_analytics_consent.sql` (new) using `t_check`. Assert that a user can record an `analytics` row only for themself, that an invalid `decision` fails, that update and delete stay revoked, and that `analytics_consented()` returns false for an unrelated caller. Add its floor to `supabase/tests/expected-checks.tsv` and update the counts at `README.md:7`.
-- In `tests/e2e/smoke.spec.ts`, add assertions on `/` that sit outside the Supabase skip at line 17. A first visit sets no `docket_did`. With `POSTHOG_KEY` set, the cookie appears after "Allow analytics". A request that carries `docket_did` without consent gets back a `Set-Cookie` that expires it.
+- `tests/e2e/smoke.spec.ts` already checks two things outside the Supabase skip: a first visit to `/` sets no `docket_did`, and a request carrying `docket_did` without consent gets back a `Set-Cookie` that expires it. Still to add: with `POSTHOG_KEY` set, the cookie appears after "Allow analytics".
 - Add `/` and a tenant route to the list at `tests/fixtures/ergonomics.mjs:60`, so the 44px check covers the banner.
 - Manual check: choose "Only necessary" as a client, have staff open a matter for that client, and confirm that PostHog live events show nothing for that user.
 
@@ -280,7 +280,7 @@ Still open:
 6. In `052`, add a definer `record_consent(p_firm, p_terms_version, p_privacy_version)`. It refuses stale versions and writes both rows for `auth.uid()`. Grant it at aal1, because clients never hold MFA.
 7. In `053`, drop policy `consent_records_insert` and revoke insert on `consent_records` from `authenticated`.
 8. In `consent-gate.tsx` and `actions.ts:14-48`, name both boxes and require `z.literal("on")` for each. Call `record_consent` instead of inserting, and return its error.
-9. Apply `053` only once `052` and the app that calls `record_consent()` are live everywhere, because an older deployed gate still inserts directly. In that commit, change `supabase/tests/70_deployed_frontend_compat.sql:161-167` to assert that a direct insert is refused.
+9. Apply `053` only once `052` and the app that calls `record_consent()` are live everywhere, because an older deployed gate still inserts directly. In that commit, change `supabase/tests/70_deployed_frontend_compat.sql:162-169` to assert that a direct insert is refused. Seed the rows for the read-back checks at `:170-173` through `record_consent()`, because those checks expect the two inserted rows.
 10. Update `src/lib/db/database.types.ts:2227`, `docs/RPC_REFERENCE.md:134`, the 12 positional `book_appointment(` calls in `supabase/tests` and the direct insert at `supabase/tests/99_pre_consultation.sql:121`.
 11. Docket's own notice, terms, firm agreement and DPA are built by items 1 and 2 at `/docket/privacy`, `/docket/terms`, `/docket/firm-agreement` and `/docket/dpa`. This migration adds no table for them.
 12. Link those pages from the consent points below. Do not put them at `app/privacy`, because `middleware.ts:106-107` rewrites that path to the firm's site.
@@ -289,19 +289,19 @@ Still open:
 15. Leave `create_firm` unchanged in `052` and `053`. Item 2 records the firm agreement and DPA in `consent_records` through `record_platform_consent`, after `create_firm` returns. Owners of firms created in `app/admin/create-firm.tsx` accept on their first console visit.
 16. Rewrite the hint at `clients/[id]/page.tsx:624` so it names booking and the client app, and remove "a recording".
 
-**Done in the code (lane dD, first pass).** Steps 1, 2, 6, 8 and 16 are done, and so is the documentation part of step 10.
+**Done in the code (lane dD, first pass).** Steps 1, 2, 6, 8 and 16 are done. `docs/RPC_REFERENCE.md` now documents `record_consent()` and notes that `book_appointment()` does not yet check consent.
 - The booking review step has two unticked, separately labelled boxes. They link the firm's terms and privacy pages and show each version.
 - Confirm stays off until both are ticked.
 - On confirm, the acceptance is recorded before any file is uploaded or any slot is taken (`recordBookingConsent` in `src/lib/actions/booking.ts`).
 - Migration `052` adds `record_consent(p_firm, p_terms_version, p_privacy_version)`.
   - It reads the firm with `for share`.
-  - It refuses a draft (`0-`) with the "not published" error, and a stale or missing version with its own SQLSTATE `DKC01`. Nothing is written in either case.
+  - It refuses with the "not published" error when the firm's stored version is missing, empty or a `0-` draft. It refuses with its own SQLSTATE `DKC01` when a shown version is stale or not given. Nothing is written in either case.
   - It is granted to `authenticated` at aal1.
 - The portal gate names both boxes, requires `z.literal("on")` for each, and calls it too (`src/lib/consent.ts`).
 - `supabase/tests/99_booking_consent.sql` makes 41 checks.
 - `docs/DEPLOYMENT_RUNBOOK.md` says `051` and `052` go before the app.
 
-Steps 3 to 5, 7 and 9 are the enforcement pass, reserved as `053`. Until then, `book_appointment()` does not itself refuse a booking without consent, and a direct insert into `consent_records` still works. Steps 11 to 15 wait on items 1 and 2.
+Steps 3 to 5, 7, 9 and 10 are the enforcement pass, reserved as `053`. Until then, `book_appointment()` does not itself refuse a booking without consent, and a direct insert into `consent_records` still works. Steps 11 to 15 wait on items 1 and 2.
 
 **How to check it.**
 - `supabase/tests/99_consent.sql` (new, using `t_check`) proves four things. Null or stale versions are refused. A booking writes exactly two rows. The 8-argument overload is gone. A direct insert is refused. Add its line to `supabase/tests/expected-checks.tsv` and update the counts at `README.md:7` and `:135`.
@@ -335,12 +335,12 @@ Steps 3 to 5, 7 and 9 are the enforcement pass, reserved as `053`. Until then, `
 15. Stop writing `user_agent` in `src/components/push/push-opt-in.tsx:32`.
 16. In `.github/workflows/ci.yml`, fail the build if `package.json` lists `posthog-js`, `@sentry/browser` or `@sentry/nextjs`.
 
-**Done in the code (merged in PR #40, lane dE).** Step 1 went further than planned: `matter_opened` is no longer sent at all, so neither is `matter_type`. The client's own choice cannot be read from the lawyer's browser. The rest of item 7 is open.
+**Done in the code (merged in PR #40, lane dE).** Step 1 went further than planned: `matter_opened` is no longer sent at all, so neither is `matter_type`. The client's own choice cannot be read from the lawyer's browser. Step 2 is done too: the PostHog row in `docs/COMPLIANCE_PACK.md` lists every event property, including `amount_minor` and `currency`. The rest of item 7 is open, including steps 3 and 14 to 16, which need no decision.
 
 **How to check it.**
 - Add `scripts/check-scrub.ts` (new) and run it with `deno run --node-modules-dir=none`, next to the PDF check (`.github/workflows/ci.yml:317-327`). An email, `+2348031234567` and `08031234567` must come out redacted in both the error message and the stack frame.
 - Add `t_check` cases to `supabase/tests/60_admin_surfaces.sql`. A `client_nin` key without `sensitive_reason` raises an error. The same key with a reason saves. A new firm's default intake has no `how_heard`. Raise that suite's floor in `supabase/tests/expected-checks.tsv:22` and the counts in `README.md:7`.
-- Manual: set a test `POSTHOG_KEY` and open a matter. The event carries only `firm_id`.
+- Manual: set a test `POSTHOG_KEY`, choose "Allow analytics" and open a matter. No `matter_opened` event is sent.
 - Manual: save an address at `/app/profile`. Then generate a document from a template that uses `{{client.address}}`.
 - Manual: force a slot-unavailable retry. The client's `intake-uploads` folder then holds only the files from the booking that went through.
 
@@ -432,7 +432,7 @@ Steps 3 to 5, 7 and 9 are the enforcement pass, reserved as `053`. Until then, `
 13. Add the new columns to the lists at `supabase/tests/70_deployed_frontend_compat.sql:117` and `:121`.
 14. Add late-payment `t_check` cases to `supabase/tests/99_pre_consultation.sql`, which already calls `release_expired_holds()` (`:223`). Raise its floor at `supabase/tests/expected-checks.tsv:43`. Update the migration and assertion counts in `README.md:7`.
 
-**Done in the code (lane dD).** Steps 1, 2 and 6 to 13 are done.
+**Done in the code (lane dD).** Steps 1, 2 and 6 to 13 are done. Step 8 was done differently. `vatMinor()` uses whole-number arithmetic instead of `Math.round`. `formatPriceWithVat()` takes the place of `totalWithVat()`, and callers add `price + vatMinor(...)` inline.
 - Migration `051` appends `vat_rate` and `rc_number` to `firm_public`, and repeats the revoke.
 - `vatMinor()` in `src/lib/money.ts` rounds exactly as `book_appointment()` does. It was checked against Postgres on 20,010 amount and rate pairs. The admin services page and the invoice composer use it.
 - The booking review shows Fee, "VAT at {rate}%" and Total. The pay button asks for the total.
@@ -510,18 +510,20 @@ Steps 3 to 5 and 14, the late-payment branch, are reserved as `059`.
 17. `scripts/check-claims.mjs` (new, shared with item 11): strip comments first, then fail on `secure|encrypt|compliant|certified|guarantee|under a minute|free of charge|not recorded|only owner|cannot (see|touch)|nothing was charged|safer` in `app/`, `src/components`, `docs/CLIENT_GUIDE.md`, `docs/ADMIN_GUIDE.md` and `supabase/seed.sql`. Keep an allow-list that cites `file:line` for each exception.
 18. `.github/workflows/ci.yml`: item 11's `test:claims` step already runs the script after `npm run typecheck` (`:277`), so add no second step.
 
-**Done in the code (lanes dD and dF).** Steps 1, 2 and 5 to 8 are done, and so are step 10 (through item 10), step 12 and most of step 11.
+**Done in the code (lanes dD and dF, and the sign-in fix `92b0088`).** Steps 1, 2 and 5 to 8 are done, and so are step 12, most of step 11 and most of step 10. Step 10's done parts are item 10 steps 1 and 2, the Fee, VAT and Total rows, and the pay button.
 - The pay panel hint no longer promises "under a minute".
 - The consultation and waiting rooms say "Docket does not turn recording on", and "you hold the only owner token" is gone.
-- The appointment pages show the owning firm's own published cancellation text, or nothing. They drop "Rescheduling" and "free of charge".
+- The appointment pages show the owning firm's own published cancellation text, or nothing. Their hard-coded "Rescheduling" and "free of charge" copy is gone. Tenant #1's seeded published text still says "rescheduled or cancelled free of charge" until step 9 is done.
 - Draft (`0-`) cancellation text is never shown to a client.
 - Messages say only the firm and the people on the matter or consultation can read a thread.
-- `CLIENT_GUIDE.md` drops "safer", says what operators can see, states the ten-minute signing link and no longer says "Nothing was charged".
+- `CLIENT_GUIDE.md` drops "safer" and says what operators can see. It states the ten-minute signing link. Its expired-hold row no longer says "Nothing was charged", and its Paying section warns that a payment finished after the hold is released still reaches the firm.
 - The email sign-in panel no longer calls its link "secure".
+- The booking wizard's upload hint no longer says "Uploaded securely".
 
 Still open:
 - step 3 (the Daily recording check) and step 4 (the dead video provider files)
-- step 9 and the rest of step 13
+- step 9 and the rest of step 13 (`auth-frame.tsx:17`, `documents-tab.tsx:332`, `sign-dialog.tsx:72`, `staff-documents.tsx:618`)
+- step 10's part of item 10 step 3 (the late-payment branch in `record_payment()`, reserved as `059`)
 - step 11's line "Docket does not hold it and cannot touch it" (`CLIENT_GUIDE.md:121`), which waits on the payment decision
 - step 14 (the landing page claims)
 - steps 15 and 16, which need the payment decision
@@ -662,10 +664,10 @@ Still open:
 11. Add `identity_published` to `FirmReadiness` (`src/lib/db/types.ts:702`). In `app/firm/(console)/admin/checklist.tsx`, add an `identity` step after `policies` (line 30) with `skippable: false` and `href: "/firm/admin/settings"`. A non-skippable step needs no change to the check constraint at `034:35`.
 12. Add `rc_number` to the column list at `supabase/seed.sql:13`, and fill `contact` at `:27` with the values tenant #1 supplies. The seed uses `on conflict (slug) do nothing` (`:40`), so a live database gets these values through `/firm/admin/settings`.
 
-**Done in the code (lane dD).** Step 5 is done: migration `051` puts `rc_number` on `firm_public`. Nothing displays it yet. Steps 6 to 12 need migration `059` and the platform entity decision.
+**Done in the code (lane dD).** Steps 5 and 6 are done. Migration `051` puts `rc_number` on `firm_public`, and `FirmPublic`, the `src/lib/tenant.ts` select and the `FIRM` fixture include it. Nothing displays it yet. Steps 1 to 4 and 7 to 12 are still open. Most of them wait on migration `059` or the platform entity decision.
 
 **How to check it.**
-- `supabase/tests/70_deployed_frontend_compat.sql:117`: select `rc_number` too, and `t_check` that selecting `tin` from `firm_public` fails.
+- `supabase/tests/70_deployed_frontend_compat.sql` already selects `rc_number` in the tenant-resolver column list (`:117-118`), checks that anon reads it (`:221-223`), and checks that `firm_public` has no `tin` column (`:254-256`).
 - `supabase/tests/20_platform.sql`: add `t_check` cases. The invoice's client gets `rc_number` from `invoice_issuer`, a stranger gets `42501`, and `tin` is null when `vat_minor = 0`. The read-only loop at `:270-271` already covers `firm_public`.
 - `supabase/tests/99_onboarding_import.sql`: `identity_published` is false for a new firm and true once all fields are set.
 - Raise the floors in `supabase/tests/expected-checks.tsv` and update the counts at `README.md:7`.
@@ -847,4 +849,4 @@ Before this work the newest migration was `20260910000050_tenant_dark_mode.sql`.
 | `20260910000062_notification_unsubscribe.sql` | 18 | Starts from 058's `enqueue_notification` |
 | `20260910000063_data_subject_requests.sql` | 20 | |
 
-Every migration or SQL suite added also updates the counts in `README.md:7` and `supabase/tests/expected-checks.tsv`, or `scripts/check-suite-counts.sh` fails CI.
+Every migration added updates the migration count in `README.md:7`. Every SQL suite added updates the suite and check counts there, and adds its floor to `supabase/tests/expected-checks.tsv`. Otherwise `scripts/check-suite-counts.sh` fails CI.

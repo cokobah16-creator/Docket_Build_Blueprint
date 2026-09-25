@@ -806,8 +806,9 @@ select proname, proacl from pg_proc where proname in ('registry_notice_fanout', 
 
 Schema first is harmless. 51 appends two columns to `firm_public`, and the deployed resolver names
 its own columns, so it does not see them. 52 adds a function the deployed front end never calls,
-and leaves direct insert on `consent_records` open, so the deployed gate keeps working. 53, which
-revokes that direct insert, must wait until the app that calls `record_consent()` is live.
+and leaves direct insert on `consent_records` open, so the deployed gate keeps working. 53 is
+reserved and not written yet. It will revoke that direct insert, so it must wait until the app
+that calls `record_consent()` is live.
 
 A failed read of `firm_public` is not cached. A successful read, including "no such firm", is
 cached for a minute, so the VAT rate appears within a minute of 51 landing.

@@ -125,7 +125,8 @@ page finishes loading. If you have paid and the app has not caught up, wait a mi
 before worrying. Your reference number is on the appointment.
 
 If you do not pay within fifteen minutes the hold is released and the time goes back to whoever
-wants it. Nothing is charged and you can simply book again.
+wants it, and you can simply book again. Do not finish a payment after that: the money still
+reaches the firm, and only the firm can refund it.
 
 If the firm invoices the fee after booking, you book without paying. The invoice for the total is
 raised at once, and you find it on the appointment page and under **Payments**.
@@ -136,8 +137,8 @@ If the consultation is free, it is confirmed straight away.
 
 You can cancel a consultation you have booked, as long as it has not started. Cancelling does
 not refund a payment by itself: any refund is the firm's to make. If your firm has published a
-cancellation policy, it appears with the consultation and in the firm's terms; otherwise ask the
-firm.
+cancellation policy, it appears when you book and with the consultation, and usually on the
+firm's terms page too; otherwise ask the firm.
 
 To **move** a consultation, ask the firm: rescheduling is theirs to do, so that the new time is
 checked against the lawyer's diary properly.
