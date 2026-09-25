@@ -48,9 +48,12 @@ and a message cannot be unsent.
 
 ## Agreeing to your firm's terms
 
-The first time you open the portal for a firm, you are asked to accept **that firm's** terms of
-service and privacy notice. You cannot go further until you do — and that is the point: you should
-know what you are agreeing to before your lawyer starts work.
+You are asked to accept **that firm's** terms of service and privacy notice in two places: on the
+last step of booking a consultation (see *Booking a consultation*, step 7), and when you open the
+portal for that firm. The portal asks only if you have not already accepted the versions the firm
+has published, so if you accepted them when you booked, it does not ask again. You cannot go
+further until you do — and that is the point: you should know what you are agreeing to before your
+lawyer starts work.
 
 A few things worth knowing:
 
@@ -85,6 +88,15 @@ From your firm's website, choose **Book**. The steps are:
    charges it, and the total. If the fee is paid in advance, the button reads **Confirm and pay**
    with the total. If the firm invoices it after booking, nothing is paid there, and the button says
    the total will be invoiced.
+
+   Just above the button are two boxes: one to accept the firm's terms of service, and one to say
+   you have read its privacy notice. Each shows the version you are accepting. The name of each
+   document is a link that opens it in a new tab, so you keep your place. Neither box is ticked for
+   you, and the button stays off until you tick both. Your acceptance is recorded when you press
+   the button, before anything is booked. If the firm has published a new version since the page
+   was loaded, nothing is recorded or booked, and you are asked to reload the page and read the new
+   version. If the firm has not published its terms and privacy notice yet, there are no boxes: a
+   note says the firm cannot take bookings online, and the button stays off.
 
 ### Before your consultation
 

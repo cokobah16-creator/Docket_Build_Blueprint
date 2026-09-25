@@ -378,6 +378,15 @@ it means:
 The screen asks you to tick a box confirming you understand, when a published version is about to
 change. It is not a formality.
 
+Clients also accept when they book online. The last step of booking shows two boxes: one to
+accept your terms of service, one to say they have read your privacy notice, each with its
+version. The name of each document is a link that opens it in a new tab. Neither box is ticked
+for them, and the **Confirm** button stays off until both are ticked. The acceptance is recorded
+when they press Confirm, before the booking is made, at the versions shown beside the boxes. If
+you publish a new version while a client has the page open, nothing is recorded or booked, and
+they are asked to reload the page and read the new version. A client who accepted your current
+versions while booking is not asked again when they open the app.
+
 Every acceptance is recorded permanently: who, which firm, which document, which version, and
 when. Nobody — not you, not Docket — can edit or delete one through the app. A client can see
 their own list at any time under their profile.
