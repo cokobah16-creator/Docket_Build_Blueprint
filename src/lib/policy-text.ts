@@ -21,3 +21,11 @@ export function publishedPolicyText(doc: PolicyVersioned | null | undefined): st
   const text = typeof doc.text === "string" ? doc.text.trim() : "";
   return text === "" || text === SEEDED_POLICY_TEXT ? null : text;
 }
+
+/** Where a client reads a firm's terms or privacy notice before accepting it: the firm's own link
+ *  when it gave one, else `fallback`, the firm's page on Docket (which shows the saved text). The
+ *  portal gate and the booking review step both use it, so both link the same document. */
+export function policyDocumentHref(doc: PolicyVersioned | null | undefined, fallback: string): string {
+  const url = typeof doc?.url === "string" ? doc.url.trim() : "";
+  return url !== "" ? url : fallback;
+}

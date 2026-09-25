@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { createHmac } from "node:crypto";
+import { CONSENT_COOKIE, consentValue } from "../../src/lib/consent-cookie";
 
 // ---------------------------------------------------------------------------
 // Authenticated user journeys against a REAL Supabase project.
@@ -223,6 +224,14 @@ async function accessToken(page: Page): Promise<string> {
 // ---------------------------------------------------------------------------
 // 1. Client sign-in
 // ---------------------------------------------------------------------------
+
+// The cookie banner (src/components/ui/cookie-banner.tsx) shows on a first visit whenever the
+// deployment has POSTHOG_KEY set, and sits over the foot of the screen, above the portal's bottom
+// bar. Store "Only necessary" first, as the smoke suite does, so it never covers what a journey taps.
+test.beforeEach(async ({ context, baseURL }) => {
+  if (!baseURL) return;
+  await context.addCookies([{ name: CONSENT_COOKIE, value: consentValue(false), url: baseURL }]);
+});
 
 test("client signs in with a phone OTP and reaches the portal", async ({ page }) => {
   test.skip(

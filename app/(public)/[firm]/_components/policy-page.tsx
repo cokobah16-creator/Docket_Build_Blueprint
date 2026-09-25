@@ -49,6 +49,7 @@ export async function PolicyPage({
           <ContentBody body={text} keepLineBreaks />
           {/* Labelled as the firm labels it in settings: "Link to the full document". */}
           {link ? <p className="text-ink">Full document: {link}</p> : null}
+          {cancellationText ? <p className="text-ink">{cancellationText}</p> : null}
         </div>
       ) : link ? (
         <p className="text-ink">
@@ -59,8 +60,8 @@ export async function PolicyPage({
           {published ? (
             <p>
               {firmName} has not put the full text of its {documentName} on this site yet. When you
-              first open your client portal with {firm.name}, you are asked to accept this version.
-              Your acceptance is recorded against your account.
+              book online or first open your client portal with {firm.name}, you are asked to accept
+              this version. Your acceptance is recorded against your account.
             </p>
           ) : (
             <p>{firmName} has not published its {documentName} yet.</p>

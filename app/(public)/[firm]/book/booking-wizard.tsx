@@ -12,7 +12,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabase/browser";
 import { formatMoneyMinor, formatPriceWithVat, vatMinor } from "@/lib/money";
-import { publishedPolicyText } from "@/lib/policy-text";
+import { policyDocumentHref, publishedPolicyText } from "@/lib/policy-text";
 import type {
   AppointmentSlot,
   BookingResult,
@@ -627,37 +627,37 @@ export function BookingWizard({
             {policiesPublished ? (
               <fieldset className="flex flex-col gap-3 rounded-card border border-hairline bg-raised px-4 py-[15px]">
                 <legend className="sr-only">Terms and privacy</legend>
-                <label htmlFor="booking-accept-terms" className="flex items-start gap-3 text-13 leading-relaxed text-ink">
+                <label htmlFor="booking-accept-terms" className="flex min-h-[44px] items-center gap-3 text-13 leading-relaxed text-ink">
                   <input
                     id="booking-accept-terms"
                     name="acceptTerms"
                     type="checkbox"
-                    className="mt-0.5 size-4 shrink-0"
+                    className="size-4 shrink-0"
                     checked={acceptTerms}
                     onChange={(e) => setAcceptTerms(e.target.checked)}
                     disabled={submitting}
                   />
                   <span>
                     I accept the{" "}
-                    <a href={`/${firm.slug}/terms`} target="_blank" rel="noreferrer" className="font-medium text-brand underline">
+                    <a href={policyDocumentHref(firm.policies.terms, `/${firm.slug}/terms`)} target="_blank" rel="noreferrer" className="font-medium text-brand underline">
                       terms of service
                     </a>{" "}
                     (version {termsVersion}).
                   </span>
                 </label>
-                <label htmlFor="booking-accept-privacy" className="flex items-start gap-3 text-13 leading-relaxed text-ink">
+                <label htmlFor="booking-accept-privacy" className="flex min-h-[44px] items-center gap-3 text-13 leading-relaxed text-ink">
                   <input
                     id="booking-accept-privacy"
                     name="acceptPrivacy"
                     type="checkbox"
-                    className="mt-0.5 size-4 shrink-0"
+                    className="size-4 shrink-0"
                     checked={acceptPrivacy}
                     onChange={(e) => setAcceptPrivacy(e.target.checked)}
                     disabled={submitting}
                   />
                   <span>
                     I have read the{" "}
-                    <a href={`/${firm.slug}/privacy`} target="_blank" rel="noreferrer" className="font-medium text-brand underline">
+                    <a href={policyDocumentHref(firm.policies.privacy, `/${firm.slug}/privacy`)} target="_blank" rel="noreferrer" className="font-medium text-brand underline">
                       privacy notice
                     </a>{" "}
                     (version {privacyVersion}).

@@ -134,8 +134,10 @@ If the consultation is free, it is confirmed straight away.
 
 ### Changing or cancelling
 
-You can cancel a consultation you have booked, as long as it has not started. Your firm's own
-cancellation policy — including any free-cancellation window — is in its policy documents.
+You can cancel a consultation you have booked, as long as it has not started. Cancelling does
+not refund a payment by itself: any refund is the firm's to make. If your firm has published a
+cancellation policy, it appears with the consultation and in the firm's terms; otherwise ask the
+firm.
 
 To **move** a consultation, ask the firm: rescheduling is theirs to do, so that the new time is
 checked against the lawyer's diary properly.

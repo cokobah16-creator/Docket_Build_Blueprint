@@ -85,8 +85,9 @@ Still waiting on a deployment: `053`, the enforcement pass for item 6, which fol
 **Done in the code (merged in PR #40, lane dF).** Steps 1 to 3 are done, for the terms page as well as the privacy page.
 - `PolicyPage` renders the text a firm saves once its version is published, and a link given alongside it is shown beneath.
 - A `0-` draft is skipped, and so is the seeded holding sentence "To be published by the firm before go-live."
-- The placeholder says consent is recorded when the client first opens the portal.
-- The portal consent gate always links a readable page. It uses the firm's URL when one is set. Otherwise it links the firm's own `/{slug}/terms` and `/{slug}/privacy` on the firm's own address.
+- The placeholder says the version is accepted when the client books online or first opens the portal.
+- The portal consent gate and the booking review step link the same document (`policyDocumentHref` in `src/lib/policy-text.ts`). They use the firm's URL when one is set. Otherwise they link the firm's own `/{slug}/terms` and `/{slug}/privacy`, on the firm's own address.
+- Settings refuses to publish a version with no text, no link and no published page, so a client is never asked to accept a document they cannot read.
 
 Steps 4 to 15, Docket's own notice and its links, wait on the controller and entity decisions.
 

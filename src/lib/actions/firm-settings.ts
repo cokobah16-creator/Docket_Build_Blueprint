@@ -32,6 +32,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { NG_STATES, isE164, normalizeNigerianPhone } from "@/lib/nigeria";
+import { SEEDED_POLICY_TEXT } from "@/lib/db/types";
+import { publishedContent } from "@/lib/public-data";
 
 // ---------------------------------------------------------------- shared shapes
 
@@ -694,6 +696,18 @@ export async function updatePolicies(firmId: string, input: PoliciesInput): Prom
       return {
         error: `A version that starts “0-” is Docket's mark for “not published yet”, and booking stays closed while one is in force. Give ${label} a real version, such as ${new Date().getUTCFullYear()}-01.`,
       };
+    }
+    // Clients tick a box accepting this version, next to a link to the document. With no text, no
+    // link and no published page, that link shows only "has not put the full text on this site
+    // yet", and the acceptance would be recorded for a document nobody could read.
+    const text = doc.text.trim();
+    if ((text === "" || text === SEEDED_POLICY_TEXT) && doc.url === "") {
+      const page = await publishedContent(firmId, "page", key);
+      if (!page?.body) {
+        return {
+          error: `Add the text of ${label}, or a link to it. Clients are asked to accept version ${doc.version}, so they need something to read first.`,
+        };
+      }
     }
   }
 
