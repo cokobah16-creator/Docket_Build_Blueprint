@@ -57,6 +57,11 @@ export interface PolicyVersioned {
   [key: string]: unknown;
 }
 
+/** The holding sentence seed_firm_defaults() (migration 20260910000012) and supabase/seed.sql
+ *  store as the terms and privacy text of every new firm. It is not the firm's notice, so it is
+ *  never shown as one and never carried into the settings form. */
+export const SEEDED_POLICY_TEXT = "To be published by the firm before go-live.";
+
 /** Row of the anon-readable firm_public view. */
 export interface FirmPublic {
   id: string;

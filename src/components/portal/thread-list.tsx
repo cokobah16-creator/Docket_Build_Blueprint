@@ -24,7 +24,7 @@ export function ThreadList({
       {threads.length === 0 ? (
         <EmptyState
           title="No conversations yet"
-          hint="Each matter and consultation has its own secure thread with your firm."
+          hint="Each matter and consultation has its own private thread. Only your firm and the people on that matter or consultation can read it."
         />
       ) : (
         <ul>

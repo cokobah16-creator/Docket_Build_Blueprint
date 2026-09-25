@@ -20,7 +20,7 @@ import Link from "next/link";
 import { firmStaff, requestedFirmId, staffContext, staffLabel } from "@/lib/firm-data";
 import { deploymentHost } from "@/lib/admin-data";
 import { Alert } from "@/components/ui/alert";
-import type { DomainRequestRow, FirmBrand } from "@/lib/db/types";
+import { SEEDED_POLICY_TEXT, type DomainRequestRow, type FirmBrand } from "@/lib/db/types";
 import { SettingsForms, type PolicyDoc } from "./settings-forms";
 
 export const metadata = { title: "Firm settings" };
@@ -54,12 +54,20 @@ interface FirmSettingsRow {
   custom_domain: string | null;
 }
 
-/** One policy document as the editor holds it: never null, so an input is never uncontrolled. */
+/** One policy document as the editor holds it: never null, so an input is never uncontrolled.
+ *  The holding sentence every new firm is seeded with comes through as an empty Text box, so a
+ *  firm that publishes by changing only the version does not carry it forward as its notice. */
 function policyDoc(policies: Record<string, unknown> | null, key: string): PolicyDoc {
   const raw = policies?.[key];
   const doc = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
   const str = (v: unknown) => (typeof v === "string" ? v : v === undefined || v === null ? "" : String(v));
-  return { version: str(doc.version), title: str(doc.title), text: str(doc.text), url: str(doc.url) };
+  const text = str(doc.text);
+  return {
+    version: str(doc.version),
+    title: str(doc.title),
+    text: text.trim() === SEEDED_POLICY_TEXT ? "" : text,
+    url: str(doc.url),
+  };
 }
 
 /**

@@ -23,8 +23,10 @@ export function PageShell({
   );
 }
 
-/** Renders CMS body text: blank-line separated paragraphs. */
-export function ContentBody({ body }: { body: string }) {
+/** Renders CMS body text: blank-line separated paragraphs. `keepLineBreaks` also keeps a
+ *  single line break inside a paragraph, for text typed into a plain textarea (a numbered
+ *  clause list in a firm's privacy notice, say) rather than written for the CMS. */
+export function ContentBody({ body, keepLineBreaks = false }: { body: string; keepLineBreaks?: boolean }) {
   return (
     <div className="space-y-5 border-l-2 border-brand-accent pl-5 text-17 leading-7 text-ink sm:pl-7">
       {body
@@ -32,7 +34,7 @@ export function ContentBody({ body }: { body: string }) {
         .map((p) => p.trim())
         .filter(Boolean)
         .map((p, i) => (
-          <p key={i}>{p}</p>
+          <p key={i} className={keepLineBreaks ? "whitespace-pre-line" : undefined}>{p}</p>
         ))}
     </div>
   );
