@@ -2,8 +2,8 @@
 
 // Server actions for the client portal. Every write runs as the signed-in
 // user. The database is the authorization, not this code: record_consent()
-// (migration 52) records an acceptance for auth.uid() only, at the versions the
-// firm has published.
+// (migration 52) records an acceptance for auth.uid() only, and only when the
+// versions the gate showed are the versions the firm has published.
 
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -21,8 +21,8 @@ const consentSchema = z.object({
   firmId: z.string().uuid(),
   acceptTerms: z.literal("on"),
   acceptPrivacy: z.literal("on"),
-  // What the gate showed. Compared with the firm's published versions, never recorded as given:
-  // record_consent() takes the versions from the database. See src/lib/consent.ts.
+  // What the gate showed. record_consent() records these only when they are the firm's published
+  // versions, and otherwise refuses and writes nothing. See src/lib/consent.ts.
   shownTermsVersion: z.string().min(1).max(64),
   shownPrivacyVersion: z.string().min(1).max(64),
 });

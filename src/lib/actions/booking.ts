@@ -73,7 +73,7 @@ export interface BookingConsentInput {
   /** The two boxes on the review step. Both must be ticked; neither is ticked for the client. */
   acceptTerms: boolean;
   acceptPrivacy: boolean;
-  /** The versions shown beside the boxes. Compared with the firm's, never recorded as given. */
+  /** The versions shown beside the boxes. record_consent() refuses them unless they are the firm's. */
   termsVersion: string;
   privacyVersion: string;
 }
@@ -91,10 +91,10 @@ const bookingConsentSchema = z.object({
  * booked or uploaded (legal readiness item 6). The wizard calls this first on confirm, so a
  * refusal stops the booking before a file is sent or a slot is taken.
  *
- * record_consent() (migration 52) writes both rows for auth.uid() at the versions the firm has
- * published; see src/lib/consent.ts for why the versions on screen are compared first.
- * book_appointment() does not yet refuse a booking without them: that step waits until no
- * deployed code writes consent_records directly.
+ * record_consent() (migration 52) is given the versions shown beside the boxes. It writes both rows
+ * for auth.uid() only when those are the versions the firm has published, and otherwise refuses
+ * and writes nothing (see src/lib/consent.ts). book_appointment() does not yet refuse a booking
+ * without them: that step waits until no deployed code writes consent_records directly.
  */
 export async function recordBookingConsent(input: BookingConsentInput): Promise<{ error: string } | undefined> {
   const parsed = bookingConsentSchema.safeParse(input);

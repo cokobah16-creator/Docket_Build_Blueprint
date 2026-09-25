@@ -2,9 +2,9 @@
 
 // First-login consent capture (NDPA): the client accepts the firm's current
 // terms and privacy notice. The recordConsent server action records it through
-// record_consent(), which writes both rows for the signed-in person at the
-// versions the firm has published. The versions posted from here are only
-// compared with those, so a change the client has not seen is not recorded.
+// record_consent(), which is given the versions shown here. It writes both rows
+// for the signed-in person only when those are the versions the firm has
+// published, so a change the client has not seen is refused, not recorded.
 
 import { useActionState } from "react";
 import { recordConsent, type ConsentState } from "./actions";

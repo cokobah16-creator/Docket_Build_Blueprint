@@ -1,7 +1,8 @@
--- Consent before booking (migration 52): record_consent(p_firm) writes the caller's acceptance of a
--- firm's terms and privacy notice at the versions the firm has published, once, and only for the
--- caller. It refuses anon, a firm that is not active, and a firm whose versions are missing or still
--- a '0-' draft. Rolls back.
+-- Consent before booking (migration 52): record_consent(p_firm, p_terms_version, p_privacy_version)
+-- writes the caller's acceptance of a firm's terms and privacy notice, once, and only for the
+-- caller, and only when the versions the caller was shown are the versions the firm has published.
+-- It refuses a stale version (DKC01) and writes nothing, and it refuses anon, a firm that is not
+-- active, and a firm whose versions are missing or still a '0-' draft. Rolls back.
 begin;
 
 create or replace function t_as(u uuid, aal text default 'aal2') returns void language plpgsql as $$
@@ -52,14 +53,18 @@ insert into fx select 'client_b', id from auth.users where email = 'bc-client-b@
 
 -- ---------------------------------------------------------------- the function's shape and grants
 do $$
-declare fn regprocedure := 'public.record_consent(uuid)'::regprocedure;
+declare fn regprocedure := 'public.record_consent(uuid, text, text)'::regprocedure;
 begin
   perform t_check('record_consent is security definer',
     (select prosecdef from pg_proc where oid = fn));
   perform t_check('with its search_path pinned to public',
     (select proconfig @> array['search_path=public'] from pg_proc where oid = fn));
-  perform t_check('and its only argument is the firm: no user, no version',
-    pg_get_function_identity_arguments(fn) = 'p_firm uuid');
+  perform t_check('its arguments are the firm and the two versions shown: no user',
+    pg_get_function_identity_arguments(fn) = 'p_firm uuid, p_terms_version text, p_privacy_version text');
+  perform t_check('and there is no form of it that takes the firm alone',
+    to_regprocedure('public.record_consent(uuid)') is null);
+  perform t_check('it reads the firm FOR SHARE, so a publish cannot land between its check and its insert',
+    pg_get_functiondef(fn) ~* 'from firms f where f\.id = p_firm\s+for share');
   perform t_check('authenticated may execute it',
     has_function_privilege('authenticated', fn, 'execute'));
   perform t_check('anon may not',
@@ -75,13 +80,13 @@ declare f uuid := (select v from fx where k='firm');
 begin
   perform t_anon();
   perform t_check('an anonymous visitor is refused',
-    t_refused(format('select public.record_consent(%L)', f), '42501'));
+    t_refused(format('select public.record_consent(%L, %L, %L)', f, '2026-09-t', '2026-09-p'), '42501'));
   perform t_reset();
 
   perform set_config('request.jwt.claims', '{"role":"authenticated"}', false);
   perform set_config('role', 'authenticated', false);
   perform t_check('a session with no user in it is refused as not authenticated',
-    t_refused(format('select public.record_consent(%L)', f), '42501'));
+    t_refused(format('select public.record_consent(%L, %L, %L)', f, '2026-09-t', '2026-09-p'), '42501'));
   perform t_reset();
 
   perform t_check('and neither wrote a row',
@@ -94,7 +99,7 @@ declare f uuid := (select v from fx where k='firm'); a uuid := (select v from fx
         b uuid := (select v from fx where k='client_b'); r jsonb; n int;
 begin
   perform t_as(a, 'aal1');
-  r := public.record_consent(f);
+  r := public.record_consent(f, '2026-09-t', '2026-09-p');
   perform t_reset();
 
   perform t_check('a client at aal1 records a terms row at the version the firm published',
@@ -113,17 +118,36 @@ begin
 
   -- the same acceptance again is the same acceptance
   perform t_as(a, 'aal1');
-  r := public.record_consent(f);
+  r := public.record_consent(f, '2026-09-t', '2026-09-p');
   perform t_reset();
   perform t_check('calling it again writes nothing',
     (select count(*) = 2 from consent_records where user_id = a and firm_id = f) and (r ->> 'rows_written')::int = 0);
   perform t_check('and writes no second audit line',
     (select count(*) = 1 from audit_log where action = 'consent.recorded' and firm_id = f and actor_id = a));
 
-  -- the firm publishes new terms: only the new terms version is new
+  -- the firm publishes new terms. A client still holding the page that showed the old version is
+  -- refused, and nothing is written for them: they never saw version 2026-10-t.
   update firms set policies = jsonb_set(policies, '{terms,version}', '"2026-10-t"') where id = f;
+  select count(*) into n from audit_log where action = 'consent.recorded' and firm_id = f;
   perform t_as(a, 'aal1');
-  r := public.record_consent(f);
+  perform t_check('after the firm publishes new terms, accepting the old terms version is refused as stale (DKC01)',
+    t_refused(format('select public.record_consent(%L, %L, %L)', f, '2026-09-t', '2026-09-p'), 'DKC01'));
+  perform t_check('with words that say the firm changed them',
+    t_fails(format('select public.record_consent(%L, %L, %L)', f, '2026-09-t', '2026-09-p'), 'has changed its terms or privacy notice'));
+  perform t_check('a stale privacy version is refused the same way',
+    t_refused(format('select public.record_consent(%L, %L, %L)', f, '2026-10-t', '2026-08-p'), 'DKC01'));
+  perform t_check('and so is a version that was never given',
+    t_refused(format('select public.record_consent(%L, %L, %L)', f, '2026-10-t', null), 'DKC01'));
+  perform t_reset();
+  perform t_check('a stale acceptance writes no row: the client is not on record for 2026-10-t',
+    (select count(*) = 2 from consent_records where user_id = a and firm_id = f)
+    and not exists (select 1 from consent_records where user_id = a and firm_id = f and version = '2026-10-t'));
+  perform t_check('and no consent.recorded audit line',
+    (select count(*) = n from audit_log where action = 'consent.recorded' and firm_id = f));
+
+  -- the client reloads, is shown 2026-10-t, and accepts it: only the new terms version is new
+  perform t_as(a, 'aal1');
+  r := public.record_consent(f, '2026-10-t', '2026-09-p');
   perform t_reset();
   perform t_check('after the firm publishes new terms, one terms row at the new version is added',
     (select count(*) = 1 from consent_records where user_id = a and firm_id = f and kind = 'terms' and version = '2026-10-t')
@@ -136,7 +160,7 @@ begin
   -- another client, the same firm
   select count(*) into n from consent_records where user_id = a;
   perform t_as(b, 'aal1');
-  perform public.record_consent(f);
+  perform public.record_consent(f, '2026-10-t', '2026-09-p');
   perform t_check('another client records their own acceptance',
     (select count(*) = 2 from consent_records where user_id = b and firm_id = f));
   perform t_check('and cannot insert an acceptance in somebody else''s name',
@@ -152,24 +176,28 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------- refusals
+-- Each firm is called with the versions it actually stores, so what is refused is the firm's state,
+-- not a mismatch: a caller cannot get a '0-' draft recorded by naming it.
 do $$
 declare a uuid := (select v from fx where k='client_a');
 begin
   perform t_as(a, 'aal1');
-  perform t_check('a firm whose terms are still a 0- draft is refused',
-    t_fails(format('select public.record_consent(%L)', (select v from fx where k='draft')), 'has not published its terms and privacy notice'));
+  perform t_check('a firm whose terms are still a 0- draft is refused, even when the caller names the draft',
+    t_fails(format('select public.record_consent(%L, %L, %L)', (select v from fx where k='draft'), '0-draft', '2026-09'), 'has not published its terms and privacy notice'));
   perform t_check('so is one whose privacy notice is still a 0- draft',
-    t_fails(format('select public.record_consent(%L)', (select v from fx where k='draft-p')), 'has not published its terms and privacy notice'));
+    t_fails(format('select public.record_consent(%L, %L, %L)', (select v from fx where k='draft-p'), '2026-09', '0-draft'), 'has not published its terms and privacy notice'));
   perform t_check('a firm with no terms or privacy version at all is refused',
-    t_fails(format('select public.record_consent(%L)', (select v from fx where k='empty')), 'has not published its terms and privacy notice'));
+    t_fails(format('select public.record_consent(%L, %L, %L)', (select v from fx where k='empty'), null, null), 'has not published its terms and privacy notice'));
+  perform t_check('and so is an empty version, even when the caller sends the same empty string',
+    t_fails(format('select public.record_consent(%L, %L, %L)', (select v from fx where k='empty'), '', ''), 'has not published its terms and privacy notice'));
   perform t_check('a firm with terms but no privacy version is refused',
-    t_fails(format('select public.record_consent(%L)', (select v from fx where k='no-priv')), 'has not published its terms and privacy notice'));
+    t_fails(format('select public.record_consent(%L, %L, %L)', (select v from fx where k='no-priv'), '2026-09', null), 'has not published its terms and privacy notice'));
   perform t_check('a firm that is still pending is refused',
-    t_fails(format('select public.record_consent(%L)', (select v from fx where k='pending')), 'not active'));
+    t_fails(format('select public.record_consent(%L, %L, %L)', (select v from fx where k='pending'), '2026-09', '2026-09'), 'not active'));
   perform t_check('a suspended firm is refused',
-    t_fails(format('select public.record_consent(%L)', (select v from fx where k='suspended')), 'not active'));
+    t_fails(format('select public.record_consent(%L, %L, %L)', (select v from fx where k='suspended'), '2026-09', '2026-09'), 'not active'));
   perform t_check('an unknown firm is refused',
-    t_fails(format('select public.record_consent(%L)', gen_random_uuid()), 'not active'));
+    t_fails(format('select public.record_consent(%L, %L, %L)', gen_random_uuid(), '2026-09', '2026-09'), 'not active'));
   perform t_reset();
 
   perform t_check('and no refused call wrote a row',

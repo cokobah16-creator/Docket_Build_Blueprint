@@ -156,9 +156,12 @@ Three buckets (migration 4). Object paths carry the tenant, and the storage poli
 - **There is no update policy and no delete policy.** In practice the table is append-only: a
   consent record cannot be altered or removed through the API.
 - `ip` and `user_agent` columns exist and are **not populated** by `record_consent()`.
-- The app records through `record_consent(firm)` (migration 52): it writes both rows for `auth.uid()`
-  at the versions in `firms.policies` at that moment, refuses a firm that is not active or has not
-  published, and writes nothing when the caller already holds those versions. Direct inserts are
+- The app records through `record_consent(firm, terms_version, privacy_version)` (migration 52),
+  passing the versions the client was shown. It writes both rows for `auth.uid()` only when those
+  are the versions in `firms.policies`, read with a row lock so a publish cannot land between the
+  check and the write. A stale version is refused and nothing is written. It also refuses a firm
+  that is not active or has not published, and writes nothing when the caller already holds those
+  versions. Direct inserts are
   still allowed while the frontend deployed from `main` uses them; a later migration removes them.
 
 ### The version chain

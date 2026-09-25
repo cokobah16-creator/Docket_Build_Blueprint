@@ -156,7 +156,7 @@ It does not yet check that the client has accepted the firm's terms and privacy 
 booking wizard records that acceptance through `record_consent()` before it calls this; the
 database starts refusing a booking without it in a later migration (see below).
 
-### `record_consent(p_firm uuid)`
+### `record_consent(p_firm uuid, p_terms_version text, p_privacy_version text)`
 Returns `jsonb`: `terms_version`, `privacy_version` (the versions recorded) and `rows_written`
 (0, 1 or 2).
 
@@ -164,24 +164,29 @@ Returns `jsonb`: `terms_version`, `privacy_version` (the versions recorded) and 
 `anon` are revoked. Migration 52.
 
 Records the caller's acceptance of the firm's terms of service and privacy notice: a `terms` row
-and a `privacy` row in `consent_records`, for `auth.uid()`, at the versions in `firms.policies`
-for that firm at the moment of the call. It takes no user and no version, so a caller cannot
-record an acceptance in someone else's name or at a version the firm never published. A row the
-caller already holds for that kind, version and firm is not written again, so a second call
-writes nothing; an advisory lock on (caller, firm) keeps two calls at once to one acceptance.
-When it writes anything it adds one `consent.recorded` audit line with both versions, beside the
-per-row lines `audit_row_change()` writes.
+and a `privacy` row in `consent_records`, for `auth.uid()`. The two versions are the ones the
+client was shown beside the boxes. The function reads the firm's row `for share` and records only
+when both equal the versions in `firms.policies`; otherwise it refuses and writes nothing. So a
+client is never on record for a version they were not shown. The row lock means a publish that
+starts during the call waits for it to finish, so the versions checked are the versions written.
+It takes no user, so a caller cannot record an acceptance in someone else's name. A row the caller
+already holds for that kind, version and firm is not written again, so a second call writes
+nothing; an advisory lock on (caller, firm) keeps two calls at once to one acceptance. When it
+writes anything it adds one `consent.recorded` audit line with both versions, beside the per-row
+lines `audit_row_change()` writes.
 
 Called by the booking wizard's review step (`recordBookingConsent` in
 `src/lib/actions/booking.ts`) and the portal consent gate (`recordConsent` in
-`app/app/(portal)/actions.ts`), both through `src/lib/consent.ts`. That helper first reads the
-firm's versions fresh and records nothing if they differ from the versions the page showed,
-because the page read the firm through a one-minute cache.
+`app/app/(portal)/actions.ts`), both through `src/lib/consent.ts`. Both pass the versions the page
+showed. The page read the firm through a one-minute cache, so they can be out of date; the
+helper turns the `DKC01` refusal into "The firm has changed its terms or privacy notice since this
+page was loaded", and asks the client to reload.
 
 Refuses:
 - `not authenticated` *(42501)*
 - `this firm is not active on Docket` — the firm is missing or its status is not `active`
-- `this firm has not published its terms and privacy notice yet` — `firm_policies_published()` is false: a version is missing, empty or still a `0-` draft
+- `this firm has not published its terms and privacy notice yet` — a stored version is missing, empty or still a `0-` draft (the test `firm_policies_published()` makes, on the locked row). Checked before the versions are compared, so naming a draft does not get it recorded
+- `the firm has changed its terms or privacy notice since they were shown` *(DKC01)* — either version given differs from the published one, or was not given
 
 **Staged.** Direct inserts into `consent_records` are still allowed (see *Writes with no RPC*),
 because the frontend deployed from `main` still inserts there and main's compat suite asserts it
