@@ -20,6 +20,8 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 | VAT-inclusive totals, money claims removed, migration `051` | 10, 12, 16 | Lane dD, merge `4a11f82` |
 | Booking consent on the review step, `record_consent()` in migration `052` | 6 | Lane dD, merge `4a11f82` |
 | Sign-in panel repaired after a bad merge on `main`, so CI is green again | none | `3a6bd85`, `92b0088` |
+| Tenant sites and booking keep working if the app deploys before `051` or `052` | 6, 10 | `f9f7681` |
+| A policy version needs text, a link or a page; the review step and gate link the same document | 1, 6 | `aa75837` |
 
 Still waiting on a decision:
 - the controller structure and the platform entity (items 1, 2, 4, 16, 19)
