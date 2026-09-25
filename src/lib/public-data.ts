@@ -21,7 +21,7 @@ async function rest<T>(path: string, revalidate = 120): Promise<T[]> {
 }
 
 const SERVICE_COLS =
-  "id,slug,name,description,price_minor,currency,duration_min,virtual_available,is_active,sort,firm_id";
+  "id,slug,name,description,price_minor,currency,duration_min,virtual_available,requires_prepayment,is_active,sort,firm_id";
 
 export async function serviceBySlug(firmId: string, slug: string): Promise<ServiceRow | null> {
   const rows = await rest<ServiceRow>(

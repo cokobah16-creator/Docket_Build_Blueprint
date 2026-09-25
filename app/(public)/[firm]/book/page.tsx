@@ -58,7 +58,7 @@ export default async function BookPage({
             ))}
           </div>
           <p className="mt-6 text-11 leading-5 text-ink-muted">
-            Your slot is held for 15 minutes while you pay. Submitting a booking does not by itself create a lawyer-client relationship.
+            When a service is paid in advance, your slot is held for 15 minutes while you pay. Submitting a booking does not by itself create a lawyer-client relationship.
           </p>
         </aside>
 

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { firmBySlug } from "@/lib/tenant";
-import { activeServices, formatMoneyMinor } from "@/lib/services";
+import { activeServices } from "@/lib/services";
+import { formatPriceWithVat } from "@/lib/money";
 import { publicLawyers, lawyerDisplayName } from "@/lib/public-data";
 import { legalServiceJsonLd, siteOrigin } from "@/lib/site";
 
@@ -34,6 +35,8 @@ export default async function FirmHome({ params }: { params: Promise<{ firm: str
   ]);
   const base = `/${firm.slug}`;
   const jsonLd = legalServiceJsonLd(firm, origin);
+  // Prices are shown as the client will pay them: with the firm's VAT, as book_appointment() adds it.
+  const vatRate = Number(firm.vat_rate) || 0;
 
   return (
     <div>
@@ -71,7 +74,7 @@ export default async function FirmHome({ params }: { params: Promise<{ firm: str
                       <p className="text-13 font-semibold text-ink">{service.name}</p>
                       <p className="mt-0.5 text-11 text-ink-muted">{service.duration_min} minutes</p>
                     </div>
-                    <p className="text-right text-11 font-semibold text-brand">{formatMoneyMinor(service.price_minor, service.currency)}</p>
+                    <p className="text-right text-11 font-semibold text-brand">{formatPriceWithVat(service.price_minor, service.currency, vatRate)}</p>
                   </div>
                 ))}
                 {services.length === 0 && <p className="text-13 text-ink-muted">Consultation services are being prepared.</p>}
@@ -115,7 +118,7 @@ export default async function FirmHome({ params }: { params: Promise<{ firm: str
                 <p className="text-11 font-semibold uppercase tracking-[0.12em] text-brand-accent">Service {String(index + 1).padStart(2, "0")}</p>
                 <h3 className="mt-6 font-heading text-21 font-semibold leading-7 text-brand group-hover:underline">{service.name}</h3>
                 {service.description && <p className="mt-3 text-13 leading-5 text-ink-muted">{service.description}</p>}
-                <p className="mt-auto pt-6 text-13 font-semibold text-brand">{formatMoneyMinor(service.price_minor, service.currency)} · {service.duration_min} minutes</p>
+                <p className="mt-auto pt-6 text-13 font-semibold text-brand">{formatPriceWithVat(service.price_minor, service.currency, vatRate)} · {service.duration_min} minutes</p>
               </Link>
             ))}
           </div>
@@ -155,7 +158,7 @@ export default async function FirmHome({ params }: { params: Promise<{ firm: str
         <div className="grid gap-8 bg-brand px-6 py-10 text-brand-on sm:px-10 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
             <h2 className="max-w-[24ch] font-heading text-26 font-semibold leading-tight">Book a consultation with {firm.name}</h2>
-            <p className="mt-2 max-w-[56ch] text-15 opacity-85">Pick a service, a lawyer and a time that suits you. Any fee is shown before you confirm the booking.</p>
+            <p className="mt-2 max-w-[56ch] text-15 opacity-85">Pick a service, a lawyer and a time that suits you. The full price, with any VAT, is shown before you confirm the booking.</p>
           </div>
           <Link href={`${base}/book`} className="inline-flex min-h-[50px] items-center justify-center rounded-control bg-brand-on px-6 text-15 font-semibold text-brand">
             {firm.brand.cta ?? "Book a Consultation"}

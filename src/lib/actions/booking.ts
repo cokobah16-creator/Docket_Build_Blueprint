@@ -39,7 +39,9 @@ import { FUNNEL, capture } from "@/lib/observability";
 import { consentedVisitorId } from "@/lib/observability/consent";
 import type { BookingResult } from "@/lib/db/types";
 import { after } from "next/server";
+import { z } from "zod";
 import { userError } from "@/lib/user-error";
+import { recordFirmConsent } from "@/lib/consent";
 
 /** The appointment_mode enum in migration 1. The database is what refuses anything else. */
 export type BookingMode = "virtual" | "in_person" | "phone";
@@ -60,6 +62,54 @@ export interface BookAppointmentInput {
 }
 
 export type BookAppointmentResult = { error: string } | { booking: BookingResult };
+
+export interface BookingConsentInput {
+  firmId: string;
+  /** The two boxes on the review step. Both must be ticked; neither is ticked for the client. */
+  acceptTerms: boolean;
+  acceptPrivacy: boolean;
+  /** The versions shown beside the boxes. record_consent() refuses them unless they are the firm's. */
+  termsVersion: string;
+  privacyVersion: string;
+}
+
+const bookingConsentSchema = z.object({
+  firmId: z.string().uuid(),
+  acceptTerms: z.literal(true),
+  acceptPrivacy: z.literal(true),
+  termsVersion: z.string().min(1).max(64),
+  privacyVersion: z.string().min(1).max(64),
+});
+
+/**
+ * Record the client's acceptance of the firm's terms and privacy notice before anything is
+ * booked or uploaded (legal readiness item 6). The wizard calls this first on confirm, so a
+ * refusal stops the booking before a file is sent or a slot is taken.
+ *
+ * record_consent() (migration 52) is given the versions shown beside the boxes. It writes both rows
+ * for auth.uid() only when those are the versions the firm has published, and otherwise refuses
+ * and writes nothing (see src/lib/consent.ts). book_appointment() does not yet refuse a booking
+ * without them: that step waits until no deployed code writes consent_records directly.
+ */
+export async function recordBookingConsent(input: BookingConsentInput): Promise<{ error: string } | undefined> {
+  const parsed = bookingConsentSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Tick both boxes: one to accept the terms of service, one to say you have read the privacy notice." };
+  }
+
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Sign in first, then confirm your booking." };
+
+  const error = await recordFirmConsent(supabase, parsed.data.firmId, {
+    terms: parsed.data.termsVersion,
+    privacy: parsed.data.privacyVersion,
+  });
+  return error ? { error } : undefined;
+}
 
 /**
  * Take the slot.

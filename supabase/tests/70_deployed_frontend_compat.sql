@@ -114,11 +114,13 @@ declare f uuid := (select v from fx where k='firm'); n int;
 begin
   perform t_anon();
   select count(*) into n from (
-    select id, slug, name, legal_name, brand, policies, custom_domain, timezone, default_currency, verified
+    select id, slug, name, legal_name, brand, policies, custom_domain, timezone, default_currency, verified,
+           vat_rate, rc_number
     from firm_public where slug = 'attorneys-klinique') x;
   perform t_check('anon reads firm_public with every column the tenant resolver names', n = 1);
   select count(*) into n from (
-    select id, slug, name, description, price_minor, currency, duration_min, virtual_available, is_active, sort, firm_id
+    select id, slug, name, description, price_minor, currency, duration_min, virtual_available, requires_prepayment,
+           is_active, sort, firm_id
     from services where firm_id = f and is_active) x;
   perform t_check('anon reads services with every column the public site names', n >= 1);
   perform t_reset();
@@ -202,6 +204,56 @@ begin
     from profiles where id = st) x;
   perform t_check('every profile column the console client list names exists', n = 1);
   perform t_reset();
+end $$;
+
+-- ---------------------------------------------------------------- 8. firm_public carries the VAT rate the public site prices with
+-- Migration 51 appended vat_rate and rc_number so the booking wizard can show the total that
+-- book_appointment() will invoice: the fee plus the firm's VAT. Appending is the only change the
+-- deployed front end cannot notice, so the order is pinned; the view must stay a read-only definer
+-- view over active firms, and the tax number must stay off it.
+do $$
+declare f uuid := (select v from fx where k='firm'); st uuid := (select v from fx where k='staff');
+        r numeric; rc text; ok bool;
+begin
+  update firms set vat_rate = 7.5, rc_number = 'RC 1234567' where id = f;
+
+  perform t_anon();
+  select vat_rate, rc_number into r, rc from firm_public where id = f;
+  perform t_check('anon reads an active firm''s vat_rate through firm_public', r = 7.5);
+  perform t_check('and its rc_number', rc = 'RC 1234567');
+
+  ok := false;
+  begin
+    update public.firm_public set vat_rate = 0 where id = f;
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('anon cannot change vat_rate through firm_public', ok);
+  perform t_reset();
+
+  perform t_as(st, 'aal2');
+  ok := false;
+  begin
+    update public.firm_public set vat_rate = 0 where id = f;
+  exception when insufficient_privilege then ok := true;
+  end;
+  perform t_check('a staff member at aal2 cannot change vat_rate through firm_public either', ok);
+  perform t_reset();
+  perform t_check('and the firm''s rate is untouched', (select vat_rate from firms where id = f) = 7.5);
+
+  perform t_check('anon and authenticated hold SELECT on firm_public and no other privilege',
+    has_table_privilege('anon', 'public.firm_public', 'select')
+    and has_table_privilege('authenticated', 'public.firm_public', 'select')
+    and not has_table_privilege('anon', 'public.firm_public', 'insert, update, delete, truncate, references, trigger')
+    and not has_table_privilege('authenticated', 'public.firm_public', 'insert, update, delete, truncate, references, trigger'));
+  perform t_check('firm_public is still a definer view (security_invoker = false)',
+    (select 'security_invoker=false' = any(reloptions) from pg_class where oid = 'public.firm_public'::regclass));
+  perform t_check('its columns are migration 13''s, in order, then vat_rate and rc_number',
+    (select string_agg(column_name, ',' order by ordinal_position) from information_schema.columns
+      where table_schema = 'public' and table_name = 'firm_public')
+    = 'id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency,verified,vat_rate,rc_number');
+  perform t_check('firm_public does not carry the tax number',
+    not exists (select 1 from information_schema.columns
+                 where table_schema = 'public' and table_name = 'firm_public' and column_name = 'tin'));
 end $$;
 
 do $$ begin raise notice 'ALL CHECKS PASSED'; end $$;

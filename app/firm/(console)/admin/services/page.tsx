@@ -14,9 +14,9 @@
 //    by the actions in src/lib/actions/services.ts.
 //  · Money is integer minor units. price_minor comes out of the database in kobo or cents and is
 //    rendered with formatMoneyMinor(); VAT is worked out here the way book_appointment() works
-//    it out — round(price_minor * vat_rate / 100) on the minor units, never on a decimal — so
-//    the figure on this screen is the figure the client's invoice will carry. Nothing on this
-//    page adds minor units of two currencies together.
+//    it out — round(price_minor * vat_rate / 100) on the minor units, never on a decimal, by
+//    vatMinor() in src/lib/money.ts — so the figure on this screen is the figure the client's
+//    invoice will carry. Nothing on this page adds minor units of two currencies together.
 //  · Nothing firm-specific: the firm, its currency, its VAT rate and its public web address all
 //    arrive from context.
 //  · A PENDING firm can still write everything (that is the setup path) but is absent from
@@ -28,7 +28,7 @@
 import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
-import { formatMoneyMinor } from "@/lib/money";
+import { formatMoneyMinor, vatMinor } from "@/lib/money";
 import type { FirmReadiness } from "@/lib/db/types";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -139,7 +139,7 @@ export default async function ServicesPage({
   const views: ServiceView[] = services.map((s) => {
     // The same arithmetic book_appointment() does, on the same integers: VAT is rounded on the
     // minor units, so this is the figure the invoice will carry and not a re-derived decimal.
-    const vatMinor = vatRate > 0 ? Math.round((s.price_minor * vatRate) / 100) : 0;
+    const vat = vatMinor(s.price_minor, vatRate);
     const u = usageById.get(s.id);
     const form = forms.find((f) => f.service_id === s.id) ?? null;
     return {
@@ -160,8 +160,8 @@ export default async function ServicesPage({
       isActive: s.is_active,
       sort: s.sort,
       feeLabel: formatMoneyMinor(s.price_minor, s.currency),
-      vatLabel: vatMinor > 0 ? formatMoneyMinor(vatMinor, s.currency) : null,
-      totalLabel: formatMoneyMinor(s.price_minor + vatMinor, s.currency),
+      vatLabel: vat > 0 ? formatMoneyMinor(vat, s.currency) : null,
+      totalLabel: formatMoneyMinor(s.price_minor + vat, s.currency),
       minorLabel: `${s.price_minor.toLocaleString("en-NG")} ${s.currency === "NGN" ? "kobo" : "cents"}`,
       totalAppointments: u?.total ?? 0,
       upcomingAppointments: u?.upcoming ?? 0,

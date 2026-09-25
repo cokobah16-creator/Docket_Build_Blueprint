@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { firmBySlug } from "@/lib/tenant";
 import { publishedContent } from "@/lib/public-data";
-import { SEEDED_POLICY_TEXT } from "@/lib/db/types";
+import { publishedPolicyText } from "@/lib/policy-text";
 import { ContentBody, PageShell } from "./page-shell";
 
 /** Terms / privacy, first match wins: published CMS content; the text the firm saved under
@@ -27,14 +27,8 @@ export async function PolicyPage({
   const policy = firm.policies[kind];
   const version = policy?.version ? String(policy.version) : null;
   const published = version !== null && !version.startsWith("0-");
-  const savedText = policy?.text;
-  const text =
-    published &&
-    typeof savedText === "string" &&
-    savedText.trim() !== "" &&
-    savedText.trim() !== SEEDED_POLICY_TEXT
-      ? savedText
-      : null;
+  const text = publishedPolicyText(policy);
+  const cancellationText = kind === "terms" ? publishedPolicyText(firm.policies.cancellation) : null;
   const url = policy?.url ? String(policy.url) : null;
   const page = await publishedContent(firm.id, "page", kind);
   const firmName = firm.legal_name ?? firm.name;
@@ -72,9 +66,7 @@ export async function PolicyPage({
             <p>{firmName} has not published its {documentName} yet.</p>
           )}
           {firm.policies.disclaimer?.text ? <p>{String(firm.policies.disclaimer.text)}</p> : null}
-          {kind === "terms" && firm.policies.cancellation?.text ? (
-            <p>{String(firm.policies.cancellation.text)}</p>
-          ) : null}
+          {cancellationText ? <p>{cancellationText}</p> : null}
         </div>
       )}
     </PageShell>
