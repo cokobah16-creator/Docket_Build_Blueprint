@@ -8,6 +8,21 @@ import type { FirmPublic } from "@/lib/db/types";
 const CACHE_TTL_MS = 60_000;
 const cache = new Map<string, { value: FirmPublic | null; expires: number }>();
 
+const FIRM_COLUMNS = "id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency,verified";
+/** Appended to firm_public by migration 51. */
+const MIGRATION_51_COLUMNS = "vat_rate,rc_number";
+
+function firmPublicQuery(url: string, columns: string, filter: string): string {
+  return `${url}/rest/v1/firm_public?select=${columns}&${filter}&limit=1`;
+}
+
+/** PostgREST's refusal of a select that names a column the view does not have. */
+async function isUndefinedColumn(res: Response): Promise<boolean> {
+  if (res.status !== 400) return false;
+  const body = (await res.json().catch(() => null)) as { code?: string } | null;
+  return body?.code === "42703";
+}
+
 async function fetchFirmPublic(filter: string): Promise<FirmPublic | null> {
   const url = supabaseUrl();
   const key = supabaseAnonKey();
@@ -17,17 +32,28 @@ async function fetchFirmPublic(filter: string): Promise<FirmPublic | null> {
   if (cached && cached.expires > Date.now()) return cached.value;
 
   // Only an answer is cached: a firm, or "no such firm". A failed request (a network error, or
-  // PostgREST refusing the select, as it does with 42703 when the app is deployed ahead of a
-  // migration that adds a column named above) returns null this time and is asked again on the
-  // next request. Caching it would show "no such firm" for every tenant for the whole minute.
+  // PostgREST refusing the select) returns null this time and is asked again on the next request.
+  // Caching it would show "no such firm" for every tenant for the whole minute.
+  //
+  // The app has reached production ahead of its migrations before (docs/DEPLOYMENT_RUNBOOK.md),
+  // and the Playwright smoke suite runs this code against the live project. Without migration 51,
+  // PostgREST refuses vat_rate and rc_number with 42703, so the firm is asked for again without
+  // them and served with no VAT rate and no RC/BN. Prices then show as they did before 51, the fee
+  // alone with no "incl. VAT", and the booking wizard still opens no checkout when the invoice
+  // total differs from the total it showed.
   try {
-    const res = await fetch(
-      `${url}/rest/v1/firm_public?select=id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency,verified,vat_rate,rc_number&${filter}&limit=1`,
-      { headers: restHeaders(key) },
-    );
+    let res = await fetch(firmPublicQuery(url, `${FIRM_COLUMNS},${MIGRATION_51_COLUMNS}`, filter), {
+      headers: restHeaders(key),
+    });
+    let before51 = false;
+    if (await isUndefinedColumn(res)) {
+      before51 = true;
+      res = await fetch(firmPublicQuery(url, FIRM_COLUMNS, filter), { headers: restHeaders(key) });
+    }
     if (!res.ok) return null;
     const rows = (await res.json()) as FirmPublic[];
-    const value = rows[0] ?? null;
+    const row = rows[0];
+    const value = row ? (before51 ? { ...row, vat_rate: 0, rc_number: null } : row) : null;
     cache.set(filter, { value, expires: Date.now() + CACHE_TTL_MS });
     return value;
   } catch {
