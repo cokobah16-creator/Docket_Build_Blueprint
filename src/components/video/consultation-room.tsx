@@ -5,7 +5,11 @@
 // - Join window: opens 10 minutes before the start (the Edge Function enforces the same rule).
 // - Client (participant) knocks; the lawyer (owner) sees the knock and admits from here.
 // - Timer and connection quality; "End and write notes" for the owner.
-// Recording is never enabled on the room or the token and no control for it is exposed.
+// Recording: Docket never sets enable_recording on the room or on a token
+// (supabase/functions/video-session). That is all the code can promise. Daily Prebuilt could
+// still offer a recording control to an owner if the Daily domain itself had recording on, and
+// every aal2 member of the firm gets an owner token, so this screen says only that Docket does
+// not turn recording on, and never that the call is not recorded.
 //
 // Bandwidth honesty (design/pwa): a Nigerian client on mobile data pays for
 // this call by the megabyte, so the room never degrades silently. Audio-only
@@ -475,7 +479,7 @@ export function ConsultationRoom({
           <div className="mx-4 mb-3 flex shrink-0 items-center justify-between gap-3 rounded-control border border-white/15 bg-white/[0.08] p-3.5">
             <p className="min-w-0 text-13 font-semibold text-white">
               {waitingCount === 1 ? `${counterpartLabel} is waiting` : `${waitingCount} people are waiting`}
-              <span className="mt-0.5 block text-11 font-normal text-white/55">Admit when you are ready — nothing is recorded.</span>
+              <span className="mt-0.5 block text-11 font-normal text-white/55">Admit when you are ready.</span>
             </p>
             <Button size="md" className="shrink-0 bg-white text-[#0B0B0C] hover:bg-white/90" onClick={admitAll}>
               Admit
@@ -568,10 +572,10 @@ export function ConsultationRoom({
           </div>
           <p className="text-center text-11 text-white/40">
             {role === "owner"
-              ? "Private room · not recorded · you hold the only owner token"
+              ? "Private room · Docket does not turn recording on"
               : phase === "in-call"
                 ? `${audioOnly ? "Audio only" : "Video"} · ${mb(used)} used · about ${audioOnly ? MB_PER_MIN.audio : MB_PER_MIN.video} MB a minute`
-                : "Private · not recorded"}
+                : "Private room · Docket does not turn recording on"}
           </p>
           {role === "owner" && phase === "in-call" && (
             <p className="text-center text-11 text-white/40">

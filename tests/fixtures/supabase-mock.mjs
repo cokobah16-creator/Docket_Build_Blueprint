@@ -80,7 +80,15 @@ const FIRM = {
     colours: { primary: "#0F2A44", accent: "#B08D57", surface: "#F7F5F0" },
     fonts: { heading: "Fraunces", body: "Inter" },
   },
-  policies: { terms: { version: "2026-09" }, privacy: { version: "2026-09" } },
+  // Privacy carries saved text and terms does not, so /{slug}/privacy renders the firm's own
+  // wording and /{slug}/terms the placeholder: both branches of PolicyPage get a design run.
+  policies: {
+    terms: { version: "2026-09" },
+    privacy: {
+      version: "2026-09",
+      text: "This notice explains what we collect when you book a consultation, why we collect it and who we share it with.\n\nYou can ask us for a copy of what we hold about you at any time.",
+    },
+  },
   custom_domain: null,
   timezone: "Africa/Lagos",
   default_currency: "NGN",

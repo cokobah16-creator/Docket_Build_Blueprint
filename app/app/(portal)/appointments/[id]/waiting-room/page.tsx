@@ -70,7 +70,8 @@ export default async function WaitingRoomPage({ params }: { params: Promise<{ id
           />
         )}
         <p className="text-11 leading-relaxed text-ink-muted">
-          Consultations are private and are not recorded. Use headphones in a quiet place if you can.
+          Consultations are held in a private room. Docket does not turn recording on. Use
+          headphones in a quiet place if you can.
         </p>
       </Screen>
     </>

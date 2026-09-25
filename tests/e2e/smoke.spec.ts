@@ -1,16 +1,53 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type BrowserContext } from "@playwright/test";
+import { CONSENT_COOKIE, consentValue } from "../../src/lib/consent-cookie";
 
 // Smoke: the platform landing, a tenant's public home (any firm — set
-// E2E_FIRM_SLUG; defaults to tenant #1) and the sign-in surfaces render.
+// E2E_FIRM_SLUG; defaults to tenant #1) and the sign-in surfaces render,
+// and no analytics cookie is set before a visitor allows it.
 // Tenant data comes from firm_public, so the tenant test needs Supabase env.
 
 const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const firmSlug = process.env.E2E_FIRM_SLUG ?? "attorneys-klinique";
 
+/** The analytics visitor id middleware.ts mints (VISITOR_COOKIE in src/lib/observability). */
+const VISITOR_COOKIE = "docket_did";
+
+// The cookie banner (src/components/ui/cookie-banner.tsx) shows on a first visit
+// whenever the server under test has POSTHOG_KEY set, and it sits over the foot
+// of the screen. The tests that tap controls store "Only necessary" first, so
+// the banner is never in the way of what they tap.
+async function storeNecessaryOnly(context: BrowserContext, baseURL: string | undefined) {
+  if (!baseURL) return;
+  await context.addCookies([{ name: CONSENT_COOKIE, value: consentValue(false), url: baseURL }]);
+}
+
 test("platform landing responds", async ({ page }) => {
   const response = await page.goto("/");
   expect(response?.ok()).toBeTruthy();
   await expect(page.locator("h1").first()).toBeVisible();
+});
+
+test("no analytics cookie without consent", async ({ page, request }) => {
+  // A first visit stores no choice, so it must not be given a visitor id —
+  // with or without POSTHOG_KEY. context.cookies() rather than document.cookie,
+  // which cannot see an httpOnly cookie such as this one.
+  await page.goto("/");
+  const names = (await page.context().cookies()).map((cookie) => cookie.name);
+  expect(names).not.toContain(VISITOR_COOKIE);
+
+  // A browser still holding an id from before, with no consent stored, gets it
+  // expired on the response.
+  const response = await request.get("/", {
+    headers: { cookie: `${VISITOR_COOKIE}=00000000-0000-4000-8000-000000000000` },
+  });
+  expect(response.ok()).toBeTruthy();
+  const expired = response
+    .headersArray()
+    .filter((header) => header.name.toLowerCase() === "set-cookie")
+    .map((header) => header.value)
+    .filter((value) => value.startsWith(`${VISITOR_COOKIE}=;`));
+  expect(expired).toHaveLength(1);
+  expect(expired[0]).toMatch(/expires=thu, 01 jan 1970/i);
 });
 
 test("tenant public home renders with the firm's branding", async ({ page }) => {
@@ -28,7 +65,8 @@ test("tenant public home renders with the firm's branding", async ({ page }) => 
   await expect(page.locator("header a").first()).not.toHaveText(/sign in/i);
 });
 
-test("firm registration is reachable from the landing", async ({ page }) => {
+test("firm registration is reachable from the landing", async ({ page, baseURL }) => {
+  await storeNecessaryOnly(page.context(), baseURL);
   await page.goto("/");
 
   // The landing repeats this call to action on purpose — the header, the hero,
@@ -68,7 +106,8 @@ test("firm registration is reachable from the landing", async ({ page }) => {
   }
 });
 
-test("client login renders both sign-in methods", async ({ page }) => {
+test("client login renders both sign-in methods", async ({ page, baseURL }) => {
+  await storeNecessaryOnly(page.context(), baseURL);
   await page.goto("/app/login");
   await expect(page.getByRole("heading", { name: /sign in/i })).toBeVisible();
   if (configured) {

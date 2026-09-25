@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { analyticsConfigured } from "@/lib/consent-cookie";
+import { CookieSettingsButton } from "@/components/ui/cookie-banner";
 
 // The side panel says what signing in will actually involve, step by step,
 // rather than selling the product to somebody who is already at the door.
@@ -87,9 +89,17 @@ export function AuthFrame({
         </div>
         <footer className="flex flex-wrap justify-between gap-3 border-t border-docket-hair px-5 py-5 text-11 text-docket-muted sm:px-8 lg:px-12 xl:px-20">
           <span>© {new Date().getFullYear()} Docket</span>
-          <Link href="/" className="font-medium text-docket-link hover:text-docket-hunter">
-            Back to Docket
-          </Link>
+          <span className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            {/* The way back to the cookie question on every sign-in and registration page. Only
+                where the banner can appear (POSTHOG_KEY set), so it never opens nothing. The
+                negative margin keeps the 44px target without making the footer taller. */}
+            {analyticsConfigured() && (
+              <CookieSettingsButton className="-my-3 inline-flex min-h-[44px] items-center font-medium text-docket-link hover:text-docket-hunter focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current" />
+            )}
+            <Link href="/" className="font-medium text-docket-link hover:text-docket-hunter">
+              Back to Docket
+            </Link>
+          </span>
         </footer>
       </section>
     </div>

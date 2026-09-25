@@ -12,7 +12,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { isProductionDeployment, isSupabaseConfigured } from "@/lib/env";
+import { analyticsConfigured } from "@/lib/consent-cookie";
 import { Alert } from "@/components/ui/alert";
+import { CookieSettingsButton } from "@/components/ui/cookie-banner";
 
 export const metadata = {
   title: "Docket — practice software for Nigerian law firms",
@@ -284,6 +286,12 @@ export default function PlatformLanding() {
             <p className="mt-3 max-w-[40ch] text-13 leading-5 text-white/70">
               Practice software for law firms, their clients and court registries, built first for Nigerian practice.
             </p>
+            {/* The way back to the cookie question. Shown only where the banner can appear
+                (POSTHOG_KEY set), so it never opens nothing. This page is prerendered, so the
+                key is read at build time, as it is for the banner in app/layout.tsx. */}
+            {analyticsConfigured() && (
+              <CookieSettingsButton className="mt-3 inline-flex min-h-[44px] items-center text-13 text-white/75 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white" />
+            )}
           </div>
           <div>
             <p className="text-11 font-semibold uppercase tracking-[0.12em] text-docket-gold-pale">Law firms</p>

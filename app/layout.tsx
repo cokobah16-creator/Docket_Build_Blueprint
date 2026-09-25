@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { brandStyle } from "@/lib/brand";
+import { analyticsConfigured } from "@/lib/consent-cookie";
+import { CookieBanner } from "@/components/ui/cookie-banner";
 import "./globals.css";
 import "./marketing-os.css";
 
@@ -45,6 +47,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           closer. */}
       <body data-brand style={brandStyle(null)} className="min-h-[100dvh] text-ink antialiased">
         {children}
+        {/* Mounted once, here, so every surface asks the same question the same way. It renders
+            nothing unless POSTHOG_KEY is set and no choice is stored. The prop is read on the
+            server, because POSTHOG_KEY never reaches the browser. */}
+        <CookieBanner analyticsEnabled={analyticsConfigured()} />
       </body>
     </html>
   );

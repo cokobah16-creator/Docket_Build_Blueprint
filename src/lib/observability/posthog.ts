@@ -10,6 +10,11 @@
 //
 // Nothing here identifies a person by name, phone or email. A distinct id is either the signed-in
 // user's id or the anonymous cookie the middleware mints, and firm identity travels as data.
+//
+// CONSENT IS CHECKED BY THE CALLER, not here. Every call site asks ./consent.ts first
+// (analyticsAllowed() or consentedVisitorId()), and sends nothing unless the browser making the
+// request chose "Allow analytics". capture() cannot check for itself: this module reaches
+// middleware.ts through the index, on the edge, where the cookie reader in ./consent.ts cannot run.
 
 const DEFAULT_HOST = "https://eu.i.posthog.com";
 

@@ -35,14 +35,14 @@ export default async function MessagesPage() {
                 {threads.length > 0 ? "Choose a conversation" : "No conversations yet"}
               </p>
               <p className="mt-1 text-13 leading-relaxed text-ink-muted">
-                Each matter and consultation has its own secure thread with {firm?.name ?? "your firm"}.
+                Each matter and consultation has its own private thread. Only {firm?.name ?? "your firm"} and the people on that matter or consultation can read it.
               </p>
             </div>
           </Card>
         }
       />
       <p className="text-11 leading-relaxed text-ink-muted lg:hidden">
-        Each matter and consultation has its own secure thread with {firm?.name ?? "your firm"}.
+        Each matter and consultation has its own private thread. Only {firm?.name ?? "your firm"} and the people on that matter or consultation can read it.
       </p>
     </Screen>
   );

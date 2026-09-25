@@ -2,8 +2,9 @@
 //
 // THE FUNNEL SPANS TWO KINDS OF ID, which is the whole reason this exists. site_viewed
 // (app/(public)/[firm]/layout.tsx) and booking_started (src/lib/actions/booking.ts) are recorded
-// against the anonymous cookie the middleware mints; matter_opened (src/lib/actions/matters.ts) is
-// recorded against the signed-in user's id. PostHog only knows those are one person if it is told,
+// against the anonymous cookie the middleware mints; later steps belong to the signed-in account
+// (matter_opened did, and is held back until the client's own consent can be read: see
+// src/lib/actions/matters.ts). PostHog only knows those are one person if it is told,
 // once, with $identify — and if it is not told, the funnel does not merely lose a step, it splits
 // into two people who each completed half of it.
 //
@@ -21,13 +22,18 @@
 // completes in the browser therefore has to hand the fact back to the server, which is what
 // src/lib/actions/analytics.ts is for.
 //
+// ONLY WITH CONSENT. The stitch links an anonymous visitor to an account, which is the most
+// identifying thing analytics does, so it happens only when this browser chose "Allow analytics"
+// and POSTHOG_KEY is set (consentedVisitorId() in ./consent.ts). Without that, nothing is sent.
+// Every sign-in path comes through here, so this one check covers them all.
+//
 // NOT EXPORTED FROM ../observability's index. That barrel is imported by middleware.ts, which runs
 // on the edge, where next/headers does not exist — the same rule src/lib/auth-redirect.ts is split
 // along. Import this module by its own path.
 
 import { after } from "next/server";
-import { cookies } from "next/headers";
-import { VISITOR_COOKIE, identify } from "@/lib/observability";
+import { identify } from "@/lib/observability";
+import { consentedVisitorId } from "@/lib/observability/consent";
 
 /**
  * Tell PostHog that the anonymous visitor holding this browser's cookie and `userId` are one
@@ -40,8 +46,7 @@ import { VISITOR_COOKIE, identify } from "@/lib/observability";
 export async function stitchVisitor(userId: string | null | undefined): Promise<void> {
   if (!userId) return;
   try {
-    const anonymousId =
-      (await cookies()).getAll().find((c) => c.name === VISITOR_COOKIE)?.value ?? null;
+    const anonymousId = await consentedVisitorId();
     if (!anonymousId) return;
     after(() => identify(userId, anonymousId).catch(() => undefined));
   } catch {
