@@ -100,7 +100,9 @@ confirms the booking from its side, and you are told when it does.
 If the consultation is paid in advance, your slot is **held for fifteen minutes** while you pay.
 You go to Paystack's own checkout page — Docket never sees your card — and come back when it is
 done. If the invoice turns out to be for a different total from the one you were shown, you go to
-the appointment page instead, so you can check the amount before you pay.
+the appointment page instead, so you can check the amount before you pay. You also go there, and
+not to checkout, if the booking turns out to need payment now when the page said it would not, or
+the other way round. The appointment page says which.
 
 **The money goes to your firm**, into its own account. Docket does not hold it and cannot touch it.
 

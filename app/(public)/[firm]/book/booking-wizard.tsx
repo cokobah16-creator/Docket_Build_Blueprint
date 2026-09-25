@@ -321,11 +321,19 @@ export function BookingWizard({
       const totalChanged =
         result.invoice_id !== null &&
         (Number(result.amount_minor) !== totalMinor || result.currency !== service.currency);
-      if (result.status === "awaiting_payment" && !totalChanged) {
+      // The same goes for WHETHER to pay now. Checkout opens only when this page said so
+      // (paysNow) and the database agrees (awaiting_payment). When the two differ, the service
+      // changed after the page read it, and the appointment page says what happens instead.
+      const paymentChanged = (result.status === "awaiting_payment") !== paysNow;
+      if (result.status === "awaiting_payment" && paysNow && !totalChanged) {
         const r = await startPayment(result.appointment_id);
         if (r?.error) throw new Error(r.error);
       } else {
-        router.push(`/app/appointments/${result.appointment_id}${totalChanged ? "?total=changed" : ""}`);
+        const flags = new URLSearchParams();
+        if (totalChanged) flags.set("total", "changed");
+        if (paymentChanged) flags.set("payment", "changed");
+        const query = flags.toString();
+        router.push(`/app/appointments/${result.appointment_id}${query ? `?${query}` : ""}`);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");

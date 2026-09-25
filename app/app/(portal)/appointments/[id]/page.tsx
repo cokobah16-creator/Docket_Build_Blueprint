@@ -33,10 +33,10 @@ export default async function AppointmentPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; total?: string }>;
+  searchParams: Promise<{ error?: string; total?: string; payment?: string }>;
 }) {
   const { id } = await params;
-  const { error: actionError, total: totalFlag } = await searchParams;
+  const { error: actionError, total: totalFlag, payment: paymentFlag } = await searchParams;
   const supabase = await supabaseServer();
   if (!supabase) redirect("/app/login");
   const { data: { user } } = await supabase.auth.getUser();
@@ -92,8 +92,11 @@ export default async function AppointmentPage({
   // placeholder wording the firm never adopted. Nothing is promised in its place.
   const cancellationText = publishedPolicyText(apptFirm?.policies?.cancellation);
   // The booking wizard sends the client here, instead of to checkout, when the invoice the
-  // database raised is not for the total the wizard showed.
+  // database raised is not for the total the wizard showed, or when the wizard said to pay now and
+  // the booking does not need it (or the other way round). The notices below are fixed text and
+  // each is shown only when the appointment's own state bears it out.
   const totalChanged = totalFlag === "changed";
+  const paymentChanged = paymentFlag === "changed";
   const when = new Intl.DateTimeFormat("en-GB", { dateStyle: "full", timeStyle: "short", timeZone: tz }).format(new Date(appt.starts_at));
   const live = ["awaiting_payment", "pending", "confirmed", "rescheduled"].includes(appt.status);
   const upcoming = new Date(appt.starts_at).getTime() > Date.now();
@@ -134,6 +137,20 @@ export default async function AppointmentPage({
           <Alert kind="warning" title="Check the amount">
             The invoice for this booking is for {formatMoneyMinor(inv.total_minor, inv.currency)}, which is not the
             total you were shown when you booked. Check it before you pay.
+          </Alert>
+        )}
+
+        {paymentChanged && appt.status === "awaiting_payment" && inv && inv.status !== "paid" && (
+          <Alert kind="warning" title="This booking needs payment now">
+            The booking page did not ask you to pay now, so you were not sent to pay. This booking
+            does need payment now. If it is not paid before the hold ends, the time is released.
+          </Alert>
+        )}
+
+        {paymentChanged && (appt.status === "confirmed" || appt.status === "pending") && (
+          <Alert kind="info" title="Nothing was paid">
+            The booking page asked you to pay now, but this booking was made without payment, so you
+            were not sent to pay.{inv ? " Its invoice is in the details below." : ""}
           </Alert>
         )}
 
