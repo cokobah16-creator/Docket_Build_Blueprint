@@ -8,6 +8,28 @@ The findings were produced by reading the code, then checked a second time by op
 
 Docket has two kinds of controller to serve. Each firm controls its clients' data, and Docket controls at least the accounts and its own visitor cookie (`COMPLIANCE_PACK.md:15-18`, still a working assumption). Several items below therefore need both a platform-level fix and something a firm fills in as data, never as code.
 
+## Progress
+
+*Updated 25 September 2026.* The fixes that needed no business or legal decision are in the code. Each item below has a **Done in the code** paragraph that says which steps are done and which remain.
+
+| Change | Items | Where |
+|---|---|---|
+| Firm policy text rendered, and the gate always links a readable page | 1, 6 | Lane dF, merge `42180c4`, in PR #40 |
+| False video, message and guide claims removed | 12 | Lane dF, merge `42180c4`, in PR #40 |
+| Analytics only with consent, cookie banner and settings control, `matter_opened` dropped | 5, 7 | Lane dE, merge `14c8fd0`, in PR #40 |
+| VAT-inclusive totals, money claims removed, migration `051` | 10, 12, 16 | Lane dD, merge `4a11f82` |
+| Booking consent on the review step, `record_consent()` in migration `052` | 6 | Lane dD, merge `4a11f82` |
+| Sign-in panel repaired after a bad merge on `main`, so CI is green again | none | `3a6bd85`, `92b0088` |
+
+Still waiting on a decision:
+- the controller structure and the platform entity (items 1, 2, 4, 16, 19)
+- the refund rule and late payments (items 3, 10)
+- `transaction_charge` and the processing margin (items 10, 12)
+- tenant fonts (item 5)
+- two-way SMS (item 18)
+
+Still waiting on a deployment: `053`, the enforcement pass for item 6, which follows once `052` and the app that calls `record_consent()` are live.
+
 ## Status at a glance
 
 **P0** means live exposure today: someone's data or money is affected now, or a required disclosure is missing. **P1** means before public launch or the next release. **P2** is hygiene. Effort is **S** for under half a day, **M** for one to two days and **L** for more. 8 items are P0, 8 are P1 and 4 are P2.
@@ -18,7 +40,7 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 | 2 | [Add terms of service](#2-add-terms-of-service) | Partial | P0 | L |
 | 3 | [Add a refund policy](#3-add-a-refund-policy) | Partial | P0 | M |
 | 4 | [Add a cookie policy](#4-add-a-cookie-policy) | Missing | P1 | M |
-| 5 | [Add a cookie consent banner](#5-add-a-cookie-consent-banner) | Missing | P0 | L |
+| 5 | [Add a cookie consent banner](#5-add-a-cookie-consent-banner) | Partial (was Missing) | P0 | L |
 | 6 | [Check your form consents](#6-check-your-form-consents) | Partial | P0 | L |
 | 7 | [Don't collect unnecessary data](#7-dont-collect-unnecessary-data) | Partial | P0 | M |
 | 8 | [Audit your third-party SDKs](#8-audit-your-third-party-sdks) | Partial | P1 | M |
@@ -60,6 +82,14 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 14. Update `docs/COMPLIANCE_PACK.md` §4 from `src/lib/subprocessors.json`.
 15. Publish tenant #1's notice through `/firm/admin/settings`, not through `seed.sql`.
 
+**Done in the code (merged in PR #40, lane dF).** Steps 1 to 3 are done, for the terms page as well as the privacy page.
+- `PolicyPage` renders the text a firm saves once its version is published, and a link given alongside it is shown beneath.
+- A `0-` draft is skipped, and so is the seeded holding sentence "To be published by the firm before go-live."
+- The placeholder says consent is recorded when the client first opens the portal.
+- The portal consent gate always links a readable page. It uses the firm's URL when one is set. Otherwise it links the firm's own `/{slug}/terms` and `/{slug}/privacy` on the firm's own address.
+
+Steps 4 to 15, Docket's own notice and its links, wait on the controller and entity decisions.
+
 **How to check it.**
 - Extend `tests/e2e/smoke.spec.ts`. On `/`, `/app/login`, `/firm/start` and `/{slug}/book`, a privacy link must exist and return 200.
 - Add `text` to the mock privacy policy (`tests/fixtures/supabase-mock.mjs:83`), then run `npm run test:design`. `site-privacy` must show that text.
@@ -82,7 +112,7 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 2. Create `app/docket/terms/page.tsx` (new) with `export const dynamic = "force-dynamic"` (`src/lib/csp.ts:74-79`). Cover the service; accounts and MFA; acceptable use, with item 19's takedown clause; payments (client fees settle to the firm's Paystack subaccount, and Docket gives notice before charging, `app/page.tsx:252-257`); no legal advice from Docket; liability; suspension; notices; and Nigerian governing law with a named forum.
 3. Create `app/docket/firm-agreement/page.tsx` (new) and `app/docket/dpa/page.tsx` (new). The DPA makes the firm the controller (`firm-start.tsx:159-160`) and Docket the processor, and lists item 1's sub-processors.
 4. Add `"/docket"` to `APP_PREFIXES` (`middleware.ts:53`) if item 1 has not.
-5. Create `supabase/migrations/20260910000051_platform_consents.sql` (new) with `alter type consent_kind add value if not exists` for `platform_terms`, `firm_agreement` and `dpa`. Use no new value in a `language sql` body in this file. Postgres rejects it in the transaction that adds it.
+5. Create `supabase/migrations/20260910000054_platform_consents.sql` (new) with `alter type consent_kind add value if not exists` for `platform_terms`, `firm_agreement` and `dpa`. Use no new value in a `language sql` body in this file. Postgres rejects it in the transaction that adds it.
 6. Leave `is_valid_firm_slug` alone: `docket` is already a reserved slug (`20260910000009_platform_firms.sql:141-142`), so no firm can take the `/docket` path.
 7. In that file, add a plpgsql `security definer` function `record_platform_consent(p_kind consent_kind, p_version text, p_firm uuid default null)`. It inserts as `auth.uid()`, takes no firm for `platform_terms`, and needs an `owner` row in `firm_members` for the other two. It skips `mfa_ok()`, as self-serve `create_firm` does. Grant it to `authenticated` only, so it still works after item 6 revokes direct insert. Leave `ip` and `user_agent` null (`20260910000024_wave_zero_doors.sql:116-121`).
 8. In Step 1 of `firm-start.tsx` (`:80-96`), add a required checkbox that links `/docket/terms`. Pass its version in `signUp` `options.data` (`:55-58`).
@@ -110,7 +140,7 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 **Where it stands.** Clients pay before a booking completes (`app/(public)/[firm]/book/booking-wizard.tsx:579-580`, `src/lib/actions/booking.ts:176-186`). The platform's default cancellation text promises "free of charge up to 24 hours" (`supabase/migrations/20260910000012_platform_hardening.sql:140-141`, and for tenant #1 `supabase/seed.sql:31-32`). Clients see this text before paying, with no link (`booking-wizard.tsx:552-553`, `app/(public)/[firm]/services/[service]/page.tsx:44-45`). The portal also hard-codes it (`app/app/(portal)/appointments/[id]/page.tsx:223`, `app/app/(portal)/appointments/page.tsx:125-126`). But `cancel_appointment` ignores `free_cancel_hours`, voids only unpaid invoices and records no refund (`supabase/migrations/20260909000003_functions.sql:260-274`). The webhook also ignores refund events (`supabase/functions/paystack-webhook/index.ts:147-148`). There is no policy page, `PayPanel` shows no policy, and no console screen edits the cancellation document (`app/firm/(console)/admin/settings/page.tsx:195`).
 
 **How to add it.**
-1. Create `supabase/migrations/20260910000053_cancellation_and_defaults.sql` (new). In it, recreate `seed_firm_defaults` from its current body in `20260910000012_platform_hardening.sql`, with cancellation text that names no firm and promises no refund. Item 7's change to the same function goes in this migration too.
+1. Create `supabase/migrations/20260910000055_cancellation_and_defaults.sql` (new). In it, recreate `seed_firm_defaults` from its current body in `20260910000012_platform_hardening.sql`, with cancellation text that names no firm and promises no refund. Item 7's change to the same function goes in this migration too.
 2. In the same file, use `jsonb_set` to put the new text on every firm whose cancellation text still matches the old default. Edit `supabase/seed.sql:32` to match.
 3. In the same file, add `appointments.refund_due_minor` and recreate `cancel_appointment`, keeping its checks (`functions.sql:264-270`). When the invoice is `paid`, compare the time left with `free_cancel_hours`. Set `refund_due_minor` under the agreed rule and add it to the audit payload.
 4. Set `refund_due_minor` the same way when `release_expired_holds` releases a paid booking (`20260910000035_pre_consultation_checkin.sql:614-633`).
@@ -179,7 +209,7 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 
 ### 5. Add a cookie consent banner
 
-**Status:** missing · **Priority:** P0 · **Effort:** L
+**Status:** partial (missing at the audit) · **Priority:** P0 · **Effort:** L
 
 **Where it stands.** No banner, cookie notice or opt-out exists anywhere. `middleware.ts:119-129` and `middleware.ts:170-180` set `docket_did` on every non-static path (`middleware.ts:187`). It is an analytics id that lasts one year (`middleware.ts:66`), and it is set even when `POSTHOG_KEY` is unset. PostHog events use that id, or an account uuid, at `app/(public)/[firm]/layout.tsx:47`, `src/lib/actions/booking.ts:47-49`, `src/lib/observability/stitch.ts:44`, `src/lib/actions/matters.ts:135` and `app/firm/(auth)/start/actions.ts:109`. The console and the tenant sites fetch Google Fonts at runtime (`app/firm/(console)/layout.tsx:43-44`, `src/lib/brand.ts:351-357`), and `docs/COMPLIANCE_PACK.md:227-242` does not list this. `consent_kind` has no analytics value (`supabase/migrations/20260909000001_schema.sql:22`).
 
@@ -189,10 +219,10 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 3. When there is no consent, remove `docket_did` from the forwarded `cookie` header. Then call `response.cookies.delete({ name: VISITOR_COOKIE, path: "/" })`.
 4. Add `analyticsAllowed()` in `src/lib/observability/consent.ts` (new). It reads `docket_consent` through `cookies()`. It returns false when `POSTHOG_KEY` is unset.
 5. Check `analyticsAllowed()` before the captures at `app/(public)/[firm]/layout.tsx:47`, `src/lib/actions/booking.ts:47-49`, `src/lib/observability/stitch.ts:43-44` and `app/firm/(auth)/start/actions.ts:109`. The `stitch.ts` check covers every sign-in path.
-6. Create `supabase/migrations/20260910000054_analytics_consent.sql` (new). Add `'analytics'` to `consent_kind`. Add a `decision text not null default 'granted' check (decision in ('granted','withdrawn'))` column to `consent_records`. The table stays append-only (`20260910000024_wave_zero_doors.sql:15`), so each withdrawal is a new row.
+6. Create `supabase/migrations/20260910000056_analytics_consent.sql` (new). Add `'analytics'` to `consent_kind`. Add a `decision text not null default 'granted' check (decision in ('granted','withdrawn'))` column to `consent_records`. The table stays append-only (`20260910000024_wave_zero_doors.sql:15`), so each withdrawal is a new row.
 7. In the same migration, add a `security definer` function `analytics_consented(p_user uuid, p_firm uuid) returns boolean`. It returns false unless the caller is `p_user`, or the caller passes `is_firm_member(p_firm)` and `p_user` has a `matter_parties` row in that firm. Write it in plpgsql, because the new enum value cannot be used until the migration commits.
 8. Send `matter_opened` (`src/lib/actions/matters.ts:135`) only when `analytics_consented(clientId, firmId)` returns true.
-9. Add `setAnalyticsConsent(granted)` in `src/lib/actions/cookie-consent.ts` (new). It sets `docket_consent` on path `/` for one year, without `httpOnly`. The banner has to read it in the browser, because `/` is prerendered (`src/lib/csp.ts:79`). When consent is withdrawn, it deletes `docket_did` on path `/`. For a signed-in user, it also records a `consent_records` row with `kind: 'analytics'` and `firm_id: null` through a `security definer` function in `054`, granted to `authenticated`. A direct insert fails, because item 6's `052` drops `consent_records_insert`.
+9. Add `setAnalyticsConsent(granted)` in `src/lib/actions/cookie-consent.ts` (new). It sets `docket_consent` on path `/` for one year, without `httpOnly`. The banner has to read it in the browser, because `/` is prerendered (`src/lib/csp.ts:79`). When consent is withdrawn, it deletes `docket_did` on path `/`. For a signed-in user, it also records a `consent_records` row with `kind: 'analytics'` and `firm_id: null` through a `security definer` function in `056`, granted to `authenticated`. A direct insert fails, because item 6's `053` drops `consent_records_insert`.
 10. Build `src/components/ui/cookie-banner.tsx` (new) as a client island that reads `document.cookie`. Give it two equal-weight `Button`s, "Allow analytics" and "Only necessary", plus a link to the cookie notice from item 4 (`${base}/cookies` on a firm's site, `/docket/cookies` elsewhere). Export a `CookieSettingsLink` that reopens the banner. Render nothing when `analyticsEnabled` is false.
 11. Mount the banner once in `app/layout.tsx:46-48` and pass `analyticsEnabled={Boolean(process.env.POSTHOG_KEY)}`.
 12. Use item 4's pages, `app/(public)/[firm]/cookies/page.tsx` and `app/docket/cookies/page.tsx`. Do not add `"/cookies"` to `APP_PREFIXES`: on a firm's host, `/cookies` must keep serving that firm's page.
@@ -202,6 +232,25 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 16. Self-host an allowlist of tenant fonts in `src/lib/brand.ts`, or name Google Fonts in the notice.
 17. When nothing loads from Google any more, delete `FONT_CSS` and `FONT_FILES` from `src/lib/csp.ts:161-165,221-222`. Also delete the waivers at `tests/fixtures/shots.mjs:104,139` and `tests/fixtures/README.md:273`.
 18. Update `docs/COMPLIANCE_PACK.md`. Mark the PostHog row in §4 as consent-only, add the list from step 13, and add `analytics` and `decision` to §2 (lines 151-152 and 184-192).
+
+**Done in the code (merged in PR #40, lane dE).** Steps 1 to 5, 10, 11 and 14 are done, and so are the cookie parts of steps 9 and 18.
+- `src/lib/consent-cookie.ts` and `src/lib/observability/consent.ts` exist, and `middleware.ts` mints `docket_did` only with consent and `POSTHOG_KEY`.
+- Without consent, an id the browser still holds is dropped from the forwarded header and expired on the response.
+- `booking_started`, `site_viewed`, `firm_registered` and the sign-in `$identify` send nothing without consent.
+- Step 8 went further than planned: `matter_opened` and its `matter_type` are no longer sent at all.
+- The banner (`src/components/ui/cookie-banner.tsx`) has two equal buttons, "Allow analytics" and "Only necessary". It shows only when `POSTHOG_KEY` is set.
+- `CookieSettingsButton` reopens the banner. It is in:
+  - the tenant footer
+  - the portal profile
+  - the landing footer
+  - every sign-in and registration page
+  - `/firm/me`
+- The PostHog row in the compliance pack says what is sent and when.
+
+Still open:
+- Steps 6 and 7, and the signed-in record in step 9, need migration `056`.
+- Steps 12 and 13 need item 4's cookie notice. The banner links none yet.
+- Steps 15 to 17 are the Google Fonts decision.
 
 **How to check it.**
 - Add `supabase/tests/99_analytics_consent.sql` (new) using `t_check`. Assert that a user can record an `analytics` row only for themself, that an invalid `decision` fails, that update and delete stay revoked, and that `analytics_consented()` returns false for an unrelated caller. Add its floor to `supabase/tests/expected-checks.tsv` and update the counts at `README.md:7`.
@@ -223,19 +272,33 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 1. In `booking-wizard.tsx`, before `:552`, add two unticked, separately labelled checkboxes backed by `acceptTerms` and `acceptPrivacy` state. Link `/${firm.slug}/terms` and `/${firm.slug}/privacy` and show each version.
 2. Add `|| !acceptTerms || !acceptPrivacy` to `disabled` at `:573`. Leave the uploads at `:244-255` where they are, because they already run only on confirm. Check the versions against `firm_public` before uploading, so a refusal leaves no orphaned files.
 3. In `src/lib/actions/booking.ts:52-94`, pass `p_terms_version` and `p_privacy_version` to the RPC.
-4. In `supabase/migrations/20260910000052_booking_consent.sql` (new), drop `book_appointment(uuid,uuid,uuid,timestamptz,appointment_mode,text,jsonb,uuid)` so no bypass overload survives.
+4. In `supabase/migrations/20260910000053_booking_consent_enforcement.sql` (new), drop `book_appointment(uuid,uuid,uuid,timestamptz,appointment_mode,text,jsonb,uuid)` so no bypass overload survives.
 5. Recreate it from `20260910000035_pre_consultation_checkin.sql:404` with the two version parameters. It refuses versions that differ from `v_firm.policies`, then inserts both `consent_records` rows as `v_client`. Revoke execute from `public, anon` and grant it to `authenticated`.
 6. In `052`, add a definer `record_consent(p_firm, p_terms_version, p_privacy_version)`. It refuses stale versions and writes both rows for `auth.uid()`. Grant it at aal1, because clients never hold MFA.
-7. In `052`, drop policy `consent_records_insert` and revoke insert on `consent_records` from `authenticated`.
+7. In `053`, drop policy `consent_records_insert` and revoke insert on `consent_records` from `authenticated`.
 8. In `consent-gate.tsx` and `actions.ts:14-48`, name both boxes and require `z.literal("on")` for each. Call `record_consent` instead of inserting, and return its error.
-9. Apply `052` in the same release as steps 1 to 8, because the deployed gate still inserts directly. In that commit, change `supabase/tests/70_deployed_frontend_compat.sql:161-167` to pin `record_consent()` at aal1 and assert that a direct insert is refused.
+9. Apply `053` only once `052` and the app that calls `record_consent()` are live everywhere, because an older deployed gate still inserts directly. In that commit, change `supabase/tests/70_deployed_frontend_compat.sql:161-167` to assert that a direct insert is refused.
 10. Update `src/lib/db/database.types.ts:2227`, `docs/RPC_REFERENCE.md:134`, the 12 positional `book_appointment(` calls in `supabase/tests` and the direct insert at `supabase/tests/99_pre_consultation.sql:121`.
 11. Docket's own notice, terms, firm agreement and DPA are built by items 1 and 2 at `/docket/privacy`, `/docket/terms`, `/docket/firm-agreement` and `/docket/dpa`. This migration adds no table for them.
 12. Link those pages from the consent points below. Do not put them at `app/privacy`, because `middleware.ts:106-107` rewrites that path to the firm's site.
 13. Add one plain `<a>` sentence that links the notice. Put it below the buttons in `src/components/auth/sign-in-forms.tsx`, in `app/firm/(auth)/join/join-form.tsx` and on `firm-start.tsx` step 1. Add no button and no label matching `/phone/i` (`sign-in-forms.tsx:774-803`).
 14. In `firm-start.tsx` step 2, the "By continuing" sentence becomes the unticked boxes `acceptFirmAgreement` and `acceptDpa` that item 2 adds. Require both in `app/firm/(auth)/start/actions.ts`.
-15. Leave `create_firm` unchanged in `052`. Item 2 records the firm agreement and DPA in `consent_records` through `record_platform_consent`, after `create_firm` returns. Owners of firms created in `app/admin/create-firm.tsx` accept on their first console visit.
+15. Leave `create_firm` unchanged in `052` and `053`. Item 2 records the firm agreement and DPA in `consent_records` through `record_platform_consent`, after `create_firm` returns. Owners of firms created in `app/admin/create-firm.tsx` accept on their first console visit.
 16. Rewrite the hint at `clients/[id]/page.tsx:624` so it names booking and the client app, and remove "a recording".
+
+**Done in the code (lane dD, first pass).** Steps 1, 2, 6, 8 and 16 are done, and so is the documentation part of step 10.
+- The booking review step has two unticked, separately labelled boxes. They link the firm's terms and privacy pages and show each version.
+- Confirm stays off until both are ticked.
+- On confirm, the acceptance is recorded before any file is uploaded or any slot is taken (`recordBookingConsent` in `src/lib/actions/booking.ts`).
+- Migration `052` adds `record_consent(p_firm, p_terms_version, p_privacy_version)`.
+  - It reads the firm with `for share`.
+  - It refuses a draft (`0-`) with the "not published" error, and a stale or missing version with its own SQLSTATE `DKC01`. Nothing is written in either case.
+  - It is granted to `authenticated` at aal1.
+- The portal gate names both boxes, requires `z.literal("on")` for each, and calls it too (`src/lib/consent.ts`).
+- `supabase/tests/99_booking_consent.sql` makes 41 checks.
+- `docs/DEPLOYMENT_RUNBOOK.md` says `051` and `052` go before the app.
+
+Steps 3 to 5, 7 and 9 are the enforcement pass, reserved as `053`. Until then, `book_appointment()` does not itself refuse a booking without consent, and a direct insert into `consent_records` still works. Steps 11 to 15 wait on items 1 and 2.
 
 **How to check it.**
 - `supabase/tests/99_consent.sql` (new, using `t_check`) proves four things. Null or stale versions are refused. A booking writes exactly two rows. The 8-argument overload is gone. A direct insert is refused. Add its line to `supabase/tests/expected-checks.tsv` and update the counts at `README.md:7` and `:135`.
@@ -261,13 +324,15 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 7. Add both to `KNOWN_FIELDS` (`src/lib/actions/services.ts:435-446`). In `checkSchema`, test the label against `/(^|[^a-z])(nin|bvn|dob|date of birth|passport|religion|tribe|ethnic|genotype|hiv|health)([^a-z]|$)/i`. Test the key too, with each `_` read as a space. Refuse a match that has no `sensitive_reason`.
 8. Mirror the rule in `checkQuestions` (`app/firm/(console)/admin/intake/intake-editor.tsx:78`).
 9. Show `purpose` under the existing `help` text in `IntakeField` (`app/(public)/[firm]/book/booking-wizard.tsx:612`).
-10. In `supabase/migrations/20260910000055_intake_purpose.sql` (new), add a `before insert or update of schema` trigger on `intake_forms`. It enforces the same rule with `raise exception`. Borrow only the trigger wiring from `validate_policies()` (`supabase/migrations/20260910000020_admin_surfaces.sql:227-269`). Do not make the function `security definer`.
+10. In `supabase/migrations/20260910000057_intake_purpose.sql` (new), add a `before insert or update of schema` trigger on `intake_forms`. It enforces the same rule with `raise exception`. Borrow only the trigger wiring from `validate_policies()` (`supabase/migrations/20260910000020_admin_surfaces.sql:227-269`). Do not make the function `security definer`.
 11. In the same migration, add a delete policy on `storage.objects` for `intake-uploads`. Limit it to the client's own folder, and only where no `intake_responses.answers` names the object. Copy the guarded `execute $p$` pattern from `supabase/migrations/20260910000016_storage_guards.sql:16-41`.
 12. In `submit()` (`booking-wizard.tsx:235`), call `supabase.storage.from("intake-uploads").remove(paths)` on every failure after an upload. This includes the slot-unavailable retry (271-275).
-13. In `supabase/migrations/20260910000053_cancellation_and_defaults.sql` (new, shared with item 3), recreate `seed_firm_defaults()` without `how_heard`. Add a `help` line to the `area` question (`20260910000012_platform_hardening.sql:113`) that says why the firm asks it. Existing firms keep their current intake forms.
+13. In `supabase/migrations/20260910000055_cancellation_and_defaults.sql` (new, shared with item 3), recreate `seed_firm_defaults()` without `how_heard`. Add a `help` line to the `area` question (`20260910000012_platform_hardening.sql:113`) that says why the firm asks it. Existing firms keep their current intake forms.
 14. Export `scrub()` from `src/lib/observability/sentry.ts`. Run it over `exception.values[].value`, the stack frame (37-41), `extra` and `logger`. Write new unanchored regexes for emails and for Nigerian and E.164 numbers. Do not reuse the helpers in `src/lib/nigeria.ts:47-60`: they match a whole string and cannot find a number inside text.
 15. Stop writing `user_agent` in `src/components/push/push-opt-in.tsx:32`.
 16. In `.github/workflows/ci.yml`, fail the build if `package.json` lists `posthog-js`, `@sentry/browser` or `@sentry/nextjs`.
+
+**Done in the code (merged in PR #40, lane dE).** Step 1 went further than planned: `matter_opened` is no longer sent at all, so neither is `matter_type`. The client's own choice cannot be read from the lawyer's browser. The rest of item 7 is open.
 
 **How to check it.**
 - Add `scripts/check-scrub.ts` (new) and run it with `deno run --node-modules-dir=none`, next to the PDF check (`.github/workflows/ci.yml:317-327`). An email, `+2348031234567` and `08031234567` must come out redacted in both the error message and the stack frame.
@@ -319,8 +384,8 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 **Where it stands.** Consent and signature boxes start unticked (`app/app/(portal)/consent-gate.tsx:44`, `:59`; `src/components/portal/sign-dialog.tsx:37`), and the payment countdown reads the real hold expiry (`src/components/portal/pay-panel.tsx:57`). Notifications are opt-out: `preferred_channel` defaults to `'sms'` (`supabase/migrations/20260909000001_schema.sql:38`), and `enqueue_notification` adds email whenever `profiles.email` is set (`supabase/migrations/20260910000037_notifications_reliability.sql:109-110`). That includes the address typed into the checkout receipt field (`src/lib/actions/booking.ts:214-225`). `book_appointment` enqueues messages before the client reaches the portal (`supabase/migrations/20260910000035_pre_consultation_checkin.sql:482-487`). Messages carry no preferences link (`supabase/functions/dispatch-notifications/index.ts:345-353`), push has no off control (`src/components/push/push-opt-in.tsx:83-89`), firm sign-up uses "By continuing you accept" (`app/firm/(auth)/start/firm-start.tsx:159`), and the cancel screen hard-codes a 24-hour free-cancellation promise (`app/app/(portal)/appointments/[id]/page.tsx:223`).
 
 **How to add it.**
-1. Create `supabase/migrations/20260910000056_notification_opt_in.sql` (new). Add two nullable `timestamptz` columns, `profiles.email_opt_in_at` and `profiles.sms_opt_in_at`. Set the `preferred_channel` default to `'in_app'`. Then regenerate `src/lib/db/database.types.ts`.
-2. In the same file, redefine `public.enqueue_notification`, starting from `20260910000037_notifications_reliability.sql:85-124`. Replace lines 109-110 so `sms` needs `sms_opt_in_at`, and `email` needs both `email` and `email_opt_in_at`. Change nothing else. Item 18's `060` migration builds on this body.
+1. Create `supabase/migrations/20260910000058_notification_opt_in.sql` (new). Add two nullable `timestamptz` columns, `profiles.email_opt_in_at` and `profiles.sms_opt_in_at`. Set the `preferred_channel` default to `'in_app'`. Then regenerate `src/lib/db/database.types.ts`.
+2. In the same file, redefine `public.enqueue_notification`, starting from `20260910000037_notifications_reliability.sql:85-124`. Replace lines 109-110 so `sms` needs `sms_opt_in_at`, and `email` needs both `email` and `email_opt_in_at`. Change nothing else. Item 18's `062` migration builds on this body.
 3. Add `saveChannelOptIn({ email, sms })` next to `savePreferences` in `src/lib/actions/portal.ts:239-249`. It sets or clears the two columns on the caller's own row, which `profiles_update` allows (`20260910000021_hardening.sql:133-134`).
 4. On the booking review step (`app/(public)/[firm]/book/booking-wizard.tsx:540-549`), add two unticked boxes, "Also send updates by SMS" and "Also send updates by email". Put them next to item 6's consent boxes. Reword the hint at `:547` to say the address is used only for the receipt unless the email box is ticked.
 5. Call `saveChannelOptIn` at `booking-wizard.tsx:240-243`, before `bookAppointment`.
@@ -349,9 +414,9 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 **Where it stands.** `book_appointment()` adds the firm's VAT and returns the total as `amount_minor` (`supabase/migrations/20260910000035_pre_consultation_checkin.sql:464-465`, `:492`), and Paystack charges `invoice.total_minor` (`src/lib/actions/booking.ts:178`). The booking wizard shows only the pre-VAT `price_minor` on service cards, in its one "Fee" row and on the "Confirm and pay" button (`app/(public)/[firm]/book/booking-wizard.tsx:349`, `:514`, `:579-580`), because `firm_public` has no `vat_rate` (`supabase/migrations/20260910000013_security_review.sql:167-171`). `src/lib/services.ts:12` omits `requires_prepayment`, so an "invoiced after" service still shows "Confirm and pay" and a 15-minute hold notice (`booking-wizard.tsx:518-523`), then gets an invoice for price plus VAT (`20260910000035_pre_consultation_checkin.sql:463-475`). A payment that lands after `release_expired_holds()` cancelled the invoice (`:614-633`) is still applied by `record_payment()`, which never checks invoice status (`:535-542`). Portal invoices already itemise Subtotal, VAT and Total (`app/app/(portal)/payments/[invoice]/page.tsx:87-96`).
 
 **How to add it.**
-1. Create `supabase/migrations/20260910000057_firm_public_vat_rc_and_late_payments.sql` (new, shared with item 16). Use `create or replace view public.firm_public with (security_invoker = false)`, keep the columns of `20260910000013_security_review.sql:167-171` in order, and append `vat_rate, rc_number`. Do not add `tin`.
+1. Create `supabase/migrations/20260910000051_firm_public_vat_and_rc.sql` (new, shared with item 16). Use `create or replace view public.firm_public with (security_invoker = false)`, keep the columns of `20260910000013_security_review.sql:167-171` in order, and append `vat_rate, rc_number`. Do not add `tin`.
 2. In the same file, repeat `revoke insert, update, delete, truncate, references, trigger on public.firm_public from anon, authenticated;`, as `20260910000014_review_round_two.sql:35-38` and its note at `:47-48` require.
-3. In the same file, replace `record_payment()` (`20260910000035_pre_consultation_checkin.sql:497-565`) with the same signature, so its grants hold. After the settlement-mismatch branch (`:510-524`), add a branch for a succeeded payment on a `cancelled` invoice. It inserts the payment with `raw || '{"late_payment": true}'`, leaves the invoice and appointment alone, calls `audit('payment.late', ...)`, `enqueue_firm_notification(..., 'late_payment', ...)` and `enqueue_notification(..., 'late_payment_client', ...)`, and returns `late_payment: true`.
+3. Create `supabase/migrations/20260910000059_late_payments_and_invoice_issuer.sql` (new, shared with item 16). In it, replace `record_payment()` (`20260910000035_pre_consultation_checkin.sql:497-565`) with the same signature, so its grants hold. After the settlement-mismatch branch (`:510-524`), add a branch for a succeeded payment on a `cancelled` invoice. It inserts the payment with `raw || '{"late_payment": true}'`, leaves the invoice and appointment alone, calls `audit('payment.late', ...)`, `enqueue_firm_notification(..., 'late_payment', ...)` and `enqueue_notification(..., 'late_payment_client', ...)`, and returns `late_payment: true`.
 4. Add both template keys beside `settlement_mismatch` in `supabase/functions/dispatch-notifications/index.ts:187`. The client text says the booking lapsed and the firm will refund.
 5. In `supabase/functions/paystack-webhook/index.ts:203-210`, record `late_payment` with an outcome other than `processed`, so it reaches the admin health screen.
 6. Add `vat_rate` and `rc_number` to `FirmPublic` (`src/lib/db/types.ts:61-72`) and to the select at `src/lib/tenant.ts:22`. Regenerate `src/lib/db/database.types.ts`.
@@ -363,6 +428,17 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 12. Rewrite `docs/CLIENT_GUIDE.md:73-74` to match the new display.
 13. Add the new columns to the lists at `supabase/tests/70_deployed_frontend_compat.sql:117` and `:121`.
 14. Add late-payment `t_check` cases to `supabase/tests/99_pre_consultation.sql`, which already calls `release_expired_holds()` (`:223`). Raise its floor at `supabase/tests/expected-checks.tsv:43`. Update the migration and assertion counts in `README.md:7`.
+
+**Done in the code (lane dD).** Steps 1, 2 and 6 to 13 are done.
+- Migration `051` appends `vat_rate` and `rc_number` to `firm_public`, and repeats the revoke.
+- `vatMinor()` in `src/lib/money.ts` rounds exactly as `book_appointment()` does. It was checked against Postgres on 20,010 amount and rate pairs. The admin services page and the invoice composer use it.
+- The booking review shows Fee, "VAT at {rate}%" and Total. The pay button asks for the total.
+- Service cards, the tenant home and the service pages show the total marked "incl. VAT".
+- An invoiced-after service reads "Confirm booking: {total} will be invoiced" and drops the hold notice.
+- Checkout opens only when the booking is awaiting payment, the review said the client would pay, and the invoice total matches the total shown. Otherwise the client goes to the appointment page, which says what changed.
+- `CLIENT_GUIDE.md` matches.
+
+Steps 3 to 5 and 14, the late-payment branch, are reserved as `059`.
 
 **How to check it.**
 - `supabase/tests/20_platform.sql:266-285` stays green: anon still cannot write through `firm_public`.
@@ -381,7 +457,7 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 **Where it stands.** No shipped surface shows invented testimonials, ratings, logos or "trusted by" counts. The landing page says so at `app/page.tsx:9-10`, and the one count on a tenant home comes from real rows (`app/(public)/[firm]/page.tsx:64`). Tenant testimonials are ungoverned: `content_kind` includes `testimonial` (`supabase/migrations/20260909000001_schema.sql:23`), firm admins can write any `content` row (`supabase/migrations/20260910000021_hardening.sql:199-206`), and a published row is readable with the anon key (`supabase/migrations/20260910000014_review_round_two.sql:203`). No page renders them, and `publishedList` (`src/lib/public-data.ts:63`) is dead code. The seeded tagline at `supabase/seed.sql:24` is self-praise shown in every tenant footer (`app/(public)/[firm]/layout.tsx:143`), and the unshipped artboard names a real firm at `design/home/Main.dc.html:159`.
 
 **How to add it.**
-1. Create `supabase/migrations/20260910000058_testimonial_guard.sql` (new). Set any published `testimonial` row to `draft`, then add a `BEFORE INSERT OR UPDATE` trigger on `public.content` that raises when `new.kind = 'testimonial'` and `new.status = 'published'`. Raise an explicit error; do not copy `validate_policies` (`supabase/migrations/20260910000020_admin_surfaces.sql:226-269`), which strips silently.
+1. Create `supabase/migrations/20260910000060_testimonial_guard.sql` (new). Set any published `testimonial` row to `draft`, then add a `BEFORE INSERT OR UPDATE` trigger on `public.content` that raises when `new.kind = 'testimonial'` and `new.status = 'published'`. Raise an explicit error; do not copy `validate_policies` (`supabase/migrations/20260910000020_admin_surfaces.sql:226-269`), which strips silently.
 2. Only if the owner chooses clearance over a block, extend the same migration. Add `subject_consent_at timestamptz`, `rpc_cleared_by uuid references profiles` and `rpc_cleared_at timestamptz`, plus a `security definer` function `publish_testimonial(uuid)` that checks `has_firm_role(firm_id, '{owner}')` and `mfa_ok()`, sets those columns and sets a transaction-local flag the trigger requires. The flag matters because `content_write_upd` lets any admin write the columns directly. Revoke `execute` from `anon`. Store consent as a timestamp: `consent_kind` has no `testimonial` value (`20260909000001_schema.sql:22`).
 3. Add `t_check` refusals to `supabase/tests/60_admin_surfaces.sql`: an aal2 owner cannot insert a published testimonial or publish a draft one; a draft still saves; `anon` reads no testimonial rows.
 4. Raise that suite's floor in `supabase/tests/expected-checks.tsv:22` (now `90`), or regenerate it with `bash scripts/check-suite-counts.sh --write db-test.log`.
@@ -420,7 +496,7 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 6. Same file, `:222-224`: render `ownerFirm.policies.cancellation.text` instead of the hard-coded sentence. Do not use `firm`, because it can be a different firm (`:85-87`).
 7. `app/app/(portal)/appointments/page.tsx:125-126`: drop "Rescheduling" and "free of charge".
 8. In step 6 and in `app/(public)/[firm]/book/booking-wizard.tsx:552-553`, hide cancellation text whose `version` is `'0-draft'`.
-9. `supabase/seed.sql:31-32`: rewrite tenant #1's cancellation text so it promises no refund and no reschedule. New firms get the same default from `seed_firm_defaults`; item 3's `supabase/migrations/20260910000053_cancellation_and_defaults.sql` (new) fixes it at the source.
+9. `supabase/seed.sql:31-32`: rewrite tenant #1's cancellation text so it promises no refund and no reschedule. New firms get the same default from `seed_firm_defaults`; item 3's `supabase/migrations/20260910000055_cancellation_and_defaults.sql` (new) fixes it at the source.
 10. Apply item 10 steps 1-3. Then show price plus VAT in the fee row and on the pay button (`booking-wizard.tsx:514`, `:580`).
 11. `docs/CLIENT_GUIDE.md`: at `:287`, tell the client to contact the firm, which makes any refund; at `:101`, say Paystack settles the money to the firm's account; at `:63`, say the record is deleted with the account or the firm (`20260909000001_schema.sql:422-423`); at `:14`, drop "safer"; at `:208-212`, say that operators can see an invoice number and amount (`app/admin/health/page.tsx:17-20`); at `:232` and `:290`, state 120 seconds for downloads and 600 seconds for signing (`src/components/portal/sign-dialog.tsx:48`).
 12. `app/app/(portal)/messages/page.tsx:38,45` and `src/components/portal/thread-list.tsx:27`: say "only the firm and the people on this matter can read it". Never write "only you and {firm}", because co-clients and delegates can read the thread (`20260910000029_matter_walls.sql:195-196`, `20260910000044_verified_delegation.sql:199-203`).
@@ -430,6 +506,23 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 16. Following that decision, pass `transaction_charge: 0` with `subaccount` in `src/lib/providers/payments/paystack.ts:29`, or reword `pay-panel.tsx:156-157` and `booking-wizard.tsx:520-521`.
 17. `scripts/check-claims.mjs` (new, shared with item 11): strip comments first, then fail on `secure|encrypt|compliant|certified|guarantee|under a minute|free of charge|not recorded|only owner|cannot (see|touch)|nothing was charged|safer` in `app/`, `src/components`, `docs/CLIENT_GUIDE.md`, `docs/ADMIN_GUIDE.md` and `supabase/seed.sql`. Keep an allow-list that cites `file:line` for each exception.
 18. `.github/workflows/ci.yml`: item 11's `test:claims` step already runs the script after `npm run typecheck` (`:277`), so add no second step.
+
+**Done in the code (lanes dD and dF).** Steps 1, 2 and 5 to 8 are done, and so are step 10 (through item 10), step 12 and most of step 11.
+- The pay panel hint no longer promises "under a minute".
+- The consultation and waiting rooms say "Docket does not turn recording on", and "you hold the only owner token" is gone.
+- The appointment pages show the owning firm's own published cancellation text, or nothing. They drop "Rescheduling" and "free of charge".
+- Draft (`0-`) cancellation text is never shown to a client.
+- Messages say only the firm and the people on the matter or consultation can read a thread.
+- `CLIENT_GUIDE.md` drops "safer", says what operators can see, states the ten-minute signing link and no longer says "Nothing was charged".
+- The email sign-in panel no longer calls its link "secure".
+
+Still open:
+- step 3 (the Daily recording check) and step 4 (the dead video provider files)
+- step 9 and the rest of step 13
+- step 11's line "Docket does not hold it and cannot touch it" (`CLIENT_GUIDE.md:121`), which waits on the payment decision
+- step 14 (the landing page claims)
+- steps 15 and 16, which need the payment decision
+- the claims script in steps 17 and 18
 
 **How to check it.**
 - `node scripts/check-claims.mjs` passes on the tree. It fails after you add "secure" to any JSX string.
@@ -467,7 +560,7 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 - Manual: in NVDA or VoiceOver, the tenant header link and each lawyer card read the name once. Each checklist row reads its status in words.
 - Lint cannot catch an icon-only button with no name, because it treats `<Icon/>` as possible content. The audit found no such button today. Keep checking by hand, or run `npm run test:design` after step 12.
 
-**Decision needed.** The product owner should decide whether uploads ask for a short description to use as alt text. If they do, that later work needs a migration (the next free number after `20260910000061`). It must extend the column grants at `20260910000040_document_templates_and_execution.sql:117-118` and `:130-131` and pass the value through `createDocument` (`src/lib/actions/portal.ts:96`).
+**Decision needed.** The product owner should decide whether uploads ask for a short description to use as alt text. If they do, that later work needs a migration (the next free number after `20260910000063`). It must extend the column grants at `20260910000040_document_templates_and_execution.sql:117-118` and `:130-131` and pass the value through `createDocument` (`src/lib/actions/portal.ts:96`).
 
 **Risk if left.** Screen-reader users hear stray letters, unlabelled status marks and file names instead of descriptions, which cuts against the Discrimination Against Persons with Disabilities (Prohibition) Act 2018 and the NDPA 2023 duty to make information to data subjects easily accessible. Not legal advice.
 
@@ -557,14 +650,16 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 2. Add a server-only `platformOperator()` helper to `src/lib/env.ts`. It reads `PLATFORM_LEGAL_NAME`, `PLATFORM_RC_NUMBER`, `PLATFORM_ADDRESS`, `PLATFORM_EMAIL` and `PLATFORM_PHONE`, and returns `null` when the name is unset. Do not use a `NEXT_PUBLIC_` prefix. Document the variables in `.env.example`.
 3. Render an operator block in the landing footer at `app/page.tsx:305-308`. The `/` page is a prerendered shell (`src/lib/csp.ts:79`), so the values are fixed at build time and changing them needs a redeploy.
 4. Render the same block once in the `AuthFrame` footer (`src/components/auth/auth-frame.tsx:88-93`). It is a server component used by `app/app/(auth)/layout.tsx` and `app/firm/(auth)/layout.tsx`, so it covers every client and staff auth page.
-5. In `supabase/migrations/20260910000057_firm_public_vat_rc_and_late_payments.sql` (shared with item 10), append `rc_number` to `firm_public` after `vat_rate`, as item 10 step 1 does. Do not add `tin`. Keep `security_invoker = false` and the `status = 'active'` filter. Then repeat the revoke from `20260910000014_review_round_two.sql:35-38`.
+5. In `supabase/migrations/20260910000051_firm_public_vat_and_rc.sql` (shared with item 10), append `rc_number` to `firm_public` after `vat_rate`, as item 10 step 1 does. Do not add `tin`. Keep `security_invoker = false` and the `status = 'active'` filter. Then repeat the revoke from `20260910000014_review_round_two.sql:35-38`.
 6. Add `rc_number` to `FirmPublic` (`src/lib/db/types.ts:61-72`), to the select in `src/lib/tenant.ts:22`, and to the `FIRM` fixture (`tests/fixtures/supabase-mock.mjs:74-90`).
 7. At `app/(public)/[firm]/layout.tsx:164-165`, show the legal name, RC/BN and the `brand.contact` address, email and phone. Replace "by Docket" with the operator's name and RC from `platformOperator()`. Add an `identifier` field holding the RC/BN to `legalServiceJsonLd` (`src/lib/site.ts:22-35`).
-8. In the same migration, add `invoice_issuer(p_invoice uuid)` as `security definer`. It refuses the call unless `can_access_invoice(p_invoice)` is true (`20260910000044_verified_delegation.sql:302`). It returns `legal_name` and `rc_number`, plus `tin` only when `vat_minor > 0`. Revoke execute from `public, anon` and grant it to `authenticated`. Add it to `docs/RPC_REFERENCE.md`.
+8. In `supabase/migrations/20260910000059_late_payments_and_invoice_issuer.sql` (shared with item 10), add `invoice_issuer(p_invoice uuid)` as `security definer`. It refuses the call unless `can_access_invoice(p_invoice)` is true (`20260910000044_verified_delegation.sql:302`). It returns `legal_name` and `rc_number`, plus `tin` only when `vat_minor > 0`. Revoke execute from `public, anon` and grant it to `authenticated`. Add it to `docs/RPC_REFERENCE.md`.
 9. Call `invoice_issuer` beside `firmById` (`pdf/route.ts:29-34`). Print the RC/BN line and "VAT charged under TIN …" under the legal name at `:46`, matching `app/firm/(console)/invoices/[id]/page.tsx:266-267`. Add the RC/BN to `app/app/(portal)/payments/[invoice]/page.tsx:65`.
-10. In the same migration, run `create or replace function public.firm_readiness`, copied from `20260910000034_onboarding_and_import.sql:69-130`. Add an `identity_published` fact that is true only when `legal_name`, `rc_number` and the `brand.contact` email, phone and address are all non-empty. Do not edit the applied `034` migration.
+10. In `059` too, run `create or replace function public.firm_readiness`, copied from `20260910000034_onboarding_and_import.sql:69-130`. Add an `identity_published` fact that is true only when `legal_name`, `rc_number` and the `brand.contact` email, phone and address are all non-empty. Do not edit the applied `034` migration.
 11. Add `identity_published` to `FirmReadiness` (`src/lib/db/types.ts:702`). In `app/firm/(console)/admin/checklist.tsx`, add an `identity` step after `policies` (line 30) with `skippable: false` and `href: "/firm/admin/settings"`. A non-skippable step needs no change to the check constraint at `034:35`.
 12. Add `rc_number` to the column list at `supabase/seed.sql:13`, and fill `contact` at `:27` with the values tenant #1 supplies. The seed uses `on conflict (slug) do nothing` (`:40`), so a live database gets these values through `/firm/admin/settings`.
+
+**Done in the code (lane dD).** Step 5 is done: migration `051` puts `rc_number` on `firm_public`. Nothing displays it yet. Steps 6 to 12 need migration `059` and the platform entity decision.
 
 **How to check it.**
 - `supabase/tests/70_deployed_frontend_compat.sql:117`: select `rc_number` too, and `t_check` that selecting `tin` from `firm_public` fails.
@@ -585,12 +680,12 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 **Where it stands.** `consent_kind` has no age or guardian value (`supabase/migrations/20260909000001_schema.sql:22`), and `profiles` has no birth date (`:26-40`). The booking steps are service, mode, when, intake and review (`app/(public)/[firm]/book/booking-wizard.tsx:126-131`), and `book_appointment()` only checks that policies are published (`supabase/migrations/20260910000035_pre_consultation_checkin.sql:423`). The portal gate checks only terms and privacy rows (`app/app/(portal)/layout.tsx:67-74`), and `consent_records_insert` allows only `user_id = auth.uid()` (`supabase/migrations/20260910000021_hardening.sql:64-65`). Tenant #1 sells custody work (`supabase/seed.sql:52`), yet `representations` has no guardian capacity (`supabase/migrations/20260910000044_verified_delegation.sql:77,87`).
 
 **How to add it.**
-1. Create `supabase/migrations/20260910000059_minors.sql` (new). Add `age_confirmation` and `guardian` to `consent_kind` with `add value if not exists`, as at `20260910000010_nigeria_reference.sql:245`. Use the new values only inside plpgsql bodies in that file.
+1. Create `supabase/migrations/20260910000061_minors.sql` (new). Add `age_confirmation` and `guardian` to `consent_kind` with `add value if not exists`, as at `20260910000010_nigeria_reference.sql:245`. Use the new values only inside plpgsql bodies in that file.
 2. In that file, add `consent_records.on_behalf_of uuid references public.profiles(id) on delete cascade`.
-3. Item 6's `052` drops `consent_records_insert` and revokes direct insert. Recreate item 6's `record_consent` instead, so a non-null `on_behalf_of` needs a live, accepted `parent_guardian` representation with `representative_id = auth.uid()` and `principal_id = on_behalf_of`.
+3. Item 6's `053` drops `consent_records_insert` and revokes direct insert. Recreate item 6's `record_consent` instead, so a non-null `on_behalf_of` needs a live, accepted `parent_guardian` representation with `representative_id = auth.uid()` and `principal_id = on_behalf_of`.
 4. Widen the `representations` checks at `44:77` (add `parent_guardian`) and `44:87` (add `birth_certificate` and `guardianship_order`).
 5. Recreate `accept_representation()` (`44:421`) to write a `guardian` row, `on_behalf_of` the principal, when a `parent_guardian` representation is accepted.
-6. Drop and recreate `book_appointment()` (latest in item 6's `052`, which starts from `35:404`) with `p_age_basis` (`adult` or `guardian`). It refuses a null basis and writes the matching consent row at the current privacy version. Repeat the revoke and grant.
+6. Drop and recreate `book_appointment()` (latest in item 6's `053`, which starts from `35:404`) with `p_age_basis` (`adult` or `guardian`). It refuses a null basis and writes the matching consent row at the current privacy version. Repeat the revoke and grant.
 7. Add `matters.involves_minor` and `matter_adverse_parties.is_minor`, both `boolean not null default false`.
 8. Drop and recreate `open_matter()` (latest at `20260910000039_workflow_packs.sql:254`) with `p_involves_minor`, reading `is_minor` from `p_adverse_parties`. Repeat the revoke and grant as at `20260910000032_conflict_checks.sql:345-346`.
 9. Regenerate `src/lib/db/database.types.ts`.
@@ -622,10 +717,10 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 
 **How to add it.**
 1. In `src/lib/notifications-copy.ts`, add a `NOTIFICATION_EVENTS` registry (`event`, `label`, `audience`, and `category`, which is `transactional`, `service` or `marketing`). It must cover every case in `render()` (`dispatch-notifications/index.ts:142-191`). Keep every `PREFERENCE_EVENTS` row. Point `TemplatesSection` (`app/firm/(console)/admin/settings/settings-forms.tsx:1181`) at the full client registry, so firms can still reword transactional messages.
-2. Create `supabase/migrations/20260910000060_notification_unsubscribe.sql` (new). Add `notification_events` seeded from step 1, `notification_suppressions(user_id, channel, reason)` and `notification_unsubscribe_tokens(user_id, event, channel, token_hash unique, revoked_at)`. Copy the `calendar_feeds` token pattern (`20260910000047_calendar_feed.sql:71-75, 119-122`).
+2. Create `supabase/migrations/20260910000062_notification_unsubscribe.sql` (new). Add `notification_events` seeded from step 1, `notification_suppressions(user_id, channel, reason)` and `notification_unsubscribe_tokens(user_id, event, channel, token_hash unique, revoked_at)`. Copy the `calendar_feeds` token pattern (`20260910000047_calendar_feed.sql:71-75, 119-122`).
 3. In the same migration, add `unsubscribe_via_token(p_token, p_all)`. It raises `42501` on a short or unknown token and calls `rate_limit_hit`. It turns off only non-transactional events and calls `audit('notification.unsubscribed', …)`. Grant it to `anon`, because the Next app holds no service role.
 4. In the same migration, run `drop function public.claim_notifications(int)`. Then recreate it with `category` and `unsubscribe_token` columns, because `create or replace` cannot change a `RETURNS TABLE` definition. Repeat the revoke at `037:188`. Skip rows that match a disabled preference or a suppression, as the WhatsApp skip does at `037:165-166`. For each optional email, mint a token, store its hash and return the plaintext. Never return the row id.
-5. In the same migration, start from 056's `enqueue_notification` body and add the suppression check. Keep honouring saved opt-outs for transactional events (`docs/COMPLIANCE_PACK.md:375-377`). Add `suppress_email_for_ref` and `record_sms_opt_out`, callable by the service role only.
+5. In the same migration, start from 058's `enqueue_notification` body and add the suppression check. Keep honouring saved opt-outs for transactional events (`docs/COMPLIANCE_PACK.md:375-377`). Add `suppress_email_for_ref` and `record_sms_opt_out`, callable by the service role only.
 6. Create `supabase/functions/unsubscribe/index.ts` (new), reading the token from the path as `calendar-feed/index.ts:35` does. It accepts only a POST of `List-Unsubscribe=One-Click` and returns 200 `text/plain`. Add it to `docs/DEPLOYMENT_RUNBOOK.md:240-252` with `--no-verify-jwt`, and update the function count.
 7. Create `app/app/(auth)/unsubscribe/[token]/page.tsx` (new). The `/app` prefix escapes the tenant rewrite (`middleware.ts:53`), and the page needs no sign-in. A GET only shows a confirm button. Its server action posts to `'self'` (`src/lib/csp.ts:252`) and calls the RPC.
 8. In `sendEmail`, add Resend `headers` to optional mail: `List-Unsubscribe` set to the function URL, and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`. After the override block (`index.ts:331-343`), append an escaped footer that names `r.firm_name` and links to preferences and to `/app/unsubscribe/TOKEN`. Transactional mail gets the preferences link only.
@@ -663,7 +758,7 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 9. Extend the Icons rule at `DESIGN.md:139-140`. Any new font, icon, image, audio file or illustration must be original or have a notices row.
 10. Add a user-content clause to the platform terms and firm agreement from item 2. The firm warrants it holds the rights in every logo, photo and document that it, its staff or its clients upload. It grants Docket a limited hosting licence and an indemnity. A notice-and-takedown procedure names a contact. Name only Docket or its entity, never a firm.
 11. Put the clause in item 2's `app/docket/terms/page.tsx` (new) and `app/docket/firm-agreement/page.tsx` (new). Do not use `app/terms/page.tsx`: on a firm host, `/terms` serves that firm's own terms.
-12. Item 2 replaces "the Docket firm terms" at `firm-start.tsx:159` with a linked checkbox and records acceptance in `supabase/migrations/20260910000051_platform_consents.sql` (new).
+12. Item 2 replaces "the Docket firm terms" at `firm-start.tsx:159` with a linked checkbox and records acceptance in `supabase/migrations/20260910000054_platform_consents.sql` (new).
 13. Add the same link to the footers at `app/page.tsx:306` and `src/components/auth/auth-frame.tsx:89`.
 14. Append to the logo hint at `app/firm/(console)/admin/settings/settings-forms.tsx:787`: "Upload only a logo your firm owns or is licensed to use."
 15. Add a one-line rights notice at `app/firm/(console)/matters/[id]/staff-documents.tsx:463`, `src/components/portal/documents-tab.tsx:219`, `app/(public)/[firm]/book/booking-wizard.tsx:714` and `src/components/portal/messages-thread.tsx:229`, which serves both the console and the portal. Extend the existing muted hint, or use the shared `Alert` (`src/components/ui/alert.tsx:23`). Do not import `Labelled`: it is private to `settings-forms.tsx:155`.
@@ -688,7 +783,7 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 **Where it stands.** No screen lets anyone ask for deletion. The client profile ends with consent history and two sign-out buttons (`app/app/(portal)/profile/page.tsx:144-163`). Staff get only "Sign out" (`app/firm/(console)/me/page.tsx:174`), and the registry nav offers nothing (`app/registry/layout.tsx:83-90`). The only instruction, "ask your firm", lives in `docs/CLIENT_GUIDE.md:274-277`, which no screen links. Tenant #1's contact email is null (`supabase/seed.sql:27`). A manual runbook exists (`docs/COMPLIANCE_PACK.md:272-371`), but no table records requests and no code anonymises anyone. `appointments.client_id` and `invoices.client_id` block a hard delete (`supabase/migrations/20260909000001_schema.sql:156,352`). No retention job exists (`docs/COMPLIANCE_PACK.md:251-263`). The pack's claim at lines 259-260 that `deleted_at` is never set is stale: `retire_empty_document()` sets it (`supabase/migrations/20260910000036_drafts_and_retries.sql:189`).
 
 **How to add it.**
-1. Create `supabase/migrations/20260910000061_data_subject_requests.sql` (new), modelled on `20260910000031_document_requests.sql`. Add `data_subject_requests`: nullable `firm_id` (null means Docket is controller), `requester_id` referencing `profiles` on delete set null, and check constraints on `kind` and `status`. Also add `note`, `due_on`, `decided_by`, `decision_note` and `completed_at`. Attach `audit_row_change()`.
+1. Create `supabase/migrations/20260910000063_data_subject_requests.sql` (new), modelled on `20260910000031_document_requests.sql`. Add `data_subject_requests`: nullable `firm_id` (null means Docket is controller), `requester_id` referencing `profiles` on delete set null, and check constraints on `kind` and `status`. Also add `note`, `due_on`, `decided_by`, `decision_note` and `completed_at`. Attach `audit_row_change()`.
 2. In the same migration, enable RLS. Requesters select their own rows. Owners and admins select through `has_firm_role()` and update only through `admin_w(firm_id)`. Platform admins select and update only `firm_id is null` rows, under `is_platform_admin() and mfa_ok()`. Revoke insert and delete from `anon` and `authenticated`. Do not copy the insert grant at `20260910000031_document_requests.sql:40`.
 3. Add `request_data_action(p_firm, p_kind, p_note)` as security definer. It checks `auth.uid()`, requires a client or matter party of `p_firm` when set, and calls `rate_limit_hit()`. It then inserts with `due_on`, calls `audit()`, and calls `enqueue_notification()` for each owner and admin, or each platform admin when `p_firm` is null.
 4. Register the event in `render()` (`supabase/functions/dispatch-notifications/index.ts:142-189`) with a `/firm/admin/data-requests` or `/admin` URL, not the `/app` fallback. Add it to `src/lib/notifications-copy.ts`.
@@ -731,20 +826,22 @@ Docket has two kinds of controller to serve. Each firm controls its clients' dat
 
 ### New migrations named in this checklist
 
-The newest migration is `20260910000050_tenant_dark_mode.sql`. Two migrations must never share a number, and where two items change the same function, the later migration starts from the earlier one's body.
+Before this work the newest migration was `20260910000050_tenant_dark_mode.sql`. Two migrations must never share a number, and where two items change the same function, the later migration starts from the earlier one's body. The first two rows are in the code now. The rest are reserved.
 
-| Migration (new) | Items | Note |
+| Migration | Items | Note |
 |---|---|---|
-| `20260910000051_platform_consents.sql` | 2 | |
-| `20260910000052_booking_consent.sql` | 6 | |
-| `20260910000053_cancellation_and_defaults.sql` | 3, 7 | The one place `seed_firm_defaults` is redefined |
-| `20260910000054_analytics_consent.sql` | 5 | |
-| `20260910000055_intake_purpose.sql` | 7 | |
-| `20260910000056_notification_opt_in.sql` | 9 | Redefines `enqueue_notification` |
-| `20260910000057_firm_public_vat_rc_and_late_payments.sql` | 10, 16 | |
-| `20260910000058_testimonial_guard.sql` | 11 | |
-| `20260910000059_minors.sql` | 17 | |
-| `20260910000060_notification_unsubscribe.sql` | 18 | Starts from 056's `enqueue_notification` |
-| `20260910000061_data_subject_requests.sql` | 20 | |
+| `20260910000051_firm_public_vat_and_rc.sql` | 10, 16 | **Done.** Appends `vat_rate` and `rc_number` to `firm_public` |
+| `20260910000052_booking_consent.sql` | 6 | **Done, first pass.** Adds `record_consent()`; direct inserts still work |
+| `20260910000053_booking_consent_enforcement.sql` | 6 | Only after `052` and the app that calls `record_consent()` are live |
+| `20260910000054_platform_consents.sql` | 2 | |
+| `20260910000055_cancellation_and_defaults.sql` | 3, 7 | The one place `seed_firm_defaults` is redefined |
+| `20260910000056_analytics_consent.sql` | 5 | Records a signed-in user's cookie choice; the cookie itself is done |
+| `20260910000057_intake_purpose.sql` | 7 | |
+| `20260910000058_notification_opt_in.sql` | 9 | Redefines `enqueue_notification` |
+| `20260910000059_late_payments_and_invoice_issuer.sql` | 10, 16 | |
+| `20260910000060_testimonial_guard.sql` | 11 | |
+| `20260910000061_minors.sql` | 17 | Starts from 052's `record_consent` and 053's `book_appointment` |
+| `20260910000062_notification_unsubscribe.sql` | 18 | Starts from 058's `enqueue_notification` |
+| `20260910000063_data_subject_requests.sql` | 20 | |
 
 Every migration or SQL suite added also updates the counts in `README.md:7` and `supabase/tests/expected-checks.tsv`, or `scripts/check-suite-counts.sh` fails CI.
