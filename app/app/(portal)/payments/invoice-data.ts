@@ -6,6 +6,8 @@
 // one. It reads with the caller's own client, so RLS decides what it sees.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { captureException } from "@/lib/observability";
+import { normaliseTin } from "@/lib/nigeria";
 import { whenWords } from "@/lib/notifications-copy";
 import type { BreakdownInput } from "@/lib/payment-breakdown";
 import type { FirmPublic, InvoiceItemRow, InvoiceRow } from "@/lib/db/types";
@@ -78,9 +80,71 @@ export async function invoiceContext(
   return { purpose: `${serviceName}${lawyerName ? ` with ${lawyerName}` : ""}${when ? `, ${when}` : ""}`, consultation };
 }
 
+/** Who issued an invoice, as invoice_issuer() gives it. Each part is null when the firm has not given it. */
+export interface InvoiceIssuer {
+  /** The name clients know the firm by. */
+  name: string | null;
+  legalName: string | null;
+  rcNumber: string | null;
+  /** Only on an invoice that charges VAT. */
+  tin: string | null;
+}
+
+/**
+ * Who issued the invoice, from invoice_issuer() (migration 59), or null when it was not needed.
+ *
+ * It gives two things firm_public cannot. The firm's TIN, which the view leaves out on purpose
+ * (migration 51): the function gives it only to someone who may read the invoice, and only when
+ * the invoice charges VAT. And the firm's name, registered name and RC/BN when the view has no row
+ * for the firm, as once a firm is suspended: its client can still open the invoice, which must
+ * still say who it is from.
+ *
+ * So it is asked only for one of those: an invoice that charges VAT, or a firm whose public row
+ * came back empty. It takes the caller's firmById() promise rather than its answer, so that a VAT
+ * invoice asks for both at once.
+ *
+ * A database that does not have the function yet, because the app was deployed before the
+ * migration was applied, answers with an error. The invoice then opens as it did before, without
+ * the TIN, and the error is reported: a VAT invoice without its TIN is a problem for the firm, not
+ * one the client can do anything about.
+ */
+export async function invoiceIssuer(
+  supabase: SupabaseClient,
+  inv: Pick<ClientInvoice, "id" | "vat_minor">,
+  firm: Promise<FirmPublic | null>,
+): Promise<InvoiceIssuer | null> {
+  if (!(Number(inv.vat_minor) > 0) && (await firm)) return null;
+  const { data, error } = await supabase.rpc("invoice_issuer", { p_invoice: inv.id });
+  if (error) {
+    await captureException(new Error(`invoice_issuer: ${error.message}`), {
+      where: "client invoice: who issued it",
+      tags: { code: error.code || "none" },
+      extra: { invoice: inv.id },
+    });
+    return null;
+  }
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const row = data as { name?: unknown; legal_name?: unknown; rc_number?: unknown; tin?: unknown };
+  const text = (value: unknown) => (typeof value === "string" && value.trim() !== "" ? value.trim() : null);
+  // Tidied as a TIN saved today is (src/lib/nigeria.ts), so one saved before that prints too.
+  const tin = text(row.tin);
+  return {
+    name: text(row.name),
+    legalName: text(row.legal_name),
+    rcNumber: text(row.rc_number),
+    tin: tin ? normaliseTin(tin) || null : null,
+  };
+}
+
+/** The sentence a VAT invoice carries, worded as the firm's own invoice screen words it. */
+export function vatTinSentence(tin: string): string {
+  return `VAT charged under TIN ${tin}.`;
+}
+
 /**
  * The invoice as buildBreakdown() takes it: who is paid (the firm's legal name and RC number, from
- * its public row), what for, and the figures as the database has them.
+ * its public row, or from invoice_issuer() when there is no public row), what for, and the figures
+ * as the database has them.
  *
  * An invoice with no matter and no consultation is for what its lines say. Two or more lines are
  * listed in the register anyway; a single one is not (it would repeat the total), so its words
@@ -91,10 +155,13 @@ export function invoiceBreakdownInput(
   items: InvoiceLine[],
   firm: FirmPublic | null,
   purpose: string | null,
+  issuer?: InvoiceIssuer | null,
 ): BreakdownInput {
   return {
     currency: inv.currency,
-    payee: { name: firm?.name ?? "your firm", legalName: firm?.legal_name, rcNumber: firm?.rc_number },
+    payee: firm
+      ? { name: firm.name, legalName: firm.legal_name, rcNumber: firm.rc_number }
+      : { name: issuer?.name ?? issuer?.legalName ?? "your firm", legalName: issuer?.legalName, rcNumber: issuer?.rcNumber },
     purpose: purpose ?? (items.length === 1 ? items[0].description : null),
     lines: items.map((i) => ({ description: i.description, quantity: Number(i.quantity), unitMinor: Number(i.unit_minor) })),
     subtotalMinor: Number(inv.subtotal_minor),

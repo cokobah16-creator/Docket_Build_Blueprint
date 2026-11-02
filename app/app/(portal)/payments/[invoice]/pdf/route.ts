@@ -8,13 +8,15 @@
 //
 // The figures are the screen's. buildBreakdown() is given the same invoice row the invoice page
 // gives it, and only the rows it returns are printed, so the paper has no "VAT 0.00" or "Paid 0.00"
-// that the screen leaves out. Who is paid is the firm's legal name and RC number, as on the screen.
+// that the screen leaves out. Who is paid is the firm's legal name and RC number, as on the screen,
+// and an invoice that charges VAT says which TIN it was charged under, as the screen does too.
 
 import { redirect } from "next/navigation";
 import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
 import { firmById } from "@/lib/tenant";
 import { siteOrigin } from "@/lib/site";
+import { captureException } from "@/lib/observability";
 import { formatMoneyPlain } from "@/lib/money";
 import { buildBreakdown } from "@/lib/payment-breakdown";
 import { clientStatusLabel } from "@/lib/client-words";
@@ -25,6 +27,8 @@ import {
   PAYABLE_STATUSES,
   invoiceBreakdownInput,
   invoiceContext,
+  invoiceIssuer,
+  vatTinSentence,
   type ClientInvoice,
   type InvoiceLine,
 } from "../../invoice-data";
@@ -51,7 +55,8 @@ export async function GET(_request: Request, ctx: { params: Promise<{ invoice: s
   const inv = (data ?? null) as (ClientInvoice & { client_id: string }) | null;
   if (!inv) return new Response("This invoice could not be found.\n", { status: 404, headers: TEXT_HEADERS });
 
-  const [{ data: itemRows }, { data: paymentRows }, { data: profile }, firm, context, origin] = await Promise.all([
+  const firmRow = firmById(inv.firm_id);
+  const [{ data: itemRows }, { data: paymentRows }, { data: profile }, firm, context, issuer, origin] = await Promise.all([
     supabase.from("invoice_items").select("description, quantity, unit_minor").eq("invoice_id", inv.id),
     // Only money that was added to the invoice. A payment that did not go through is not a payment
     // received, and the invoice page is where it is explained.
@@ -62,20 +67,22 @@ export async function GET(_request: Request, ctx: { params: Promise<{ invoice: s
       .eq("status", "succeeded")
       .order("paid_at", { ascending: true }),
     supabase.from("profiles").select("full_name, email, phone").eq("id", inv.client_id).maybeSingle(),
-    firmById(inv.firm_id),
+    firmRow,
     invoiceContext(supabase, inv),
+    // The TIN on a VAT invoice, and who the firm is when its public row cannot be read.
+    invoiceIssuer(supabase, inv, firmRow),
     siteOrigin(),
   ]);
   const items = (itemRows ?? []) as InvoiceLine[];
   const payments = (paymentRows ?? []) as Array<{ provider: string; provider_ref: string; amount_minor: number; paid_at: string | null }>;
   // Null when the caller cannot read the client's profile, such as someone acting for the client.
   const client = profile as { full_name: string | null; email: string | null; phone: string | null } | null;
-  const b = buildBreakdown(invoiceBreakdownInput(inv, items, firm, context.purpose));
+  const b = buildBreakdown(invoiceBreakdownInput(inv, items, firm, context.purpose, issuer));
   const money = (minor: number) => formatMoneyPlain(minor, inv.currency);
   // The firm's document, so its dates are in the firm's zone. due_at is a calendar day, which no
   // zone may move to the day before.
   const firmZone = firm?.timezone ?? "Africa/Lagos";
-  const firmWords = firm?.name ?? "your firm";
+  const firmWords = firm?.name ?? issuer?.name ?? "your firm";
   const contact = firm?.brand?.contact ?? {};
   const appLink = `${origin}/app/payments/${inv.id}`;
 
@@ -85,7 +92,7 @@ export async function GET(_request: Request, ctx: { params: Promise<{ invoice: s
   const consultationCancelled = !settled && !cancelled && context.consultation?.status === "cancelled";
   const payable = !cancelled && !settled && !consultationCancelled && PAYABLE_STATUSES.includes(inv.status) && b.chargeMinor > 0;
   const status = clientStatusLabel(inv.status) ?? STATUS_WORDS[inv.status] ?? "";
-  const letterhead = firm?.legal_name?.trim() || firm?.name || "";
+  const letterhead = firm?.legal_name?.trim() || firm?.name || issuer?.legalName || issuer?.name || "";
   // Two lines on paper are help, not the invoice: what the money is for (the Items list below says
   // it too) and the sentence on how to pay. Both can carry free text the standard fonts cannot draw,
   // a matter title with "₦" in it or a lawyer named Adébáyọ̀, and textPdf() refuses the whole
@@ -94,6 +101,16 @@ export async function GET(_request: Request, ctx: { params: Promise<{ invoice: s
     Boolean(text) && winAnsiBytes(text as string).unprintable.length === 0;
   const purposeLine = printable(b.purpose) ? b.purpose : null;
   const payeeSentence = printable(b.payeeSentence) ? b.payeeSentence : null;
+  // The TIN is tidied as it is saved and as it is read (normaliseTin()), and is still held to the
+  // same test. One that fails it is left off and reported: the client cannot put it right.
+  const tinSentence = issuer?.tin ? vatTinSentence(issuer.tin) : null;
+  const tinLine = printable(tinSentence) ? tinSentence : null;
+  if (tinSentence && !tinLine) {
+    await captureException(new Error("The firm's TIN has characters the invoice PDF cannot print"), {
+      where: "client invoice PDF: the TIN cannot be printed",
+      extra: { invoice: inv.id, firm: inv.firm_id },
+    });
+  }
 
   const lines: PdfLine[] = [
     ...(letterhead ? [{ text: letterhead, size: 18, bold: true }] : []),
@@ -140,6 +157,8 @@ export async function GET(_request: Request, ctx: { params: Promise<{ invoice: s
       : b.rows
           .filter((r) => r.kind !== "line")
           .map((r) => ({ text: `${r.label}    ${money(r.minor)}`, size: r.kind === "total" || r.kind === "due" ? 11 : 10, bold: r.kind === "total" || r.kind === "due" }))),
+    // Under the figures, where the firm's own invoice screen puts it (invoices/[id]/page.tsx).
+    ...(tinLine ? [{ text: tinLine, size: 10 }] : []),
     { text: "", gap: 8 },
     ...(payments.length > 0
       ? [

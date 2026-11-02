@@ -89,7 +89,7 @@ do $$
 declare r text; missing text := '';
 begin
   foreach r in array array[
-    'available_slots','invoice_settlement','create_firm','vacate_court_event','set_firm_status','serve_process',
+    'available_slots','invoice_settlement','invoice_issuer','create_firm','vacate_court_event','set_firm_status','serve_process',
     'save_consultation_notes','revoke_service','revoke_matter_invite','reschedule_appointment','post_court_update',
     'open_matter','mark_no_show','link_service_to_matter','issue_invoice','is_non_sitting_day','invite_matter_party',
     'create_invoice','cancel_invoice','cancel_appointment','book_appointment','acknowledge_service',

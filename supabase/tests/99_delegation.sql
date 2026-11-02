@@ -438,6 +438,8 @@ declare l uuid := (select v from fx where k='lawyer'); f uuid := (select v from 
 begin
   perform t_reset();
   select id into inv from invoices where number = 'DC-INV-2026-000001';
+  -- Who issued it, for invoice_issuer() below (migration 59). The invoice charges no VAT.
+  update firms set legal_name = 'Delegation Chambers LP', rc_number = 'RC 1111111', tin = '11111111-0001' where id = f;
   insert into invoice_items (invoice_id, description, quantity, unit_minor)
     values (inv, 'Professional fee', 1, 50000000);
   insert into payments (invoice_id, provider, provider_ref, status, amount_minor, currency)
@@ -453,6 +455,8 @@ begin
   perform t_check('...and what has been paid so far',   exists (select 1 from payments where invoice_id = inv));
   perform t_check('...and the settlement details the payment needs',
     (invoice_settlement(inv) ->> 'invoice_number') = 'DC-INV-2026-000001');
+  perform t_check('...and who issued it, with no TIN on an invoice that charges no VAT',
+    invoice_issuer(inv) ->> 'rc_number' = 'RC 1111111' and invoice_issuer(inv) ? 'tin' and invoice_issuer(inv) ->> 'tin' is null);
   perform t_reset();
 
   -- Without the money right, none of it.
@@ -463,6 +467,7 @@ begin
     not exists (select 1 from invoice_items where invoice_id = inv)
     and not exists (select 1 from payments where invoice_id = inv));
   perform t_check('...and settlement is refused', t_refused(format('select invoice_settlement(%L)', inv), '42501'));
+  perform t_check('...and so is who issued it', t_refused(format('select invoice_issuer(%L)', inv), '42501'));
   perform t_reset();
 end $$;
 

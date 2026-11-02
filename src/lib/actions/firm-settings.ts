@@ -31,7 +31,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
-import { NG_STATES, isE164, normalizeNigerianPhone } from "@/lib/nigeria";
+import { NG_STATES, TIN_CHARACTERS, isE164, normaliseTin, normalizeNigerianPhone } from "@/lib/nigeria";
 import { SEEDED_POLICY_TEXT } from "@/lib/db/types";
 import { publishedContent } from "@/lib/public-data";
 
@@ -316,7 +316,17 @@ export async function updateFirmIdentity(firmId: string, input: IdentityInput): 
     name: z.string().trim().min(2, "A firm needs a name of at least two characters.").max(120, "Keep the name to 120 characters."),
     legalName: z.string().trim().max(200, "Keep the registered name to 200 characters."),
     rcNumber: z.string().trim().max(40, "Keep the RC or BN number to 40 characters."),
-    tin: z.string().trim().max(40, "Keep the TIN to 40 characters."),
+    // Tidied before it is checked, so a TIN pasted with an en dash or a no-break space is saved in
+    // the plain characters the invoice PDF can print (normaliseTin()).
+    tin: z
+      .string()
+      .transform(normaliseTin)
+      .pipe(
+        z
+          .string()
+          .max(40, "Keep the TIN to 40 characters.")
+          .regex(TIN_CHARACTERS, "Use only letters, numbers, spaces and hyphens in the TIN."),
+      ),
     stateCode: z
       .string()
       .trim()
@@ -336,12 +346,11 @@ export async function updateFirmIdentity(firmId: string, input: IdentityInput): 
   });
   if (result.error) return result;
   refresh();
-  return {
-    ok: true,
-    notes: [
-      "The name here is the name on the public site, on every notification Docket sends your clients, and at the head of the console.",
-    ],
-  };
+  const notes = [
+    "The name here is the name on the public site, on every notification Docket sends your clients, and at the head of the console.",
+  ];
+  if (d.tin && d.tin !== input.tin.trim()) notes.push(`The TIN is stored as ${d.tin}.`);
+  return { ok: true, notes };
 }
 
 // ================================================================ operations

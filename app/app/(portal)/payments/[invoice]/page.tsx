@@ -33,6 +33,8 @@ import {
   PAYABLE_STATUSES,
   invoiceBreakdownInput,
   invoiceContext,
+  invoiceIssuer,
+  vatTinSentence,
   type ClientInvoice,
   type InvoiceLine,
 } from "../invoice-data";
@@ -88,7 +90,10 @@ export default async function InvoicePage({
   const inv = (data ?? null) as ClientInvoice | null;
   if (!inv) notFound();
 
-  const [{ data: itemRows }, { data: paymentRows }, firm, context, tz] = await Promise.all([
+  // The firm that sent this invoice, which is not always the one the portal has selected: the
+  // payment, the receipt and any refund are that firm's.
+  const firmRow = firmById(inv.firm_id);
+  const [{ data: itemRows }, { data: paymentRows }, firm, context, tz, issuer] = await Promise.all([
     supabase.from("invoice_items").select("description, quantity, unit_minor").eq("invoice_id", inv.id),
     // Newest first. created_at, because paid_at is written only when a charge succeeds.
     supabase
@@ -96,20 +101,21 @@ export default async function InvoicePage({
       .select("id, provider, provider_ref, status, amount_minor, paid_at, created_at")
       .eq("invoice_id", inv.id)
       .order("created_at", { ascending: false }),
-    // The firm that sent this invoice, which is not always the one the portal has selected: the
-    // payment, the receipt and any refund are that firm's.
-    firmById(inv.firm_id),
+    firmRow,
     invoiceContext(supabase, inv),
     clientTimezone(supabase, user.id),
+    // The TIN on a VAT invoice, and who the firm is when its public row cannot be read.
+    invoiceIssuer(supabase, inv, firmRow),
   ]);
   const items = (itemRows ?? []) as InvoiceLine[];
   const payments = (paymentRows ?? []) as Payment[];
   const consultation = context.consultation;
-  const b = buildBreakdown(invoiceBreakdownInput(inv, items, firm, context.purpose));
+  const b = buildBreakdown(invoiceBreakdownInput(inv, items, firm, context.purpose, issuer));
+  const tin = issuer?.tin ?? null;
 
   // The firm by name wherever only the firm can act (docs/VOICE.md, rule 2), and "your firm" only
-  // when its public row cannot be read.
-  const firmName = firm?.name ?? null;
+  // when neither its public row nor invoice_issuer() can say who it is.
+  const firmName = firm?.name ?? issuer?.name ?? null;
   const firmWords = firmName ?? "your firm";
   const paidMinor = Math.max(0, Number(inv.paid_minor));
 
@@ -148,6 +154,8 @@ export default async function InvoicePage({
   const facts = [
     inv.issued_at ? `Sent on ${dayWords(inv.issued_at, tz)}.` : "",
     due ? (inv.status === "overdue" ? `It was due on ${due}.` : `Please pay by ${due}.`) : "",
+    // A VAT invoice says whose TIN the VAT was charged under, as its PDF does.
+    tin ? vatTinSentence(tin) : "",
     // The number last, with its label (docs/VOICE.md, rule 5).
     `Invoice ${inv.number}.`,
   ].filter(Boolean);

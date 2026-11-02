@@ -821,6 +821,25 @@ select pg_get_function_identity_arguments('public.record_consent'::regproc);
 -- p_firm uuid, p_terms_version text, p_privacy_version text
 ```
 
+**59 goes before the app, and before a firm charges VAT on a live database.** The client's
+invoice page and its PDF call `invoice_issuer(p_invoice)` for the firm's TIN on a VAT invoice, and
+for who the firm is when `firm_public` has no row for it (a suspended firm). That function exists
+only after 59. Without it, PostgREST answers PGRST202. `invoiceIssuer()`
+(`app/app/(portal)/payments/invoice-data.ts`) then reports the failure, and the invoice opens as it
+did before 59, without the line "VAT charged under TIN …". Schema first is harmless: 59 adds one
+function that the deployed front end never calls.
+
+Apply 59, then deploy. Enter the firm's TIN at `/firm/admin/settings` before its VAT rate goes
+above zero. To confirm afterwards:
+
+```sql
+select pg_get_function_identity_arguments('public.invoice_issuer'::regproc);       -- p_invoice uuid
+select has_function_privilege('anon', 'public.invoice_issuer(uuid)', 'execute');   -- false
+```
+
+Because 53 to 58 are reserved but not written, a database that has 59 needs
+`supabase db push --include-all` to apply any of them later.
+
 | | As of 13 Sep 2026, 16:05 UTC | Reconciled against |
 |---|---|---|
 | **App** | `68439d9` (the merge of PR #23), production READY | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |

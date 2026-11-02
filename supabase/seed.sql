@@ -4,9 +4,9 @@
 -- On a database that already has this firm, a re-run changes nothing in the firm row or in any
 -- service it already has. Set the legal name, RC/BN, TIN, contact details, the booking button's
 -- wording and the 45-minute consultation's name, description and fee in /firm/admin/settings and
--- /firm/admin/services first. Set the VAT rate once docs/LEGAL_READINESS_CHECKLIST.md item 16,
--- steps 8 and 9, print the TIN on VAT invoices. A re-run then only adds the 60- and 90-minute
--- consultations and their intake forms.
+-- /firm/admin/services first. Set the TIN before the VAT rate, and apply migration 59 first: the
+-- client's invoice prints the TIN on any invoice that carries VAT, through invoice_issuer(). A
+-- re-run then only adds the 60- and 90-minute consultations and their intake forms.
 --
 -- Klinique is a firm on Docket, not a special case: this file only supplies
 -- the DATA a firm owner would otherwise enter at /firm/start and in
@@ -20,9 +20,9 @@
 --
 -- The legal name and number are as on the firm's CAC certificate (business name BN 9868241), so
 -- the "Before you pay" breakdown names who the client is paying exactly as the register does. The
--- TIN shows only on the firm's own invoice screen. The client's invoice PDF does not print it yet
--- (docs/LEGAL_READINESS_CHECKLIST.md, item 16, steps 8 and 9), and firm_public never exposes it
--- (migration 51).
+-- TIN is printed on any invoice that carries VAT: on the firm's own invoice screen, and on the
+-- client's invoice page and PDF through invoice_issuer() (migration 59). firm_public never exposes
+-- it (migration 51).
 insert into firms (slug, name, legal_name, rc_number, tin, reference_prefix, timezone, default_currency, vat_rate, status, verified_at, brand, policies)
 values (
   'attorneys-klinique',

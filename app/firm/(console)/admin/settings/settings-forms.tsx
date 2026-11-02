@@ -305,7 +305,7 @@ function IdentitySection({ firmId, identity }: FirmSettingsProps) {
           value={tin}
           onChange={(e) => setTin(e.target.value)}
           maxLength={40}
-          hint="Your FIRS Tax Identification Number. Your own invoice screen shows it on any invoice that carries VAT. The client's invoice PDF does not print it yet."
+          hint="Your FIRS Tax Identification Number. Any invoice that carries VAT shows it: on your invoice screen, and on your client's invoice page and PDF."
         />
         <Select label="State of the principal office" value={stateCode} onChange={(e) => setStateCode(e.target.value)}>
           <option value="">Not stated</option>
