@@ -1,6 +1,6 @@
 "use client";
 
-// "Offline — showing your saved copy."
+// "You are offline", and what can still be done.
 //
 // Only shown when there is genuinely a saved copy behind the screen: telling
 // someone they are offline is noise, telling them what they can still do with
@@ -10,6 +10,22 @@
 import { useEffect, useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { savedAt } from "@/lib/offline";
+import { whenWords } from "@/lib/notifications-copy";
+
+/**
+ * When the copy was saved, in this device's own zone and with that zone named:
+ * "Monday 2 November 2026 at 10:05 WAT". The banner only exists on the device,
+ * so the device's clock is the right one to read it by.
+ */
+export function savedWords(at: Date): string {
+  let tz: string | undefined;
+  try {
+    tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  } catch {
+    tz = undefined;
+  }
+  return whenWords(at, tz);
+}
 
 export function OfflineBanner() {
   const [offline, setOffline] = useState(false);
@@ -29,17 +45,10 @@ export function OfflineBanner() {
 
   if (!offline || !saved) return null;
 
-  const when = new Intl.DateTimeFormat("en-GB", {
-    day: "numeric",
-    month: "long",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(saved);
-
   return (
-    <Alert kind="notice" icon="offline" title="Offline — showing your saved copy">
-      Saved {when}. Court dates and the matter timeline are readable. Payments and
-      uploads wait for a connection.
+    <Alert kind="notice" icon="offline" title="You are offline">
+      You are reading the copy saved on {savedWords(saved)}. Your matters and court
+      dates are here to read. Paying and uploading need a connection.
     </Alert>
   );
 }

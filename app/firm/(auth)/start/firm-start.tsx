@@ -136,7 +136,7 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
             required
           />
           <Input label="Registered name (optional)" name="legalName" hint="As registered with the CAC" error={state.fieldErrors?.legalName} />
-          <Input label="RC / BN number (optional)" name="rcNumber" error={state.fieldErrors?.rcNumber} />
+          <Input label="RC / BN number (optional)" name="rcNumber" hint="With its letters, as on the CAC certificate: RC 1234567 or BN 1234567." error={state.fieldErrors?.rcNumber} />
           <Select label="State of principal office" name="stateCode" defaultValue="" error={state.fieldErrors?.stateCode}>
             <option value="">Choose a state</option>
             {NG_STATE_OPTIONS.map((s) => (

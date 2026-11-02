@@ -63,6 +63,9 @@ const SCREENS = [
   { name: "client-messages", url: "/app/messages" },
   { name: "client-appointments", url: "/app/appointments" },
   { name: "client-appointment", url: "/app/appointments/55555555-5555-4555-8555-555555555555" },
+  // The one public page here: it is read on a phone by somebody in trouble, so its widths matter
+  // most. The session cookie is sent with it like every screen above, and the page ignores it.
+  { name: "site-urgent", url: "/attorneys-klinique/urgent" },
 ];
 
 const sessionCookie = {

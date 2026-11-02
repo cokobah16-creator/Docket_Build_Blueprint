@@ -102,5 +102,8 @@ export async function allow(
 /** The sentence a person sees when they have been going too fast. */
 export function tooFast(surface: LimitedSurface): string {
   const { limit, window } = LIMITS[surface];
-  return `That is more than ${limit} attempts in ${window.replace("1 ", "a ")}. Wait a moment and try again.`;
+  // "1 hour" reads "an hour", word for word what book_appointment() raises (migration 23), so the
+  // two refusals of one rule cannot be told apart; "1 minute" reads "a minute".
+  const span = window === "1 hour" ? "an hour" : window.replace(/^1 /, "a ");
+  return `That is more than ${limit} attempts in ${span}. Wait a moment and try again.`;
 }

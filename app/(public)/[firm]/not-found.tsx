@@ -31,10 +31,12 @@ export default function FirmSiteNotFound() {
     >
       <div className="flex flex-col gap-5">
         <p className="text-15 text-ink-muted">
-          Everything this firm publishes is reachable from the menu at the top of the page — the
-          services it offers, the lawyers who act, and how to book a consultation.
+          Use the menu at the top to find the firm&apos;s services and lawyers, to book a consultation
+          or to get urgent help.
         </p>
-        <div className="flex flex-wrap gap-3">
+        {/* "Go to the home page" is this page's filled button, so the header's turns quiet here
+            (data-header-cta, layout.tsx). */}
+        <div data-header-cta="quiet" className="flex flex-wrap gap-3">
           <Link href="/" className={buttonClasses("primary", "lg")}>
             Go to the home page
           </Link>
@@ -46,14 +48,15 @@ export default function FirmSiteNotFound() {
               a border and `text-brand`, with the ring stated as `outline-brand`
               rather than left to fall back to currentColor.
 
-              The hover is `bg-hover` rather than `bg-hover`: a black wash is
-              nothing at all on a dark ground, and `bg-hover` is ink at 5%,
-              which follows whichever way this subtree is pinned. */}
+              The hover is `bg-hover` rather than a black wash such as
+              `bg-black/5`: a black wash is nothing at all on a dark ground,
+              and `bg-hover` is ink at 5%, which follows whichever way this
+              subtree is pinned. */}
           <Link
             href="/app/login"
             className="inline-flex min-h-[50px] items-center justify-center rounded-control border border-edge px-6 text-15 font-semibold text-brand transition duration-fast hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
           >
-            Client sign in
+            Sign in to the client portal
           </Link>
         </div>
       </div>

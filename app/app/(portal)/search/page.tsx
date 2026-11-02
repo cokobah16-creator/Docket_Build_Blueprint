@@ -2,15 +2,21 @@
 // the names of the documents on their files, their invoices and consultations.
 //
 // The same search_docket() the console uses (migration 43), called the same way. It runs as the
-// caller, so a client sees exactly what a client may already open — the internal half of a firm's
+// caller, so a client sees exactly what a client may already open. The internal half of a firm's
 // work is absent because it is absent from `updates` and the rest for this reader, not because
 // this screen filtered anything. No firm is named in the call: a client may be a client of more
 // than one firm, and this searches across all of them, saying which firm each result belongs to.
+//
+// One main action, Search. The kind filter is an underlined strip like the matter tabs
+// (docs/VOICE.md, "Tabs"), so it never reads as a second filled button.
 
 import { WorkspaceUnavailable } from "@/components/ui/unavailable";
 import Link from "next/link";
 import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Card, CardHeader, EmptyState } from "@/components/ui/card";
+import { Disclosure } from "@/components/ui/disclosure";
+import { Input } from "@/components/ui/input";
 import { Screen, ScreenTitle } from "@/components/portal/screen";
 import { cn } from "@/lib/cn";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -29,7 +35,16 @@ const KINDS: Array<[SearchKind, string]> = [
   ["invoice", "Invoices"],
   ["appointment", "Consultations"],
 ];
-const KIND_LABEL = new Map<string, string>(KINDS.map(([k, l]) => [k, l]));
+
+/** What one result is, in a word, on the result itself. */
+const KIND_ONE = new Map<string, string>([
+  ["matter", "Matter"],
+  ["update", "Update"],
+  ["message", "Message"],
+  ["document", "Document"],
+  ["invoice", "Invoice"],
+  ["appointment", "Consultation"],
+]);
 
 function hrefFor(hit: SearchHit): string {
   switch (hit.kind) {
@@ -49,12 +64,19 @@ function Snippet({ text }: { text: string }) {
     <span>
       {parts.map((p, i) =>
         p.startsWith("<<") && p.endsWith(">>")
-          ? <mark key={i} className="rounded bg-amber-100 px-0.5 text-ink">{p.slice(2, -2)}</mark>
+          ? <mark key={i} className="rounded-chip bg-waiting-bg px-0.5 font-semibold text-ink">{p.slice(2, -2)}</mark>
           : <span key={i}>{p}</span>,
       )}
     </span>
   );
 }
+
+const tabLink = (on: boolean) =>
+  cn(
+    "-mb-px flex min-h-11 shrink-0 items-center border-b-2 px-3 text-13 font-medium",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand",
+    on ? "border-brand font-semibold text-ink-strong" : "border-transparent text-ink-muted hover:text-ink",
+  );
 
 export default async function PortalSearch({ searchParams }: { searchParams: Promise<{ q?: string; kind?: string }> }) {
   const sp = await searchParams;
@@ -95,85 +117,93 @@ export default async function PortalSearch({ searchParams }: { searchParams: Pro
     return `/app/search?${p.toString()}`;
   };
 
+  const kindName = kind ? KINDS.find(([k]) => k === kind)?.[1].toLowerCase() : null;
+
   return (
     <Screen>
       <ScreenTitle>Search</ScreenTitle>
 
       <Card>
-        <form method="GET" action="/app/search" className="flex flex-col gap-2 p-4">
+        <form method="GET" action="/app/search" role="search" className="p-4">
           {kind && <input type="hidden" name="kind" value={kind} />}
-          <label className="text-15 font-medium text-ink" htmlFor="q">Search your matters</label>
-          <div className="flex gap-2">
-            <input
-              id="q" name="q" type="search" defaultValue={q} autoFocus minLength={2} maxLength={200}
-              placeholder="A word from an update, a file name, a reference"
-              className="min-h-11 w-full rounded-lg border border-edge px-3 text-base text-ink focus:border-brand focus:outline-none"
-            />
-            <button type="submit" className="min-h-11 shrink-0 rounded-lg bg-brand px-4 text-15 font-medium text-brand-on">
-              Search
-            </button>
+          <div className="flex items-end gap-2">
+            <div className="min-w-0 flex-1">
+              <Input
+                id="q" name="q" type="search" label="Search your matters" defaultValue={q} autoFocus minLength={2} maxLength={200}
+                placeholder="A word, a file name or a reference"
+              />
+            </div>
+            {/* h-12 matches the field beside it, which is 48px with its border. */}
+            <Button type="submit" className="h-12 shrink-0">Search</Button>
           </div>
-          <p className="text-13 leading-relaxed text-ink-muted">
-            This searches what your firm has written to you, the names of your documents, and the
-            words inside the ones your firm has shared with you. A scanned or photographed page is
-            a picture of words rather than words, so Docket cannot look inside those.
-          </p>
         </form>
+        <Disclosure framed={false} summary="What search can find" className="border-t border-hairline px-4">
+          <div className="space-y-2 text-13 leading-relaxed text-ink-muted">
+            <p>Search looks through what your firm has written to you, the names of your documents, and the words inside the documents your firm has shared with you.</p>
+            <p>A scanned or photographed page is a picture of words, not text, so search cannot look inside it.</p>
+          </div>
+        </Disclosure>
       </Card>
 
-      {q.length > 0 && q.length < 2 && <Alert kind="info">Type at least two characters.</Alert>}
+      {q.length > 0 && q.length < 2 && <Alert kind="info">Type at least 2 letters or numbers to search.</Alert>}
 
       {failed && (
-        <Alert kind="error" title="The search did not come back">
-          This is not an empty result — nothing could be looked at just now. Try again.
+        <Alert kind="error" title="Search did not finish">
+          This is not an empty result. Nothing could be searched just now. Try again in a moment.
         </Alert>
       )}
 
       {q.length >= 2 && !failed && (
         <>
-          <div className="flex flex-wrap gap-2">
-            <Link href={keep(null)}
-                  className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
-                    kind === null ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink")}>
-              Everything
-            </Link>
+          <nav aria-label="What to search" className="flex gap-1 overflow-x-auto border-b border-hairline">
+            <Link href={keep(null)} aria-current={kind === null ? "page" : undefined} className={tabLink(kind === null)}>Everything</Link>
             {KINDS.map(([k, label]) => (
-              <Link key={k} href={keep(k)}
-                    className={cn("min-h-9 rounded-full border px-3 py-1.5 text-13",
-                      kind === k ? "border-brand bg-brand text-brand-on" : "border-edge bg-raised text-ink")}>
-                {label}
-              </Link>
+              <Link key={k} href={keep(k)} aria-current={kind === k ? "page" : undefined} className={tabLink(kind === k)}>{label}</Link>
             ))}
-          </div>
+          </nav>
 
           <Card>
-            <CardHeader title={hits.length === 0 ? "Nothing matched" : `${hits.length} result${hits.length === 1 ? "" : "s"}`} />
             {hits.length === 0 ? (
               <EmptyState
-                title="Nothing matched that"
+                title={kindName ? `No ${kindName} matched your search` : "Nothing matched your search"}
                 hint="Try a single word, or the reference on a letter from your firm."
+                action={kind ? (
+                  <Link href={keep(null)} className="inline-flex min-h-11 items-center text-13 font-medium text-ink underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+                    Search everything instead
+                  </Link>
+                ) : undefined}
               />
             ) : (
-              <ul className="divide-y divide-hairline">
-                {hits.map((hit) => (
-                  <li key={`${hit.kind}:${hit.id}`}>
-                    <Link href={hrefFor(hit)} className="flex flex-col gap-1 px-4 py-3 hover:bg-sunken">
-                      <span className="flex items-baseline justify-between gap-3">
-                        <span className="min-w-0 text-15 font-medium text-ink">{hit.title}</span>
-                        <span className="shrink-0 text-11 uppercase tracking-wide text-ink-muted">
-                          {KIND_LABEL.get(hit.kind) ?? hit.kind}
+              <>
+                {/* The database stops at LIMIT, so a full page is "the first 40", never "40 results". */}
+                <CardHeader title={hits.length >= LIMIT ? `The first ${LIMIT} results` : `${hits.length} result${hits.length === 1 ? "" : "s"}`} />
+                <ul className="divide-y divide-hairline">
+                  {hits.map((hit) => (
+                    <li key={`${hit.kind}:${hit.id}`}>
+                      <Link
+                        href={hrefFor(hit)}
+                        className="flex flex-col gap-1 px-4 py-3 transition duration-fast hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-brand"
+                      >
+                        <span className="flex items-baseline justify-between gap-3">
+                          <span className="min-w-0 text-15 font-medium text-ink">{hit.title}</span>
+                          <span className="shrink-0 text-11 uppercase tracking-wide text-ink-muted">
+                            {KIND_ONE.get(hit.kind) ?? "Result"}
+                          </span>
                         </span>
-                      </span>
-                      {hit.snippet && (
-                        <span className="text-13 leading-relaxed text-ink-muted"><Snippet text={hit.snippet} /></span>
-                      )}
-                      {hit.firm_id && firmNames.has(hit.firm_id) && (
-                        <span className="text-11 text-ink-muted">{firmNames.get(hit.firm_id)}</span>
-                      )}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+                        {hit.snippet && (
+                          <span className="text-13 leading-relaxed text-ink-muted"><Snippet text={hit.snippet} /></span>
+                        )}
+                        {hit.firm_id && firmNames.has(hit.firm_id) && (
+                          <span className="text-13 text-ink-muted">{firmNames.get(hit.firm_id)}</span>
+                        )}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                {hits.length >= LIMIT && (
+                  <p className="border-t border-hairline px-4 py-3 text-13 text-ink-muted">Add another word to narrow the search.</p>
+                )}
+              </>
             )}
           </Card>
         </>

@@ -164,7 +164,7 @@ Steps 4 to 15, Docket's own notice and its links, wait on the controller and ent
 - `grep -rn "free of charge" app src` returns nothing.
 - Manual check on tenant #1 in Paystack test mode. The link appears on the booking review step, the service page and both pay panels. Cancelling a paid booking shows "Refund due" in the console.
 
-**Decision needed.** The business and a lawyer must set the refund rule. It must say what is refunded inside and outside the window, for no-shows and for released holds, and within how many days. They must also approve the default wording. Checkout runs on the platform's Paystack account with the firm as a subaccount (`booking.ts:176-186`). A refund through the Paystack API would therefore conflict with "Docket never holds it" (`booking-wizard.tsx:520-521`). Keep refunds manual, made by the firm, until this is decided. If a `record_refund` function is built later, model it on the current `record_payment` (`20260910000035_pre_consultation_checkin.sql:497-564`), not on the dropped version.
+**Decision needed.** The business and a lawyer must set the refund rule. It must say what is refunded inside and outside the window, for no-shows and for released holds, and within how many days. They must also approve the default wording. Checkout runs on the platform's Paystack account with the firm as a subaccount (`booking.ts:176-186`). A refund through the Paystack API would therefore conflict with "Docket never holds your money" (`src/lib/payment-breakdown.ts`, the payee sentence shown on every pay screen and printed on the invoice PDF). Keep refunds manual, made by the firm, until this is decided. If a `record_refund` function is built later, model it on the current `record_payment` (`20260910000035_pre_consultation_checkin.sql:497-564`), not on the dropped version.
 
 **Risk if left.** Telling paying clients that cancellation is free, when the system never refunds, risks being a misleading representation under the FCCPA 2018 and sits badly with the Rules of Professional Conduct on client fees. Not legal advice.
 
@@ -174,12 +174,12 @@ Steps 4 to 15, Docket's own notice and its links, wait on the controller and ent
 
 **Where it stands.** No surface has a cookie or device-storage notice. The tenant privacy page renders only the firm's `firms.policies` text (`app/(public)/[firm]/_components/policy-page.tsx:8-50`). `middleware.ts:170-180` sets the analytics id `docket_did` for one year (`middleware.ts:66`) on every matched path, even when `POSTHOG_KEY` is unset (`src/lib/observability/posthog.ts:56-57`). The code also sets these, and none of them is disclosed:
 - the `dk_staff_firm` cookie (`middleware.ts:158-168`)
-- the `dk_firm` cookie (`src/lib/actions/portal.ts:328-334`)
+- the `dk_firm` cookie (`src/lib/actions/portal.ts:388-394`)
 - the Supabase `sb-*` cookies (`src/lib/supabase/server.ts:21-24`)
 - four `docket:*` localStorage keys
 - a `docket-booking:<firmId>` sessionStorage entry that holds intake answers (`app/(public)/[firm]/book/booking-wizard.tsx:96,177`)
 
-`public/sw.js:5-8` says the saved copy `docket-saved-v1` is deleted at sign-out. It is not: neither `signOut` (`app/app/(portal)/actions.ts:53-59`) nor `signOutEverywhere` (`src/lib/actions/portal.ts:298-301`) removes it. Nothing uses IndexedDB, and `package.json` includes no browser SDK for analytics or error monitoring.
+`public/sw.js:5-8` says the saved copy `docket-saved-v1` is deleted at sign-out. It is not: neither `signOut` (`app/app/(portal)/actions.ts:65-72`) nor `signOutEverywhere` (`src/lib/actions/portal.ts:358-361`) removes it. Nothing uses IndexedDB, and `package.json` includes no browser SDK for analytics or error monitoring.
 
 **How to add it.**
 1. Create `src/lib/legal/device-storage.ts` (new). It exports one array of `{ name, kind, setBy, purpose, lifetime, essential }` entries.
@@ -187,12 +187,12 @@ Steps 4 to 15, Docket's own notice and its links, wait on the controller and ent
 3. Export the private keys and import them too: `METHOD_KEY` (`src/components/auth/sign-in-forms.tsx:130`), `DISMISS_KEY` (`src/components/portal/pwa-hints.tsx:11`) and `PREFIX` (`src/lib/drafts.ts:13`). Add a new `BOOKING_STORAGE_PREFIX` for the literal at `booking-wizard.tsx:96`.
 4. Add the entries that have no constant:
    - `sb-<ref>-auth-token`, with its `.0`/`.1` chunks and the PKCE `-code-verifier` cookie (`sign-in-forms.tsx:626,927`)
-   - `docket-offline-v1` (`public/sw.js:11`)
+   - `docket-offline-v2` (`public/sw.js:13`)
    - the `/sw.js` registration (`src/components/portal/sw-registrar.tsx:9`)
    - the push subscription (`src/components/push/push-opt-in.tsx:70`)
 5. Create `src/components/portal/sign-out-form.tsx` (new). It is a client form that awaits `forgetCopy()` (`src/lib/offline.ts:60`) before it submits. Use it for both forms at `app/app/(portal)/profile/page.tsx:161-162`.
 6. Delete `SAVED_CACHE` next to `clearAllDrafts()` in `DraftSweeper` (`src/components/ui/connection.tsx:48-51`). Then correct the comment at `public/sw.js:5-8`.
-7. Set `secure: true` on `dk_firm` (`src/lib/actions/portal.ts:331`). Delete `dk_firm` in `signOutEverywhere`. Delete `dk_staff_firm` (path `/firm`) in `staffSignOut` (`src/lib/actions/staff.ts:13-17`).
+7. Set `secure: true` on `dk_firm` (`src/lib/actions/portal.ts:391`). Delete `dk_firm` in `signOutEverywhere`. Delete `dk_staff_firm` (path `/firm`) in `staffSignOut` (`src/lib/actions/staff.ts:13-17`).
 8. Create `app/(public)/[firm]/cookies/page.tsx` (new) under `PageShell`, and render the inventory as a table. This is platform text, not a `firms.policies` row. List the third-party requests to Google Fonts, Daily and Paystack checkout (`src/lib/csp.ts:149-169`). State that Sentry and PostHog run only on the server.
 9. Create `app/docket/cookies/page.tsx` (new) from the same component. Give it `export const dynamic = "force-dynamic"`, as `src/lib/csp.ts:74-77` asks. Do not add it to `PRERENDERED_SHELLS`.
 10. Add `"/docket"` to `APP_PREFIXES` (`middleware.ts:53`) if item 1 has not. Without it, a firm's custom domain rewrites the page to `/<slug>/docket/cookies`, which returns 404. `docket` is already a reserved slug, so no firm can collide with it.
@@ -229,7 +229,7 @@ Steps 4 to 15, Docket's own notice and its links, wait on the controller and ent
 10. Build `src/components/ui/cookie-banner.tsx` (new) as a client island that reads `document.cookie`. Give it two equal-weight `Button`s, "Allow analytics" and "Only necessary", plus a link to the cookie notice from item 4 (`${base}/cookies` on a firm's site, `/docket/cookies` elsewhere). Export a `CookieSettingsLink` that reopens the banner. Render nothing when `analyticsEnabled` is false.
 11. Mount the banner once in `app/layout.tsx:46-48` and pass `analyticsEnabled={Boolean(process.env.POSTHOG_KEY)}`.
 12. Use item 4's pages, `app/(public)/[firm]/cookies/page.tsx` and `app/docket/cookies/page.tsx`. Do not add `"/cookies"` to `APP_PREFIXES`: on a firm's host, `/cookies` must keep serving that firm's page.
-13. Make sure item 4's inventory, which both cookie pages render, lists the purpose and lifetime of each item: `sb-*-auth-token` and the PKCE verifier, `dk_staff_firm`, `dk_firm`, `docket_did`, `docket_consent`, the localStorage keys `docket:sign-in-method`, `docket:low-data`, `docket:ios-hint-dismissed` and `docket:draft:*`, the booking `sessionStorage` key, the caches `docket-offline-v1` and `docket-saved-v1`, and the push subscription. Say that each site address stores its own choice. When `POSTHOG_KEY` is unset, say that only strictly necessary storage is used.
+13. Make sure item 4's inventory, which both cookie pages render, lists the purpose and lifetime of each item: `sb-*-auth-token` and the PKCE verifier, `dk_staff_firm`, `dk_firm`, `docket_did`, `docket_consent`, the localStorage keys `docket:sign-in-method`, `docket:low-data`, `docket:ios-hint-dismissed` and `docket:draft:*`, the booking `sessionStorage` key, the caches `docket-offline-v2` and `docket-saved-v1`, and the push subscription. Say that each site address stores its own choice. When `POSTHOG_KEY` is unset, say that only strictly necessary storage is used.
 14. Put `CookieSettingsLink` next to item 4's cookie-notice links in the tenant footer (`app/(public)/[firm]/layout.tsx:153-159`), the portal profile card (`app/app/(portal)/profile/page.tsx:116-126`) and the footer of `app/page.tsx`.
 15. Replace `CONSOLE_FONTS` (`app/firm/(console)/layout.tsx:43-44,154`) with `next/font/google`, as `app/not-found.tsx:21` does. Point the font tokens at lines 39-40 to the new font variable.
 16. Self-host an allowlist of tenant fonts in `src/lib/brand.ts`, or name Google Fonts in the notice.
@@ -320,7 +320,7 @@ Steps 3 to 5, 7, 9 and 10 are the enforcement pass, reserved as `053`. Until the
 **How to add it.**
 1. Delete `matter_type: d.type` from the `matter_opened` event in `src/lib/actions/matters.ts:137`.
 2. List every PostHog event property in `docs/COMPLIANCE_PACK.md:242`. Include `amount_minor` and `currency` from `src/lib/actions/booking.ts:105-110`.
-3. Add `address` (trimmed, max 300 characters) to `profileSchema` and to the update in `updateProfile` (`src/lib/actions/portal.ts:252-290`). The `profiles_update` policy already allows this (`supabase/migrations/20260909000002_rls.sql:78`).
+3. Add `address` (trimmed, max 300 characters) to `profileSchema` and to the update in `updateProfile` (`src/lib/actions/portal.ts:312-350`). The `profiles_update` policy already allows this (`supabase/migrations/20260909000002_rls.sql:78`).
 4. In `app/app/(portal)/profile/page.tsx`, add `address` to the select (line 33) and a field to the form (line 67).
 5. Record each profile column's purpose in `docs/COMPLIANCE_PACK.md` §1.1. Leave `country` and `state` in place. `supabase/tests/70_deployed_frontend_compat.sql:199-203` pins them.
 6. Add optional `purpose` and `sensitive_reason` to `IntakeQuestion` (`src/lib/db/types.ts:242-253`).
@@ -389,10 +389,10 @@ Steps 3 to 5, 7, 9 and 10 are the enforcement pass, reserved as `053`. Until the
 **How to add it.**
 1. Create `supabase/migrations/20260910000058_notification_opt_in.sql` (new). Add two nullable `timestamptz` columns, `profiles.email_opt_in_at` and `profiles.sms_opt_in_at`. Set the `preferred_channel` default to `'in_app'`. Then regenerate `src/lib/db/database.types.ts`.
 2. In the same file, redefine `public.enqueue_notification`, starting from `20260910000037_notifications_reliability.sql:85-124`. Replace lines 109-110 so `sms` needs `sms_opt_in_at`, and `email` needs both `email` and `email_opt_in_at`. Change nothing else. Item 18's `062` migration builds on this body.
-3. Add `saveChannelOptIn({ email, sms })` next to `savePreferences` in `src/lib/actions/portal.ts:239-249`. It sets or clears the two columns on the caller's own row, which `profiles_update` allows (`20260910000021_hardening.sql:133-134`).
+3. Add `saveChannelOptIn({ email, sms })` next to `savePreferences` in `src/lib/actions/portal.ts:299-309`. It sets or clears the two columns on the caller's own row, which `profiles_update` allows (`20260910000021_hardening.sql:133-134`).
 4. On the booking review step (`app/(public)/[firm]/book/booking-wizard.tsx:540-549`), add two unticked boxes, "Also send updates by SMS" and "Also send updates by email". Put them next to item 6's consent boxes. Reword the hint at `:547` to say the address is used only for the receipt unless the email box is ticked.
 5. Call `saveChannelOptIn` at `booking-wizard.tsx:240-243`, before `bookAppointment`.
-6. Replace the "Channel" select at `app/app/(portal)/profile/page.tsx:91-98` with the same two boxes. Drop the `"sms"` fallback at `src/lib/actions/portal.ts:267`, and update the sentence at `app/app/(portal)/notifications/preferences/page.tsx:35`.
+6. Replace the "Main way to reach you" select at `app/app/(portal)/profile/page.tsx:144-149` with the same two boxes. Drop the `"sms"` fallback at `src/lib/actions/portal.ts:327`, and update the sentence at `app/app/(portal)/notifications/preferences/page.tsx:54`.
 7. Add the two boxes to `app/firm/(console)/me/page.tsx:118`, next to `<PushOptIn />`, so staff can opt in to reminders.
 8. In `supabase/functions/dispatch-notifications/index.ts:350` and `:353`, append `Change what you receive: ${APP_URL}/app/notifications/preferences`, with a short form for SMS. The link goes in after the firm-template override (`:331-343`), so a firm cannot remove it. Item 18 adds unsubscribe tokens later.
 9. Add a "Turn off" `Button` to the subscribed state in `src/components/push/push-opt-in.tsx:83-89`. It calls `getSubscription()`, then `unsubscribe()`, then deletes the `push_subscriptions` row by `endpoint`. The `push_subscriptions_all` policy allows the delete (`20260910000021_hardening.sql:139-141`).
@@ -427,7 +427,7 @@ Steps 3 to 5, 7, 9 and 10 are the enforcement pass, reserved as `053`. Until the
 8. Add `vatMinor(priceMinor, rate)` and `totalWithVat(priceMinor, rate)` to `src/lib/money.ts`, using `Math.round(priceMinor * rate / 100)` like `book_appointment()`. Move the inline copies at `app/firm/(console)/admin/services/page.tsx:142` and `app/firm/(console)/invoices/new/invoice-composer.tsx:141` onto it.
 9. At `booking-wizard.tsx:514`, render "Fee", "VAT at {rate}%" (when the rate is above zero) and "Total" rows with the existing `Row` component (`:603`).
 10. Drive the button (`:579-580`) and the hold notice (`:518-523`) from `requires_prepayment`. Prepaid reads "Confirm and pay {total}". Invoiced-after reads "Confirm booking: {total} will be invoiced" and drops the 15-minute notice.
-11. Show the total, marked "incl. VAT", at `booking-wizard.tsx:349`, `app/(public)/[firm]/page.tsx:74` and `:118`, `app/(public)/[firm]/services/page.tsx:35` and `app/(public)/[firm]/services/[service]/page.tsx:31`.
+11. Show the total, marked "including VAT" (it read "incl. VAT" until build step 1), at `booking-wizard.tsx:349`, `app/(public)/[firm]/page.tsx:74` and `:118`, `app/(public)/[firm]/services/page.tsx:35` and `app/(public)/[firm]/services/[service]/page.tsx:31`.
 12. Rewrite `docs/CLIENT_GUIDE.md:73-74` to match the new display.
 13. Add the new columns to the lists at `supabase/tests/70_deployed_frontend_compat.sql:117` and `:121`.
 14. Add late-payment `t_check` cases to `supabase/tests/99_pre_consultation.sql`, which already calls `release_expired_holds()` (`:223`). Raise its floor at `supabase/tests/expected-checks.tsv:43`. Update the migration and assertion counts in `README.md:7`.
@@ -435,10 +435,10 @@ Steps 3 to 5, 7, 9 and 10 are the enforcement pass, reserved as `053`. Until the
 **Done in the code (lane dD).** Steps 1, 2 and 6 to 13 are done. Step 8 was done differently. `vatMinor()` uses whole-number arithmetic instead of `Math.round`. `formatPriceWithVat()` takes the place of `totalWithVat()`, and callers add `price + vatMinor(...)` inline.
 - Migration `051` appends `vat_rate` and `rc_number` to `firm_public`, and repeats the revoke.
 - `vatMinor()` in `src/lib/money.ts` rounds exactly as `book_appointment()` does. It was checked against Postgres on 20,010 amount and rate pairs. The admin services page and the invoice composer use it.
-- The booking review shows Fee, "VAT at {rate}%" and Total. The pay button asks for the total.
-- Service cards, the tenant home and the service pages show the total marked "incl. VAT".
-- An invoiced-after service reads "Confirm booking: {total} will be invoiced" and drops the hold notice.
-- Checkout opens only when the booking is awaiting payment, the review said the client would pay, and the invoice total matches the total shown. Otherwise the client goes to the appointment page, which says what changed.
+- The booking review shows Fee, "VAT at {rate}%" and Total. The pay button asks for the total. Since build step 1 these rows sit in the "Before you pay" box (`src/components/portal/before-you-pay.tsx`, built by `src/lib/payment-breakdown.ts`), which the consultation and invoice pages show too, and the button reads "Book and pay {total}".
+- Service cards, the tenant home and the service pages show the total marked "including VAT" (`priceIncludingVat()` in `app/(public)/[firm]/_components/site-words.ts`, which calls `formatPriceWithVat()`).
+- An invoiced-after service drops the hold notice. Since build step 1 its box is headed "What you will pay", says the booking creates an invoice for the total, and the button reads "Book this consultation".
+- Checkout opens only when the booking is awaiting payment, the review said the client would pay, and the invoice total matches the total shown. Otherwise the client goes to the consultation page, which says what changed.
 - `CLIENT_GUIDE.md` matches.
 
 Steps 3 to 5 and 14, the late-payment branch, are reserved as `059`.
@@ -506,7 +506,7 @@ Steps 3 to 5 and 14, the late-payment branch, are reserved as `059`.
 13. Replace the remaining "secure" copy at `booking-wizard.tsx:714`, `src/components/auth/auth-frame.tsx:15`, `src/components/auth/sign-in-forms.tsx:939`, `src/components/portal/documents-tab.tsx:332`, `sign-dialog.tsx:72` and `app/firm/(console)/matters/[id]/staff-documents.tsx:618`. Use "private folder", "one-time link" or the link's lifetime.
 14. `app/page.tsx:70` and `:73`: qualify both claims. Firms can deliberately share data across firms (`20260910000045_collaboration.sql`), and self-serve `create_firm` skips MFA (`20260910000015_second_firm_walkthrough.sql:42-47`).
 15. `docs/decisions/0004-no-platform-share-of-client-payments.md` (new): record the decision below.
-16. Following that decision, pass `transaction_charge: 0` with `subaccount` in `src/lib/providers/payments/paystack.ts:29`, or reword `pay-panel.tsx:156-157` and `booking-wizard.tsx:520-521`.
+16. Following that decision, pass `transaction_charge: 0` with `subaccount` in `src/lib/providers/payments/paystack.ts:29`, or reword the payee sentence in `src/lib/payment-breakdown.ts`, which every pay screen and the invoice PDF use.
 17. `scripts/check-claims.mjs` (new, shared with item 11): strip comments first, then fail on `secure|encrypt|compliant|certified|guarantee|under a minute|free of charge|not recorded|only owner|cannot (see|touch)|nothing was charged|safer` in `app/`, `src/components`, `docs/CLIENT_GUIDE.md`, `docs/ADMIN_GUIDE.md` and `supabase/seed.sql`. Keep an allow-list that cites `file:line` for each exception.
 18. `.github/workflows/ci.yml`: item 11's `test:claims` step already runs the script after `npm run typecheck` (`:277`), so add no second step.
 
@@ -648,7 +648,7 @@ Still open:
 
 **Status:** partial · **Priority:** P1 · **Effort:** M
 
-**Where it stands.** Firms can already store a registered name, RC/BN, TIN and contact details (`src/lib/actions/firm-settings.ts:310-334`), and the tenant footer shows the legal name (`app/(public)/[firm]/layout.tsx:164`). `firm_public` has no `rc_number` column (`supabase/migrations/20260910000013_security_review.sql:167-171`), so no public page shows an RC/BN. The client invoice PDF prints no RC or TIN either (`app/app/(portal)/payments/[invoice]/pdf/route.ts:46-49`). No page identifies the platform operator: the landing footer says only "© Docket" (`app/page.tsx:306`), the shared auth footer is the same (`src/components/auth/auth-frame.tsx:89`), and the tenant footer says "by Docket" (`app/(public)/[firm]/layout.tsx:165`). Nobody has decided which entity operates the platform yet (`Docket_Build_Blueprint_v0.2.md:479`), and tenant #1's seed row has no RC/BN and null contact details (`supabase/seed.sql:13`, `:27`).
+**Where it stands.** Firms can already store a registered name, RC/BN, TIN and contact details (`src/lib/actions/firm-settings.ts:310-334`), and the tenant footer shows the legal name (`app/(public)/[firm]/layout.tsx:212`). Since build step 1 the booking review, the consultation and invoice pages and the invoice PDF name the payee by legal name and RC/BN (`src/lib/payment-breakdown.ts`, `app/app/(portal)/payments/[invoice]/pdf/route.ts`). The PDF still prints no TIN, although tenant #1's seed now charges VAT, and the tenant footer shows no RC/BN. No page identifies the platform operator: the landing footer says only "© Docket" (`app/page.tsx:306`), the shared auth footer is the same (`src/components/auth/auth-frame.tsx:89`), and the tenant footer says "by Docket" (`app/(public)/[firm]/layout.tsx:213`). Nobody has decided which entity operates the platform yet (`Docket_Build_Blueprint_v0.2.md:479`), and tenant #1's seed row carries its BN, TIN and contact details (`supabase/seed.sql`).
 
 **How to add it.**
 1. Record the platform entity in `docs/decisions/0005-platform-entity.md` (new), next to `0003-platform-first.md`.
@@ -657,14 +657,14 @@ Still open:
 4. Render the same block once in the `AuthFrame` footer (`src/components/auth/auth-frame.tsx:88-93`). It is a server component used by `app/app/(auth)/layout.tsx` and `app/firm/(auth)/layout.tsx`, so it covers every client and staff auth page.
 5. In `supabase/migrations/20260910000051_firm_public_vat_and_rc.sql` (shared with item 10), append `rc_number` to `firm_public` after `vat_rate`, as item 10 step 1 does. Do not add `tin`. Keep `security_invoker = false` and the `status = 'active'` filter. Then repeat the revoke from `20260910000014_review_round_two.sql:35-38`.
 6. Add `rc_number` to `FirmPublic` (`src/lib/db/types.ts:61-72`), to the select in `src/lib/tenant.ts:22`, and to the `FIRM` fixture (`tests/fixtures/supabase-mock.mjs:74-90`).
-7. At `app/(public)/[firm]/layout.tsx:164-165`, show the legal name, RC/BN and the `brand.contact` address, email and phone. Replace "by Docket" with the operator's name and RC from `platformOperator()`. Add an `identifier` field holding the RC/BN to `legalServiceJsonLd` (`src/lib/site.ts:22-35`).
+7. At `app/(public)/[firm]/layout.tsx:212-213`, show the legal name, RC/BN and the `brand.contact` address, email and phone. Replace "by Docket" with the operator's name and RC from `platformOperator()`. Add an `identifier` field holding the RC/BN to `legalServiceJsonLd` (`src/lib/site.ts:22-35`).
 8. In `supabase/migrations/20260910000059_late_payments_and_invoice_issuer.sql` (shared with item 10), add `invoice_issuer(p_invoice uuid)` as `security definer`. It refuses the call unless `can_access_invoice(p_invoice)` is true (`20260910000044_verified_delegation.sql:302`). It returns `legal_name` and `rc_number`, plus `tin` only when `vat_minor > 0`. Revoke execute from `public, anon` and grant it to `authenticated`. Add it to `docs/RPC_REFERENCE.md`.
 9. Call `invoice_issuer` beside `firmById` (`pdf/route.ts:29-34`). Print the RC/BN line and "VAT charged under TIN …" under the legal name at `:46`, matching `app/firm/(console)/invoices/[id]/page.tsx:266-267`. Add the RC/BN to `app/app/(portal)/payments/[invoice]/page.tsx:65`.
 10. In `059` too, run `create or replace function public.firm_readiness`, copied from `20260910000034_onboarding_and_import.sql:69-130`. Add an `identity_published` fact that is true only when `legal_name`, `rc_number` and the `brand.contact` email, phone and address are all non-empty. Do not edit the applied `034` migration.
 11. Add `identity_published` to `FirmReadiness` (`src/lib/db/types.ts:702`). In `app/firm/(console)/admin/checklist.tsx`, add an `identity` step after `policies` (line 30) with `skippable: false` and `href: "/firm/admin/settings"`. A non-skippable step needs no change to the check constraint at `034:35`.
 12. Add `rc_number` to the column list at `supabase/seed.sql:13`, and fill `contact` at `:27` with the values tenant #1 supplies. The seed uses `on conflict (slug) do nothing` (`:40`), so a live database gets these values through `/firm/admin/settings`.
 
-**Done in the code (lane dD).** Steps 5 and 6 are done. Migration `051` puts `rc_number` on `firm_public`, and `FirmPublic`, the `src/lib/tenant.ts` select and the `FIRM` fixture include it. Nothing displays it yet. Steps 1 to 4 and 7 to 12 are still open. Most of them wait on migration `059` or the platform entity decision.
+**Done in the code (lane dD).** Steps 5 and 6 are done. Migration `051` puts `rc_number` on `firm_public`, and `FirmPublic`, the `src/lib/tenant.ts` select and the `FIRM` fixture include it. Since build step 1 the payee line of "Before you pay" and the PDF display it; the footer does not. Step 12 is done too: the seed carries the BN, TIN and contact details. Do steps 8 and 9 before tenant #1 charges VAT on a live database, so its VAT invoices print its TIN. Steps 1 to 4 and 7 to 11 are still open. Most of them wait on migration `059` or the platform entity decision.
 
 **How to check it.**
 - `supabase/tests/70_deployed_frontend_compat.sql` already selects `rc_number` in the tenant-resolver column list (`:117-118`), checks that anon reads it (`:221-223`), and checks that `firm_public` has no `tin` column (`:254-256`).
@@ -674,7 +674,7 @@ Still open:
 - `tests/e2e/smoke.spec.ts`: assert that the tenant footer shows "RC/BN". With the `PLATFORM_*` variables set, assert that the landing and `/app/login` footers show the operator's RC.
 - Manual: download a VAT invoice PDF and confirm it shows the RC/BN and TIN lines.
 
-**Decision needed.** The owner must decide which company operates Docket (blueprint §14.2) and supply its registered name, RC number, address, email and phone. Tenant #1 must supply its real RC/BN and public contact details. Do not invent them.
+**Decision needed.** The owner must decide which company operates Docket (blueprint §14.2) and supply its registered name, RC number, address, email and phone. Do not invent them. Tenant #1's own BN, TIN and public contact details are in its seed row; on a live database the firm enters them at `/firm/admin/settings`.
 
 **Risk if left.** With no identified operator and no tenant RC/BN, the platform and its firms fall short of the NDPA 2023 and NDPC GAID rule that a controller must be identifiable and contactable. They also fall short of CAMA 2020 and FCCPA 2018 expectations that a trader discloses its registered identity. Not legal advice.
 

@@ -16,10 +16,8 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { supabaseServer } from "@/lib/supabase/server";
-import { currentFirm, currentFirmSlug } from "@/lib/firm";
+import { currentFirm } from "@/lib/firm";
 import { selectedFirm } from "@/lib/portal-firm";
-import { isProductionDeployment } from "@/lib/env";
-import { firmSiteHref } from "@/lib/tenant";
 import { policyDocumentHref } from "@/lib/policy-text";
 import { brandFontsUrl, brandStyle } from "@/lib/brand";
 import { ToastProvider } from "@/components/ui/toast";
@@ -32,27 +30,7 @@ import { WorkspaceBar } from "@/components/shell/workspace";
 import "../../legal-os.css";
 import { PORTAL_NAV } from "@/components/shell/nav";
 import { ConsentGate } from "./consent-gate";
-
-/**
- * Where the consent gate links a document the firm has not linked elsewhere: its own
- * /{slug}/terms or /{slug}/privacy page, which shows the text the firm saved in settings.
- *
- * The /{slug}/… form works on Docket's shared host and on the firm's own host, because
- * middleware leaves a path that already starts with the firm's slug alone. On ANOTHER firm's
- * host it does not: middleware would rewrite it onto that firm's site, and the link would 404.
- * That happens when a client of two firms opens the portal on one firm's domain and has the
- * other selected, so there the link goes to the firm's own address instead. Outside production
- * a host never selects a firm (only ?firm= does, and this link carries none), so the relative
- * form always works there.
- */
-async function firmDocumentHref(
-  firm: NonNullable<Awaited<ReturnType<typeof selectedFirm>>>,
-  kind: "terms" | "privacy",
-): Promise<string> {
-  const hostSlug = await currentFirmSlug();
-  if (hostSlug && hostSlug !== firm.slug && isProductionDeployment()) return `${firmSiteHref(firm)}/${kind}`;
-  return `/${firm.slug}/${kind}`;
-}
+import { firmPageHref } from "./firm-href";
 
 /**
  * What stands between a client and the firm's pages until they have accepted that firm's
@@ -79,9 +57,9 @@ async function consentGateFor(
   if (termsVersion?.startsWith("0-") || privacyVersion?.startsWith("0-")) {
     return (
       <Screen>
-        <Alert kind="info" title={`${firm.name} has not published its terms yet`}>
-          The firm is still completing its setup on Docket. Its terms of service and privacy
-          notice will appear here for your acceptance once published.
+        <Alert kind="info" title={`${firm.name} is still setting up`}>
+          Its terms of service and privacy notice are not published yet. You will be asked to
+          accept them here once they are. There is nothing for you to do until then.
         </Alert>
       </Screen>
     );
@@ -98,9 +76,9 @@ async function consentGateFor(
   if (accepted("terms", termsVersion) && accepted("privacy", privacyVersion)) return null;
 
   // Every box the client ticks links a document they can read: the firm's own link when it gave
-  // one, else the firm's page for it.
+  // one, else the firm's page for it (firm-href.ts says why that page's address can vary).
   const linkOf = async (kind: "terms" | "privacy") =>
-    policyDocumentHref(firm.policies[kind], await firmDocumentHref(firm, kind));
+    policyDocumentHref(firm.policies[kind], await firmPageHref(firm, `/${kind}`));
   const [termsUrl, privacyUrl] = await Promise.all([linkOf("terms"), linkOf("privacy")]);
 
   return (

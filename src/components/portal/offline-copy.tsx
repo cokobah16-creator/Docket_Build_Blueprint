@@ -7,6 +7,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { SettingRow } from "@/components/ui/switch";
 import { forgetCopy, saveCopy, savedAt, savedCopyUrls } from "@/lib/offline";
+import { savedWords } from "@/components/portal/offline-banner";
 
 export function OfflineCopy({ matterIds }: { matterIds: string[] }) {
   const [saved, setSaved] = useState<Date | null>(null);
@@ -20,22 +21,17 @@ export function OfflineCopy({ matterIds }: { matterIds: string[] }) {
     });
   }, []);
 
-  const when = saved
-    ? new Intl.DateTimeFormat("en-GB", {
-        day: "numeric",
-        month: "long",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(saved)
-    : null;
+  const when = saved ? savedWords(saved) : null;
 
+  // What the copy holds is what savedCopyUrls() lists: the home screen, the matters list, each
+  // matter's page and the court dates. The hint says no more than that.
   return (
     <SettingRow
       title="Offline copy"
       hint={
         when
-          ? `Saved ${when} — matters, court dates and the last ten timeline entries.`
-          : "Keep your matters and court dates readable with no network."
+          ? `Saved on ${when}. It has your home screen, your matters and your court dates.`
+          : "Save a copy of your matters and court dates on this device, to read with no connection."
       }
     >
       <Button
@@ -53,7 +49,8 @@ export function OfflineCopy({ matterIds }: { matterIds: string[] }) {
           })
         }
       >
-        {pending ? "Working…" : saved ? "Go online" : "Save now"}
+        {/* Named for what it does: the saved button deletes the copy, it does not connect. */}
+        {pending ? (saved ? "Deleting…" : "Saving…") : saved ? "Delete the saved copy" : "Save a copy"}
       </Button>
     </SettingRow>
   );

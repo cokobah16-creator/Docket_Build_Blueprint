@@ -17,7 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [services, lawyers] = await Promise.all([activeServices(firm.id), publicLawyers(firm.id)]);
   const base = `${origin}/${firm.slug}`;
   const now = new Date();
-  const statics = ["", "/about", "/services", "/lawyers", "/contact", "/book", "/terms", "/privacy"];
+  const statics = ["", "/about", "/services", "/lawyers", "/contact", "/urgent", "/book", "/terms", "/privacy"];
   return [
     ...statics.map((p) => ({ url: `${base}${p}`, lastModified: now, changeFrequency: "weekly" as const, priority: p === "" ? 1 : 0.7 })),
     ...services.map((s) => ({ url: `${base}/services/${s.slug}`, lastModified: now, changeFrequency: "monthly" as const, priority: 0.6 })),

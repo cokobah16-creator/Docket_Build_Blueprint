@@ -293,13 +293,19 @@ function IdentitySection({ firmId, identity }: FirmSettingsProps) {
           maxLength={200}
           hint="The name on the CAC certificate, if it differs from the trading name."
         />
-        <Input label="RC or BN number" value={rcNumber} onChange={(e) => setRcNumber(e.target.value)} maxLength={40} />
+        <Input
+          label="RC or BN number"
+          value={rcNumber}
+          onChange={(e) => setRcNumber(e.target.value)}
+          maxLength={40}
+          hint="With its letters, as on the CAC certificate: RC 1234567 or BN 1234567. Clients see it beside your registered name when they pay."
+        />
         <Input
           label="TIN"
           value={tin}
           onChange={(e) => setTin(e.target.value)}
           maxLength={40}
-          hint="Your FIRS Tax Identification Number. Docket prints it on any invoice that carries VAT."
+          hint="Your FIRS Tax Identification Number. Your own invoice screen shows it on any invoice that carries VAT. The client's invoice PDF does not print it yet."
         />
         <Select label="State of the principal office" value={stateCode} onChange={(e) => setStateCode(e.target.value)}>
           <option value="">Not stated</option>

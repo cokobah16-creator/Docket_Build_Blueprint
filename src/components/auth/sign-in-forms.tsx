@@ -500,7 +500,7 @@ export function SignInForms({
    * point in the event where the sixth digit arrives — the stale-closure bug this would otherwise
    * have. Verification goes through the shared browser client, always: the booking wizard is passed
    * no onSignedIn and learns about the session only from supabase.auth.onAuthStateChange, so a
-   * server action or a direct fetch to GoTrue would leave it stuck on "Sign in to confirm" with
+   * server action or a direct fetch to GoTrue would leave it stuck on "Sign in to book" with
    * nothing shown and nothing to say.
    */
   async function submitCode(token: string) {
@@ -668,15 +668,15 @@ export function SignInForms({
   const googleButton = (
     <>
       <div className="flex items-center gap-3 pt-1" aria-hidden="true">
-        <span className="h-px flex-1 bg-gray-200" />
-        <span className="text-[11.5px] text-gray-500">or</span>
-        <span className="h-px flex-1 bg-gray-200" />
+        <span className="h-px flex-1 bg-hairline" />
+        <span className="text-11 text-ink-muted">or</span>
+        <span className="h-px flex-1 bg-hairline" />
       </div>
       <Button
         type="button"
         variant="ghost"
         size="lg"
-        className="w-full border border-gray-300"
+        className="w-full border border-edge"
         disabled={busy}
         onClick={() => void startGoogle()}
       >
@@ -712,7 +712,7 @@ export function SignInForms({
   // the button and never used to disable it. Not OfflineNote from connection.tsx: that one promises
   // what you typed is kept on this device, and this form keeps nothing.
   const offlineNote = offline ? (
-    <p className="text-13 text-amber-900">
+    <p className="text-13 text-waiting-ink">
       You are offline. The request cannot leave this device until it is back on the network.
     </p>
   ) : null;
@@ -807,7 +807,7 @@ export function SignInForms({
             type="button"
             variant="ghost"
             size="lg"
-            className="w-full border border-gray-300"
+            className="w-full border border-edge"
             disabled={busy}
             onClick={() => beginPhone("whatsapp")}
           >

@@ -42,6 +42,10 @@ export function ScreenTitle({ children }: { children: ReactNode }) {
  *
  * It runs edge to edge by cancelling the shell's gutter, so its underline
  * spans the column at every width.
+ *
+ * The chevron is a full 44px target with an `edge` border and its own focus
+ * ring (DESIGN.md): it is the one way off a screen opened from a notification,
+ * so a thumb or a keyboard has to find it first time.
  */
 export function ScreenHeader({
   back,
@@ -64,11 +68,11 @@ export function ScreenHeader({
 }) {
   const Title = titleAs === "heading" ? "h1" : "p";
   return (
-    <header className="sticky top-0 z-20 -mx-4 -mt-3.5 mb-0.5 flex min-h-[50px] items-center gap-2.5 border-b border-hairline bg-raised/[0.92] px-3.5 py-2.5 backdrop-blur-xl md:-mx-6 md:-mt-5 md:px-6 lg:-mx-8 lg:px-8">
+    <header className="sticky top-0 z-20 -mx-4 -mt-3.5 mb-0.5 flex min-h-[50px] items-center gap-2.5 border-b border-hairline bg-raised/[0.92] px-3.5 py-1 backdrop-blur-xl md:-mx-6 md:-mt-5 md:px-6 lg:-mx-8 lg:px-8">
       <Link
         href={back}
         aria-label={backLabel}
-        className="grid size-9 shrink-0 place-items-center rounded-full border border-hairline bg-raised text-brand"
+        className="grid size-11 shrink-0 place-items-center rounded-full border border-edge bg-raised text-brand transition duration-fast hover:bg-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
       >
         <Icon name="chevron-left" size={19} strokeWidth={2} />
       </Link>

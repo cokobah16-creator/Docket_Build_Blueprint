@@ -48,7 +48,12 @@ export interface FirmBrand {
   cta?: string;
   colours?: BrandColours;
   fonts?: { heading?: string; body?: string };
-  contact?: { email?: string | null; phone?: string | null; address?: string | null };
+  /**
+   * Free text as the firm typed it, up to 200 characters each (validate_brand, migration 50).
+   * The public site turns phone and whatsapp into links with telHref() and whatsappHref()
+   * (src/lib/nigeria.ts), and shows a number it cannot dial as plain text.
+   */
+  contact?: { email?: string | null; phone?: string | null; address?: string | null; whatsapp?: string | null };
   logo_path?: string | null;
 }
 

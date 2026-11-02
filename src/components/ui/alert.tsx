@@ -26,6 +26,7 @@ export function Alert({
   icon,
   children,
   className,
+  live = true,
 }: {
   kind?: Kind;
   title?: string;
@@ -33,10 +34,16 @@ export function Alert({
   icon?: IconName;
   children: ReactNode;
   className?: string;
+  /**
+   * `false` for guidance that is part of the page from the start, such as Urgent help's "call 112":
+   * a live role there has the whole callout read out as the page arrives, as if something had
+   * just gone wrong. Left on, an error is an alert and anything else a status, as before.
+   */
+  live?: boolean;
 }) {
   return (
     <div
-      role={kind === "error" ? "alert" : "status"}
+      role={live ? (kind === "error" ? "alert" : "status") : undefined}
       className={cn(
         "flex items-start gap-2.5 rounded-card border px-[13px] py-[11px] text-13",
         PILL_TONES[kinds[kind].tone],

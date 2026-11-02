@@ -6,6 +6,10 @@ than by memory.
 `design/home/README.md` governs the platform landing page only, and is stricter
 than this document in places. Where the two disagree about that page, it wins.
 
+`docs/VOICE.md` governs what client screens say: the words, the tone, and which
+one action a screen leads with. This document governs how things look. Where
+the two meet (icons, status, tabs, warmth), `docs/VOICE.md` says which one wins.
+
 ## Three colour systems, deliberately separated
 
 | | what it is | who may change it |

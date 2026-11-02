@@ -10,7 +10,10 @@ export type PaymentChannel = 'card' | 'bank_transfer' | 'ussd';
 
 export interface InitializePaymentArgs {
   invoiceNumber: string;          // becomes provider metadata; the webhook maps it back to the invoice
-  amountMinor: number;            // kobo or cents — always the invoice total
+  // kobo or cents: what is still due, from amountToCharge() in src/lib/payment-breakdown.ts (the
+  // invoice total less what has been paid; no fee is added while the firm bears it). It is the
+  // figure the "Before you pay" breakdown put on the button.
+  amountMinor: number;
   currency: Currency;
   email: string;
   description: string;

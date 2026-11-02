@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Icon } from "@/components/ui/icon";
+import { buttonClasses } from "@/components/ui/button";
 import { QuickActions, type QuickAction } from "@/components/shell/quick-actions";
 
 /**
@@ -35,9 +36,12 @@ export function WorkspaceBar({ firmName, firmId, client = false }: {
       </form>
       <span className="workspace-firm" title={firmName}>{firmName}</span>
       {client ? (
-        <Link className="workspace-bar-action" href={`${root}/messages${context}`}>
+        // A ghost, not the filled bar action the console's New wears: on a client screen the one
+        // filled button belongs to that screen's own main action (docs/VOICE.md, rule 15), and
+        // this bar is on every screen. Named for what it does, verb first.
+        <Link className={buttonClasses("ghost", "sm", "shrink-0 gap-1.5")} href={`${root}/messages${context}`}>
           <Icon name="mail" size={17} />
-          <span>Messages</span>
+          <span>Message your lawyer</span>
         </Link>
       ) : (
         <QuickActions actions={actions} />

@@ -10,6 +10,10 @@
   h1 { font-size: 22px; margin: 0 0 8px; color: #0F2A44; }
   p { color: #444; line-height: 1.5; }
   button { margin-top: 16px; padding: 12px 20px; border: 0; border-radius: 10px; background: #0F2A44; color: #fff; font-size: 15px; }
+  /* A text link rather than a second filled button, so "Try again" stays the one main action.
+     44px tall so it is a whole tap target, with its own focus ring. */
+  a { display: inline-flex; align-items: center; min-height: 44px; color: #0F2A44; font-weight: 600; text-decoration: underline; text-underline-offset: 4px; }
+  a:focus-visible { outline: 2px solid #0F2A44; outline-offset: 2px; }
 </style>
 </head>
 <body>
@@ -17,6 +21,9 @@
   <h1>You are offline</h1>
   <p>Your matters, documents and messages need a connection. If you were typing a court update, a note or a message when it dropped, it did not go through — but what you typed is kept on this device: open the page again and send it. Send it unchanged and it lands once, even if the first attempt did reach us; change it first and it is treated as a new one. An upload that stopped can be finished from the same screen.</p>
   <button onclick="location.reload()">Try again</button>
+  <!-- A phone call needs no data connection, so this still works on a page that cannot load. -->
+  <p>If anyone is in danger, call 112. A phone call works without an internet connection.</p>
+  <p><a href="tel:112">Call 112</a></p>
 </main>
 </body>
 </html>

@@ -6,6 +6,7 @@ import { firmById } from "@/lib/tenant";
 import { selectedFirm } from "@/lib/portal-firm";
 import { clientThreads } from "@/lib/portal-threads";
 import { Card, CardHeader } from "@/components/ui/card";
+import { whenWords } from "@/lib/notifications-copy";
 import { MessagesThread } from "@/components/portal/messages-thread";
 import { ThreadList } from "@/components/portal/thread-list";
 import { Screen, ScreenHeader } from "@/components/portal/screen";
@@ -37,6 +38,11 @@ export default async function ThreadPage({ params }: { params: Promise<{ kind: s
   const { threads, timezone: tz } = await clientThreads(supabase, user.id, selected?.id);
   const law = lawyer as { id: string; full_name: string | null; title: string | null } | null;
   const senderNames = law ? { [law.id]: law.full_name ?? law.title ?? firm?.name ?? "Your lawyer" } : {};
+  // Who and when, not a reference number (docs/VOICE.md, rule 5): "Consultation with Ada Obi",
+  // "Wednesday 4 November 2026 at 10:00 WAT".
+  const title = `Consultation with ${law?.full_name ?? firm?.name ?? "your firm"}`;
+  const when = whenWords(appt.starts_at, tz);
+  const detailsHref = `/app/appointments/${appt.id}`;
 
   return (
     <>
@@ -44,8 +50,13 @@ export default async function ThreadPage({ params }: { params: Promise<{ kind: s
           is hidden from 1024px, where the list it would go back to is already
           on screen beside this one. */}
       <div className="lg:hidden">
-        <ScreenHeader back="/app/messages" backLabel="Back to messages" title={`Consultation ${appt.reference}`}>
-          <Link href={`/app/appointments/${appt.id}`} className="shrink-0 text-13 font-medium text-brand underline underline-offset-2">Details</Link>
+        <ScreenHeader back="/app/messages" backLabel="Back to messages" title={title} subtitle={when}>
+          <Link
+            href={detailsHref}
+            className="inline-flex min-h-11 shrink-0 items-center text-13 font-medium text-brand underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+          >
+            See the consultation
+          </Link>
         </ScreenHeader>
       </div>
       <Screen>
@@ -56,15 +67,16 @@ export default async function ThreadPage({ params }: { params: Promise<{ kind: s
               {/* On a phone the sticky bar above already names this thread. */}
               <div className="hidden lg:block">
                 <CardHeader
-                  title={`Consultation ${appt.reference}`}
+                  title={title}
                   action={
-                    <Link href={`/app/appointments/${appt.id}`} className="text-13 font-medium text-brand underline underline-offset-2">
-                      Details
+                    <Link href={detailsHref} className="text-13 font-medium text-brand underline underline-offset-2">
+                      See the consultation
                     </Link>
                   }
                 />
+                {when && <p className="border-b border-hairline px-[17px] py-2 text-13 text-ink-muted">{when}</p>}
               </div>
-              <MessagesThread firmId={appt.firm_id} matterId={null} appointmentId={appt.id} userId={user.id} initial={(msgs ?? []) as MessageRow[]} timezone={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} />
+              <MessagesThread firmId={appt.firm_id} matterId={null} appointmentId={appt.id} userId={user.id} initial={(msgs ?? []) as MessageRow[]} timezone={tz} senderNames={senderNames} firmName={firm?.name ?? "Your firm"} audience="client" />
             </Card>
           }
         />

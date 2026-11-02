@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { clientTimezone, firmNamesFor } from "@/lib/portal-data";
 import type { MessageRow } from "@/lib/db/types";
+import { shortDayWords, timeWords } from "@/lib/notifications-copy";
 
 export interface ClientThread {
   /** Stable across reloads, and what marks the open one in the list. */
@@ -58,7 +59,8 @@ export async function clientThreads(
   const appts = (apptRows ?? []) as Array<{ id: string; firm_id: string; reference: string; starts_at: string; status: string }>;
   const messages = (msgRows ?? []) as MessageRow[];
   const firmNames = await firmNamesFor([...matters.map((m) => m.firm_id), ...appts.map((a) => a.firm_id)]);
-  const fmt = new Intl.DateTimeFormat("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: timezone });
+  // Titles and subtitles read as words (docs/VOICE.md, rules 1, 5 and 11): what and when first,
+  // the time with its zone, and a reference last and labelled, never a code as the title.
 
   const threads: ClientThread[] = [
     ...matters.map((m) => {
@@ -67,7 +69,7 @@ export async function clientThreads(
         key: `m-${m.id}`,
         href: `/app/matters/${m.id}?tab=messages`,
         title: m.title,
-        subtitle: `${m.reference} · ${firmNames[m.firm_id] ?? "Your firm"}`,
+        subtitle: `${firmNames[m.firm_id] ?? "Your firm"}. Reference ${m.reference}`,
         last: mine[0] ?? null,
         lastFromMe: mine[0]?.sender_id === userId,
         unread: mine.filter((x) => x.sender_id !== userId && !x.read_at).length,
@@ -80,8 +82,8 @@ export async function clientThreads(
         return {
           key: `a-${a.id}`,
           href: `/app/messages/appointment/${a.id}`,
-          title: `Consultation ${a.reference}`,
-          subtitle: `${fmt.format(new Date(a.starts_at))} · ${firmNames[a.firm_id] ?? "Your firm"}`,
+          title: `Consultation on ${shortDayWords(a.starts_at, timezone)}`,
+          subtitle: `${timeWords(a.starts_at, timezone)} with ${firmNames[a.firm_id] ?? "your firm"}`,
           last: mine[0] ?? null,
           lastFromMe: mine[0]?.sender_id === userId,
           unread: mine.filter((x) => x.sender_id !== userId && !x.read_at).length,

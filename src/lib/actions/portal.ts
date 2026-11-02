@@ -11,6 +11,9 @@ import { z } from "zod";
 import { supabaseServer } from "@/lib/supabase/server";
 import { siteOrigin } from "@/lib/site";
 import { userError } from "@/lib/user-error";
+import { PAYMENT_NOTICES, PROFILE_NOTICES } from "@/lib/user-error-message";
+import { amountToCharge } from "@/lib/payment-breakdown";
+import { allow } from "@/lib/rate-limit";
 import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
 import { SELECTED_FIRM_COOKIE, clientFirms } from "@/lib/portal-firm";
 import type { MessageAttachment } from "@/lib/db/types";
@@ -24,55 +27,111 @@ async function userClient() {
   return { supabase, user };
 }
 
-/** Pay any open invoice (consultation or matter). Redirects to the provider checkout. */
+/**
+ * The statuses an invoice can still be paid in, as the invoice page reads them
+ * (app/app/(portal)/payments/invoice-data.ts). An allow-list on purpose: a cancelled invoice, a
+ * draft, or any status added later is not offered a checkout until someone decides it should be.
+ */
+const PAYABLE = ["issued", "partially_paid", "overdue"];
+
+/**
+ * Pay what is still due on an invoice, a consultation's or a matter's: open Paystack's checkout for
+ * it. Every payment a client makes goes through here. startPayment() finds a booking's invoice and
+ * hands it on, so a booking is paid through the same door, with the same checks, as any invoice.
+ *
+ * WHAT IT CHARGES. amountToCharge(), the figure "Before you pay" puts on the button
+ * (src/lib/payment-breakdown.ts): the total less what has been paid. The firm pays Paystack's fee
+ * (bearer 'subaccount' in the Paystack adapter), so nothing is added, and the amount the client
+ * read is the amount Paystack asks for.
+ *
+ * WHAT IT REFUSES. record_payment() records money against any invoice it is given, cancelled or
+ * not, and nothing refunds it. So a checkout opens only for an invoice that can still be paid: not
+ * a cancelled one, and not one whose booking was cancelled or whose fifteen-minute hold has run out
+ * (release_expired_holds() cancels both within the minute). A paid invoice goes to its result page,
+ * which shows the receipt, instead of to a second checkout.
+ *
+ * Each refusal is one of PAYMENT_NOTICES (src/lib/user-error-message.ts), never Paystack's own
+ * words. They are fixed sentences, so a page that passes one on through its URL can show it:
+ * safeNotice() shows only sentences it knows.
+ */
 export async function startInvoicePayment(invoiceId: string, channel?: PaymentChannel | null): Promise<Err> {
   const { supabase, user } = await userClient();
-  if (!supabase) return { error: "Payments are not configured yet." };
+  if (!supabase) return { error: PAYMENT_NOTICES.unavailable };
   if (!user) redirect(await loginPath("client"));
 
   const { data: row } = await supabase
     .from("invoices")
-    .select("id, number, total_minor, paid_minor, currency, status")
+    .select("id, number, total_minor, paid_minor, currency, status, appointment_id")
     .eq("id", invoiceId)
     .maybeSingle();
-  const invoice = row as { id: string; number: string; total_minor: number; paid_minor: number; currency: Currency; status: string } | null;
-  if (!invoice) return { error: "Invoice not found." };
-  const resultPath = `/app/payments/${invoice.id}/payment-result`;
+  const invoice = row as {
+    id: string; number: string; total_minor: number; paid_minor: number; currency: Currency; status: string;
+    appointment_id: string | null;
+  } | null;
+  if (!invoice) return { error: PAYMENT_NOTICES.invoiceMissing };
+
+  // The booking behind a consultation's invoice. It decides whether the time can still be paid for,
+  // and Paystack sends the client back to the booking's own result page, which also says what
+  // happens to the booking.
+  const { data: bookingRow } = invoice.appointment_id
+    ? await supabase.from("appointments").select("id, reference, status, hold_expires_at").eq("id", invoice.appointment_id).maybeSingle()
+    : { data: null };
+  const booking = bookingRow as { id: string; reference: string; status: string; hold_expires_at: string | null } | null;
+  const resultPath = booking ? `/app/appointments/${booking.id}/payment-result` : `/app/payments/${invoice.id}/payment-result`;
+
   if (invoice.status === "paid") redirect(resultPath);
-  if (invoice.status === "cancelled") return { error: "This invoice was cancelled." };
-  const outstanding = invoice.total_minor - invoice.paid_minor;
-  if (outstanding <= 0) redirect(resultPath);
+  // invoice_status has no 'void' today; it is named so that one added later reads as cancelled.
+  if (invoice.status === "cancelled" || invoice.status === "void") return { error: PAYMENT_NOTICES.invoiceCancelled };
+  if (!PAYABLE.includes(invoice.status)) return { error: PAYMENT_NOTICES.invoiceNotPayable };
+  const amountMinor = amountToCharge({ totalMinor: Number(invoice.total_minor), paidMinor: Number(invoice.paid_minor) });
+  // Nothing is left to pay, so there is no checkout to open. The invoice page says so.
+  if (amountMinor <= 0) redirect(`/app/payments/${invoice.id}`);
+  // release_expired_holds() and cancel_appointment() cancel an issued invoice along with its booking
+  // but leave a part-paid one as it is, so the booking is asked as well as the invoice.
+  if (booking?.status === "cancelled") return { error: PAYMENT_NOTICES.bookingCancelled };
+  if (booking?.status === "awaiting_payment" && booking.hold_expires_at && Date.parse(booking.hold_expires_at) <= Date.now()) {
+    return { error: PAYMENT_NOTICES.holdEnded };
+  }
 
   let email = user.email ?? null;
   if (!email) {
     const { data: profile } = await supabase.from("profiles").select("email").eq("id", user.id).maybeSingle();
     email = (profile as { email: string | null } | null)?.email ?? null;
   }
-  if (!email) return { error: "Add an email address on your profile first so we can send your receipt." };
+  if (!email) return { error: PAYMENT_NOTICES.needsEmail };
 
-  // Fees settle to the firm's own Paystack subaccount; record_payment() refuses money settled anywhere else.
+  // Fees settle to the firm's own Paystack subaccount. Only the invoice's client, someone acting for
+  // them on its matter, or the firm can ask for it (invoice_settlement(), migration 44), and
+  // record_payment() refuses money settled anywhere else.
   const { data: settlement } = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
   const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
-  if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
+  if (!subaccount) return { error: PAYMENT_NOTICES.firmNotReady };
+
+  // Everything above this line is a read or a redirect. From here a real transaction is created at
+  // Paystack, so the checkout bucket (src/lib/rate-limit.ts) is asked last: a client sent back to a
+  // result page they have already paid for has not spent a checkout.
+  if (!(await allow(supabase, "checkout", true))) return { error: PAYMENT_NOTICES.tooManyAttempts };
 
   const origin = await siteOrigin();
   let checkoutUrl: string;
   try {
     const result = await paymentProviderFor(invoice.currency).initialize({
       invoiceNumber: invoice.number,
-      amountMinor: outstanding,
+      amountMinor,
       currency: invoice.currency,
       email,
-      description: `Invoice ${invoice.number}`,
+      description: booking ? `Consultation ${booking.reference}` : `Invoice ${invoice.number}`,
       callbackUrl: `${origin}${resultPath}`,
-      cancelUrl: `${origin}/app/payments/${invoice.id}`,
+      cancelUrl: booking ? `${origin}/app/appointments/${booking.id}` : `${origin}/app/payments/${invoice.id}`,
       subaccount,
       channel: channel ?? null,
     });
     checkoutUrl = result.checkoutUrl;
   } catch (err) {
+    // Paystack's own message is for the people who run the platform, so it goes to error
+    // reporting. The client reads that Paystack did not open and that no money moved.
     await userError(err, "The payment", "portal: start invoice payment");
-    return { error: "The payment could not be started, and you have not been charged. Please try again in a moment." };
+    return { error: PAYMENT_NOTICES.didNotOpen };
   }
   redirect(checkoutUrl);
 }
@@ -97,11 +156,12 @@ export async function createDocument(input: z.infer<typeof createDocumentSchema>
   { ok: true; documentId: string; versionId: string; storagePath: string } | { ok: false; error: string }
 > {
   const parsed = createDocumentSchema.safeParse(input);
-  if (!parsed.success) return { ok: false, error: "Invalid upload." };
+  // The documents list and the composer show these as they are (docs/VOICE.md, rule 12).
+  if (!parsed.success) return { ok: false, error: "The upload did not start, because the file's details could not be read. Choose the file again, then upload it." };
   const { supabase, user } = await userClient();
-  if (!supabase || !user) return { ok: false, error: "Sign in first." };
+  if (!supabase || !user) return { ok: false, error: "You are signed out, so the upload did not start. Sign in again, then upload the file." };
   const { matterId, appointmentId, firmId, name, mime, sizeBytes } = parsed.data;
-  if (!matterId && !appointmentId) return { ok: false, error: "Choose a matter." };
+  if (!matterId && !appointmentId) return { ok: false, error: "The upload did not start, because it is not linked to a matter or a consultation. Open the matter, then upload it there." };
 
   const documentId = crypto.randomUUID();
   const versionId = crypto.randomUUID();
@@ -129,9 +189,9 @@ export async function createDocument(input: z.infer<typeof createDocumentSchema>
  * answered once, and tells whoever asked.
  */
 export async function fulfilDocumentRequest(requestId: string, documentId: string): Promise<Err> {
-  if (!z.string().uuid().safeParse(requestId).success || !z.string().uuid().safeParse(documentId).success) return { error: "Unknown request." };
+  if (!z.string().uuid().safeParse(requestId).success || !z.string().uuid().safeParse(documentId).success) return { error: "This request could not be found, so your document was not linked to it. Refresh the page and try again." };
   const { supabase, user } = await userClient();
-  if (!supabase || !user) return { error: "Sign in first." };
+  if (!supabase || !user) return { error: "You are signed out, so your document was not linked to the request. Sign in again, then try once more." };
   const { error } = await supabase.rpc("fulfil_document_request", { p_request: requestId, p_document: documentId });
   if (error) return { error: await userError(error, "Your document", "portal: fulfil document request") };
   revalidatePath("/app");
@@ -145,7 +205,7 @@ export async function finalizeDocumentVersion(input: {
   checksum?: string | null;
 }): Promise<Err> {
   const { supabase, user } = await userClient();
-  if (!supabase || !user) return { error: "Sign in first." };
+  if (!supabase || !user) return { error: "You are signed out, so the upload was not finished. Sign in again, then upload the file." };
   // A checksum is recorded only when it is a real one: anything that is not 64
   // hex characters is dropped rather than filed as if it proved something.
   const checksum = typeof input.checksum === "string" && /^[0-9a-f]{64}$/.test(input.checksum) ? input.checksum : null;
@@ -171,10 +231,10 @@ export async function sendMessage(input: {
   id?: string | null;
 }): Promise<Err> {
   const { supabase, user } = await userClient();
-  if (!supabase || !user) return { error: "Sign in first." };
+  if (!supabase || !user) return { error: "You are signed out, so your message was not sent. Sign in again, then send it." };
   const body = input.body.trim();
   if (!body && input.attachments.length === 0) return { error: "Write a message or attach a document." };
-  if (body.length > 4000) return { error: "Keep messages under 4,000 characters." };
+  if (body.length > 4000) return { error: "Your message was not sent, because it is longer than 4,000 characters. Shorten it, then send it again." };
   const id = input.id && z.string().uuid().safeParse(input.id).success ? input.id : undefined;
   const { error } = await supabase.from("messages").insert({
     ...(id ? { id } : {}),
@@ -194,9 +254,9 @@ export async function sendMessage(input: {
 
 /** Retire a documents row that never received its file: an upload that stopped. retire_empty_document() decides. */
 export async function retireEmptyDocument(documentId: string): Promise<Err> {
-  if (!z.string().uuid().safeParse(documentId).success) return { error: "Unknown document." };
+  if (!z.string().uuid().safeParse(documentId).success) return { error: "This upload could not be found, so it was not removed. Refresh the page and try again." };
   const { supabase, user } = await userClient();
-  if (!supabase || !user) return { error: "Sign in first." };
+  if (!supabase || !user) return { error: "You are signed out, so the stopped upload was not removed. Sign in again, then try once more." };
   const { error } = await supabase.rpc("retire_empty_document", { p_document: documentId });
   if (error) return { error: await userError(error, "The cancelled upload", "portal: retire empty document") };
   revalidatePath("/app");
@@ -238,12 +298,12 @@ const prefSchema = z.array(z.object({
 
 export async function savePreferences(prefs: z.infer<typeof prefSchema>): Promise<Err> {
   const parsed = prefSchema.safeParse(prefs);
-  if (!parsed.success) return { error: "Invalid preferences." };
+  if (!parsed.success) return { error: "Your notification preferences were not saved. Reload the page and try again." };
   const { supabase, user } = await userClient();
-  if (!supabase || !user) return { error: "Sign in first." };
+  if (!supabase || !user) return { error: "You are signed out, so your notification preferences were not saved. Sign in again, then save them." };
   const rows = parsed.data.map((p) => ({ user_id: user.id, event: p.event, channel: p.channel, enabled: p.enabled }));
   const { error } = await supabase.from("notification_preferences").upsert(rows, { onConflict: "user_id,event,channel" });
-  if (error) return { error: await userError(error, "Your notification settings", "portal: save preferences") };
+  if (error) return { error: await userError(error, "Your notification preferences", "portal: save preferences") };
   revalidatePath("/app/notifications/preferences");
   return undefined;
 }
@@ -268,13 +328,13 @@ export async function updateProfile(formData: FormData): Promise<void> {
     quietStart: formData.get("quietStart") ?? "",
     quietEnd: formData.get("quietEnd") ?? "",
   });
-  if (!parsed.success) redirect(`/app/profile?error=${encodeURIComponent("Check the form: a field was left empty or is not in the expected format.")}`);
+  if (!parsed.success) redirect(`/app/profile?error=${encodeURIComponent(PROFILE_NOTICES.invalid)}`);
   const { supabase, user } = await userClient();
   if (!supabase || !user) redirect(await loginPath("client"));
   try {
     new Intl.DateTimeFormat("en-GB", { timeZone: parsed.data.timezone });
   } catch {
-    redirect(`/app/profile?error=${encodeURIComponent("That timezone is not recognised. Choose one from the list.")}`);
+    redirect(`/app/profile?error=${encodeURIComponent(PROFILE_NOTICES.timezone)}`);
   }
   const d = parsed.data;
   const { error } = await supabase

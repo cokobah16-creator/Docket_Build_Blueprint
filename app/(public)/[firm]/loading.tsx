@@ -21,6 +21,9 @@
 // its own top is a heading and two lines of prose, which is what PageShell puts
 // there too: the part of the screen a visitor reads first stands in the right
 // place on every route, and only the width below it is generous.
+//
+// Urgent help is the one route with its own (urgent/loading.tsx): somebody who
+// has just tapped it is shown "call 112" at once, not the shape of a home page.
 
 import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 
@@ -29,15 +32,16 @@ export default function FirmSiteLoading() {
     <div aria-busy="true" className="mx-auto max-w-5xl px-4">
       <span className="sr-only">Loading…</span>
 
-      {/* The hero: two lines of headline, two of prose, then the booking pair. */}
+      {/* The hero: two lines of headline, two of prose, then the booking button
+          and the text link beside it. */}
       <section className="py-16 sm:py-24">
         <Skeleton height={36} className="w-full max-w-2xl" />
         <Skeleton height={36} className="mt-3 w-3/4 max-w-xl" />
         <Skeleton height={16} className="mt-6 w-full max-w-xl" />
         <Skeleton height={16} className="mt-2.5 w-2/3 max-w-xl" />
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Skeleton radius="control" width={196} height={52} />
-          <Skeleton radius="control" width={182} height={52} />
+        <div className="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <Skeleton radius="control" width={196} height={50} />
+          <Skeleton width={112} height={16} />
         </div>
       </section>
 
@@ -56,7 +60,7 @@ export default function FirmSiteLoading() {
         </div>
       </section>
 
-      {/* How we can help — the services grid. */}
+      {/* "How {firm} can help": the services grid. */}
       <section className="pb-16">
         <Skeleton height={24} className="w-48" />
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

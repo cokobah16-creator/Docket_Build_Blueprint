@@ -33,9 +33,13 @@ export default async function NotificationsPage() {
 
   return (
     <>
-      <ScreenHeader back="/app" title="Notifications" titleAs="heading">
-        <Link href="/app/notifications/preferences" className="shrink-0 text-13 font-medium text-brand underline underline-offset-2">
-          Preferences
+      <ScreenHeader back="/app" backLabel="Back to home" title="Notifications" titleAs="heading">
+        {/* A full 44px target, like the chevron beside it. */}
+        <Link
+          href="/app/notifications/preferences"
+          className="inline-flex min-h-11 shrink-0 items-center text-13 font-medium text-brand underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+        >
+          Change preferences
         </Link>
       </ScreenHeader>
       <Screen>

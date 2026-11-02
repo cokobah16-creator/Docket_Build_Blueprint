@@ -44,12 +44,13 @@ export async function recordConsent(_prev: ConsentState, formData: FormData): Pr
     };
   }
 
+  // Each refusal says what was not done and what to do next (docs/VOICE.md, rule 12).
   const supabase = await supabaseServer();
-  if (!supabase) return { error: "Not configured." };
+  if (!supabase) return { error: "Your acceptance was not saved. The portal cannot be reached right now, so try again in a few minutes." };
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "You are signed out. Sign in again, then accept." };
+  if (!user) return { error: "You are signed out, so your acceptance was not saved. Sign in again, then accept." };
 
   const error = await recordFirmConsent(supabase, parsed.data.firmId, {
     terms: parsed.data.shownTermsVersion,
