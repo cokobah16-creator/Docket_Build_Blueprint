@@ -39,7 +39,7 @@ async function fetchFirmPublic(filter: string): Promise<FirmPublic | null> {
   // and the Playwright smoke suite runs this code against the live project. Without migration 51,
   // PostgREST refuses vat_rate and rc_number with 42703, so the firm is asked for again without
   // them and served with no VAT rate and no RC/BN. Prices then show as they did before 51, the fee
-  // alone with no "incl. VAT", and the booking wizard still opens no checkout when the invoice
+  // alone with no "including VAT", and the booking wizard still opens no checkout when the invoice
   // total differs from the total it showed.
   try {
     let res = await fetch(firmPublicQuery(url, `${FIRM_COLUMNS},${MIGRATION_51_COLUMNS}`, filter), {

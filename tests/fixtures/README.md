@@ -230,7 +230,7 @@ Two widths by default rather than six: what this file measures — a colour, a s
 changes with width only where a responsive utility changes it, and phone versus desktop is where
 that split lives. The other four are one flag away.
 
-The route list is deliberately much wider than `shots.mjs`'s ten screens. It covers all five
+The route list is deliberately much wider than `shots.mjs`'s eleven screens. It covers all five
 surfaces — the platform landing, the tenant's public site, the client portal, the staff console,
 and the registry and platform-admin consoles — and it makes an **unauthenticated** pass over `/`,
 `/[firm]`, `/[firm]/book`, `/[firm]/services`, `/[firm]/lawyers` and both sign-in flows, because

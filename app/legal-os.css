@@ -95,7 +95,6 @@
 .legal-os .workspace-bar-client input::placeholder { color: rgb(var(--t-ink-muted)); }
 .legal-os .workspace-bar-client .workspace-search:focus-within { outline-color: rgb(var(--t-ink)); }
 .legal-os .workspace-bar-client .workspace-firm { color: rgb(var(--t-ink-muted)); }
-.legal-os .workspace-bar-client .workspace-bar-action { background: var(--dk-primary); color: var(--dk-on-primary); }
 
 @media (max-width: 1199px) {
   .legal-os .ledger-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

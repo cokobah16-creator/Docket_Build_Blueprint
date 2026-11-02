@@ -1,10 +1,10 @@
 import { expect, test, type BrowserContext } from "@playwright/test";
 import { CONSENT_COOKIE, consentValue } from "../../src/lib/consent-cookie";
 
-// Smoke: the platform landing, a tenant's public home (any firm — set
-// E2E_FIRM_SLUG; defaults to tenant #1) and the sign-in surfaces render,
-// and no analytics cookie is set before a visitor allows it.
-// Tenant data comes from firm_public, so the tenant test needs Supabase env.
+// Smoke: the platform landing, a tenant's public home and its Urgent help page
+// (any firm — set E2E_FIRM_SLUG; defaults to tenant #1) and the sign-in
+// surfaces render, and no analytics cookie is set before a visitor allows it.
+// Tenant data comes from firm_public, so the tenant tests need Supabase env.
 
 const configured = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
 const firmSlug = process.env.E2E_FIRM_SLUG ?? "attorneys-klinique";
@@ -63,6 +63,14 @@ test("tenant public home renders with the firm's branding", async ({ page }) => 
   await expect(cta).toBeVisible();
   await expect(page.locator('[style*="--dk-primary"]').first()).toBeAttached();
   await expect(page.locator("header a").first()).not.toHaveText(/sign in/i);
+});
+
+test("tenant urgent help page offers a call to 112", async ({ page }) => {
+  test.skip(!configured, "NEXT_PUBLIC_SUPABASE_URL not set");
+  // The /{slug}/… path is the route itself rather than the ?firm= fallback, so it also resolves
+  // against a production build. Signed out on purpose: somebody in trouble may not be signed in.
+  await page.goto(`/${firmSlug}/urgent`);
+  await expect(page.locator('a[href="tel:112"]').first()).toBeVisible();
 });
 
 test("firm registration is reachable from the landing", async ({ page, baseURL }) => {

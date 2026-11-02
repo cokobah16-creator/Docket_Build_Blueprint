@@ -8,7 +8,9 @@
 // client turns it off or signs out. Only screens that are safe to read from
 // disk go in: matters, court dates and the home summary. Payments and uploads
 // are never saved — they need a connection, and the app says so.
-const OFFLINE_CACHE = "docket-offline-v1";
+// v2: offline.html gained the "call 112" line. A new name is what makes phones that already
+// have this worker install it again and fetch the new page; activate then drops v1.
+const OFFLINE_CACHE = "docket-offline-v2";
 const SAVED_CACHE = "docket-saved-v1";
 const OFFLINE_URL = "/offline.html";
 const SAVED_AT_URL = "/__docket_saved_at";

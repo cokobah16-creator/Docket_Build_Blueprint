@@ -386,8 +386,8 @@ change. It is not a formality.
 Clients also accept when they book online. The last step of booking shows two boxes: one to
 accept your terms of service, one to say they have read your privacy notice, each with its
 version. The name of each document is a link that opens it in a new tab. Neither box is ticked
-for them, and the **Confirm** button stays off until both are ticked. The acceptance is recorded
-when they press Confirm, before the booking is made, at the versions shown beside the boxes. If
+for them, and the booking button (**Book and pay**, or **Book this consultation**) stays off until
+both are ticked. The acceptance is recorded when they press it, before the booking is made, at the versions shown beside the boxes. If
 you publish a new version while a client has the page open, nothing is recorded or booked, and
 they are asked to reload the page and read the new version. A client who accepted your current
 versions while booking is not asked again when they open the app.
@@ -418,7 +418,7 @@ For each service you set:
 Your VAT rate (**Settings → Operations**) is applied on top at booking, and the screen shows you
 the figure the client's invoice will actually carry — worked out exactly the way the booking does
 it, so there are no rounding surprises. Clients see the same figure: your public site marks each
-price "incl. VAT", and the booking review lists the fee, the VAT and the total before they confirm.
+price "including VAT", and the booking review lists the fee, the VAT and the total before they confirm.
 
 **Four things must all be true before a client can book:**
 

@@ -7,9 +7,13 @@
  * would print a figure that is not the figure owed — VAT at 7.5% lands on part
  * of a kobo often enough for that to matter. Every other currency always shows
  * its minor units: a dollar invoice for 1999 cents is $19.99, not $20.
+ *
+ * `exact` shows the minor units even on a round naira amount. A breakdown whose
+ * figures have to add up on the page passes it whenever any one of them carries
+ * kobo, so "₦37,209.30" is never stacked on "₦40,000" (see payment-breakdown.ts).
  */
-export function formatMoneyMinor(minor: number, currency: string): string {
-  const wholeNaira = currency === "NGN" && minor % 100 === 0;
+export function formatMoneyMinor(minor: number, currency: string, opts?: { exact?: boolean }): string {
+  const wholeNaira = currency === "NGN" && minor % 100 === 0 && !opts?.exact;
   const digits = wholeNaira ? 0 : 2;
   return new Intl.NumberFormat(currency === "NGN" ? "en-NG" : "en-US", {
     style: "currency",
@@ -47,13 +51,16 @@ export function vatMinor(amountMinor: number, ratePercent: number): number {
 }
 
 /**
- * The price a client pays for a fee, for the public site: "₦53,750 incl. VAT"
- * when the firm charges VAT on it, the plain fee otherwise.
+ * The price a client pays for a fee, for the public site: "₦53,750 including VAT"
+ * when the firm charges VAT on it, the plain fee otherwise. Written out in full,
+ * because a client reads the abbreviation "incl." as one more thing to decode
+ * (docs/VOICE.md). The public pages reach it through priceIncludingVat(), which
+ * also says "Nothing to pay" for a free service.
  */
 export function formatPriceWithVat(priceMinor: number, currency: string, ratePercent: number): string {
   const vat = vatMinor(priceMinor, ratePercent);
   const total = formatMoneyMinor(priceMinor + vat, currency);
-  return vat > 0 ? `${total} incl. VAT` : total;
+  return vat > 0 ? `${total} including VAT` : total;
 }
 
 /** "NGN 50,000.00" — ASCII-safe for PDFs and SMS. */

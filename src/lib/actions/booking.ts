@@ -10,12 +10,15 @@
 //    protect something that costs: a booking takes a slot out of a lawyer's diary, and a
 //    checkout creates a live transaction at Paystack. A limit is only worth having where the
 //    caller cannot walk around it, which means server-side — a browser calling the RPC directly
-//    can simply not call rate_limit_hit first. So bookAppointment() below wraps the RPC and asks
-//    the bucket first. Said plainly, because it matters: the booking wizard
-//    (app/(public)/[firm]/book/booking-wizard.tsx) still calls supabase.rpc("book_appointment")
-//    from the browser, and until that one call becomes bookAppointment(), the booking bucket
-//    counts nothing and booking_started is emitted for nobody. The checkout bucket in
-//    startPayment() below is live now, because the wizard already calls that action.
+//    can simply not call rate_limit_hit first. The booking wizard
+//    (app/(public)/[firm]/book/booking-wizard.tsx) calls bookAppointment() below, never the RPC
+//    itself, and bookAppointment() asks the booking bucket before it calls book_appointment().
+//    That check is the front door, not the rule: book_appointment() asks the same bucket again
+//    inside the database (migration 23), where a caller holding the anon key cannot skip it.
+//    Both asks count, so a booking that goes through counts twice and one the database refuses
+//    counts once. The checkout bucket is asked in startInvoicePayment()
+//    (src/lib/actions/portal.ts), the one door every payment goes through, startPayment()'s
+//    included.
 //
 // 2. STEP TWO OF THE FUNNEL, booking_started, emitted after book_appointment() returns — a
 //    booking the database refused is not a booking that started. The distinct id is the same
@@ -26,14 +29,22 @@
 //    (consentedVisitorId()). Step three, booking_paid, is NOT emitted anywhere in app/ or src/:
 //    the only honest source is the Paystack webhook after record_payment() succeeds.
 //
-// Nothing here decides anything. book_appointment() checks the firm, the service, the slot and
-// the lawyer, and its refusal is returned word for word (law 1).
+// PAYING FOR A BOOKING. startPayment() hands the booking's invoice to startInvoicePayment(), so a
+// booking is paid with the same checks, and for the same amount (the one "Before you pay" puts on
+// the button), as any other invoice. There were two copies of that code once, and they drifted:
+// this one charged the whole total after a part payment, and opened a checkout for a hold that had
+// already been released.
+//
+// Nothing here decides whether a booking can be made. book_appointment() checks the firm, the
+// service, the slot and the lawyer, and its refusal is returned word for word (law 1).
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { loginPath } from "@/lib/auth-redirect-server";
 import { supabaseServer } from "@/lib/supabase/server";
-import { siteOrigin } from "@/lib/site";
-import { paymentProviderFor, type Currency, type PaymentChannel } from "@/lib/providers/payments";
+import type { PaymentChannel } from "@/lib/providers/payments";
+import { startInvoicePayment } from "@/lib/actions/portal";
+import { CANCEL_NOTICES, PAYMENT_NOTICES } from "@/lib/user-error-message";
 import { allow, tooFast } from "@/lib/rate-limit";
 import { FUNNEL, capture } from "@/lib/observability";
 import { consentedVisitorId } from "@/lib/observability/consent";
@@ -102,7 +113,7 @@ export async function recordBookingConsent(input: BookingConsentInput): Promise<
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "Sign in first, then confirm your booking." };
+  if (!user) return { error: "Sign in first, then book." };
 
   const error = await recordFirmConsent(supabase, parsed.data.firmId, {
     terms: parsed.data.termsVersion,
@@ -162,94 +173,52 @@ export async function bookAppointment(input: BookAppointmentInput): Promise<Book
   return { booking };
 }
 
+/**
+ * Pay for a booking: open Paystack's checkout for what is still due on its invoice.
+ *
+ * This finds the booking's invoice and hands it to startInvoicePayment(), which decides everything
+ * else: whether the time can still be paid for, the amount (what is left to pay, with no fee
+ * added), where Paystack sends the client back to (this booking's result page), and every refusal,
+ * each one of PAYMENT_NOTICES and never Paystack's own words. A booking with no invoice costs
+ * nothing, so it goes straight to its result page.
+ */
 export async function startPayment(
   appointmentId: string,
   channel?: PaymentChannel | null,
 ): Promise<{ error: string } | undefined> {
   const supabase = await supabaseServer();
-  if (!supabase) return { error: "Payments are not configured yet." };
+  if (!supabase) return { error: PAYMENT_NOTICES.unavailable };
 
+  // Asked before the booking is read: signed out, RLS would hide it, and "could not be found"
+  // would be the wrong thing to say.
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect(`/app/login`);
+  if (!user) redirect(await loginPath("client"));
 
   const { data: appointment } = await supabase
     .from("appointments")
-    .select("id, reference, status, invoice_id, currency")
+    .select("id, invoice_id")
     .eq("id", appointmentId)
     .maybeSingle();
-  const appt = appointment as
-    | { id: string; reference: string; status: string; invoice_id: string | null; currency: Currency | null }
-    | null;
-  if (!appt) return { error: "Appointment not found." };
+  const appt = appointment as { id: string; invoice_id: string | null } | null;
+  if (!appt) return { error: PAYMENT_NOTICES.bookingMissing };
+  if (!appt.invoice_id) redirect(`/app/appointments/${appt.id}/payment-result`);
 
-  const resultPath = `/app/appointments/${appt.id}/payment-result`;
-  if (appt.status === "confirmed" || !appt.invoice_id) redirect(resultPath);
-
-  const { data: invoiceRow } = await supabase
-    .from("invoices")
-    .select("id, number, total_minor, currency, status")
-    .eq("id", appt.invoice_id)
-    .maybeSingle();
-  const invoice = invoiceRow as
-    | { id: string; number: string; total_minor: number; currency: Currency; status: string }
-    | null;
-  if (!invoice) return { error: "Invoice not found." };
-  if (invoice.status === "paid") redirect(resultPath);
-
-  let email = user.email ?? null;
-  if (!email) {
-    const { data: profile } = await supabase.from("profiles").select("email").eq("id", user.id).maybeSingle();
-    email = (profile as { email: string | null } | null)?.email ?? null;
-  }
-  if (!email) return { error: "We need an email address to send your receipt. Add one and try again." };
-
-  // Fees settle to the firm's own Paystack subaccount. Only the invoice's client (or the
-  // firm) can ask for it, and the database refuses to record a payment settled anywhere else.
-  const { data: settlement } = await supabase.rpc("invoice_settlement", { p_invoice: invoice.id });
-  const subaccount = (settlement as { paystack_subaccount: string | null } | null)?.paystack_subaccount ?? null;
-  if (!subaccount) return { error: "This firm is not yet set up to receive payments. Please contact the firm." };
-
-  // Everything above this line is a read or a redirect. From here a real transaction is created
-  // at the provider, so the checkout bucket is asked last — a client sent back to a result page
-  // they have already paid for has not spent a checkout.
-  if (!(await allow(supabase, "checkout", true))) return { error: tooFast("checkout") };
-
-  const origin = await siteOrigin();
-  let checkoutUrl: string;
-  try {
-    const provider = paymentProviderFor(invoice.currency);
-    const result = await provider.initialize({
-      invoiceNumber: invoice.number,
-      amountMinor: invoice.total_minor,
-      currency: invoice.currency,
-      email,
-      description: `Consultation ${appt.reference}`,
-      callbackUrl: `${origin}${resultPath}`,
-      cancelUrl: `${origin}/app/appointments/${appt.id}`,
-      subaccount,
-      channel: channel ?? null,
-    });
-    checkoutUrl = result.checkoutUrl;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Could not start payment.";
-    return { error: message.includes("PAYSTACK_SECRET_KEY") || message.includes("initialize failed")
-      ? `Could not start payment: ${message}`
-      : "Could not start payment. Please try again." };
-  }
-  redirect(checkoutUrl);
+  return startInvoicePayment(appt.invoice_id, channel);
 }
 
 export async function cancelAppointment(appointmentId: string): Promise<{ error: string } | undefined> {
   const supabase = await supabaseServer();
-  if (!supabase) return { error: "Not configured." };
+  // The consultation page passes this back through its URL, so it is one of CANCEL_NOTICES.
+  if (!supabase) return { error: CANCEL_NOTICES.unavailable };
   const { error } = await supabase.rpc("cancel_appointment", { p_appointment: appointmentId, p_reason: "cancelled by client" });
   if (error) {
     // cancel_appointment() raises short developer phrases; these two are the ones a client can
     // cause by ordinary use, and each gets its own sentence. Anything else is reported and worded.
-    if (/already started/i.test(error.message)) return { error: "This consultation has already started, so it can no longer be cancelled here. Message the firm instead." };
-    if (/appointment already/i.test(error.message)) return { error: "This consultation is already closed, so there is nothing to cancel." };
+    // "appointment already started" would match both tests, so the first one is asked first.
+    if (/already started/i.test(error.message)) return { error: CANCEL_NOTICES.started };
+    if (/appointment already/i.test(error.message)) return { error: CANCEL_NOTICES.closed };
     return { error: await userError(error, "The cancellation", "booking: cancel appointment") };
   }
   revalidatePath(`/app/appointments/${appointmentId}`);
@@ -266,7 +235,8 @@ export async function saveContactEmail(email: string): Promise<{ error: string }
   } = await supabase.auth.getUser();
   if (!user) return { error: "Not signed in." };
   const trimmed = email.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return { error: "That email address doesn't look right." };
+  // The wizard finds this refusal by "look right" (bookingProblem() in booking-wizard.tsx).
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) return { error: "That email address does not look right." };
   const { error } = await supabase.from("profiles").update({ email: trimmed }).eq("id", user.id);
   if (error) return { error: await userError(error, "Your email address", "booking: save contact email") };
   return undefined;

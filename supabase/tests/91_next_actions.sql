@@ -29,9 +29,11 @@ declare f uuid := (select v from fx where k='firm'); m uuid := (select v from fx
         lw uuid := (select v from fx where k='lawyer'); cl uuid := (select v from fx where k='client'); ok bool;
 begin
   perform t_as(lw);
-  update matters set next_action = 'File the written address', next_action_owner_id = lw, next_action_due = date '2026-09-30' where id = m;
-  perform t_check('a lawyer gives the next action an owner and a due day', (select next_action_owner_id = lw and next_action_due = date '2026-09-30' from matters where id = m));
-  perform t_check('the due day reads back as the day that was written, not shifted', (select next_action_due::text = '2026-09-30' from matters where id = m));
+  -- The "still ahead" day is relative to today. It was the literal 2026-09-30, which stopped being
+  -- ahead on 1 October 2026 and turned this suite red on every branch from then on.
+  update matters set next_action = 'File the written address', next_action_owner_id = lw, next_action_due = current_date + 30 where id = m;
+  perform t_check('a lawyer gives the next action an owner and a due day', (select next_action_owner_id = lw and next_action_due = current_date + 30 from matters where id = m));
+  perform t_check('the due day reads back as the day that was written, not shifted', (select next_action_due::text = (current_date + 30)::text from matters where id = m));
   perform t_check('a due day still ahead is not overdue', (select next_actions_overdue = 0 from firm_overview where firm_id = f));
   update matters set next_action_due = current_date - 1 where id = m;
   perform t_check('a due day that has passed is counted on the overview', (select next_actions_overdue = 1 from firm_overview where firm_id = f));

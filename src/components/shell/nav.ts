@@ -125,7 +125,10 @@ export const CONSOLE_NAV: NavModel = {
 };
 
 // ── the client portal ──────────────────────────────────────────────────────
-// Five destinations, all primary: the portal has nothing that needs a More.
+// Four thumbs on the phone's bar, and More for the rest: court dates, payments,
+// who may act for the client, notifications and the profile. The labels are
+// the client's words (docs/VOICE.md), so the meeting is a "consultation" even
+// though its route is /app/appointments.
 
 export const PORTAL_NAV: NavModel = {
   sections: [
@@ -133,7 +136,7 @@ export const PORTAL_NAV: NavModel = {
       title: null,
       items: [
         { href: "/app", label: "Home", icon: "home", primary: true, exact: true },
-        { href: "/app/appointments", label: "Appointments", short: "Appts", icon: "calendar", primary: true },
+        { href: "/app/appointments", label: "Consultations", short: "Consults", icon: "calendar", primary: true },
         { href: "/app/matters", label: "Matters", icon: "folder", primary: true },
         { href: "/app/messages", label: "Messages", icon: "mail", primary: true },
       ],
@@ -143,7 +146,7 @@ export const PORTAL_NAV: NavModel = {
       items: [
         { href: "/app/court-dates", label: "Court dates", short: "Court", icon: "scale" },
         { href: "/app/payments", label: "Payments", icon: "card" },
-        { href: "/app/authority", label: "Authority", icon: "shield" },
+        { href: "/app/authority", label: "Who may act for me", short: "Authority", icon: "shield" },
         { href: "/app/notifications", label: "Notifications", short: "Alerts", icon: "bell" },
         // Four thumbs and More is five slots, which is the most a phone's bar
         // can label honestly. The profile is reached often but not constantly,

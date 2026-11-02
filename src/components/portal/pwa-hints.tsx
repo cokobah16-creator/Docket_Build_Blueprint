@@ -26,14 +26,15 @@ export function IosInstallHint({ appName }: { appName: string }) {
   if (!show) return null;
   return (
     <Alert kind="info" icon="upload" title={`Add ${appName} to your home screen`}>
-      Tap the Share button in Safari, then <strong>Add to Home Screen</strong>. You get a
-      full-screen app and notifications.
+      In Safari, tap the Share button, then <strong>Add to Home Screen</strong>. The app
+      then opens full screen and can send you notifications.
+      {/* A real 44px target: a thumb dismisses this, and 11px type was too small to find. */}
       <button
         type="button"
-        className="mt-1.5 block text-11 font-semibold underline underline-offset-2"
+        className="mt-1 flex min-h-11 items-center text-13 font-semibold underline underline-offset-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-current"
         onClick={() => { try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ } setShow(false); }}
       >
-        Don&apos;t show again
+        Do not show this again
       </button>
     </Alert>
   );
@@ -45,7 +46,7 @@ export function LowDataToggle() {
   return (
     <SettingRow
       title="Low-data mode"
-      hint="Previews and images load only when you tap them. Saved on this device."
+      hint="Pictures and previews load only when you tap them. This setting is kept on this device."
     >
       <Switch
         label="Low-data mode"

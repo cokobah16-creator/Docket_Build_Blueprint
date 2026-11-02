@@ -60,6 +60,46 @@ export function isE164(input: string): boolean {
 }
 
 /**
+ * The one E.164 number a link can dial, or null when the text holds no single usable number.
+ *
+ * A firm's contact phone and WhatsApp number (firms.brand.contact) are free text, kept as the
+ * firm typed them: "0803 123 4567", "+234 (0) 803 123 4567", "0803-123-4567". A tel: link made
+ * from that raw text dials on some phones and not on others, and wa.me cannot take it at all,
+ * because wa.me wants the international number as digits only. So both links start from E.164.
+ *
+ * A Nigerian number is normalised. Any other number already written in E.164 is kept, for a
+ * firm with a line abroad. Everything else gives null: two numbers in one field, an extension,
+ * a landline written in its local form ("01 …"), which the normaliser does not accept. The
+ * caller then shows the text as typed with no link, rather than a link that may ring the wrong
+ * number.
+ */
+function dialableNumber(input: string | null | undefined): string | null {
+  if (!input) return null;
+  // "+234 (0) 803 …" and "+234 0803 …": a 0 after the country code is the trunk prefix, which must
+  // not be dialled after +234 (and which wa.me rejects), bracketed or not.
+  const text = input.replace(/\(0\)/g, "").replace(/^([^\d]*234)[\s().-]*0/, "$1");
+  const nigerian = normalizeNigerianPhone(text);
+  if (nigerian) return nigerian;
+  const compact = text.replace(/[\s().-]/g, "");
+  return isE164(compact) ? compact : null;
+}
+
+/** "tel:+2348031234567" for a contact number as a firm typed it, or null when it cannot be dialled. */
+export function telHref(input: string | null | undefined): string | null {
+  const number = dialableNumber(input);
+  return number ? `tel:${number}` : null;
+}
+
+/**
+ * "https://wa.me/2348031234567", a WhatsApp chat with that number, or null. A plain link: it
+ * opens WhatsApp itself and needs no WhatsApp integration on Docket's side.
+ */
+export function whatsappHref(input: string | null | undefined): string | null {
+  const number = dialableNumber(input);
+  return number ? `https://wa.me/${number.slice(1)}` : null;
+}
+
+/**
  * Suit-number sanity check: registries differ, so this only enforces the
  * shape "segments separated by slashes, ending in a year" that every
  * Nigerian court uses (SC/CV/123/2026, CA/L/45/2026, FHC/L/CS/12/2026,

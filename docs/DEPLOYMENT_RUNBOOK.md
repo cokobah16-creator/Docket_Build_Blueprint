@@ -796,7 +796,7 @@ select proname, proacl from pg_proc where proname in ('registry_notice_fanout', 
   `firm_public`, and those two columns exist only after 51. Against a schema without them,
   PostgREST answers 42703. The resolver then asks again without the two columns and serves the
   firm with a VAT rate of 0, so the public site shows prices as it did before 51: the fee alone,
-  with no "incl. VAT". The booking wizard opens no checkout when the invoice total differs from
+  with no "including VAT". The booking wizard opens no checkout when the invoice total differs from
   the total it showed, so a client is never charged VAT they were not shown.
 - **52.** The booking wizard's confirm step and the portal's consent gate both call
   `record_consent(p_firm, p_terms_version, p_privacy_version)`, which exists only after 52.

@@ -34,9 +34,17 @@ export async function PolicyPage({
   const firmName = firm.legal_name ?? firm.name;
   const documentName = title.toLowerCase();
 
+  // The firm's own document, usually on another site. A 44px target with its own focus ring, and
+  // a long address breaks anywhere rather than pushing the page wider than a phone.
   const link = url ? (
-    <a href={url} className="font-medium text-brand underline" target="_blank" rel="noreferrer">
+    <a
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex min-h-11 items-center font-medium text-brand underline underline-offset-4 [overflow-wrap:anywhere] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
+    >
       {url}
+      <span className="sr-only"> (opens in a new tab)</span>
     </a>
   ) : null;
 
@@ -48,15 +56,15 @@ export async function PolicyPage({
         <div className="space-y-6">
           <ContentBody body={text} keepLineBreaks />
           {/* Labelled as the firm labels it in settings: "Link to the full document". */}
-          {link ? <p className="text-ink">Full document: {link}</p> : null}
-          {cancellationText ? <p className="text-ink">{cancellationText}</p> : null}
+          {link ? <p className="text-17 leading-7 text-ink">Full document: {link}</p> : null}
+          {cancellationText ? <p className="text-17 leading-7 text-ink">{cancellationText}</p> : null}
         </div>
       ) : link ? (
-        <p className="text-ink">
+        <p className="text-17 leading-7 text-ink">
           Read the current {documentName} at {link}.
         </p>
       ) : (
-        <div className="space-y-3 text-ink">
+        <div className="space-y-3 text-17 leading-7 text-ink">
           {published ? (
             <p>
               {firmName} has not put the full text of its {documentName} on this site yet. When you

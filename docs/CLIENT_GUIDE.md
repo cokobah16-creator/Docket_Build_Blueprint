@@ -49,7 +49,7 @@ and a message cannot be unsent.
 ## Agreeing to your firm's terms
 
 You are asked to accept **that firm's** terms of service and privacy notice in two places: on the
-last step of booking a consultation (see *Booking a consultation*, step 7), and when you open the
+last step of booking a consultation (see *Booking a consultation*), and when you open the
 portal for that firm. The portal asks only if you have not already accepted the versions the firm
 has published, so if you accepted them when you booked, it does not ask again. You cannot go
 further until you do — and that is the point: you should know what you are agreeing to before your
@@ -60,7 +60,8 @@ A few things worth knowing:
 - **You are never shown a draft.** Until a firm has published real documents, no client is asked to
   agree to anything, and no booking can be taken.
 - **Each version is recorded separately** — which document, which edition, and the moment you
-  accepted it. You can see your whole list at any time under **your profile**.
+  accepted it. You can see your whole list at any time under **What you have agreed to** on your
+  profile.
 - **If the firm changes a document, you will be asked again.** That is not a glitch. It means the
   document has actually changed, and you are agreeing to the new one rather than being assumed to.
 - **The record cannot be edited or deleted through the app or its API.** Not by you, not by the
@@ -73,23 +74,26 @@ You accept each firm's documents separately. Working with two firms on Docket me
 
 ## Booking a consultation
 
-From your firm's website, choose **Book**. The steps are:
+From your firm's website, choose **Book a consultation** (a firm can word that button its own
+way). There are four short steps, or five if the firm asks you some questions first:
 
-1. **The service** — what you need, how long it takes, and what it costs. Where the firm charges
-   VAT, the price shown already includes it and says "incl. VAT".
-2. **How** — video, in person, or by phone. Only the options that firm offers appear.
-3. **Which lawyer.**
-4. **A day, then a time.** The times you are offered are real: Docket has already checked that
-   lawyer's working hours, breaks, days off, existing appointments and daily limit. **They are
-   shown in your own timezone**, not the firm's, so there is nothing to convert. Nothing less than
-   two hours away is offered.
-5. **The firm's questions**, if it asks any. Answer what you can; only the questions marked
-   required must be filled in.
-6. **Sign in**, if you have not already — right there, without losing your place.
-7. **Confirm.** For a paid consultation, the last screen shows the fee, the VAT if the firm
-   charges it, and the total. If the fee is paid in advance, the button reads **Confirm and pay**
-   with the total. If the firm invoices it after booking, nothing is paid there, and the button says
-   the total will be invoiced.
+1. **Service** — what you need, how long it takes, and what it costs. Where the firm charges
+   VAT, the price shown already includes it and says "including VAT". A free consultation says
+   "Nothing to pay".
+2. **How you meet** — video, in person, or by phone. Only the options that firm offers appear.
+3. **Day and time** — the lawyer, then a day, then a time. The times you are offered are real:
+   Docket has already checked that lawyer's working hours, breaks, days off, existing appointments
+   and daily limit. **They are shown in your own timezone**, not the firm's, so there is nothing to
+   convert. Nothing less than two hours away is offered.
+4. **Details** — the firm's questions, if it asks any. Answer what you can; only the questions
+   marked required must be filled in.
+5. **Check and book**, or **Check and pay** when you pay now. For a paid consultation a
+   **Before you pay** box shows who you are paying, the fee, the VAT if the firm charges it, and
+   the total, worked out exactly as the invoice will be. If you are not signed in yet, you sign in
+   right there, under **Sign in to book**, without losing your place. If the fee is paid in
+   advance, the button reads **Book and pay** with the total. If the firm invoices it after
+   booking, nothing is paid there: the box is headed **What you will pay** and the button reads
+   **Book this consultation**, as it does for a free one.
 
    Just above the button are two boxes: one to accept the firm's terms of service, and one to say
    you have read its privacy notice. Each shows the version you are accepting. The name of each
@@ -102,8 +106,8 @@ From your firm's website, choose **Book**. The steps are:
 
 ### Before your consultation
 
-Some firms hold a booking until they confirm it. If yours does, the appointment page says
-**Booked and held** and lists what is still needed: paying the fee, answering any question the
+Some firms hold a booking until they confirm it. If yours does, your consultation page marks it
+**Held** and lists what is still needed: paying the fee, answering any question the
 firm's form requires, sending a document the firm asked for, accepting the firm's terms and
 privacy notice. Each has its action on the page. Anything the firm has to do on its own side is
 shown only as that. You are reminded two days before if something is still missing; the firm
@@ -114,22 +118,28 @@ confirms the booking from its side, and you are told when it does.
 If the consultation is paid in advance, your slot is **held for fifteen minutes** while you pay.
 You go to Paystack's own checkout page — Docket never sees your card — and come back when it is
 done. If the invoice turns out to be for a different total from the one you were shown, you go to
-the appointment page instead, so you can check the amount before you pay. You also go there, and
+your consultation page instead, so you can check the amount before you pay. You also go there, and
 not to checkout, if the booking turns out to need payment now when the page said it would not, or
-the other way round. The appointment page says which.
+the other way round. The consultation page says which. Wherever you pay, the same **Before you
+pay** box comes first, and the amount on the button is the amount Paystack asks you for.
 
-**The money goes to your firm**, into its own account. Docket does not hold it and cannot touch it.
+**The money goes to your firm**, into its own account. Docket does not hold it.
+Your firm pays Paystack's processing fee, so nothing is added to the total you were shown.
+
+**Paying by bank transfer?** Paystack shows an account number that is for that one payment only.
+Send the exact amount to it from your bank app. It can take a few minutes to confirm, so do not pay
+again while you wait, or you will pay twice.
 
 Your consultation is confirmed **when Paystack tells Docket the payment succeeded**, not when the
 page finishes loading. If you have paid and the app has not caught up, wait a minute and refresh
-before worrying. Your reference number is on the appointment.
+before worrying. Your reference number is on your consultation page.
 
 If you do not pay within fifteen minutes the hold is released and the time goes back to whoever
 wants it, and you can simply book again. Do not finish a payment after that: the money still
 reaches the firm, and only the firm can refund it.
 
 If the firm invoices the fee after booking, you book without paying. The invoice for the total is
-raised at once, and you find it on the appointment page and under **Payments**.
+raised at once, and you find it on your consultation page and under **Payments**.
 
 If the consultation is free, it is confirmed straight away.
 
@@ -147,11 +157,11 @@ checked against the lawyer's diary properly.
 
 ## A video consultation
 
-Ten minutes before the start time, a **Join** button appears on your appointment, and a reminder is
-sent.
+From an hour before the start time, your consultation page offers **Join the waiting room**. The
+room itself opens ten minutes before the start, and a reminder is sent then.
 
-1. **Join.** You land in a waiting room. Check your camera and microphone there — the time to find
-   out the microphone is off is before, not during.
+1. **Join the waiting room.** Check your camera and microphone there — the time to find out the
+   microphone is off is before, not during. If your network is weak, you can join with **audio only**.
 2. **Your lawyer lets you in.** The room is private and knocks: nobody wanders in, and there is no
    permanent link anybody could pass around.
 3. **Talk.** You have your camera, your microphone, screen sharing if you need to show something,
@@ -163,8 +173,8 @@ Two things to be clear about:
   you want to know whether your firm records calls in some other way, ask it.
 - **The room expires an hour after your consultation ends.** The link cannot be reused afterwards.
 
-Afterwards, your lawyer writes up a summary. **You see that summary** on the appointment. Your
-lawyer may also keep private working notes — see below.
+Afterwards, your lawyer writes up a summary. **You see that summary** on your consultation page.
+Your lawyer may also keep private working notes — see below.
 
 ---
 
@@ -181,12 +191,14 @@ Once your firm opens a matter for you, **`/app/matters`** is where you follow it
 - **Court dates** — when your matter is next in court, for what, and where.
 
 **`/app/court-dates`** gathers every court date across every matter and every firm you work with.
-Each says where it came from: *fixed by the court, notice on file* when your firm has attached the
-court's notice, or *as recorded by your firm*. A date the registry has vacated is taken off the
-list and out of the calendar file; the timeline keeps what happened.
-**Add to calendar (.ics)** on that page downloads those dates as a calendar file you can import
-into your own calendar. It is a **snapshot, not a live feed**: if a date is moved, download it
-again. The app itself always shows the current dates, and tells you three days and one day before.
+Each says where it came from: *Fixed by the court. The notice is on file.* when your firm has
+attached the court's notice, *Listed by the court registry and confirmed by your lawyer.*, or
+*Recorded by* your firm. A date the registry has vacated is taken off the list and out of the
+calendar file; the timeline keeps what happened.
+**Add these dates to my calendar** on that page downloads those dates as a calendar file you can
+import into your own calendar. It adds the dates **as they are today, not a live feed**: if a date
+is moved, add them again (the same date is updated, not doubled). The app itself always shows the
+current dates, and tells you three days and one day before.
 
 ### What you are told, and when
 
@@ -195,10 +207,11 @@ hour and ten minutes before, a consultation moved or cancelled, a new invoice, a
 an update on your matter, a court date in three days, a court date tomorrow, a new message, and a
 document your firm has asked you for.
 
-**You control which of these reach you.** Under **notifications → preferences**, choose the events
-you want and whether each comes by push, email or SMS. You can also set **quiet hours** — nothing
-will reach you during them except the reminders right before a consultation, which will, because by
-then you want them.
+**You control which of these reach you.** In **Notification preferences** (from Notifications,
+**Change preferences**), choose the events you want and whether each comes by push notification,
+email or text message (SMS). You can also set **quiet hours** — nothing
+will reach you during them except the reminder 10 minutes before a consultation, which will, because
+by then you want it.
 
 Two messages always arrive whatever you choose: the one telling you your consultation is ready to
 join, and every in-app notice, which waits quietly in the app rather than interrupting you.
@@ -213,8 +226,14 @@ currencies.
 
 - You see an invoice **only once the firm has issued it.** A draft is the firm's working document
   and is not yours to see.
-- Pay any outstanding invoice from the same page. Again: straight to the firm's account.
-- Every invoice can be downloaded as a **PDF** for your records.
+- Open an invoice to pay it. It shows the same **Before you pay** box as booking does: who you
+  are paying, what for, the VAT, what has been paid so far and what is left. Again: straight to
+  the firm's account.
+- A payment marked **Not added to this invoice** means money left your account but was not counted
+  against this invoice. Message your firm with your bank reference, so they can find it and put it
+  right.
+- Every invoice can be downloaded for your records: **Download invoice (PDF)**, or **Download
+  receipt (PDF)** once it is paid.
 
 ---
 
@@ -276,8 +295,9 @@ saying so, with **Read and sign**.
 
 - **You read it first, and Docket checks that you did.** The document opens in front of you; only
   then does the box to sign appear. A signature without that is refused.
-- **You sign by typing your name** — exactly as it is on your profile. If your name there is wrong,
-  correct it on your profile first; Docket will not accept a different name for you.
+- **You sign by typing your name** — exactly as it is on your profile — and pressing **Sign this
+  document**. If your name there is wrong, correct it on your profile first; Docket will not
+  accept a different name for you. **Close without signing** leaves it unsigned, to come back to.
 - **What is recorded** is: that it was you, the name you typed, the exact version of the file and a
   fingerprint of its contents, that you opened it, and when. That is what makes it evidence of what
   you signed rather than of "a document".
@@ -301,8 +321,20 @@ saying so, with **Read and sign**.
   device stops push on that device.
 - **Ask for a copy, or for deletion.** Ask your firm — under Nigerian data-protection law your firm
   is responsible for your matter records, and Docket acts on its instructions. Be aware that some
-  records cannot simply be deleted: an appointment you booked and an invoice you were issued are
+  records cannot simply be deleted: a consultation you booked and an invoice you were issued are
   the firm's own record of a transaction, and it may be required to keep them.
+
+---
+
+## If something cannot wait
+
+Every firm's website has an **Urgent help** page, linked from the top of every page of the site.
+It says what to do first if someone has been arrested, you are being locked out of your home
+today, someone is threatening you, you have just lost money to fraud, or a court date is today or
+tomorrow. It gives the firm's own phone, WhatsApp and email where the firm has set them, and
+national help that does not depend on the firm, starting with **112** if anyone is in danger. You
+do not need to be signed in or to be a client. It is general information, not legal advice for
+your situation: speak to a lawyer as soon as you can.
 
 ---
 
@@ -311,9 +343,9 @@ saying so, with **Read and sign**.
 | | |
 |---|---|
 | **The sign-in code has not arrived** | Wait a minute and ask once more. If it still does not come, ask your firm to check the number it holds for you |
-| **I paid and it still says awaiting payment** | Wait a minute and refresh. Confirmation waits for Paystack, not for the page. If it does not clear, tell your firm your reference and the Paystack receipt |
-| **My slot expired while I was paying** | The fifteen-minute hold ran out, and the slot is released soon after. If no payment went through, book again. If Paystack took a payment and the appointment now says cancelled, tell your firm your reference and the Paystack receipt |
-| **The Join button is not there** | It appears ten minutes before the start time, and only for a confirmed consultation |
+| **I paid and it still says not paid yet** | Wait a minute and refresh. Confirmation waits for Paystack, not for the page. If it does not clear, tell your firm your reference and the Paystack receipt |
+| **My slot expired while I was paying** | The fifteen-minute hold ran out, and the slot is released soon after. If no payment went through, book again. If Paystack took a payment and the consultation now says cancelled, tell your firm your reference and the Paystack receipt |
+| **There is no Join the waiting room button** | It appears an hour before the start time, and only for a confirmed video consultation. The room itself opens ten minutes before |
 | **I cannot get past the terms screen** | Both boxes must be ticked. If the firm has just published a new version, you are being asked again on purpose |
 | **A document will not open** | The link has expired: it works for two minutes, or ten when you open a document to sign. Tap it again to get a new one |
 | **The app looks empty** | Every list says what to do next when it has nothing in it. If it does not, tell your firm |

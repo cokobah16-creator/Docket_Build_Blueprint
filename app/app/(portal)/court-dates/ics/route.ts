@@ -11,9 +11,10 @@ function esc(s: string) {
 
 export async function GET() {
   const supabase = await supabaseServer();
-  if (!supabase) return new Response("Not configured", { status: 503 });
+  // These bodies are what a client sees if the file cannot be made, so they are sentences.
+  if (!supabase) return new Response("Your court dates cannot be added right now. Try again later.", { status: 503 });
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return new Response("Sign in first", { status: 401 });
+  if (!user) return new Response("Sign in to the app first, then add your court dates again.", { status: 401 });
 
   // A vacated date is not exported: the registry took it off, and a calendar that still shows it lies.
   const { data: rows } = await supabase.from("court_events").select("id, matter_id, firm_id, scheduled_at, court_name, purpose, outcome_update_id, vacated_at").is("vacated_at", null).order("scheduled_at").limit(500);
@@ -33,8 +34,10 @@ export async function GET() {
       `DTSTAMP:${icsDate(new Date().toISOString())}`,
       `DTSTART:${icsDate(start.toISOString())}`,
       `DTEND:${icsDate(end.toISOString())}`,
-      `SUMMARY:${esc(`${m?.title ?? "Court date"}${e.purpose ? ` — ${e.purpose}` : ""}`)}`,
-      `DESCRIPTION:${esc(`${m?.reference ?? ""}${e.purpose ? `\n${e.purpose}` : ""}`)}`,
+      // The title a client reads in their own calendar, so no dash (docs/VOICE.md, rule 21).
+      `SUMMARY:${esc(`${m?.title ?? "Court date"}${e.purpose ? `: ${e.purpose}` : ""}`)}`,
+      // What it is first, the reference last and labelled (docs/VOICE.md, rule 5).
+      `DESCRIPTION:${esc([e.purpose, m?.reference ? `Reference ${m.reference}` : null].filter(Boolean).join("\n"))}`,
       ...(e.court_name ? [`LOCATION:${esc(e.court_name)}`] : []),
       "END:VEVENT",
     );

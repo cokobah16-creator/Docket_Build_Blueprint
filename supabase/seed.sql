@@ -1,5 +1,12 @@
--- Docket — seed: Attorneys Klinique Law Consultancy as tenant #1.
+-- Docket — seed: Attorneys Klinique as tenant #1.
 -- Run once after the migrations. Idempotent on the firm slug.
+--
+-- On a database that already has this firm, a re-run changes nothing in the firm row or in any
+-- service it already has. Set the legal name, RC/BN, TIN, contact details, the booking button's
+-- wording and the 45-minute consultation's name, description and fee in /firm/admin/settings and
+-- /firm/admin/services first. Set the VAT rate once docs/LEGAL_READINESS_CHECKLIST.md item 16,
+-- steps 8 and 9, print the TIN on VAT invoices. A re-run then only adds the 60- and 90-minute
+-- consultations and their intake forms.
 --
 -- Klinique is a firm on Docket, not a special case: this file only supplies
 -- the DATA a firm owner would otherwise enter at /firm/start and in
@@ -10,22 +17,36 @@
 -- Status 'active' + verified_at: the launch tenant is verified by the founders themselves. Its owner accounts are
 -- attached at onboarding exactly like any other firm's (docs/ONBOARDING_A_FIRM.md step 4), and its Paystack
 -- subaccount goes into firms.paystack_subaccount before the first booking (step 5).
-insert into firms (slug, name, legal_name, reference_prefix, timezone, default_currency, vat_rate, status, verified_at, brand, policies)
+--
+-- The legal name and number are as on the firm's CAC certificate (business name BN 9868241), so
+-- the "Before you pay" breakdown names who the client is paying exactly as the register does. The
+-- TIN shows only on the firm's own invoice screen. The client's invoice PDF does not print it yet
+-- (docs/LEGAL_READINESS_CHECKLIST.md, item 16, steps 8 and 9), and firm_public never exposes it
+-- (migration 51).
+insert into firms (slug, name, legal_name, rc_number, tin, reference_prefix, timezone, default_currency, vat_rate, status, verified_at, brand, policies)
 values (
   'attorneys-klinique',
   'Attorneys Klinique',
-  'Attorneys Klinique Law Consultancy',
+  'Attorneys Klinique',
+  'BN 9868241',
+  '2623771411110',
   'AK',
   'Africa/Lagos',
   'NGN',
-  0,   -- the firm confirms VAT treatment of consultation fees; set to 7.50 if applicable
+  -- Prices below are the fee before VAT, and book_appointment() adds VAT at this rate when it
+  -- invoices a booking, so a client pays 7.5% on top of each fee (the owner, 2 November 2026).
+  7.50,
   'active', now(),
   jsonb_build_object(
     'tagline', 'Professional, trustworthy, discreet legal services',
     'colours', jsonb_build_object('primary', '#0F2A44', 'accent', '#B08D57', 'surface', '#F7F5F0'),
     'fonts',   jsonb_build_object('heading', 'Fraunces', 'body', 'Inter'),
-    'contact', jsonb_build_object('email', null, 'phone', null, 'address', null),
-    'cta',     'Book a Consultation'
+    -- The Urgent help page and the contact page offer these; WhatsApp is the same line.
+    'contact', jsonb_build_object('email',    'attorneysklinique@gmail.com',
+                                  'phone',    '+234 814 321 2579',
+                                  'whatsapp', '+234 814 321 2579',
+                                  'address',  'No. 2 Joshua Madaki Close, Opposite Eterna Fuel Station, Abuja'),
+    'cta',     'Book a consultation'
   ),
   jsonb_build_object(
     'cancellation', jsonb_build_object('version', '2026-09', 'free_cancel_hours', 24,
@@ -39,12 +60,22 @@ values (
 )
 on conflict (slug) do nothing;
 
--- service catalogue (master prompt §5). Prices are PLACEHOLDERS: only the consultation is active until Precious sets fees.
+-- service catalogue (master prompt §5). Three consultations are active, at the fees the owner set on
+-- 2 November 2026: ₦30,000, ₦45,000 and ₦60,000 for 45, 60 and 90 minutes, before VAT. With VAT at
+-- 7.5% a client pays ₦32,250, ₦48,375 and ₦64,500. Attorneys Klinique's own records put the
+-- Remuneration Order's minimum for a consultation at ₦30,000 before VAT, so a discount on the
+-- 45-minute fee may need the NBA Remuneration Committee's approval first.
+-- Every other row is a PLACEHOLDER price and stays inactive until the firm sets its fee.
+-- The three consultations share a name because every list already adds the length ("· 45 minutes")
+-- and the invoice line adds "(45 min)". The 45-minute one keeps the slug 'legal-consultation',
+-- which seed_firm_defaults() and the design fixture look up.
 insert into services (firm_id, slug, name, description, price_minor, currency, duration_min, lawyer_category, requires_prepayment, virtual_available, is_active, sort)
 select f.id, s.slug, s.name, s.description, s.price_minor, 'NGN', s.duration_min, s.category, true, true, s.is_active, s.sort
 from firms f,
      (values
-       ('legal-consultation',     'Legal Consultation',                     'A 45-minute face-to-face virtual consultation with an Attorneys Klinique lawyer.', 5000000, 45, 'general',    true,  10),
+       ('legal-consultation',     'Legal consultation',                     'Quick advice on one issue from an Attorneys Klinique lawyer.',                    3000000, 45, 'general',    true,  10),
+       ('legal-consultation-60',  'Legal consultation',                     'More time to go through one matter and its documents with an Attorneys Klinique lawyer.', 4500000, 60, 'general', true, 11),
+       ('legal-consultation-90',  'Legal consultation',                     'For complex matters, or a matter with several parts, with an Attorneys Klinique lawyer.', 6000000, 90, 'general', true, 12),
        ('corporate-commercial',   'Corporate & Commercial Law',             'Advisory on company structuring, commercial agreements and governance.',          5000000, 45, 'corporate',  false, 20),
        ('contract-review',        'Contract Review & Drafting',             'Review, negotiation and drafting of contracts and agreements.',                   5000000, 45, 'corporate',  false, 30),
        ('property-real-estate',   'Property & Real Estate',                 'Title searches, conveyancing, Governor''s Consent and property disputes.',        5000000, 45, 'property',   false, 40),
@@ -62,7 +93,9 @@ from firms f,
 where f.slug = 'attorneys-klinique'
 on conflict (firm_id, slug) do nothing;
 
--- Klinique's own consultation intake (master prompt §24): conditional questions, minimal data
+-- Klinique's own consultation intake (master prompt §24): conditional questions, minimal data. One copy per
+-- consultation length, because the booking wizard picks the form by service. A form with no service would not
+-- do: seed_firm_defaults() would then add its own form for the 45-minute consultation, and that one would win.
 insert into intake_forms (firm_id, service_id, name, schema, is_active)
 select f.id, s.id, 'Consultation intake',
   jsonb_build_object('questions', jsonb_build_array(
@@ -90,7 +123,8 @@ select f.id, s.id, 'Consultation intake',
                        'options', jsonb_build_array('Referral','Search','Social media','Community or association','Other'))
   )),
   true
-from firms f join services s on s.firm_id = f.id and s.slug = 'legal-consultation'
+from firms f join services s on s.firm_id = f.id
+  and s.slug in ('legal-consultation', 'legal-consultation-60', 'legal-consultation-90')
 where f.slug = 'attorneys-klinique'
   and not exists (select 1 from intake_forms i where i.firm_id = f.id and i.service_id = s.id);
 

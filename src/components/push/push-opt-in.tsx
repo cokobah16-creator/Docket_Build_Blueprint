@@ -22,9 +22,10 @@ function toKey(base64: string): Uint8Array<ArrayBuffer> {
 
 async function storeSubscription(sub: any): Promise<string | null> {
   const supabase = supabaseBrowser();
-  if (!supabase) return "Not configured.";
+  // Shown as they are, to clients and staff alike, so each says what did not happen and what next.
+  if (!supabase) return "Notifications cannot be turned on here yet.";
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return "Sign in first.";
+  if (!user) return "You are signed out, so notifications were not turned on. Sign in again, then try once more.";
   const json = sub.toJSON();
   const { error } = await supabase
     .from("push_subscriptions")
@@ -32,10 +33,14 @@ async function storeSubscription(sub: any): Promise<string | null> {
       { user_id: user.id, endpoint: json.endpoint, keys: json.keys, user_agent: navigator.userAgent.slice(0, 200) },
       { onConflict: "endpoint" },
     );
-  return error ? error.message : null;
+  return error ? "Notifications were not turned on, because this device could not be saved to your account. Please try again." : null;
 }
 
-export function PushOptIn({ compact = false }: { compact?: boolean }) {
+/**
+ * `quiet` draws "Turn on" as a ghost button, for a screen whose one filled button is something
+ * else (a client's profile saves their details; their notification settings save the choices).
+ */
+export function PushOptIn({ compact = false, quiet = false }: { compact?: boolean; quiet?: boolean }) {
   const [state, setState] = useState<State>("checking");
   const [message, setMessage] = useState<string | null>(null);
   const vapid = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
@@ -72,7 +77,9 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
       if (err) { setMessage(err); setState("error"); return; }
       setState("subscribed");
     } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Could not enable notifications.");
+      // The browser's own words ("Registration failed - push service error") are for developers.
+      void e;
+      setMessage("Notifications were not turned on. Please try again.");
       setState("error");
     }
   }
@@ -92,13 +99,13 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
     return (
       <div className="flex items-center gap-3">
         {state === "denied" ? (
-          <p className="text-13 text-[#92400E]">Notifications are blocked for this site. Allow them in your browser settings to turn them on.</p>
+          <p className="text-13 text-ink-muted">Notifications are blocked for this site. Allow them in your browser settings to turn them on.</p>
         ) : (
           <Button size="sm" variant="ghost" onClick={enable} disabled={state === "busy"}>
             {state === "busy" ? "Turning on…" : "Turn on notifications"}
           </Button>
         )}
-        {message && <p className="text-13 text-red-800">{message}</p>}
+        {message && <p role="alert" className="text-13 text-ink">{message}</p>}
       </div>
     );
   }
@@ -112,7 +119,7 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
         {state === "denied" ? (
           <Badge tone="waiting" icon="alert">Blocked</Badge>
         ) : (
-          <Button size="sm" onClick={enable} disabled={state === "busy"}>
+          <Button size="sm" variant={quiet ? "ghost" : "primary"} onClick={enable} disabled={state === "busy"}>
             {state === "busy" ? "Turning on…" : "Turn on"}
           </Button>
         )}
@@ -121,7 +128,7 @@ export function PushOptIn({ compact = false }: { compact?: boolean }) {
             Allow notifications for this site in your browser settings.
           </p>
         )}
-        {message && <p className="max-w-[180px] text-right text-11 text-red-800">{message}</p>}
+        {message && <p role="alert" className="max-w-[180px] text-right text-11 text-ink">{message}</p>}
       </div>
     </SettingRow>
   );

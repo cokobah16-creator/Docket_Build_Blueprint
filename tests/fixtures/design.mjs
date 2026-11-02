@@ -199,7 +199,7 @@ const CLIENT = "11111111-1111-4111-8111-111111111111";
 
 // ── the routes ────────────────────────────────────────────────────────────
 //
-// All five surfaces, not shots.mjs's ten screens. `docket` marks a surface Docket owns and a
+// All five surfaces, not shots.mjs's eleven screens. `docket` marks a surface Docket owns and a
 // tenant's brand must never reach; `auth` says whether the session cookie is presented, which is
 // how the public firm site and both sign-in flows get checked as a stranger actually meets them.
 const R = (name, url, docket, auth = true) => ({ name, url, docket, auth });
@@ -218,6 +218,7 @@ const ROUTES = [
   R("site-contact", `/${FIRM_SLUG}/contact`, false, false),
   R("site-privacy", `/${FIRM_SLUG}/privacy`, false, false),
   R("site-terms", `/${FIRM_SLUG}/terms`, false, false),
+  R("site-urgent", `/${FIRM_SLUG}/urgent`, false, false),
 
   // The client portal, signed out and signed in.
   R("client-login", "/app/login", false, false),
@@ -392,12 +393,23 @@ for (const vp of VIEWPORTS) {
         problems.push({ check: "route", signature: `HTTP ${status} — the page checked below is an error page, not ${route.url}`, where: `${route.name} @${vp.name}`, path: route.url });
       }
 
+      // Every fold-away section open before anything is measured, so its content is judged as a
+      // person reads it. Closed, a <details> keeps its content content-visibility: hidden, and Chrome
+      // does not restyle a hidden subtree when the theme flips below, so a closed section's text would
+      // be read in the previous theme's colours, which nobody ever sees.
+      await page.evaluate(() => document.querySelectorAll("details:not([open])").forEach((d) => { d.open = true; }));
+
       for (const theme of THEMES) {
         // Pure CSS: every token is a variable that re-aliases itself, so flipping the attribute
         // repaints without a re-render and one navigation serves both themes. It is set after
         // the page has settled so React's hydration cannot take the attribute back off again.
         await page.evaluate((t) => document.documentElement.setAttribute("data-theme", t), theme);
         await page.waitForTimeout(80);
+        // And two frames painted after it, so what is read is what is on screen. The context asks for
+        // reduced motion, which app/globals.css answers by giving every element a 0.01ms transition, so
+        // the flip starts a colour transition everywhere, and a transition only moves when a frame is
+        // drawn: read before one, an element reports the previous theme's colour while showing the new.
+        await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 
         const audit = await page.evaluate(auditPage, {
           G: BROWSER_GLOBAL,

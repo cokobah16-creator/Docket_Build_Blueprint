@@ -79,10 +79,19 @@ const FIRM = {
   brand: {
     colours: { primary: "#0F2A44", accent: "#B08D57", surface: "#F7F5F0" },
     fonts: { heading: "Fraunces", body: "Inter" },
+    // Obviously fake on purpose, and never a real firm's numbers: these exist so the Contact and
+    // Urgent help pages render the state where the firm can be reached, with every link built.
+    contact: { phone: "0800 000 0000", whatsapp: "0800 000 0000", email: "hello@example.com", address: "1 Example Street, Lagos" },
   },
   // Privacy carries saved text and terms does not, so /{slug}/privacy renders the firm's own
   // wording and /{slug}/terms the placeholder: both branches of PolicyPage get a design run.
+  // A published cancellation policy, so "Before you pay" renders its "If plans change" block.
   policies: {
+    cancellation: {
+      version: "2026-09",
+      free_cancel_hours: 24,
+      text: "Cancel at least 24 hours before your consultation and the firm refunds the fee. After that, message the firm.",
+    },
     terms: { version: "2026-09" },
     privacy: {
       version: "2026-09",
@@ -93,8 +102,10 @@ const FIRM = {
   timezone: "Africa/Lagos",
   default_currency: "NGN",
   verified: true,
-  vat_rate: 0,
-  rc_number: null,
+  // VAT on, and a registration number, so the breakdown's VAT row, its "VAT at 7.5%" label and its
+  // payee line all render under the design check. The number is a placeholder, not a real one.
+  vat_rate: 7.5,
+  rc_number: "RC 0000000",
   status: "active",
 };
 
@@ -182,8 +193,8 @@ const TABLES = {
   document_versions: [{ id: "v1", document_id: "d1", storage_path: "p/1", mime: "application/pdf", size_bytes: 184_320, uploaded_by: USER_ID, created_at: past, checksum: "abc", kind: "original", executed_on: null }],
   document_signatures: [],
   document_requests: [],
-  invoices: [{ id: INVOICE_ID, firm_id: FIRM_ID, client_id: USER_ID, matter_id: MATTER_ID, appointment_id: APPT_ID, number: "AK-INV-2026-0188", status: "issued", currency: "NGN", subtotal_minor: 5_000_000, vat_minor: 0, total_minor: 5_000_000, paid_minor: 0, issued_at: past, due_at: far }],
-  invoice_items: [{ id: "ii1", invoice_id: INVOICE_ID, description: "Legal Consultation", quantity: 1, unit_minor: 5_000_000 }],
+  invoices: [{ id: INVOICE_ID, firm_id: FIRM_ID, client_id: USER_ID, matter_id: MATTER_ID, appointment_id: APPT_ID, number: "AK-INV-2026-0188", status: "issued", currency: "NGN", subtotal_minor: 5_000_000, vat_minor: 375_000, total_minor: 5_375_000, paid_minor: 0, issued_at: past, due_at: far }],
+  invoice_items: [{ id: "ii1", invoice_id: INVOICE_ID, description: "Legal consultation (45 min)", quantity: 1, unit_minor: 5_000_000 }],
   payments: [],
   messages: [
     { id: "m1", firm_id: FIRM_ID, matter_id: MATTER_ID, appointment_id: null, sender_id: USER_ID, body: "The certified true copies are ready to collect from the registry.", attachments: [], read_at: null, created_at: past },

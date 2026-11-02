@@ -86,7 +86,7 @@ export function AdminCreateFirm() {
       <Input
         label="RC / BN number"
         name="rcNumber"
-        hint="Checked against the CAC register before the firm is activated."
+        hint="With its letters, as on the CAC certificate: RC 1234567 or BN 1234567. Checked against the CAC register before the firm is activated."
         error={state.fieldErrors?.rcNumber}
       />
       <Select label="State of principal office" name="stateCode" defaultValue="" error={state.fieldErrors?.stateCode}>
