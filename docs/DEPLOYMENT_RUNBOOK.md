@@ -829,16 +829,25 @@ only after 59. Without it, PostgREST answers PGRST202. `invoiceIssuer()`
 did before 59, without the line "VAT charged under TIN …". Schema first is harmless: 59 adds one
 function that the deployed front end never calls.
 
-Apply 59, then deploy. Enter the firm's TIN at `/firm/admin/settings` before its VAT rate goes
-above zero. To confirm afterwards:
+Apply 59, then deploy. A firm's VAT needs 51 on the database as well: without it the public site
+shows prices without VAT, and the booking wizard opens no checkout for an invoice that adds VAT it
+did not show (51 above). So before a firm's VAT rate goes above zero, apply 51 and 59, and enter
+the firm's TIN at `/firm/admin/settings`. To confirm afterwards:
 
 ```sql
 select pg_get_function_identity_arguments('public.invoice_issuer'::regproc);       -- p_invoice uuid
 select has_function_privilege('anon', 'public.invoice_issuer(uuid)', 'execute');   -- false
+select vat_rate, rc_number from firm_public limit 1;                               -- no error (51)
 ```
 
-Because 53 to 58 are reserved but not written, a database that has 59 needs
-`supabase db push --include-all` to apply any of them later.
+**The hosted project's migration ledger is not the file names.** On 2 November 2026 its ledger
+(`list_migrations`) ended at `court_registry`, 49, so 50, 51, 52 and 59 were all still to apply.
+Its entries carry the versions the Supabase MCP gave each migration as it was applied (`court_registry`
+is `20260913154551`, not `20260910000049`), so `supabase db push` against it finds remote versions it
+has no file for and refuses until the history is repaired (`supabase migration repair`). Until then,
+apply each new file there as 1 to 49 were applied, one at a time in filename order. On a database
+managed with `supabase db push`, 53 to 58 being reserved but unwritten means that one which has 59
+needs `supabase db push --include-all` to apply any of them later.
 
 | | As of 13 Sep 2026, 16:05 UTC | Reconciled against |
 |---|---|---|
