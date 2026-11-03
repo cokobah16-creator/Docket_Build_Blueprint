@@ -842,12 +842,59 @@ select vat_rate, rc_number from firm_public limit 1;                            
 
 **The hosted project's migration ledger is not the file names.** On 2 November 2026 its ledger
 (`list_migrations`) ended at `court_registry`, 49, so 50, 51, 52 and 59 were all still to apply.
-Its entries carry the versions the Supabase MCP gave each migration as it was applied (`court_registry`
+They were applied on 3 November (the release record below), and the ledger now ends at
+`invoice_issuer`, 59. Its entries carry the versions the Supabase MCP gave each migration as it was applied (`court_registry`
 is `20260913154551`, not `20260910000049`), so `supabase db push` against it finds remote versions it
 has no file for and refuses until the history is repaired (`supabase migration repair`). Until then,
-apply each new file there as 1 to 49 were applied, one at a time in filename order. On a database
+apply each new file there one at a time, in filename order, through the Supabase MCP, as 50, 51, 52
+and 59 were on 3 November. On a database
 managed with `supabase db push`, 53 to 58 being reserved but unwritten means that one which has 59
 needs `supabase db push --include-all` to apply any of them later.
+
+| | As of 3 Nov 2026, 00:25 UTC | Reconciled against |
+|---|---|---|
+| **App** | `c202474` (the merge of PR #43), production READY at 00:14 UTC (its build started at 00:12) | Vercel → the project's deployment list: the latest deployment with `target: production` and `state: READY` |
+| **Schema** | Migrations **1–52 and 59**, all applied: 55 ledger entries, one for each file in `supabase/migrations/`. 50, 51, 52 and 59 were applied on 3 Nov from 00:17 to 00:18 UTC, one at a time in filename order, as `tenant_dark_mode` (`20261103001740`), `firm_public_vat_and_rc` (`20261103001758`), `booking_consent` (`20261103001826`) and `invoice_issuer` (`20261103001845`). 53–58 are reserved and not written | `supabase_migrations.schema_migrations` (MCP `list_migrations`) |
+| **Edge Functions** | `paystack-webhook` **v7** · `dispatch-notifications` **v10** · `video-session` **v2** · `storage-manifest` **v1** · `calendar-feed` **v1** · `delivery-receipts` **v1** · `extract-text` **v2** · `partner-api` **v1** · `partner-webhooks` **v1**. Nine functions, eight `--no-verify-jwt`; `video-session` is the only one that keeps JWT verification on | MCP `list_edge_functions` |
+
+**How this release was reconciled.** The app went first again, the order the 13 Sep record below
+calls wrong, and for longer than one deploy:
+
+- 50 was committed on 14 Sep and has been in production since at least 22 Sep. The oldest production
+  deployment Vercel still lists, `2eeb489` (PR #37, 22 Sep), already carries it.
+- 51 and 52 arrived with `98a5146` (PR #41), READY on 25 Sep at 14:52 UTC.
+- 59 arrived with `c202474`, READY at 00:14 UTC, four and a half minutes before it was applied.
+
+51, 52 and 59 each ran on the fallback its entry above describes. 50 has no entry: without it the
+database dropped a firm's dark-mode choice on save, and the settings page said so. All four are
+additive, and Vercel records no runtime errors for the project on 3 Nov up to 01:12 UTC. After they
+were applied:
+
+- **Every relation and function the front end names is in the live schema.** The query
+  `scripts/check-deployed-reads.sh` makes, run against production through the Supabase MCP for the
+  front end at `c202474`, found all 83 relations and all 101 functions. It checks names only, as
+  written in `.from()`, `.rpc()` and `rest/v1/` calls; columns and call signatures are not part of
+  it, and the next bullet checks those for the four.
+- **The four landed as their files say.** `firm_public` has `vat_rate` and `rc_number`, and `anon`
+  still cannot insert into it. `record_consent()` takes
+  `(p_firm uuid, p_terms_version text, p_privacy_version text)` and `invoice_issuer()` takes
+  `(p_invoice uuid)`, and `anon` may execute neither. The live `validate_brand()` has the
+  `dark_mode` clause and still pins `search_path = public`.
+- **Supabase's security advisors flag the four only where that is the design.** `firm_public` has
+  been a definer view since migration 1, and 51 re-created it as one. `invoice_issuer()` and
+  `record_consent()` are definer functions that `authenticated` may call, as the app does.
+- **Three Edge Functions changed after the 13 Sep record, from a branch that never merged.**
+  `extract-text` v2, `paystack-webhook` v7 and `dispatch-notifications` v10 were deployed on 14 Sep,
+  between 12:30 and 13:38 UTC, from `claude/docket-build-prompts-qptk2u`. That branch has no open
+  pull request, and 27 of its commits are not on `main`. `extract-text` matches `main` in every line
+  spot-checked. **The other two do not.** Both carry a guard for a missing secret that `main` lacks
+  (`e923a2a` on that branch). `paystack-webhook` writes down a delivery it cannot verify for want of
+  `PAYSTACK_SECRET_KEY`, where `main`'s copy throws before writing anything. `dispatch-notifications`
+  loses only its push channel when the VAPID keys are unset, where `main`'s copy fails to start and
+  sends nothing on any channel. Deploying either from `main` would remove its guard, so bring
+  `e923a2a` to `main` first.
+
+Previous: the 13 Sep 2026 record, which follows.
 
 | | As of 13 Sep 2026, 16:05 UTC | Reconciled against |
 |---|---|---|
@@ -891,7 +938,8 @@ Migration ledger names are the file names for 1–21 and short names after: `wav
 `notifications_reliability` 37, `legal_diary` 38, `workflow_packs` 39,
 `document_templates_and_execution` 40, `pilot_baseline` 41, `invoice_doors` 42, `search` 43,
 `verified_delegation` 44, `collaboration` 45, `partner_api` 46, `calendar_feed` 47,
-`document_text` 48, `court_registry` 49.
+`document_text` 48, `court_registry` 49. After 49 they are `tenant_dark_mode` 50,
+`firm_public_vat_and_rc` 51, `booking_consent` 52 and `invoice_issuer` 59.
 
 Previous: app `bcc1dc8` against 1–33 (11 Sep, 16:40 UTC) — and then three merges (#21, #22, #23) shipped
 app code for Waves 3a–4f while the schema stayed at 33, which is the drift the entry above closes.
