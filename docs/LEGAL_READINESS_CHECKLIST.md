@@ -31,7 +31,7 @@ Still waiting on a decision:
 - tenant fonts (item 5)
 - two-way SMS (item 18)
 
-Still waiting on a deployment: nothing since 3 November 2026, when `050`, `051`, `052` and `059` were applied to the hosted database (`docs/DEPLOYMENT_RUNBOOK.md`, release record). `053`, the enforcement pass for item 6, was to follow once `052` and the app that calls `record_consent()` were live. On the hosted project both now are, so there it waits only on being written (item 6, step 9). A firm's VAT needs `051` (the VAT-inclusive prices and checkout) and `059` (the TIN on the client's invoices) before its rate goes above zero; on the hosted database both are in, so what remains there is the firm's TIN, entered at `/firm/admin/settings`.
+Still waiting on a deployment: nothing since 3 November 2026, when `050`, `051`, `052` and `059` were applied to the hosted database (`docs/DEPLOYMENT_RUNBOOK.md`, release record). `053`, the enforcement pass for item 6, was to follow once `052` and the app that calls `record_consent()` were live. On the hosted project both now are, so step 9's condition is met there. `053` is still to be written, and because it also replaces the `book_appointment()` that the deployed app calls (steps 3 to 5), the app change in step 3 must be live before `053` is applied. A firm's VAT needs `051` (the VAT-inclusive prices and checkout) and `059` (the TIN on the client's invoices) before its rate goes above zero; on the hosted database both are in, so what remains there is the firm's TIN, entered at `/firm/admin/settings`.
 
 ## Status at a glance
 
