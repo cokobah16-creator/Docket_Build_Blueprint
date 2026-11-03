@@ -100,6 +100,24 @@ export function whatsappHref(input: string | null | undefined): string | null {
 }
 
 /**
+ * A TIN as it is stored and printed. A TIN pasted from a letter or a PDF can carry an en dash for
+ * its hyphen, a no-break space, or a character nobody can see, and the invoice PDF's fonts draw
+ * none of them (src/lib/pdf.ts): so full-width forms become plain ones, every dash becomes "-",
+ * the invisible characters go, and a run of spaces becomes one. The digits are never touched.
+ */
+export function normaliseTin(raw: string): string {
+  return raw
+    .normalize("NFKC")
+    .replace(/[‐-―−﹘﹣－]/g, "-")
+    .replace(/[­​-‏‪-‮⁠-⁤⁦-⁩﻿]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** What a TIN may be written with once normaliseTin() has tidied it: letters, digits, spaces and hyphens. */
+export const TIN_CHARACTERS = /^[A-Za-z0-9 -]*$/;
+
+/**
  * Suit-number sanity check: registries differ, so this only enforces the
  * shape "segments separated by slashes, ending in a year" that every
  * Nigerian court uses (SC/CV/123/2026, CA/L/45/2026, FHC/L/CS/12/2026,

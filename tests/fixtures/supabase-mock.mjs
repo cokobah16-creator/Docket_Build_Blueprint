@@ -238,6 +238,9 @@ if (SCENARIO === "empty") {
 const RPC = {
   available_slots: [],
   invoice_settlement: { paystack_subaccount: "ACCT_x" },
+  // The fixture invoice charges VAT, so the client's invoice page renders its TIN sentence under
+  // the design check. A placeholder number, like the firm's RC number above.
+  invoice_issuer: { name: FIRM.name, legal_name: FIRM.legal_name, rc_number: FIRM.rc_number, tin: "00000000-0000" },
   firm_overview: TABLES.firm_overview[0],
   // A row, not a list. Returning [] here made `readiness.items` undefined and
   // the appointment screen threw before it drew anything.

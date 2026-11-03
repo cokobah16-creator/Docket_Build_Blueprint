@@ -8,6 +8,7 @@
 // here too: a legal instrument must never silently print "?" where a name was.
 
 import { PdfEncodingError, textPdf, winAnsiBytes, wrapText } from "../src/lib/pdf.ts";
+import { TIN_CHARACTERS, normaliseTin } from "../src/lib/nigeria.ts";
 
 let failures = 0;
 function check(name: string, ok: boolean, detail = "") {
@@ -55,6 +56,20 @@ const one = new TextDecoder("latin1").decode(textPdf([{ text: "Invoice", size: 1
 check("the file starts %PDF and ends %%EOF", one.startsWith("%PDF-1.4\n") && one.trimEnd().endsWith("%%EOF"));
 const startxref = Number(one.slice(one.lastIndexOf("startxref") + 9).trim().split("\n")[0]);
 check("startxref points at the xref table", one.slice(startxref, startxref + 4) === "xref", one.slice(startxref, startxref + 12));
+
+// 10. A TIN pasted from a letter, with a zero-width space, a non-breaking hyphen and a no-break
+// space in it, is one the fonts cannot draw. Tidied as the settings form saves it and the invoice
+// reads it (normaliseTin(), src/lib/nigeria.ts), it prints, and it passes the form's own test.
+const pasted = "\u200B12345678\u20110001\u00A0";
+const tidied = normaliseTin(pasted);
+check("a pasted TIN cannot be printed as it was typed", winAnsiBytes(`VAT charged under TIN ${pasted}.`).unprintable.length > 0);
+check("normaliseTin tidies it to plain characters", tidied === "12345678-0001", JSON.stringify(tidied));
+check("the tidied TIN prints", winAnsiBytes(`VAT charged under TIN ${tidied}.`).unprintable.length === 0);
+check("the tidied TIN passes the settings form's test", TIN_CHARACTERS.test(tidied));
+check("full-width digits and dashes become plain ones", normaliseTin("１２３４５６７８－０００１") === "12345678-0001",
+  JSON.stringify(normaliseTin("１２３４５６７８－０００１")));
+check("a run of spaces becomes one, and the ends are trimmed", normaliseTin("  1234\t 5678  ") === "1234 5678",
+  JSON.stringify(normaliseTin("  1234\t 5678  ")));
 
 if (failures > 0) { console.error(`\n${failures} check(s) failed`); Deno.exit(1); }
 console.log("\nthe PDF writer holds");

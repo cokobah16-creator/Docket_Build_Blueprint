@@ -267,6 +267,25 @@ Returns `jsonb` — the Paystack subaccount the checkout must route to, and the 
 Refuses:
 - `not permitted` *(42501)* — also what a missing invoice returns, so an id cannot be probed
 
+### `invoice_issuer(p_invoice uuid)`
+Returns `jsonb` — `name`, `legal_name` and `rc_number` as the firm entered them, and `tin` only
+when the invoice charges VAT (`vat_minor > 0`); every key is always present, and a blank field
+comes back as `null`. Migration 59. The client's invoice page and PDF print "VAT charged under
+TIN …" from it, because `firm_public` never carries the TIN (migration 51). It reads the firm
+whatever its status, so a suspended firm's client still sees who issued their invoices: the page
+and the PDF name the firm from here when `firm_public` has no row for it. The answer is the firm as
+it stands now, not a copy taken when the invoice was issued. The app calls it only for a VAT
+invoice, or when `firm_public` has no row for the firm.
+
+**Who:** exactly the callers `can_access_invoice()` admits — the invoice's own client (never on a
+draft), the firm's people within any matter wall, and a representative whose authority carries the
+money right. `99_invoice_issuer.sql` holds it to `invoices_select` for every caller and invoice in
+the suite. `anon` holds no execute grant, so it is refused with "permission denied for function
+invoice_issuer" before the function runs.
+
+Refuses:
+- `not permitted` *(42501)* — in the same words for an invoice that does not exist, so an id cannot be probed
+
 ### `fulfil_document_request(p_request uuid, p_document uuid)`
 Returns `void`. **Who:** a party to the matter, or firm staff who can see it (the wall applies).
 

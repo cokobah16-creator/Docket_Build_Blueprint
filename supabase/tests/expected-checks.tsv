@@ -35,8 +35,9 @@ tests/99_booking_consent.sql	41
 tests/99_calendar_feed.sql	35
 tests/99_collaboration.sql	49
 tests/99_court_registry.sql	154
-tests/99_delegation.sql	69
+tests/99_delegation.sql	71
 tests/99_document_text.sql	51
+tests/99_invoice_issuer.sql	31
 tests/99_legal_diary.sql	54
 tests/99_notifications.sql	47
 tests/99_onboarding_import.sql	73
