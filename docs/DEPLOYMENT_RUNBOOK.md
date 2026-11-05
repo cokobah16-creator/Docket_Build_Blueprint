@@ -865,6 +865,28 @@ select my_permissions(id) from firms limit 1;                                 --
 select tgname from pg_trigger where tgname like '%_permission_%' order by 1;  -- eight guards
 ```
 
+**63 goes before the app, and the dispatcher (v11) goes with it.** 63 adds the network tables, the
+outbox, the doors and four definer views (`network_directory`, `connected_firms`, `joint_matters`,
+`network_incoming`, plus `alliance_roster`). It **drops and re creates `propose_collaboration()`**
+with a trailing `p_role text = null`, so the deployed matter screen still resolves to it, and
+appends `role` to `collaboration_inbox`. It adds a CHECK to `matter_collaborations.role` and
+nothing else to existing rows. Deployed first, the app answers PGRST202 or 42P01 on `/firm/network`,
+`/network/join` and `/admin/network`, and everything else works as before.
+
+Deploy `dispatch-notifications` straight after 63. v11 renders the network events and drains
+`outbound_emails` through `claim_outbound_emails()` and `finish_outbound_email()`. The v10 that is
+live today ignores the outbox, so an invitation sent before v11 is deployed waits in the outbox
+(status `queued`) and is sent on v11's first run, inside its 72 hour expiry. `APP_URL` must be set
+on the function, or the email link is a bare path. To confirm afterwards:
+
+```sql
+select count(*) from jurisdictions;                                                  -- unchanged by 63
+select pg_get_function_identity_arguments('public.propose_collaboration'::regproc); -- ends with p_role text
+select has_table_privilege('authenticated', 'public.outbound_emails', 'select');    -- false
+select has_column_privilege('authenticated', 'public.network_invitations', 'code_hash', 'select'); -- false
+select status, count(*) from outbound_emails group by 1;                             -- after v11 runs: sent
+```
+
 **The hosted project's migration ledger is not the file names.** On 2 November 2026 its ledger
 (`list_migrations`) ended at `court_registry`, 49, so 50, 51, 52 and 59 were all still to apply.
 They were applied on 3 November (the release record below), and the ledger now ends at

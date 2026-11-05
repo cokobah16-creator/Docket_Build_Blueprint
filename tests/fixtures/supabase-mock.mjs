@@ -182,6 +182,32 @@ const TABLES = {
   ],
   firm_custom_roles: [],
   firm_member_permissions: [],
+  jurisdiction_practice_areas: [
+    { jurisdiction_code: "NG", key: "litigation", label: "Litigation", sort: 10 },
+    { jurisdiction_code: "NG", key: "corporate", label: "Corporate and commercial", sort: 20 },
+    { jurisdiction_code: "NG", key: "property", label: "Property and conveyancing", sort: 30 },
+  ],
+  // Docket Network (migration 63): the firm's own profile, one connected firm, one firm in the
+  // directory it has not met, one invitation out, one alliance, so every network screen draws a
+  // filled state rather than its empty one.
+  firm_network_profiles: [{ firm_id: FIRM_ID, visibility: "network", official_email: "chambers@example.test", website: "https://example.test", telephone: "+2341000000", office_address: "12 Broad Street, Lagos", registration_details: null, country_code: "NG", region: "Lagos", city: "Lagos", practice_areas: ["litigation", "property"], jurisdictions: ["NG"], languages: ["English", "Yoruba"], specialisms: ["Admiralty"], description: "A litigation and property practice in Lagos.", accepts_referrals: true, accepts_joint_matters: true, accepts_introductions: true, share_contacts: true, updated_at: past }],
+  network_directory: [
+    { firm_id: "44444444-4444-4444-8444-444444444441", name: "Thames Counsel", legal_name: null, jurisdiction_code: "GB", country_code: "GB", region: null, city: "London", website: null, practice_areas: ["litigation"], jurisdictions: ["GB"], languages: ["English"], specialisms: ["Shipping"], description: "Commercial litigation in London.", accepts_referrals: true, accepts_joint_matters: true, accepts_introductions: true, verified: true, connected: true, mine: false },
+    { firm_id: "44444444-4444-4444-8444-444444444442", name: "Accra Partners", legal_name: null, jurisdiction_code: "GH", country_code: "GH", region: null, city: "Accra", website: null, practice_areas: ["property"], jurisdictions: ["GH"], languages: ["English"], specialisms: [], description: null, accepts_referrals: true, accepts_joint_matters: false, accepts_introductions: true, verified: true, connected: false, mine: false },
+  ],
+  connected_firms: [{ connection_id: "45454545-0000-4000-8000-000000000001", status: "active", connected_at: past, suspended_at: null, suspended_by_firm_id: null, suspend_reason: null, ended_at: null, ended_by_firm_id: null, end_reason: null, reviewed_at: null, my_firm_id: FIRM_ID, other_firm_id: "44444444-4444-4444-8444-444444444441", other_firm_name: "Thames Counsel", other_legal_name: null, other_jurisdiction_code: "GB", country_code: "GB", region: null, city: "London", website: null, practice_areas: ["litigation"], jurisdictions: ["GB"], languages: ["English"], specialisms: ["Shipping"], description: "Commercial litigation in London.", official_email: "partners@thames.test", telephone: null, office_address: null, contacts: [{ name: "J. Harper", title: "Owner", email: null }], my_settings: { share_contacts: true, allow_joint_matters: true, allow_referrals: true, allow_introductions: true }, their_settings: { share_contacts: true, allow_joint_matters: true, allow_referrals: true, allow_introductions: true } }],
+  network_invitations: [{ id: "46464646-0000-4000-8000-000000000001", from_firm_id: FIRM_ID, to_email: "partners@accra.test", from_firm_name: FIRM.name, from_country: "NG", from_practice_areas: ["litigation"], from_representative: "B. Okafor", reason: "We have a land matter in Accra and need local counsel.", status: "pending", code_expires_at: far, attempts: 1, max_attempts: 5, resends: 0, max_resends: 3, last_sent_at: past, verified_at: null, verified_by: null, accepted_at: null, accepted_by: null, accepted_firm_id: null, connection_id: null, declined_at: null, decline_reason: null, revoked_at: null, created_by: USER_ID, created_at: past }],
+  network_incoming: [],
+  joint_matters: [],
+  network_introductions: [],
+  collaboration_tasks: [],
+  firm_alliances: [{ id: "47474747-0000-4000-8000-000000000001", name: "West Africa Shipping Group", founded_by_firm_id: FIRM_ID, practice_areas: ["litigation"], jurisdictions: ["NG", "GB"], referral_procedure: "Referrals go to the member in the client's jurisdiction.", preferences: {}, status: "active", starts_on: past.slice(0, 10), renews_on: null, terminated_at: null, terminated_by_firm_id: null, termination_reason: null, created_by: USER_ID, created_at: past }],
+  alliance_members: [{ alliance_id: "47474747-0000-4000-8000-000000000001", firm_id: FIRM_ID, role: "founder", status: "accepted", contact_user_id: null, invited_at: past, responded_at: past, responded_by: USER_ID }],
+  alliance_roster: [
+    { alliance_id: "47474747-0000-4000-8000-000000000001", firm_id: FIRM_ID, firm_name: FIRM.name, jurisdiction_code: "NG", role: "founder", status: "accepted", invited_at: past, responded_at: past },
+    { alliance_id: "47474747-0000-4000-8000-000000000001", firm_id: "44444444-4444-4444-8444-444444444441", firm_name: "Thames Counsel", jurisdiction_code: "GB", role: "member", status: "accepted", invited_at: past, responded_at: past },
+  ],
+  alliance_notes: [{ id: "48484848-0000-4000-8000-000000000001", alliance_id: "47474747-0000-4000-8000-000000000001", firm_id: "44444444-4444-4444-8444-444444444441", author_id: null, visibility: "shared", body: "Our shipping partner is the contact for London.", created_at: past }],
   profiles: [{ id: USER_ID, full_name: ROLE === "staff" ? "B. Okafor" : "Adaeze Okonkwo", phone: "+2348034110982", email: "adaeze.o@example.test", timezone: "Africa/Lagos", preferred_channel: "sms", quiet_hours_start: "21:30:00", quiet_hours_end: "06:30:00", client_type: "individual", company_name: null }],
   firm_members: [{ firm_id: FIRM_ID, user_id: USER_ID, role: "lawyer" }, { firm_id: FIRM_ID_2, user_id: USER_ID, role: "lawyer" }],
   firms: [FIRM, FIRM_2],
@@ -255,6 +281,8 @@ const RPC = {
   // What the signed-in member may do (migration 62). Everything, so every control the console can
   // offer is drawn and measured.
   my_permissions: PERMISSION_KEYS,
+  network_overview: { connected: 1, in_review: 0, suspended: 0, outgoing_open: 1, incoming_to_answer: 0, joint_matters: 0, work_from_others: 0, collaborations_to_answer: 0, open_tasks_for_us: 0, approaches_to_answer: 0, approaches_open: 0, alliances_active: 1, alliances_to_answer: 0, profile_published: true, verified: true },
+  connections_in_review: [{ connection_id: "45454545-0000-4000-8000-000000000002", connected_at: past, invited_email: "managing.partner@gmail.test", verified_by_email: "owner@accra.test", inviting_firm_id: FIRM_ID, inviting_firm_name: FIRM.name, reason: "We would like to connect for Ghana referrals.", answering_firm_id: "44444444-4444-4444-8444-444444444442", answering_firm_name: "Accra Partners", answering_legal_name: null, answering_jurisdiction: "GH", answering_official_email: "partners@accrapartners.test", answering_website: null, answering_custom_domain: null }],
   jurisdiction_coverage: [{ code: "NG", name: "Nigeria", status: "active", firms: 2, practice_areas: 14 }, { code: "GB", name: "United Kingdom", status: "designed", firms: 0, practice_areas: 14 }],
   invoice_settlement: { paystack_subaccount: "ACCT_x" },
   // The fixture invoice charges VAT, so the client's invoice page renders its TIN sentence under

@@ -27,7 +27,7 @@ export default async function NetworkJoinPage({ searchParams }: { searchParams: 
 
   const frame = (children: React.ReactNode) => (
     <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center px-4 py-12">
-      <p className="text-13 font-semibold uppercase tracking-wide text-brand-accent">Docket Network</p>
+      <p className="text-13 font-semibold uppercase tracking-wide text-ink-muted">Docket Network</p>
       <h1 className="mt-1 font-heading text-26 font-semibold text-brand">A firm has invited yours to connect</h1>
       <div className="mt-6">{children}</div>
     </main>

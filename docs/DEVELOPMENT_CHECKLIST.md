@@ -20,14 +20,14 @@ Legend: COMPLETE · PARTIAL · PLANNED · DESIGNED · NOT STARTED
 | Trust and client money | DESIGNED | DESIGNED | DESIGNED | n/a | n/a | CLIENT_MONEY_DESIGN.md awaits the accounting adviser |
 | Court diary, hearings, deadlines | COMPLETE | COMPLETE | COMPLETE | Calendar feed (ICS) | SQL 99_legal_diary, 99_calendar_feed | OAuth calendar connectors are designed in CONNECTORS_DESIGN.md |
 | Service of process | COMPLETE | COMPLETE | COMPLETE | n/a | SQL 40 | none |
-| Matter scoped collaboration (migration 45) | COMPLETE | COMPLETE | COMPLETE | n/a | SQL 99_collaboration | Roles, shared tasks (Phase 3) |
-| Docket Network: firm profiles and directory | NOT STARTED | NOT STARTED | NOT STARTED | n/a | n/a | Phase 3 |
-| Docket Network: email invitations with verification codes | NOT STARTED | NOT STARTED | NOT STARTED | Email via dispatcher outbox | n/a | Phase 3 |
-| Docket Network: connections, suspend, end | NOT STARTED | NOT STARTED | NOT STARTED | n/a | n/a | Phase 3 |
-| Joint Matters with roles and shared tasks | NOT STARTED | NOT STARTED | NOT STARTED | n/a | n/a | Phase 3 |
-| Introductions and referral requests | NOT STARTED | NOT STARTED | NOT STARTED | n/a | n/a | Phase 3 |
-| Docket Alliance | NOT STARTED | NOT STARTED | NOT STARTED | n/a | n/a | Phase 3 |
-| Network dashboard | NOT STARTED | NOT STARTED | NOT STARTED | n/a | n/a | Phase 3 |
+| Matter scoped collaboration (migration 45) | COMPLETE | COMPLETE | COMPLETE | n/a | SQL 99_collaboration, 99_network | none |
+| Docket Network: firm profiles and directory | COMPLETE (/firm/network/profile, /firm/network/discover) | COMPLETE | COMPLETE | n/a | SQL 99_network, design lint | none |
+| Docket Network: email invitations with verification codes | COMPLETE (/firm/network, /network/join) | COMPLETE | COMPLETE | PARTIAL: dispatcher v11 sends through Resend; not yet deployed, and Deno is not type checked here | SQL 99_network | Deploy 63 and dispatcher v11 to the Docket project |
+| Docket Network: connections, suspend, end, review | COMPLETE (/firm/network, /admin/network) | COMPLETE | COMPLETE | n/a | SQL 99_network | none |
+| Joint Matters with roles and shared tasks | COMPLETE (matter page, /firm/collaborations) | COMPLETE | COMPLETE | n/a | SQL 99_network | none |
+| Introductions and referral requests | COMPLETE (/firm/network/discover, /firm/network) | COMPLETE | COMPLETE | n/a | SQL 99_network | none |
+| Docket Alliance | COMPLETE (/firm/network/alliances) | COMPLETE | COMPLETE | n/a | SQL 99_network | none |
+| Network dashboard | COMPLETE (/firm/network) | COMPLETE | COMPLETE | n/a | SQL 99_network, design lint | none |
 | DOCKET AI: provider layer, settings, usage | NOT STARTED | NOT STARTED | NOT STARTED | Anthropic, OpenAI compatible, Voyage | n/a | Phase 4; provider keys set by the operator |
 | DOCKET AI: embeddings and retrieval | NOT STARTED | NOT STARTED | NOT STARTED | Edge Function embed-documents | n/a | Phase 4; pgvector on the project |
 | DOCKET AI: assistant with citations and actions | NOT STARTED | NOT STARTED | NOT STARTED | n/a | n/a | Phase 4 |

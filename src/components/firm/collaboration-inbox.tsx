@@ -10,10 +10,13 @@ import { Button } from "@/components/ui/button";
 import { formatDay } from "@/lib/days";
 import { KIND_LABEL } from "@/lib/collaboration-copy";
 import { endCollaboration, postCollaborationNote, respondToCollaboration } from "@/lib/actions/collaboration";
-import type { CollaborationInboxRow, CollaborationNoteRow } from "@/lib/db/types";
+import { CollaborationTasks } from "@/components/firm/collaboration-tasks";
+import type { CollaborationInboxRow, CollaborationNoteRow, CollaborationTaskRow } from "@/lib/db/types";
 
-export function CollaborationInbox({ rows, notes, firmId, today, side }: {
+export function CollaborationInbox({ rows, notes, firmId, today, side, tasks = [] }: {
   rows: CollaborationInboxRow[];
+  /** Shared tasks on these arrangements (migration 63). */
+  tasks?: CollaborationTaskRow[];
   notes: CollaborationNoteRow[];
   /** The firm reading this screen, so a note can be labelled "us" or "them". */
   firmId: string;
@@ -137,6 +140,18 @@ export function CollaborationInbox({ rows, notes, firmId, today, side }: {
                     <Button type="submit" size="sm" disabled={busy === `note:${r.id}` || draft.trim().length === 0}>Send</Button>
                   </form>
                 </div>
+              )}
+
+              {r.accepted_at && (
+                <CollaborationTasks
+                  collaborationId={r.id}
+                  myFirmId={firmId}
+                  otherFirmId={side === "receiving" ? r.from_firm_id : r.with_firm_id}
+                  otherFirmName={side === "receiving" ? r.from_firm_name : "The other firm"}
+                  tasks={tasks.filter((t) => t.collaboration_id === r.id)}
+                  live={live(r)}
+                  today={today}
+                />
               )}
             </li>
           );

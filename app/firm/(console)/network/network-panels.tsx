@@ -186,7 +186,7 @@ export function NetworkPanels({
                 <div key={i.id} className="rounded-lg border border-hairline bg-raised p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="break-all font-medium text-ink">{i.to_email}</p>
+                      <p className="break-all text-15 font-medium text-ink">{i.to_email}</p>
                       <p className="text-13 text-ink-muted">sent {formatWhen(i.created_at, timezone)}{i.resends > 0 ? ` · resent ${i.resends} of ${i.max_resends}` : ""} · code expires {formatWhen(i.code_expires_at, timezone)}{i.attempts > 0 ? ` · ${i.attempts} wrong ${i.attempts === 1 ? "attempt" : "attempts"}` : ""}</p>
                     </div>
                     <Badge tone={STATUS_TONE[i.status] ?? "quiet"} icon={i.status === "verified" ? "check" : "clock"}>{INVITATION_STATUS_LABEL[i.status] ?? i.status}</Badge>
@@ -319,7 +319,7 @@ function ConnectionCard({
     <div className="rounded-lg border border-hairline bg-raised p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="font-medium text-ink">{c.other_firm_name}{c.other_legal_name && c.other_legal_name !== c.other_firm_name ? ` (${c.other_legal_name})` : ""}</p>
+          <p className="text-15 font-medium text-ink">{c.other_firm_name}{c.other_legal_name && c.other_legal_name !== c.other_firm_name ? ` (${c.other_legal_name})` : ""}</p>
           <p className="text-13 text-ink-muted">
             {[c.city, c.region, c.country_code ?? c.other_jurisdiction_code].filter(Boolean).join(", ")} · connected {formatWhen(c.connected_at, timezone)}
           </p>

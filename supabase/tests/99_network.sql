@@ -389,6 +389,15 @@ begin
     and t_fails(format($q$select propose_alliance(%L, 'Ghana and Nigeria Group', array[%L]::uuid[])$q$, c, a), 'connected to'));
   perform t_check('and neither firm can activate it', t_fails(format($q$select set_connection_status(%L, %L, 'active')$q$, conn, c), 'in review'));
   perform t_reset();
+  perform t_as((select v from fx where k = 'c_owner'));
+  perform t_check('a firm cannot read the review queue', not exists (select 1 from connections_in_review()));
+  perform t_reset();
+  perform t_as((select v from fx where k = 'platform'));
+  perform t_check('the platform reads the queue with the address to check',
+    (select invited_email = 'managing.partner@gmail.test' and inviting_firm_name = 'Lagos Chambers' and answering_firm_name = 'Accra Partners'
+            and answering_official_email = 'partners@accrapartners.test'
+       from connections_in_review() where connection_id = conn));
+  perform t_reset();
   perform t_as((select v from fx where k = 'a_owner'));
   perform t_check('nor the platform without a second factor',
     (select t_refused(format($q$select review_connection(%L, true, 'checked')$q$, conn), '42501') from (select t_as((select v from fx where k = 'platform'), 'aal1')) x));
@@ -431,6 +440,9 @@ begin
   perform t_as((select v from fx where k = 'c_owner'));
   perform t_check('the invited firm sees the proposal and not the other firm''s internal note',
     exists (select 1 from firm_alliances where id = al) and not exists (select 1 from alliance_notes where id = note));
+  perform t_check('and reads who is in it by name',
+    (select count(*) from alliance_roster where alliance_id = al) = 2
+    and (select firm_name = 'Lagos Chambers' and role = 'founder' from alliance_roster where alliance_id = al and firm_id = a));
   perform respond_alliance(al, c, true);
   perform t_check('two accepted firms make it active', (select status = 'active' and starts_on is not null from firm_alliances where id = al));
   perform post_alliance_note(al, c, 'shared', 'Agreed. Our property partner is the contact for Accra.');
@@ -444,7 +456,9 @@ begin
   perform t_check('any member may terminate it for everybody', (select status = 'terminated' and terminated_by_firm_id = a from firm_alliances where id = al));
   perform t_reset();
   perform t_as((select v from fx where k = 'b_owner'));
-  perform t_check('a firm outside the alliance reads nothing of it', not exists (select 1 from firm_alliances where id = al) and not exists (select 1 from alliance_notes where alliance_id = al));
+  perform t_check('a firm outside the alliance reads nothing of it',
+    not exists (select 1 from firm_alliances where id = al) and not exists (select 1 from alliance_notes where alliance_id = al)
+    and not exists (select 1 from alliance_roster where alliance_id = al));
   perform t_reset();
 end $$;
 

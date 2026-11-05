@@ -4,7 +4,7 @@
 
 This repository is the platform: the multi-tenant Postgres schema and row-level security, the server-side business flows (firm creation, booking, payment cascade, court updates, consultation notes, service of process, invites, jobs), the Nigerian reference data (states, courts, holidays), the provider adapters, the payment webhooks, the notification dispatcher, the Next.js app (tenant public sites, client PWA, staff console, platform admin), Klinique's seed data, and test suites that prove isolation between firms and between clients.
 
-**Validated:** all 59 migrations, the seed and 36 SQL suites (1,688 checks) run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`; every server function is catalogued in `docs/RPC_REFERENCE.md`.
+**Validated:** all 59 migrations, the seed and 36 SQL suites (1,691 checks) run clean on PostgreSQL 16. The onboarding runbook is `docs/ONBOARDING_A_FIRM.md`; every server function is catalogued in `docs/RPC_REFERENCE.md`.
 
 ## Any firm, the same way
 
@@ -55,6 +55,9 @@ supabase/
     20260910000062_permissions.sql             titles, custom roles and granular permissions resolved by member_permissions(); trigger guards on matters,
                                                matter_lawyers, invoices, documents, matter_collaborations, staff_invites and firms; readonly and external
                                                refused by staff_w(); external walled to its matter teams
+    20260910000063_network.sql                 Docket Network: profiles and directory, verified connections, email invitations with a hashed, salted,
+                                               expiring, single use code, the outbound_emails outbox, roles and shared tasks on joint matters,
+                                               introductions, alliances, the platform review queue and network_overview()
   seed.sql                           Attorneys Klinique: brand, policies, 14 services, intake form — then seed_firm_defaults()
   functions/
     paystack-webhook/                HMAC-verified, re-verified with Paystack, then record_payment()
@@ -159,6 +162,7 @@ Each suite ends with `NOTICE:  ALL CHECKS PASSED` (1,499 `PASS` lines across 33 
 - **Views are read-only and API roles cannot TRUNCATE.** Every new definer view must have insert/update/delete revoked (migration 14 shows how).
 - **Lifecycle columns are the platform's.** `firms.status`, `plan` and `verified_at` change only through a platform admin (trigger); `lawyer_profiles.scn_verified_at` likewise.
 - **A firm registers only under an active jurisdiction**, and a jurisdiction is activated only after a recorded validation (`set_jurisdiction_status()`, migration 61). `firms.jurisdiction_code` is set at registration and moved only by the platform. Nothing assumes one country's law applies in another: Nigeria is the only active jurisdiction because it is the only one built and reviewed.
+- **A network code proves an email and grants nothing.** The code and the link token are stored as hashes (the code's salted) and the clear text exists only in the `outbound_emails` row, which no API role can read and the dispatcher alone drains. A connection shares no matter: work is brought in one arrangement and one named document version at a time, and ending a connection ends every live arrangement between the two firms (migration 63).
 - **The four tiers stay the security tiers; permissions narrow them.** `readonly` and `external` are refused by `staff_w()`; `external` reads only the matters it is put on. A per member grant or denial wins over a custom role, which wins over the tier's defaults, and an owner always holds everything (`member_permissions()`, migration 62). Permissions are enforced by triggers on the tables, so an RPC and a direct write meet the same rule; a screen only declines to offer what the database would refuse.
 
 ## Server functions (RPC)

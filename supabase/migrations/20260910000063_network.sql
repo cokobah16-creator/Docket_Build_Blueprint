@@ -609,6 +609,32 @@ end $$;
 revoke execute on function public.review_connection(uuid, boolean, text) from public, anon;
 grant  execute on function public.review_connection(uuid, boolean, text) to authenticated;
 
+/**
+ * The platform's review queue: every connection in review, with what a reviewer checks the
+ * invited address against. Names the firms, so it is for a platform admin alone; anybody else
+ * gets no rows, the way jurisdiction_coverage() answers.
+ */
+create or replace function public.connections_in_review()
+returns table (connection_id uuid, connected_at timestamptz, invited_email text, verified_by_email text,
+               inviting_firm_id uuid, inviting_firm_name text, reason text,
+               answering_firm_id uuid, answering_firm_name text, answering_legal_name text, answering_jurisdiction text,
+               answering_official_email text, answering_website text, answering_custom_domain text)
+language sql stable security definer set search_path = public as $$
+  select c.id, c.connected_at, i.to_email, vp.email,
+         i.from_firm_id, i.from_firm_name, i.reason,
+         f.id, f.name, f.legal_name, f.jurisdiction_code,
+         np.official_email, np.website, f.custom_domain
+    from firm_connections c
+    join network_invitations i on i.id = c.invitation_id
+    join firms f on f.id = i.accepted_firm_id
+    left join firm_network_profiles np on np.firm_id = f.id
+    left join profiles vp on vp.id = i.verified_by
+   where c.status = 'review' and is_platform_admin()
+   order by c.connected_at
+$$;
+revoke execute on function public.connections_in_review() from public, anon;
+grant  execute on function public.connections_in_review() to authenticated;
+
 /** Which side of a connection the caller's firm is: 'a', 'b', or null. */
 create or replace function public.connection_side(p_connection uuid, p_firm uuid) returns text
 language sql stable security definer set search_path = public as $$
@@ -1074,6 +1100,17 @@ revoke insert, update, delete, truncate, references, trigger on public.firm_alli
 grant select on public.firm_alliances, public.alliance_members, public.alliance_notes to authenticated;
 create trigger firm_alliances_audit after insert or update or delete on public.firm_alliances for each row execute function public.audit_row_change();
 create trigger alliance_notes_audit after insert or update or delete on public.alliance_notes for each row execute function public.audit_row_change();
+
+-- Who is in an alliance, by name, for the firms in it. A member firm may never have connected to
+-- every other member, so the names come from here rather than from connected_firms.
+create view public.alliance_roster with (security_invoker = false) as
+  select am.alliance_id, am.firm_id, f.name as firm_name, f.jurisdiction_code, am.role, am.status, am.invited_at, am.responded_at
+    from alliance_members am
+    join firms f on f.id = am.firm_id
+   where alliance_member_firm(am.alliance_id);
+revoke all on public.alliance_roster from anon;
+grant select on public.alliance_roster to authenticated;
+revoke insert, update, delete, truncate, references, trigger on public.alliance_roster from anon, authenticated;
 
 /** Propose a standing relationship to firms you are connected to. The founder is in; the rest are asked. */
 create or replace function public.propose_alliance(

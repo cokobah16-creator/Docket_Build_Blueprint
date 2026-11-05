@@ -1991,3 +1991,33 @@ export interface NetworkOverview {
   profile_published: boolean;
   verified: boolean;
 }
+
+/** Row of alliance_roster: a firm in an alliance, by name, read by the alliance's own members. */
+export interface AllianceRosterRow {
+  alliance_id: string;
+  firm_id: string;
+  firm_name: string;
+  jurisdiction_code: string;
+  role: "founder" | "member";
+  status: "invited" | "accepted" | "declined" | "left";
+  invited_at: string;
+  responded_at: string | null;
+}
+
+/** connections_in_review(): the platform's queue, with what a reviewer checks the invited address against. */
+export interface ConnectionInReviewRow {
+  connection_id: string;
+  connected_at: string;
+  invited_email: string;
+  verified_by_email: string | null;
+  inviting_firm_id: string;
+  inviting_firm_name: string;
+  reason: string;
+  answering_firm_id: string;
+  answering_firm_name: string;
+  answering_legal_name: string | null;
+  answering_jurisdiction: string;
+  answering_official_email: string | null;
+  answering_website: string | null;
+  answering_custom_domain: string | null;
+}

@@ -12,7 +12,7 @@ import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { requestedFirmId, staffContext } from "@/lib/firm-data";
 import { todayIn } from "@/lib/days";
 import { CollaborationInbox } from "@/components/firm/collaboration-inbox";
-import type { CollaborationInboxRow, CollaborationNoteRow } from "@/lib/db/types";
+import type { CollaborationInboxRow, CollaborationNoteRow, CollaborationTaskRow } from "@/lib/db/types";
 
 export const metadata = { title: "Work from other firms" };
 
@@ -39,6 +39,11 @@ export default async function FirmCollaborations({ searchParams }: { searchParam
     ? await supabase.from("collaboration_notes").select("*").in("collaboration_id", ids).order("created_at", { ascending: true }).limit(500)
     : { data: [] };
   const notes = (noteRows ?? []) as CollaborationNoteRow[];
+  // collaboration_tasks_select admits both firms on a live arrangement, so this is the receiving side's own read.
+  const { data: taskRows } = ids.length
+    ? await supabase.from("collaboration_tasks").select("*").in("collaboration_id", ids).order("created_at", { ascending: true }).limit(500)
+    : { data: [] };
+  const tasks = (taskRows ?? []) as CollaborationTaskRow[];
 
   const awaiting = rows.filter((r) => !r.accepted_at && !r.declined_at && !r.ended_at);
   const live = rows.filter((r) => r.accepted_at && !r.ended_at && (!r.ends_on || r.ends_on >= todayIn(tz)));
@@ -66,19 +71,19 @@ export default async function FirmCollaborations({ searchParams }: { searchParam
           {awaiting.length > 0 && (
             <Card>
               <CardHeader title={`Waiting on your answer (${awaiting.length})`} />
-              <CollaborationInbox rows={awaiting} notes={notes} firmId={firmId} today={todayIn(tz)} side="receiving" />
+              <CollaborationInbox rows={awaiting} notes={notes} firmId={firmId} today={todayIn(tz)} side="receiving" tasks={tasks} />
             </Card>
           )}
           {live.length > 0 && (
             <Card>
               <CardHeader title={`On your desk (${live.length})`} />
-              <CollaborationInbox rows={live} notes={notes} firmId={firmId} today={todayIn(tz)} side="receiving" />
+              <CollaborationInbox rows={live} notes={notes} firmId={firmId} today={todayIn(tz)} side="receiving" tasks={tasks} />
             </Card>
           )}
           {over.length > 0 && (
             <Card>
               <CardHeader title="Finished, declined and expired" />
-              <CollaborationInbox rows={over} notes={notes} firmId={firmId} today={todayIn(tz)} side="receiving" />
+              <CollaborationInbox rows={over} notes={notes} firmId={firmId} today={todayIn(tz)} side="receiving" tasks={tasks} />
             </Card>
           )}
         </>

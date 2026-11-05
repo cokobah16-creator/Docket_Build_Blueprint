@@ -262,6 +262,11 @@ const ROUTES = [
   R("staff-availability", "/firm/availability", true),
   R("staff-uploads", "/firm/uploads", true),
   R("staff-collaborations", "/firm/collaborations", true),
+  R("staff-network", "/firm/network", true),
+  R("staff-network-profile", "/firm/network/profile", true),
+  R("staff-network-discover", "/firm/network/discover", true),
+  R("staff-network-alliances", "/firm/network/alliances", true),
+  R("network-join", `/network/join?token=${"ab".repeat(32)}`, true),
   R("staff-search", "/firm/search", true),
   R("staff-me", "/firm/me", true),
   R("staff-admin", "/firm/admin", true),
@@ -284,6 +289,7 @@ const ROUTES = [
   R("admin-registries", "/admin/registries", true),
   R("admin-workflow", "/admin/workflow", true),
   R("admin-jurisdictions", "/admin/jurisdictions", true),
+  R("admin-network", "/admin/network", true),
 ];
 
 const selected = ROUTES.filter((r) => !ONLY || r.name.includes(ONLY));

@@ -15,15 +15,18 @@ import { COLLABORATION_ROLES, ROLE_LABEL } from "@/lib/network-copy";
 import {
   endCollaboration, proposeCollaboration, shareDocumentWithCollaborator, withdrawSharedDocument,
 } from "@/lib/actions/collaboration";
-import type { CollaborationDocumentRow, CollaborationRow } from "@/lib/db/types";
+import { CollaborationTasks } from "@/components/firm/collaboration-tasks";
+import type { CollaborationDocumentRow, CollaborationRow, CollaborationTaskRow } from "@/lib/db/types";
 
 const field =
   "mt-1 block w-full min-h-11 rounded-lg border border-edge px-3 text-base text-ink focus:border-[#141414] focus:outline focus:outline-2 focus:outline-[#141414]";
 
 export function CollaborationPanel({
-  matterId, rows, shared, firms, documents, firmNames, today,
+  matterId, rows, shared, firms, documents, firmNames, today, tasks = [],
 }: {
   matterId: string;
+  /** Shared tasks on these arrangements (migration 63). */
+  tasks?: CollaborationTaskRow[];
   rows: CollaborationRow[];
   shared: CollaborationDocumentRow[];
   /** Firms on Docket, from the service directory. */
@@ -212,6 +215,18 @@ export function CollaborationPanel({
                     <Button size="sm" disabled={busy === r.id || !pick[r.id]} onClick={() => void share(r.id)}>Share it</Button>
                     <Button size="sm" variant="ghost" disabled={busy === r.id} onClick={() => void finish(r.id)}>End this</Button>
                   </div>
+                )}
+
+                {r.accepted_at && (
+                  <CollaborationTasks
+                    collaborationId={r.id}
+                    myFirmId={r.firm_id}
+                    otherFirmId={r.with_firm_id}
+                    otherFirmName={firmNames[r.with_firm_id] ?? "The other firm"}
+                    tasks={tasks.filter((t) => t.collaboration_id === r.id)}
+                    live={live(r)}
+                    today={today}
+                  />
                 )}
               </li>
             );

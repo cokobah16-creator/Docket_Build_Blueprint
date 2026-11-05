@@ -40,7 +40,7 @@ tests/99_document_text.sql	51
 tests/99_invoice_issuer.sql	31
 tests/99_jurisdictions.sql	42
 tests/99_legal_diary.sql	54
-tests/99_network.sql	87
+tests/99_network.sql	90
 tests/99_notifications.sql	47
 tests/99_onboarding_import.sql	73
 tests/99_partner_api.sql	56

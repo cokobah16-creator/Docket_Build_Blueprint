@@ -41,7 +41,7 @@ import type {
 } from "@/lib/db/types";
 import type {
   DocumentRow, DocumentSignatureRow, DocumentTemplateRow, DocumentVersionRow, MatterCounselRow, MatterStatus, MessageRow,
-  ServiceDirectoryRow, TaskRow, CollaborationRow, CollaborationDocumentRow,
+  ServiceDirectoryRow, TaskRow, CollaborationRow, CollaborationDocumentRow, CollaborationTaskRow,
 } from "@/lib/db/types";
 import { CollaborationPanel } from "@/components/firm/collaboration-panel";
 import { LedgerPanel, LedgerRow } from "@/components/shell/workspace";
@@ -688,9 +688,12 @@ async function WorkingWithSection({ ctx, matter }: { ctx: StaffContext; matter: 
   ]);
   const collaborations = (collabRows ?? []) as CollaborationRow[];
   const ids = collaborations.map((c) => c.id);
-  const { data: sharedRows } = ids.length
-    ? await ctx.supabase.from("collaboration_documents").select("*").in("collaboration_id", ids).limit(500)
-    : { data: [] };
+  const [{ data: sharedRows }, { data: taskRows }] = ids.length
+    ? await Promise.all([
+        ctx.supabase.from("collaboration_documents").select("*").in("collaboration_id", ids).limit(500),
+        ctx.supabase.from("collaboration_tasks").select("*").in("collaboration_id", ids).order("created_at", { ascending: true }).limit(500),
+      ])
+    : [{ data: [] }, { data: [] }];
 
   const firms = ((directoryRows ?? []) as Array<{ id: string; name: string }>).filter((f) => f.id !== ctx.firmId);
   const firmNames: Record<string, string> = {};
@@ -713,6 +716,7 @@ async function WorkingWithSection({ ctx, matter }: { ctx: StaffContext; matter: 
       documents={documents}
       firmNames={firmNames}
       today={todayIn(ctx.timezone)}
+      tasks={(taskRows ?? []) as CollaborationTaskRow[]}
     />
   );
 }

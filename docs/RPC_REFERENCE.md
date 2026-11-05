@@ -1315,3 +1315,80 @@ As before, carrying `staff_invites.title` onto the membership and returning it.
 **Tables with no RPC.** `jurisdictions` and `jurisdiction_practice_areas` are readable by `anon`
 and written by the two platform doors only. `firm_custom_roles` and `firm_member_permissions` are
 readable by the firm's members and written by their doors only.
+
+## Docket Network (migration 63)
+
+**Gates.** Every network door asks `staff_w(firm)` and the `invite_firms` permission at that firm,
+and a firm must be verified by Docket (`firm_is_verified()`: active and `verified_at` set) before it
+invites, connects, approaches or proposes an alliance. `leave_or_terminate_alliance()` asks
+`admin_w`. `upsert_network_profile()` asks `admin_w` and `manage_settings`. The platform doors ask
+`is_platform_admin()` and `mfa_ok()`.
+
+### `upsert_network_profile(p_firm uuid, p_profile jsonb)` · `admin_w` and `manage_settings`
+Writes the firm's one profile. Visibility is `network`, `connections` or `private`. Contact details
+reach a connected firm only while `share_contacts` is on, and never the directory.
+
+### `invite_firm(p_firm uuid, p_to_email text, p_reason text, p_representative text = null) → jsonb`
+Returns `{invitation_id, expires_at, to_email}` and no secret. Mints an eight character code from
+`ABCDEFGHJKLMNPQRSTUVWXYZ23456789` and a 64 character link token, stores the token's hash and the
+code's salted hash, and writes the clear text into one `outbound_emails` row and nowhere else.
+Refuses an unverified firm, a reason under ten characters, a member of your own firm, an address
+with an open invitation from you, and a twenty first invitation in a day.
+
+### `resend_network_invitation(p_id uuid) → jsonb` · `revoke_network_invitation(p_id uuid, p_reason text = null)`
+A resend mints a fresh salt, code and token, resets the attempts and the 72 hour expiry, and kills
+the old link. Three resends at most. A revoke works on a pending or verified invitation.
+
+### `verify_network_invitation(p_token text, p_code text) → jsonb` · authenticated
+Returns `{status: 'verified', from_firm_name, reason, ...}`, `{status: 'wrong_code', attempts_left}`
+or `{status: 'locked', attempts_left: 0}`. A wrong code is an answer and not an error, so the count
+it writes is kept. Raises for a link that is not valid, an expired code, or a code already entered
+by somebody else. Grants nothing.
+
+### `respond_network_invitation(p_id uuid, p_firm uuid, p_accept boolean, p_reason text = null) → jsonb`
+The firm whose member entered the code answers, within fourteen days. Accepting creates the
+connection, `active` where the invited domain matches the firm's profile, a member's email or its
+custom domain, otherwise `review`. Returns `{status, connection_id}`. Refuses two firms that are
+already connected, or whose connection is suspended.
+
+### `set_connection_status(p_id uuid, p_firm uuid, p_status text, p_reason text = null)` · `set_connection_settings(p_id, p_firm, p_settings jsonb)`
+`suspended` stops new work; only the firm that suspended may lift it. `ended` is final and ends
+every live `matter_collaborations` row between the two firms in the same statement, with the count
+in both firms' notifications. A connection in review cannot be activated by either firm.
+
+### `review_connection(p_id uuid, p_approve boolean, p_note text = null)` · platform admin (MFA)
+### `connections_in_review()` · platform admin
+The queue, with the invited address, who entered the code, and the answering firm's official email,
+website and custom domain. Any other caller gets no rows.
+
+### `propose_collaboration(… , p_role text = null)` · as migration 45, plus
+The role is one of `lead_counsel`, `supporting_counsel`, `local_counsel`, `foreign_counsel`,
+`co_counsel`, `specialist_consultant`. Refused while the two firms' connection is suspended, ended
+or in review. Two firms with no connection at all may still collaborate, as before.
+
+### `create_collaboration_task(p_collaboration, p_assigned_firm, p_title, p_detail = null, p_due_on = null) → uuid` · `close_collaboration_task(p_id, p_status = 'done')`
+Either firm on a live arrangement sets a task for either firm. The assigned firm marks it done; the
+firm that set it may cancel it. Both refuse once the arrangement is not live.
+
+### `request_introduction(p_firm, p_to_firm, p_kind, p_brief, p_country = null, p_practice_area = null) → uuid` · `respond_introduction(p_id, p_accept, p_response = null)` · `withdraw_introduction(p_id)`
+`introduction` or `referral_request`, to a firm that is connected or in the directory and takes that
+kind. One open approach per pair, twenty a day.
+
+### `propose_alliance(p_firm, p_name, p_member_firms uuid[], p_practice_areas = '{}', p_jurisdictions = '{}', p_referral_procedure = null, p_preferences = '{}', p_starts_on = null, p_renews_on = null) → uuid`
+### `respond_alliance(p_alliance, p_firm, p_accept)` · `leave_or_terminate_alliance(p_alliance, p_firm, p_terminate, p_reason = null)` · `post_alliance_note(p_alliance, p_firm, p_visibility, p_body) → uuid`
+Members must be connected to the founder. Two accepted firms make it active. Any accepted member's
+owner or administrator may end it for everybody. A `shared` note reaches accepted members; an
+`internal` one stays with its firm.
+
+### `network_overview(p_firm uuid) → jsonb` · members of `p_firm`
+The dashboard's counts in one trip.
+
+### `claim_outbound_emails(p_limit int = 20)` · `finish_outbound_email(p_id, p_outcome, p_provider = null, p_provider_ref = null, p_error = null, p_failure_kind = null)` · service role only
+Refuse any caller with an `auth.uid()`. The dispatcher alone holds them.
+
+**Views.** `network_directory` (no contact details), `connected_firms` (one row per side, contacts
+only where shared), `joint_matters`, `network_incoming` and `alliance_roster`, all definer views
+that check the caller's firm themselves. **Tables with no RPC.** `outbound_emails` has no grant to
+any API role. `network_invitations` grants every column except `token_hash`, `code_hash` and
+`code_salt`, and has no row audit trigger so the hashes never reach `audit_log`.
+
