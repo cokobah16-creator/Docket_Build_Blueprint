@@ -58,9 +58,15 @@ export interface MemberRemoved extends PeopleResult {
 
 const uuid = z.string().uuid();
 
-const roleSchema = z.enum(["owner", "admin", "lawyer", "staff"], {
-  errorMap: () => ({ message: "A role is owner, administrator, lawyer or staff." }),
+const roleSchema = z.enum(["owner", "admin", "lawyer", "staff", "readonly", "external"], {
+  errorMap: () => ({ message: "A role is owner, administrator, lawyer, staff, read only or external collaborator." }),
 });
+const titleSchema = z
+  .string()
+  .trim()
+  .max(80, { message: "Keep the title to 80 characters." })
+  .optional()
+  .or(z.literal(""));
 
 const inviteSchema = z.object({
   firmId: uuid,
@@ -72,6 +78,7 @@ const inviteSchema = z.object({
     .max(200, { message: "That email address is too long." })
     .email({ message: "That does not look like an email address." }),
   role: roleSchema,
+  title: titleSchema,
 });
 
 /** A PostgREST error, word for word, with the detail and hint the database attached to it. */
@@ -145,6 +152,7 @@ export async function inviteColleague(input: {
   firmId: string;
   email: string;
   role: string;
+  title?: string;
 }): Promise<InviteCreated> {
   const parsed = inviteSchema.safeParse(input);
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the invitation and try again." };
@@ -166,6 +174,7 @@ export async function inviteColleague(input: {
     firm_id: d.firmId,
     email: d.email,
     role: d.role,
+    title: d.title && d.title.length >= 2 ? d.title : null,
     created_by: user.id,
   });
 
@@ -296,4 +305,109 @@ export async function removeFirmMember(firmId: string, userId: string): Promise<
     availabilityRulesCleared:
       typeof result?.availability_rules_cleared === "number" ? result.availability_rules_cleared : undefined,
   };
+}
+
+// ================================================================ titles, custom roles, permissions (migration 62)
+
+const permissionKey = z.string().regex(/^[a-z_]{3,40}$/, { message: "That is not a permission." });
+
+/** A job title on a membership: your own with a verified session, anybody's as an owner or admin who manages the team. */
+export async function setMemberTitle(firmId: string, userId: string, title: string): Promise<PeopleResult> {
+  if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
+  if (!uuid.safeParse(userId).success) return { error: "That person could not be read." };
+  const parsed = titleSchema.safeParse(title);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the title." };
+  const clean = (parsed.data ?? "").trim();
+  if (clean.length === 1) return { error: "A title is at least two characters, or nothing." };
+
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error } = await supabase.rpc("set_member_title", { p_firm: firmId, p_user: userId, p_title: clean || null });
+  if (error) return { error: verbatim(error) };
+  refresh();
+  return { ok: true, notice: clean ? `The title is now ${clean}.` : "The title is cleared." };
+}
+
+/** Put a member on one of the firm's own roles, or take them off (null). */
+export async function setMemberCustomRole(firmId: string, userId: string, key: string | null): Promise<PeopleResult> {
+  if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
+  if (!uuid.safeParse(userId).success) return { error: "That person could not be read." };
+  const clean = (key ?? "").trim();
+  if (clean && !/^[a-z][a-z0-9_]{1,39}$/.test(clean)) return { error: "That is not one of the firm's roles." };
+
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error } = await supabase.rpc("set_member_custom_role", { p_firm: firmId, p_user: userId, p_key: clean || null });
+  if (error) return { error: verbatim(error) };
+  refresh();
+  return { ok: true };
+}
+
+export interface PermissionsSaved extends PeopleResult {
+  permissions?: string[];
+}
+
+/**
+ * Grant, deny or clear permissions for one member. `changes` is permission -> true | false | null;
+ * set_member_permissions() refuses the caller's own row, an owner's row and any unknown key, and
+ * returns what the member may do afterwards.
+ */
+export async function setMemberPermissions(
+  firmId: string,
+  userId: string,
+  changes: Record<string, boolean | null>,
+): Promise<PermissionsSaved> {
+  if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
+  if (!uuid.safeParse(userId).success) return { error: "That person could not be read." };
+  const entries = Object.entries(changes ?? {});
+  if (entries.length === 0) return { error: "Nothing to change." };
+  for (const [k, v] of entries) {
+    if (!permissionKey.safeParse(k).success) return { error: `"${k}" is not a permission.` };
+    if (v !== null && typeof v !== "boolean") return { error: `"${k}" must be allowed, denied or left to the role.` };
+  }
+
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { data, error } = await supabase.rpc("set_member_permissions", { p_firm: firmId, p_user: userId, p_changes: changes });
+  if (error) return { error: verbatim(error) };
+  const r = (data ?? null) as { permissions?: string[] } | null;
+  refresh();
+  return { ok: true, permissions: r?.permissions ?? [] };
+}
+
+const customRoleSchema = z.object({
+  key: z.string().trim().toLowerCase().regex(/^[a-z][a-z0-9_]{1,39}$/, { message: "A role key is lowercase letters, digits and underscores, starting with a letter." }),
+  label: z.string().trim().min(2, { message: "Name the role." }).max(80),
+  baseRole: z.enum(["admin", "lawyer", "staff", "readonly", "external"], { errorMap: () => ({ message: "Choose the tier the role is built on." }) }),
+  permissions: z.array(permissionKey).max(40),
+});
+
+/** Define or redefine one of the firm's own roles. */
+export async function upsertCustomRole(firmId: string, input: { key: string; label: string; baseRole: string; permissions: string[] }): Promise<PeopleResult> {
+  if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
+  const parsed = customRoleSchema.safeParse(input);
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Check the role and try again." };
+  const d = parsed.data;
+
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { data, error } = await supabase.rpc("upsert_custom_role", {
+    p_firm: firmId, p_key: d.key, p_label: d.label, p_base_role: d.baseRole, p_permissions: d.permissions,
+  });
+  if (error) return { error: verbatim(error) };
+  const created = (data as { created?: boolean } | null)?.created;
+  refresh();
+  return { ok: true, notice: created ? `${d.label} is defined. Put people on it from their cards.` : `${d.label} is updated for everybody who holds it.` };
+}
+
+/** Remove one of the firm's own roles. Refused while anybody holds it. */
+export async function deleteCustomRole(firmId: string, key: string): Promise<PeopleResult> {
+  if (!uuid.safeParse(firmId).success) return { error: "That firm could not be read." };
+  if (!/^[a-z][a-z0-9_]{1,39}$/.test(key)) return { error: "That is not one of the firm's roles." };
+  const supabase = await supabaseServer();
+  if (!supabase) return { error: "Not configured." };
+  const { error } = await supabase.rpc("delete_custom_role", { p_firm: firmId, p_key: key });
+  if (error) return { error: verbatim(error) };
+  refresh();
+  return { ok: true, notice: "That role is gone." };
 }

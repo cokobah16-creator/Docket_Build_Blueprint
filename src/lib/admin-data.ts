@@ -22,6 +22,7 @@ export interface Read<T> {
 }
 import type {
   DomainRequestRow, FailedNotificationRow, FirmAdminRow, NotificationHealthRow, SettlementHealthRow, StorageIntegrity, WebhookEventRow, NotificationCostRow, FirmActiveMattersRow, ProviderRateRow, RegistryPilotHealthRow,
+  JurisdictionCoverageRow,
 } from "@/lib/db/types";
 
 export interface PlatformContext {
@@ -129,6 +130,12 @@ export async function notificationCost(supabase: SupabaseClient, limit = 300): P
     .order("month", { ascending: false })
     .limit(limit);
   return { rows: (data ?? []) as NotificationCostRow[], error: error?.message ?? null };
+}
+
+/** Every jurisdiction with how many firms are under it (migration 61). Counts, no firm named. */
+export async function jurisdictionCoverage(supabase: SupabaseClient): Promise<Read<JurisdictionCoverageRow>> {
+  const { data, error } = await supabase.rpc("jurisdiction_coverage");
+  return { rows: (Array.isArray(data) ? data : []) as JurisdictionCoverageRow[], error: error?.message ?? null };
 }
 
 /** How many matters each firm has open — the denominator for cost per active matter. */

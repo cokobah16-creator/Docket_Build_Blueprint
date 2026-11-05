@@ -1,9 +1,10 @@
-// Self-serve firm registration: any Nigerian law firm opens its own tenant
-// here — the same path tenant #1 took, minus the seed file.
+// Self-serve firm registration: any law firm opens its own tenant here, under a jurisdiction
+// Docket has validated and activated. The same path tenant #1 took, minus the seed file.
 
 import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Alert } from "@/components/ui/alert";
+import type { JurisdictionOption } from "@/lib/db/types";
 import { FirmStart } from "./firm-start";
 
 // RENDERED PER REQUEST, ALWAYS.
@@ -34,6 +35,16 @@ export default async function FirmStartPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // The registry is anon readable (migration 61): a visitor with no account yet sees which
+  // countries are open and which are still coming after validation.
+  const { data: jRows } = await supabase
+    .from("jurisdictions")
+    .select("code, name, status, currency_code, timezone")
+    .order("sort")
+    .order("code")
+    .limit(100);
+  const jurisdictions = (jRows ?? []) as JurisdictionOption[];
+
   let ownedCount = 0;
   if (user) {
     // Only the caller's own memberships count (a platform admin can read everyone's).
@@ -63,7 +74,7 @@ export default async function FirmStartPage() {
         </p>
       )}
       <div className="mt-6">
-        <FirmStart signedIn={Boolean(user)} email={user?.email ?? null} />
+        <FirmStart signedIn={Boolean(user)} email={user?.email ?? null} jurisdictions={jurisdictions} />
       </div>
     </main>
   );

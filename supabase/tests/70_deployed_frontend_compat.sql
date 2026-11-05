@@ -247,10 +247,13 @@ begin
     and not has_table_privilege('authenticated', 'public.firm_public', 'insert, update, delete, truncate, references, trigger'));
   perform t_check('firm_public is still a definer view (security_invoker = false)',
     (select 'security_invoker=false' = any(reloptions) from pg_class where oid = 'public.firm_public'::regclass));
-  perform t_check('its columns are migration 13''s, in order, then vat_rate and rc_number',
+  -- Appended only, ever: 51 added vat_rate and rc_number, 61 added jurisdiction_code. The deployed
+  -- resolver names its own columns, so a column appended is one it cannot notice; a column moved,
+  -- renamed or removed is one it would.
+  perform t_check('its columns are migration 13''s, in order, then vat_rate and rc_number, then jurisdiction_code',
     (select string_agg(column_name, ',' order by ordinal_position) from information_schema.columns
       where table_schema = 'public' and table_name = 'firm_public')
-    = 'id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency,verified,vat_rate,rc_number');
+    = 'id,slug,name,legal_name,brand,policies,custom_domain,timezone,default_currency,verified,vat_rate,rc_number,jurisdiction_code');
   perform t_check('firm_public does not carry the tax number',
     not exists (select 1 from information_schema.columns
                  where table_schema = 'public' and table_name = 'firm_public' and column_name = 'tin'));

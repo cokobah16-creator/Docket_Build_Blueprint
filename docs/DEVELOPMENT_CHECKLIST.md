@@ -7,7 +7,7 @@ Legend: COMPLETE · PARTIAL · PLANNED · DESIGNED · NOT STARTED
 | Feature | Frontend | Backend | Database | Integration | Testing | Outstanding dependencies |
 |---|---|---|---|---|---|---|
 | Firm registration, verification, staff invites | COMPLETE | COMPLETE | COMPLETE | Email (Supabase auth) | SQL 20, 15 | Jurisdiction picker (Phase 2) |
-| Roles: owner, admin, lawyer, staff | COMPLETE | COMPLETE | COMPLETE | n/a | SQL 10, 22, 60 | Titles, granular permissions, custom roles, readonly and external tiers (Phase 2) |
+| Roles: six tiers, thirteen titles, granular permissions, custom roles | COMPLETE | COMPLETE | COMPLETE | n/a | SQL 99_permissions (60 checks) | none |
 | Workspace switcher | COMPLETE | COMPLETE | COMPLETE | n/a | fixtures | none |
 | Matters, stages, packs, walls | COMPLETE | COMPLETE | COMPLETE | n/a | SQL 29, 39, 95 | none |
 | Docket Timeline with filters | PARTIAL (no filter UI) | COMPLETE | COMPLETE | n/a | SQL 92 | Filter by kind, date, person (Phase 5) |
@@ -16,7 +16,7 @@ Legend: COMPLETE · PARTIAL · PLANNED · DESIGNED · NOT STARTED
 | Documents: versions, reads, requests, templates, execution | COMPLETE | COMPLETE | COMPLETE | Storage | SQL 96, 97, 99_templates | Firm wide Documents screen (Phase 5) |
 | Text extraction and search | COMPLETE | COMPLETE | COMPLETE | Edge Function | SQL 99_search, 99_document_text | OCR is a recorded decision (DOCUMENT_TEXT.md) |
 | Invoices, VAT, Paystack settlement | COMPLETE | COMPLETE | COMPLETE | Paystack | SQL 50, 80, 99_invoice_issuer | Expenses, credit notes, time entries, finance summary (Phase 6) |
-| Multi currency | PARTIAL (NGN, USD) | PARTIAL | PARTIAL | Paystack per currency | SQL 50 | Enum extension (Phase 2), per currency summary (Phase 6) |
+| Multi currency | PARTIAL (NGN, USD, GBP, EUR, CAD, AUD, GHS, KES, ZAR on the type) | PARTIAL | COMPLETE (enum) | Paystack per currency, as the firm's account allows | SQL 50, 99_jurisdictions | Per currency finance summary (Phase 6) |
 | Trust and client money | DESIGNED | DESIGNED | DESIGNED | n/a | n/a | CLIENT_MONEY_DESIGN.md awaits the accounting adviser |
 | Court diary, hearings, deadlines | COMPLETE | COMPLETE | COMPLETE | Calendar feed (ICS) | SQL 99_legal_diary, 99_calendar_feed | OAuth calendar connectors are designed in CONNECTORS_DESIGN.md |
 | Service of process | COMPLETE | COMPLETE | COMPLETE | n/a | SQL 40 | none |
@@ -35,7 +35,7 @@ Legend: COMPLETE · PARTIAL · PLANNED · DESIGNED · NOT STARTED
 | Contract review, comparison, drafting, deadline and task extraction | NOT STARTED | NOT STARTED | NOT STARTED | n/a | n/a | Phase 4 |
 | Legal research with verification status | NOT STARTED | NOT STARTED | NOT STARTED | Licensed sources not yet available | n/a | Phase 4 holds authorities and verification; external research APIs need licences |
 | Global command centre | NOT STARTED | NOT STARTED | n/a | n/a | n/a | Phase 4 |
-| Jurisdiction engine | NOT STARTED | NOT STARTED | NOT STARTED | n/a | n/a | Phase 2; other countries activate only after validation |
+| Jurisdiction engine | COMPLETE (registration picker, /admin/jurisdictions) | COMPLETE | COMPLETE | n/a | SQL 99_jurisdictions (42 checks) | Other countries stay designed until a platform admin records a validation and activates them |
 | Nigerian configuration | COMPLETE | COMPLETE | COMPLETE | n/a | SQL 30 | Court vacations entered by the operator as published |
 | Subscriptions and plans | NOT STARTED | NOT STARTED | PARTIAL (firms.plan) | Paystack (platform account) | n/a | Phase 6 |
 | Docket Pulse | PARTIAL (Today) | COMPLETE | COMPLETE | n/a | fixtures | Network and AI items (Phase 5) |

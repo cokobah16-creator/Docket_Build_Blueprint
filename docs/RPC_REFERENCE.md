@@ -1246,3 +1246,72 @@ Every security-definer function — its signature, who may call it, and the exac
 with — is in **[docs/RPC_REFERENCE.md](docs/RPC_REFERENCE.md)**, together with the views, the
 scheduled jobs, the trigger functions and the writes that need no RPC.
 ```
+
+---
+
+## Jurisdictions and permissions (migrations 61 and 62)
+
+**Gates added.** `has_permission(f uuid, p text)` answers whether the caller holds one of the fifteen
+permissions at firm `f`: an owner always; otherwise a per member grant or denial, then the custom
+role's list, then the tier's defaults (`role_default_permissions()`). `staff_w()` is now also false
+for the `readonly` and `external` tiers, and `can_see_matter()` admits an `external` member only
+through `matter_lawyers`.
+
+**Trigger guards.** `guard_member_permission('<permission>')` fires BEFORE a write on `matters`
+(create_matters on insert, edit_matters on update), `matter_lawyers` (assign_lawyers), `invoices`
+(create_invoices), `documents` (manage_documents), `matter_collaborations` (invite_firms),
+`staff_invites` (manage_team) and `firms` (manage_settings on update). It fires for a member of the
+row's firm and for nobody else, and refuses with `not permitted: this needs the "…" permission at
+this firm, which your account does not hold` *(42501)*.
+
+### `is_jurisdiction_active(p_code text)` · anon, authenticated
+Whether a jurisdiction is open to firms.
+
+### `create_firm(… , p_jurisdiction text = 'NG')` · authenticated
+As before, with one more trailing parameter. Refuses `Docket is not yet active in <name> — it is
+registered as <status> …` for a jurisdiction that is not active, and `unknown jurisdiction <code>`.
+For a jurisdiction other than Nigeria, a caller that gave the Nigerian defaults gets the
+jurisdiction's currency and timezone, the state is kept on `firms.region` as words (up to 80
+characters) rather than on `state_code`, and the audit line carries `jurisdiction`.
+
+### `set_jurisdiction_status(p_code text, p_status text, p_note text = null)` · platform admin (MFA)
+`designed → validated` (note required: `say what was reviewed …`), `validated → active`,
+`active ↔ suspended`, `validated | suspended → designed` (only while no firm is under it:
+`… cannot go back to designed`). `designed → active` is refused: `a jurisdiction is validated before
+it is activated …`. Audits `jurisdiction.status`.
+
+### `upsert_jurisdiction(p_code, p_name, p_legal_system, p_currency_code, p_timezone, p_locale = 'en', p_language = 'English', p_date_format = 'DD/MM/YYYY', p_config = '{}', p_sort = 100)` · platform admin (MFA)
+Registers a country as `designed` or re describes one; never touches the status. Refuses a code
+that is not two letters, a timezone the server does not know, and a currency the `currency` type
+cannot hold (`… not one Docket can invoice in yet`). Returns `{id, code, created}`.
+
+### `jurisdiction_coverage()` · platform admin
+One row per jurisdiction with how many firms and practice areas it has. Nothing to anybody else.
+
+### `member_permissions(p_firm uuid, p_user uuid) → text[]` · authenticated, members of `p_firm`
+What one member may do, resolved. `my_permissions(p_firm)` is the caller's own answer.
+
+### `set_member_title(p_firm uuid, p_user uuid, p_title text = null)` · own title with `staff_w`; anybody's with `admin_w` and `manage_team`
+Refuses `not permitted` *(42501)* and `that person is not a member of this firm`. Audits
+`firm_members.title`.
+
+### `set_member_custom_role(p_firm uuid, p_user uuid, p_key text = null)` · `admin_w` and `manage_team`
+Refuses an owner (`… a custom role cannot narrow it`) and an unknown key (`this firm has no custom
+role called …`). Null takes the member off the role.
+
+### `set_member_permissions(p_firm uuid, p_user uuid, p_changes jsonb) → jsonb` · `admin_w` and `manage_team`
+`p_changes` is `{"permission": true | false | null}`. Refuses `you cannot change your own
+permissions …`, `an owner holds every permission …`, `unknown permission <key>`, `permission <key>
+must be true, false or null`, `that person is not a member of this firm`. Returns `{set, cleared,
+permissions}` and audits `firm_members.permissions`.
+
+### `upsert_custom_role(p_firm, p_key, p_label, p_base_role firm_role, p_permissions text[]) → jsonb` · `admin_w` and `manage_team`
+Refuses a key that is not `^[a-z][a-z0-9_]{1,39}$`, `owner` as the base, and an unknown permission.
+`delete_custom_role(p_firm, p_key)` refuses while anybody holds it (`… hold the role …`).
+
+### `accept_staff_invite(p_token text)` · authenticated
+As before, carrying `staff_invites.title` onto the membership and returning it.
+
+**Tables with no RPC.** `jurisdictions` and `jurisdiction_practice_areas` are readable by `anon`
+and written by the two platform doors only. `firm_custom_roles` and `firm_member_permissions` are
+readable by the firm's members and written by their doors only.

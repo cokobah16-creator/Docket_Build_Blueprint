@@ -840,6 +840,31 @@ select has_function_privilege('anon', 'public.invoice_issuer(uuid)', 'execute');
 select vat_rate, rc_number from firm_public limit 1;                               -- no error (51)
 ```
 
+**60, 61 and 62 go before the app, in that order, each in its own transaction.** 60 adds enum
+values and nothing else, because a value cannot be used in the transaction that adds it; 61 and 62
+use them. 61 appends `jurisdiction_code` to `firm_public` (the deployed resolver names its own
+columns, so it cannot notice), adds `firms.jurisdiction_code` defaulting every existing firm to
+`NG` and `firms.region`, and **drops and re creates `create_firm()`** with one more trailing
+parameter, so the deployed registration form resolves to it through the default. 62 re creates
+`staff_w()` and `can_see_matter()` and the `matters_select` policy with the two new tiers refused,
+and adds the permission guards: for every existing member the resolved permissions equal their
+tier's defaults, so nothing a lawyer, staff member, admin or owner could do yesterday is refused
+today. The app that ships with them calls `my_permissions()`, `set_member_title()`,
+`set_member_permissions()`, the custom role doors, `set_jurisdiction_status()`,
+`upsert_jurisdiction()` and `jurisdiction_coverage()`, and reads `jurisdictions`,
+`firm_custom_roles` and `firm_member_permissions`; deployed first it answers PGRST202 on the people
+screen, the registration form and `/admin/jurisdictions`, and `staffContext()` treats the missing
+function as an empty permission list, so every create button disappears until the schema lands.
+To confirm afterwards:
+
+```sql
+select code, status from jurisdictions order by sort;                         -- NG active, seven designed
+select pg_get_function_identity_arguments('public.create_firm'::regproc);   -- ends with p_jurisdiction text
+select count(*) from firms where jurisdiction_code <> 'NG';                  -- expected: 0 on day one
+select my_permissions(id) from firms limit 1;                                 -- as a member: their tier's defaults
+select tgname from pg_trigger where tgname like '%_permission_%' order by 1;  -- eight guards
+```
+
 **The hosted project's migration ledger is not the file names.** On 2 November 2026 its ledger
 (`list_migrations`) ended at `court_registry`, 49, so 50, 51, 52 and 59 were all still to apply.
 They were applied on 3 November (the release record below), and the ledger now ends at

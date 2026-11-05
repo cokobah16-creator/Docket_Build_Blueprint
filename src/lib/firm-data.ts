@@ -18,7 +18,11 @@ export interface StaffMember {
   email: string | null;
   phone: string | null;
   scn: string | null;
+  /** lawyer_profiles.title: the professional title on the public profile. */
   title: string | null;
+  /** firm_members.title: the job title at the firm (migration 62). */
+  member_title: string | null;
+  custom_role_key: string | null;
 }
 
 export interface StaffContext {
@@ -27,9 +31,15 @@ export interface StaffContext {
   firmId: string;
   firmName: string;
   role: FirmRoleName;
+  /** The job title on this membership, if the firm gave one. */
+  title: string | null;
   timezone: string;
   memberships: FirmMembership[];
   isAdmin: boolean;
+  /** my_permissions(): what this person may do at this firm, resolved by the database (migration 62). */
+  permissions: string[];
+  /** A screen declines to OFFER what the database would refuse. The database still decides. */
+  can: (permission: string) => boolean;
 }
 
 /**
@@ -52,7 +62,7 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
   // offer a lawyer the owner's buttons and let the database refuse them one by
   // one. Ask the database for the firm's people through firmStaff(); here, only
   // the caller's own memberships count.
-  const { data: rows } = await supabase.from("firm_members").select("firm_id, user_id, role").eq("user_id", user.id);
+  const { data: rows } = await supabase.from("firm_members").select("firm_id, user_id, role, title, custom_role_key").eq("user_id", user.id);
   const memberships = (rows ?? []) as FirmMembership[];
   if (memberships.length === 0) return null;
 
@@ -80,10 +90,15 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
       chosen = bySlug;
     }
   }
-  const [{ data: profile }, { data: overview }] = await Promise.all([
+  const [{ data: profile }, { data: overview }, { data: perms }] = await Promise.all([
     supabase.from("profiles").select("timezone").eq("id", user.id).maybeSingle(),
     supabase.from("firm_overview").select("firm_id, name").eq("firm_id", chosen.firm_id).maybeSingle(),
+    // Resolved by the database: owner holds all, a grant wins, then the custom role, then the tier.
+    // On a database without migration 62 the call fails and the list is empty, so every screen
+    // declines to offer what it cannot prove; the database still decides on each write.
+    supabase.rpc("my_permissions", { p_firm: chosen.firm_id }),
   ]);
+  const permissions = Array.isArray(perms) ? (perms as string[]) : [];
 
   return {
     supabase,
@@ -91,9 +106,12 @@ export async function staffContext(preferredFirmId?: string): Promise<StaffConte
     firmId: chosen.firm_id,
     firmName: (overview as { name: string } | null)?.name ?? "Your firm",
     role: chosen.role,
+    title: chosen.title ?? null,
     timezone: (profile as { timezone: string } | null)?.timezone ?? "Africa/Lagos",
     memberships,
     isAdmin: chosen.role === "owner" || chosen.role === "admin",
+    permissions,
+    can: (permission: string) => permissions.includes(permission),
   };
 }
 
@@ -125,8 +143,8 @@ export async function matterStatuses(supabase: SupabaseClient, firmId: string): 
 
 /** Everyone who can be a handling lawyer, an assignee or an invitee's contact. */
 export async function firmStaff(supabase: SupabaseClient, firmId: string): Promise<StaffMember[]> {
-  const { data: members } = await supabase.from("firm_members").select("user_id, role").eq("firm_id", firmId);
-  const rows = (members ?? []) as Array<{ user_id: string; role: FirmRoleName }>;
+  const { data: members } = await supabase.from("firm_members").select("user_id, role, title, custom_role_key").eq("firm_id", firmId);
+  const rows = (members ?? []) as Array<{ user_id: string; role: FirmRoleName; title?: string | null; custom_role_key?: string | null }>;
   if (rows.length === 0) return [];
   const ids = rows.map((r) => r.user_id);
   const [{ data: profiles }, { data: lawyers }] = await Promise.all([
@@ -143,6 +161,8 @@ export async function firmStaff(supabase: SupabaseClient, firmId: string): Promi
     phone: byId.get(r.user_id)?.phone ?? null,
     scn: lawyerById.get(r.user_id)?.scn ?? null,
     title: lawyerById.get(r.user_id)?.title ?? null,
+    member_title: r.title ?? null,
+    custom_role_key: r.custom_role_key ?? null,
   }));
 }
 

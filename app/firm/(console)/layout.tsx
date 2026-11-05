@@ -109,6 +109,7 @@ export default async function ConsoleLayout({ children }: { children: ReactNode 
       </Link>
       <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
         <Badge>{role}</Badge>
+        {ctx.title && <span className="text-13 text-ink-muted">{ctx.title}</span>}
         {firm?.status === "pending" && <Badge tone="waiting" icon="clock">awaiting verification</Badge>}
         {firm?.status === "suspended" && <Badge tone="wrong" icon="alert">suspended</Badge>}
       </div>

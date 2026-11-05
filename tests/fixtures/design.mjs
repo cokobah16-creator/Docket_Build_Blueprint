@@ -283,6 +283,7 @@ const ROUTES = [
   R("admin-reference", "/admin/reference", true),
   R("admin-registries", "/admin/registries", true),
   R("admin-workflow", "/admin/workflow", true),
+  R("admin-jurisdictions", "/admin/jurisdictions", true),
 ];
 
 const selected = ROUTES.filter((r) => !ONLY || r.name.includes(ONLY));

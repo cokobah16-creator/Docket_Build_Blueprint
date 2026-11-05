@@ -106,6 +106,7 @@ const FIRM = {
   // payee line all render under the design check. The number is a placeholder, not a real one.
   vat_rate: 7.5,
   rc_number: "RC 0000000",
+  jurisdiction_code: "NG",
   status: "active",
 };
 
@@ -166,7 +167,21 @@ const APPOINTMENT_2 = {
 };
 
 // Each table the screens read, with rows that make the layout work for its living.
+const PERMISSION_KEYS = [
+  "view_matters", "create_matters", "edit_matters", "assign_lawyers", "view_financials", "create_invoices",
+  "approve_payments", "manage_clients", "manage_team", "manage_documents", "invite_firms", "manage_integrations",
+  "access_reports", "manage_settings", "use_ai",
+];
+
 const TABLES = {
+  // The jurisdiction registry (migration 61): one active, one designed, so the registration form
+  // shows both a country it offers and a country it says is coming.
+  jurisdictions: [
+    { id: "a1a1a1a1-0000-4000-8000-000000000001", code: "NG", name: "Nigeria", legal_system: "mixed", currency_code: "NGN", timezone: "Africa/Lagos", locale: "en-NG", language: "English", date_format: "DD/MM/YYYY", status: "active", config: {}, validation_note: "Built as Docket's first jurisdiction.", validated_at: past, validated_by: null, activated_at: past, activated_by: null, sort: 10, created_at: past, updated_at: past },
+    { id: "a1a1a1a1-0000-4000-8000-000000000002", code: "GB", name: "United Kingdom", legal_system: "common_law", currency_code: "GBP", timezone: "Europe/London", locale: "en-GB", language: "English", date_format: "DD/MM/YYYY", status: "designed", config: { validation_scope: "Court directory, CPR deadlines, SRA rules, UK GDPR." }, validation_note: null, validated_at: null, validated_by: null, activated_at: null, activated_by: null, sort: 20, created_at: past, updated_at: past },
+  ],
+  firm_custom_roles: [],
+  firm_member_permissions: [],
   profiles: [{ id: USER_ID, full_name: ROLE === "staff" ? "B. Okafor" : "Adaeze Okonkwo", phone: "+2348034110982", email: "adaeze.o@example.test", timezone: "Africa/Lagos", preferred_channel: "sms", quiet_hours_start: "21:30:00", quiet_hours_end: "06:30:00", client_type: "individual", company_name: null }],
   firm_members: [{ firm_id: FIRM_ID, user_id: USER_ID, role: "lawyer" }, { firm_id: FIRM_ID_2, user_id: USER_ID, role: "lawyer" }],
   firms: [FIRM, FIRM_2],
@@ -237,6 +252,10 @@ if (SCENARIO === "empty") {
 
 const RPC = {
   available_slots: [],
+  // What the signed-in member may do (migration 62). Everything, so every control the console can
+  // offer is drawn and measured.
+  my_permissions: PERMISSION_KEYS,
+  jurisdiction_coverage: [{ code: "NG", name: "Nigeria", status: "active", firms: 2, practice_areas: 14 }, { code: "GB", name: "United Kingdom", status: "designed", firms: 0, practice_areas: 14 }],
   invoice_settlement: { paystack_subaccount: "ACCT_x" },
   // The fixture invoice charges VAT, so the client's invoice page renders its TIN sentence under
   // the design check. A placeholder number, like the firm's RC number above.

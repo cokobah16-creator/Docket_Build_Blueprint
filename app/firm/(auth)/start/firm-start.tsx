@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/input";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Alert } from "@/components/ui/alert";
+import type { JurisdictionOption } from "@/lib/db/types";
 import { createFirm, type CreateFirmState } from "./actions";
 
 export function slugify(name: string): string {
@@ -22,8 +23,13 @@ export function slugify(name: string): string {
     .slice(0, 63);
 }
 
-export function FirmStart({ signedIn, email }: { signedIn: boolean; email: string | null }) {
+export function FirmStart({ signedIn, email, jurisdictions }: { signedIn: boolean; email: string | null; jurisdictions: JurisdictionOption[] }) {
   const supabase = supabaseBrowser();
+  // Only an active jurisdiction can be chosen; the others are listed so a firm elsewhere knows
+  // Docket is coming, and disabled so it cannot be picked. create_firm() refuses them anyway.
+  const activeJurisdictions = jurisdictions.filter((j) => j.status === "active");
+  const [jurisdiction, setJurisdiction] = useState(activeJurisdictions.some((j) => j.code === "NG") ? "NG" : (activeJurisdictions[0]?.code ?? "NG"));
+  const isNigeria = jurisdiction === "NG";
   const [accountDone, setAccountDone] = useState(signedIn);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const [fullName, setFullName] = useState("");
@@ -135,19 +141,42 @@ export function FirmStart({ signedIn, email }: { signedIn: boolean; email: strin
             error={state.fieldErrors?.slug}
             required
           />
-          <Input label="Registered name (optional)" name="legalName" hint="As registered with the CAC" error={state.fieldErrors?.legalName} />
-          <Input label="RC / BN number (optional)" name="rcNumber" hint="With its letters, as on the CAC certificate: RC 1234567 or BN 1234567." error={state.fieldErrors?.rcNumber} />
-          <Select label="State of principal office" name="stateCode" defaultValue="" error={state.fieldErrors?.stateCode}>
-            <option value="">Choose a state</option>
-            {NG_STATE_OPTIONS.map((s) => (
-              <option key={s.code} value={s.code}>{s.name}</option>
+          <Select
+            label="Jurisdiction"
+            name="jurisdiction"
+            value={jurisdiction}
+            onChange={(e) => setJurisdiction(e.target.value)}
+            error={state.fieldErrors?.jurisdiction}
+          >
+            {jurisdictions.length === 0 && <option value="NG">Nigeria</option>}
+            {jurisdictions.map((j) => (
+              <option key={j.code} value={j.code} disabled={j.status !== "active"}>
+                {j.name}{j.status !== "active" ? " (coming after validation)" : ""}
+              </option>
             ))}
           </Select>
+          <p className="-mt-2 text-13 text-ink-muted">
+            A country opens to firms only after Docket has validated its courts, rules and professional requirements. Nothing assumes one country&rsquo;s law applies in another.
+          </p>
+          <Input label="Registered name (optional)" name="legalName" hint={isNigeria ? "As registered with the CAC" : "As registered with the companies or partnerships register"} error={state.fieldErrors?.legalName} />
+          <Input label={isNigeria ? "RC / BN number (optional)" : "Registration number (optional)"} name="rcNumber" hint={isNigeria ? "With its letters, as on the CAC certificate: RC 1234567 or BN 1234567." : "As the register writes it."} error={state.fieldErrors?.rcNumber} />
+          {isNigeria ? (
+            <Select label="State of principal office" name="stateCode" defaultValue="" error={state.fieldErrors?.stateCode}>
+              <option value="">Choose a state</option>
+              {NG_STATE_OPTIONS.map((s) => (
+                <option key={s.code} value={s.code}>{s.name}</option>
+              ))}
+            </Select>
+          ) : (
+            <Input label="State, province or region (optional)" name="region" maxLength={80} error={state.fieldErrors?.region} />
+          )}
           <Input
-            label="Your Supreme Court enrolment number (optional)"
+            label={isNigeria ? "Your Supreme Court enrolment number (optional)" : "Your practising number (optional)"}
             name="ownerScn"
-            placeholder="SCN123456"
-            hint="Recorded on your practitioner record and shown on your firm's public profile, and carried on the proof of service for processes you serve. Docket does not check it against the Roll. You can add it later on your profile."
+            placeholder={isNigeria ? "SCN123456" : ""}
+            hint={isNigeria
+              ? "Recorded on your practitioner record and shown on your firm's public profile, and carried on the proof of service for processes you serve. Docket does not check it against the Roll. You can add it later on your profile."
+              : "Recorded on your practitioner record. Docket does not check it against any register yet."}
             error={state.fieldErrors?.ownerScn}
           />
           <Input label="Primary colour (optional)" name="primaryColour" type="color" defaultValue="#1c2b3a" hint="You can refine the brand later in firm settings." />

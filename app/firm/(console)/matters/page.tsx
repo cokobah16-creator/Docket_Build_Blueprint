@@ -182,9 +182,12 @@ export default async function FirmMattersPage({
             {filtered ? " matching these filters" : ""} · hearing times in {tz}
           </p>
         </div>
-        <Link href="/firm/matters/new" className={buttonClasses("neutral", "sm")}>
-          New matter
-        </Link>
+        {/* Offered only to a member who holds create_matters; the database refuses everybody else at the table. */}
+        {ctx.can("create_matters") && (
+          <Link href="/firm/matters/new" className={buttonClasses("neutral", "sm")}>
+            New matter
+          </Link>
+        )}
       </header>
 
       <nav aria-label="Saved views" className="-mx-1 flex gap-1 overflow-x-auto px-1">
@@ -259,7 +262,7 @@ export default async function FirmMattersPage({
             <EmptyState
               title="The register is empty"
               hint="Every file the firm opens is listed here with its court, suit number and next date. Open the first matter to start the register."
-              action={<Link href="/firm/matters/new" className={buttonClasses("neutral", "sm")}>New matter</Link>}
+              action={ctx.can("create_matters") ? <Link href="/firm/matters/new" className={buttonClasses("neutral", "sm")}>New matter</Link> : undefined}
             />
           )
         ) : (

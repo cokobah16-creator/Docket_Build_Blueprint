@@ -211,12 +211,15 @@ export default async function FirmInvoicesPage({
             {ctx.firmName} · fees settle straight to the firm&rsquo;s own account · times in {tz}
           </p>
         </div>
-        <Link
-          href={raiseHref}
-          className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
-        >
-          Raise an invoice
-        </Link>
+        {/* Offered only to a member who holds create_invoices; create_invoice() and the table refuse everybody else. */}
+        {ctx.can("create_invoices") && (
+          <Link
+            href={raiseHref}
+            className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
+          >
+            Raise an invoice
+          </Link>
+        )}
       </header>
 
       {overview ? (
@@ -268,12 +271,14 @@ export default async function FirmInvoicesPage({
               title="Nothing has been billed yet"
               hint="Raise an invoice with your own lines and the firm's VAT rate. Issue it and the client can pay from their app, straight into the firm's account. Consultation fees taken at booking land here on their own."
               action={
-                <Link
-                  href={raiseHref}
-                  className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
-                >
-                  Raise an invoice
-                </Link>
+                ctx.can("create_invoices") ? (
+                  <Link
+                    href={raiseHref}
+                    className="flex min-h-[44px] items-center rounded-lg bg-brand px-4 text-15 font-medium text-brand-on hover:opacity-90"
+                  >
+                    Raise an invoice
+                  </Link>
+                ) : undefined
               }
             />
           ) : (

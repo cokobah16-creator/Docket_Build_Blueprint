@@ -8,7 +8,7 @@
 // and keep these hand-maintained interfaces only if the generated output
 // replaces them. Shapes below match supabase/migrations/20260909000001_schema.sql.
 
-export type FirmRole = "owner" | "admin" | "lawyer" | "staff";
+export type FirmRole = "owner" | "admin" | "lawyer" | "staff" | "readonly" | "external";
 
 export type ConsentKind =
   | "terms"
@@ -88,6 +88,8 @@ export interface FirmPublic {
   vat_rate: number;
   /** The firm's CAC RC/BN number, if it has given one. Added to the view by migration 51. */
   rc_number: string | null;
+  /** The jurisdiction the firm registered under (migration 61). Optional because the tenant resolver does not select it. */
+  jurisdiction_code?: string;
 }
 
 /** firms.policies shape (staff-readable; versions drive consent capture). */
@@ -885,12 +887,16 @@ export interface NotificationPreference {
 }
 
 // ---- staff console (slice 4)
-export type FirmRoleName = "owner" | "admin" | "lawyer" | "staff";
+export type FirmRoleName = "owner" | "admin" | "lawyer" | "staff" | "readonly" | "external";
 
 export interface FirmMembership {
   firm_id: string;
   user_id: string;
   role: FirmRoleName;
+  /** A label (Managing Partner, Paralegal, …), migration 62. Decides nothing. */
+  title?: string | null;
+  /** The firm defined role the member holds, if any (firm_custom_roles.key). */
+  custom_role_key?: string | null;
 }
 
 /** Row of firm_overview (migration 18): one per firm the caller belongs to. */
@@ -1270,6 +1276,8 @@ export const FIRM_ROLES: Array<{ value: string; label: string; hint: string }> =
   { value: "admin", label: "Administrator", hint: "Settings, services, people, billing — everything except owners" },
   { value: "lawyer", label: "Lawyer", hint: "Matters, court updates, consultations and their own diary" },
   { value: "staff", label: "Staff", hint: "Matters and consultations, but not the firm's settings" },
+  { value: "readonly", label: "Read only", hint: "Reads what the firm shares with its staff and writes nothing at all" },
+  { value: "external", label: "External collaborator", hint: "Reads only the matters they are put on and writes nothing. For a firm working a file with you, use Docket Network" },
 ];
 
 /** storage_integrity() (migration 28): the bytes, measured against the rows. */
@@ -1598,4 +1606,136 @@ export interface StageNoticesResult {
   batch_id: string;
   staged: number;
   rejected: Array<{ row: number; suit_number: string | null; reason: string }>;
+}
+
+// ---- jurisdictions and permissions (migrations 61 and 62)
+
+/** Row of public.jurisdictions: a country Docket describes, and how far the description has been taken. */
+export interface Jurisdiction {
+  id: string;
+  code: string;
+  name: string;
+  legal_system: "common_law" | "civil_law" | "mixed" | "religious_mixed";
+  currency_code: string;
+  timezone: string;
+  locale: string;
+  language: string;
+  date_format: "DD/MM/YYYY" | "MM/DD/YYYY" | "YYYY-MM-DD";
+  status: "designed" | "validated" | "active" | "suspended";
+  config: Record<string, unknown>;
+  validation_note: string | null;
+  validated_at: string | null;
+  validated_by: string | null;
+  activated_at: string | null;
+  activated_by: string | null;
+  sort: number;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Row of jurisdiction_coverage(): counts per jurisdiction, to the platform. */
+export interface JurisdictionCoverageRow {
+  code: string;
+  name: string;
+  status: string;
+  firms: number;
+  practice_areas: number;
+}
+
+/** What the registration form needs of a jurisdiction, anon readable. */
+export interface JurisdictionOption {
+  code: string;
+  name: string;
+  status: string;
+  currency_code: string;
+  timezone: string;
+}
+
+/**
+ * The permission keys, in the order permission_keys() returns them. The database is the list; this
+ * mirror exists so a screen can draw a checkbox per key without a round trip.
+ */
+export const PERMISSION_KEYS = [
+  "view_matters", "create_matters", "edit_matters", "assign_lawyers", "view_financials",
+  "create_invoices", "approve_payments", "manage_clients", "manage_team", "manage_documents",
+  "invite_firms", "manage_integrations", "access_reports", "manage_settings", "use_ai",
+] as const;
+export type PermissionKey = (typeof PERMISSION_KEYS)[number];
+
+export const PERMISSIONS: Array<{ key: PermissionKey; label: string; hint: string }> = [
+  { key: "view_matters", label: "View matters", hint: "Read the firm's files, within any matter wall" },
+  { key: "create_matters", label: "Create matters", hint: "Open a new file; refused at the table and at open_matter()" },
+  { key: "edit_matters", label: "Edit matters", hint: "Change a file: court, stage, next action, court updates" },
+  { key: "assign_lawyers", label: "Assign lawyers", hint: "Put colleagues on a matter's team or take them off" },
+  { key: "view_financials", label: "View financial records", hint: "Read invoices, payments and the money figures" },
+  { key: "create_invoices", label: "Create invoices", hint: "Raise and issue an invoice" },
+  { key: "approve_payments", label: "Approve payments", hint: "Reserved for the finance flows that ask for an approval" },
+  { key: "manage_clients", label: "Manage clients", hint: "Invite clients to matters and change who acts for them" },
+  { key: "manage_team", label: "Manage team members", hint: "Invite colleagues, set titles, roles and permissions" },
+  { key: "manage_documents", label: "Manage documents", hint: "Upload documents and request them from clients" },
+  { key: "invite_firms", label: "Invite external firms", hint: "Bring another firm onto a matter through Docket Network" },
+  { key: "manage_integrations", label: "Manage integrations", hint: "Connect providers and keys for the firm" },
+  { key: "access_reports", label: "Access reports", hint: "Read the overview and the baseline" },
+  { key: "manage_settings", label: "Manage organization settings", hint: "Change the firm's own settings, brand and policies" },
+  { key: "use_ai", label: "Use Docket AI", hint: "Ask the assistant and run briefings on documents they can already read" },
+];
+
+/**
+ * A mirror of role_default_permissions() in migration 62, kept in step by hand so a screen can show
+ * what a tier holds before the database is asked. The database decides; this draws.
+ */
+export const ROLE_DEFAULT_PERMISSIONS: Record<FirmRoleName, readonly PermissionKey[]> = {
+  owner: PERMISSION_KEYS,
+  admin: PERMISSION_KEYS,
+  lawyer: ["view_matters", "create_matters", "edit_matters", "assign_lawyers", "view_financials", "create_invoices",
+           "manage_clients", "manage_documents", "invite_firms", "access_reports", "use_ai"],
+  staff: ["view_matters", "create_matters", "edit_matters", "assign_lawyers", "create_invoices", "manage_clients",
+          "manage_documents", "use_ai"],
+  readonly: ["view_matters", "view_financials", "access_reports"],
+  external: ["view_matters"],
+};
+
+/** The same resolution member_permissions() makes: owner holds all; a grant wins; then a custom role; then the tier. */
+export function effectivePermissions(
+  role: FirmRoleName,
+  customRolePermissions: readonly string[] | null | undefined,
+  overrides: Record<string, boolean> | null | undefined,
+): PermissionKey[] {
+  if (role === "owner") return [...PERMISSION_KEYS];
+  return PERMISSION_KEYS.filter((k) => {
+    const o = overrides?.[k];
+    if (typeof o === "boolean") return o;
+    if (customRolePermissions) return customRolePermissions.includes(k);
+    return (ROLE_DEFAULT_PERMISSIONS[role] ?? []).includes(k);
+  });
+}
+
+/** The titles the master prompt names. A firm may type any other. */
+export const MEMBER_TITLES = [
+  "Managing Partner", "Senior Partner", "Partner", "Associate", "Junior Associate", "Counsel",
+  "Legal Assistant", "Paralegal", "Secretary", "Finance Officer", "Administrator",
+  "External Collaborator", "Read only User",
+] as const;
+
+/** Row of firm_custom_roles. */
+export interface CustomRoleRow {
+  id: string;
+  firm_id: string;
+  key: string;
+  label: string;
+  base_role: FirmRoleName;
+  permissions: string[];
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Row of firm_member_permissions: one grant or denial. */
+export interface MemberPermissionRow {
+  firm_id: string;
+  user_id: string;
+  permission: string;
+  granted: boolean;
+  granted_by: string | null;
+  created_at: string;
 }

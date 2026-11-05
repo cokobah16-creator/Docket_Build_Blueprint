@@ -37,6 +37,13 @@ const schema = z.object({
     .optional()
     .or(z.literal("")),
   ownerScn: z.string().trim().max(40).optional().or(z.literal("")),
+  jurisdiction: z
+    .string()
+    .trim()
+    .toUpperCase()
+    .regex(/^[A-Z]{2}$/, "Choose a jurisdiction")
+    .default("NG"),
+  region: z.string().trim().max(80, "Keep the region to 80 characters").optional().or(z.literal("")),
 });
 
 export type CreateFirmState = { error?: string; fieldErrors?: Record<string, string> };
@@ -53,6 +60,8 @@ export async function createFirm(
     stateCode: formData.get("stateCode") ?? "",
     primaryColour: formData.get("primaryColour") ?? "",
     ownerScn: formData.get("ownerScn") ?? "",
+    jurisdiction: formData.get("jurisdiction") ?? "NG",
+    region: formData.get("region") ?? "",
   });
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};
@@ -74,14 +83,19 @@ export async function createFirm(
     ? { colours: { primary: parsed.data.primaryColour } }
     : {};
 
+  // Nigeria: the state code, checked against ng_states by create_firm(). Elsewhere: the region
+  // as words, which create_firm() keeps on firms.region. The jurisdiction itself is refused by
+  // the database unless it is active, whatever the form offered.
+  const isNigeria = parsed.data.jurisdiction === "NG";
   const { data, error } = await supabase.rpc("create_firm", {
     p_name: parsed.data.name,
     p_slug: parsed.data.slug,
     p_legal_name: parsed.data.legalName || null,
     p_rc_number: parsed.data.rcNumber || null,
-    p_state_code: parsed.data.stateCode || null,
+    p_state_code: isNigeria ? parsed.data.stateCode || null : parsed.data.region || null,
     p_brand: brand,
     p_owner_scn: parsed.data.ownerScn || null,
+    p_jurisdiction: parsed.data.jurisdiction,
   });
   if (error) {
     // Postgres messages from create_firm are written for people ("slug x is already taken").
@@ -113,7 +127,8 @@ export async function createFirm(
     after(() =>
       capture(PLATFORM.firmRegistered, user.id, {
         firm_id: firmId,
-        state_code: parsed.data.stateCode || null,
+        state_code: isNigeria ? parsed.data.stateCode || null : null,
+        jurisdiction: parsed.data.jurisdiction,
       }).catch(() => undefined),
     );
   }
