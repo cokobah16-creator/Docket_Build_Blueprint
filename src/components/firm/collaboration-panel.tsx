@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader, EmptyState } from "@/components/ui/card";
 import { formatDay } from "@/lib/days";
 import { COLLABORATION_KINDS, KIND_LABEL } from "@/lib/collaboration-copy";
+import { COLLABORATION_ROLES, ROLE_LABEL } from "@/lib/network-copy";
 import {
   endCollaboration, proposeCollaboration, shareDocumentWithCollaborator, withdrawSharedDocument,
 } from "@/lib/actions/collaboration";
@@ -36,7 +37,7 @@ export function CollaborationPanel({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [form, setForm] = useState({ withFirmId: "", kind: "agency", scopeNote: "", shareUpdates: false, endsOn: "" });
+  const [form, setForm] = useState({ withFirmId: "", kind: "agency", role: "", scopeNote: "", shareUpdates: false, endsOn: "" });
   const [pick, setPick] = useState<Record<string, string>>({});
 
   const live = (r: CollaborationRow) =>
@@ -55,7 +56,7 @@ export function CollaborationPanel({
     setBusy("propose"); setError(null);
     try {
       const r = await proposeCollaboration({
-        matterId, withFirmId: form.withFirmId, kind: form.kind,
+        matterId, withFirmId: form.withFirmId, kind: form.kind, role: form.role || null,
         scopeNote: form.scopeNote, shareUpdates: form.shareUpdates, endsOn: form.endsOn || null,
       });
       if ("error" in r) { setError(r.error); return; }
@@ -122,6 +123,13 @@ export function CollaborationPanel({
                   {COLLABORATION_KINDS.map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
                 </select>
                 <span className="mt-1 block text-13 text-ink-muted">{COLLABORATION_KINDS.find((k) => k.value === form.kind)?.hint}</span>
+              </label>
+              <label className="block text-15 text-ink">Their role on the matter
+                <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={field}>
+                  <option value="">Not designated</option>
+                  {COLLABORATION_ROLES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                </select>
+                <span className="mt-1 block text-13 text-ink-muted">{COLLABORATION_ROLES.find((r) => r.value === form.role)?.hint ?? "Lead, supporting, local, foreign, co counsel or specialist. Your firm stays the lead on its own file."}</span>
               </label>
             </div>
             <label className="block text-15 text-ink">What you are asking them to do

@@ -109,7 +109,7 @@ export const CONSOLE_NAV: NavModel = {
       items: [
         { href: "/firm/invoices", label: "Billing", icon: "card" },
         { href: "/firm/inbox", label: "Service inbox", short: "Service", icon: "inbox" },
-        { href: "/firm/collaborations", label: "Collaborations", short: "Collab", icon: "transfer" },
+        { href: "/firm/network", label: "Docket Network", short: "Network", icon: "transfer", also: ["/firm/collaborations"] },
         { href: "/firm/overview", label: "Reports", icon: "chart" },
         { href: "/firm/availability", label: "Availability", short: "Hours", icon: "clock" },
         { href: "/firm/admin", label: "Firm settings", short: "Settings", icon: "building" },

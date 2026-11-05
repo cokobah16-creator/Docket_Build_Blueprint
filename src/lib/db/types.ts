@@ -1373,6 +1373,8 @@ export interface CollaborationRow {
   matter_id: string;
   with_firm_id: string;
   kind: string;
+  /** The other firm's role on the matter (migration 63): lead_counsel, supporting_counsel, local_counsel, foreign_counsel, co_counsel, specialist_consultant. */
+  role?: string | null;
   /** A snapshot taken at proposal. The other firm never reads the live matter. */
   case_title: string | null;
   suit_number: string | null;
@@ -1392,6 +1394,7 @@ export interface CollaborationRow {
 /** collaboration_inbox (migration 45): the collaborating firm's only read path. */
 export interface CollaborationInboxRow {
   id: string;
+  role?: string | null;
   kind: string;
   case_title: string | null;
   suit_number: string | null;
@@ -1738,4 +1741,253 @@ export interface MemberPermissionRow {
   granted: boolean;
   granted_by: string | null;
   created_at: string;
+}
+
+// ---- Docket Network (migration 63)
+
+/** Row of firm_network_profiles, the firm's own. */
+export interface NetworkProfileRow {
+  firm_id: string;
+  visibility: "network" | "connections" | "private";
+  official_email: string | null;
+  website: string | null;
+  telephone: string | null;
+  office_address: string | null;
+  registration_details: string | null;
+  country_code: string;
+  region: string | null;
+  city: string | null;
+  practice_areas: string[];
+  jurisdictions: string[];
+  languages: string[];
+  specialisms: string[];
+  description: string | null;
+  accepts_referrals: boolean;
+  accepts_joint_matters: boolean;
+  accepts_introductions: boolean;
+  share_contacts: boolean;
+  updated_at: string;
+}
+
+/** Row of network_directory: another firm as it chose to be found. No contact details. */
+export interface NetworkDirectoryRow {
+  firm_id: string;
+  name: string;
+  legal_name: string | null;
+  jurisdiction_code: string;
+  country_code: string;
+  region: string | null;
+  city: string | null;
+  website: string | null;
+  practice_areas: string[];
+  jurisdictions: string[];
+  languages: string[];
+  specialisms: string[];
+  description: string | null;
+  accepts_referrals: boolean;
+  accepts_joint_matters: boolean;
+  accepts_introductions: boolean;
+  verified: boolean;
+  connected: boolean;
+  mine: boolean;
+}
+
+export interface ConnectionSettings {
+  share_contacts: boolean;
+  allow_joint_matters: boolean;
+  allow_referrals: boolean;
+  allow_introductions: boolean;
+}
+
+/** Row of connected_firms: one per connection and side, the other firm's details where it chose to share them. */
+export interface ConnectedFirmRow {
+  connection_id: string;
+  status: "active" | "review" | "suspended" | "ended";
+  connected_at: string;
+  suspended_at: string | null;
+  suspended_by_firm_id: string | null;
+  suspend_reason: string | null;
+  ended_at: string | null;
+  ended_by_firm_id: string | null;
+  end_reason: string | null;
+  reviewed_at: string | null;
+  my_firm_id: string;
+  other_firm_id: string;
+  other_firm_name: string;
+  other_legal_name: string | null;
+  other_jurisdiction_code: string;
+  country_code: string | null;
+  region: string | null;
+  city: string | null;
+  website: string | null;
+  practice_areas: string[] | null;
+  jurisdictions: string[] | null;
+  languages: string[] | null;
+  specialisms: string[] | null;
+  description: string | null;
+  official_email: string | null;
+  telephone: string | null;
+  office_address: string | null;
+  contacts: Array<{ name: string; title: string; email: string | null }> | null;
+  my_settings: ConnectionSettings;
+  their_settings: ConnectionSettings;
+}
+
+/** Row of network_invitations as the API may read it: no hashes. */
+export interface NetworkInvitationRow {
+  id: string;
+  from_firm_id: string;
+  to_email: string;
+  from_firm_name: string;
+  from_country: string | null;
+  from_practice_areas: string[];
+  from_representative: string | null;
+  reason: string;
+  status: "pending" | "verified" | "accepted" | "declined" | "expired" | "revoked";
+  code_expires_at: string;
+  attempts: number;
+  max_attempts: number;
+  resends: number;
+  max_resends: number;
+  last_sent_at: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
+  accepted_at: string | null;
+  accepted_by: string | null;
+  accepted_firm_id: string | null;
+  connection_id: string | null;
+  declined_at: string | null;
+  decline_reason: string | null;
+  revoked_at: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+/** Row of network_incoming: an invitation a member of this firm verified, awaiting the firm's answer. */
+export interface NetworkIncomingRow {
+  id: string;
+  from_firm_id: string;
+  from_firm_name: string;
+  from_country: string | null;
+  from_practice_areas: string[];
+  from_representative: string | null;
+  reason: string;
+  to_email: string;
+  verified_at: string;
+  verified_by: string;
+  my_firm_id: string;
+}
+
+export interface JointMatterParticipant {
+  collaboration_id: string;
+  firm_id: string;
+  firm_name: string;
+  kind: string;
+  role: string | null;
+  accepted_at: string;
+  ends_on: string | null;
+}
+
+/** Row of joint_matters: the lead firm's matters with at least one live arrangement. */
+export interface JointMatterRow {
+  matter_id: string;
+  firm_id: string;
+  reference: string;
+  title: string;
+  suit_number: string | null;
+  court_name: string | null;
+  live_collaborations: number;
+  participants: JointMatterParticipant[];
+  open_tasks: number;
+}
+
+/** Row of collaboration_tasks: a task one firm set the other inside a live arrangement. */
+export interface CollaborationTaskRow {
+  id: string;
+  collaboration_id: string;
+  firm_id: string;
+  assigned_firm_id: string;
+  title: string;
+  detail: string | null;
+  due_on: string | null;
+  status: "open" | "done" | "cancelled";
+  created_by: string | null;
+  created_at: string;
+  closed_at: string | null;
+  closed_by: string | null;
+}
+
+/** Row of network_introductions. */
+export interface IntroductionRow {
+  id: string;
+  from_firm_id: string;
+  to_firm_id: string;
+  kind: "introduction" | "referral_request";
+  country_code: string | null;
+  practice_area: string | null;
+  brief: string;
+  status: "sent" | "accepted" | "declined" | "withdrawn";
+  response: string | null;
+  responded_at: string | null;
+  responded_by: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface AllianceRow {
+  id: string;
+  name: string;
+  founded_by_firm_id: string;
+  practice_areas: string[];
+  jurisdictions: string[];
+  referral_procedure: string | null;
+  preferences: Record<string, unknown>;
+  status: "proposed" | "active" | "terminated";
+  starts_on: string | null;
+  renews_on: string | null;
+  terminated_at: string | null;
+  terminated_by_firm_id: string | null;
+  termination_reason: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+export interface AllianceMemberRow {
+  alliance_id: string;
+  firm_id: string;
+  role: "founder" | "member";
+  status: "invited" | "accepted" | "declined" | "left";
+  contact_user_id: string | null;
+  invited_at: string;
+  responded_at: string | null;
+  responded_by: string | null;
+}
+
+export interface AllianceNoteRow {
+  id: string;
+  alliance_id: string;
+  firm_id: string;
+  author_id: string | null;
+  visibility: "shared" | "internal";
+  body: string;
+  created_at: string;
+}
+
+/** network_overview(): the dashboard's counts, in one trip. */
+export interface NetworkOverview {
+  connected: number;
+  in_review: number;
+  suspended: number;
+  outgoing_open: number;
+  incoming_to_answer: number;
+  joint_matters: number;
+  work_from_others: number;
+  collaborations_to_answer: number;
+  open_tasks_for_us: number;
+  approaches_to_answer: number;
+  approaches_open: number;
+  alliances_active: number;
+  alliances_to_answer: number;
+  profile_published: boolean;
+  verified: boolean;
 }

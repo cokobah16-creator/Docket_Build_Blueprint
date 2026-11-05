@@ -55,7 +55,7 @@ import { STAFF_FIRM_COOKIE, STAFF_FIRM_MAX_AGE } from "@/lib/staff-firm";
 import { PATHNAME_HEADER } from "@/lib/auth-redirect";
 import { refreshSession } from "@/lib/supabase/middleware";
 
-const APP_PREFIXES = ["/app", "/firm", "/admin", "/registry", "/auth", "/api"];
+const APP_PREFIXES = ["/app", "/firm", "/admin", "/registry", "/auth", "/api", "/network"];
 
 /** Headers a caller must never be able to assert. Deleted inbound, set by us or not at all. */
 const CLIENT_SPOOFABLE = [

@@ -20,6 +20,7 @@ const proposeSchema = z.object({
   matterId: uuid,
   withFirmId: uuid,
   kind: z.enum(["referral", "joint_counsel", "agency"]),
+  role: z.enum(["lead_counsel", "supporting_counsel", "local_counsel", "foreign_counsel", "co_counsel", "specialist_consultant"]).nullish(),
   scopeNote: z.string().trim().min(2, "Say what you are asking them to do.").max(2000),
   shareUpdates: z.boolean(),
   endsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Give the day as YYYY-MM-DD.").nullable(),
@@ -33,7 +34,7 @@ export async function proposeCollaboration(input: ProposeInput): Promise<{ error
   if (!supabase) return { error: "Not configured." };
   const { data, error } = await supabase.rpc("propose_collaboration", {
     p_matter: d.matterId, p_with_firm: d.withFirmId, p_kind: d.kind,
-    p_scope_note: d.scopeNote, p_share_updates: d.shareUpdates, p_ends_on: d.endsOn,
+    p_scope_note: d.scopeNote, p_share_updates: d.shareUpdates, p_ends_on: d.endsOn, p_role: d.role ?? null,
   });
   if (error) return { error: error.message };
   revalidatePath(`/firm/matters/${d.matterId}`);

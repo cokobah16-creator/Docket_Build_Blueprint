@@ -1,4 +1,5 @@
 // Supabase Edge Function — notification dispatcher. pg_cron calls it every minute with the x-cron-secret header (migration 9).
+// v11 (migration 63): renders the Docket Network events and drains the outbox of emails to addresses with no account.
 // Claims `notifications` rows through claim_notifications() (migration 37: status 'sending', locked, so
 // two runs never take the same row), sends each for email / sms / push, and finishes each through
 // finish_notification() with what the provider actually said: its message id, the segments, the cost
@@ -186,6 +187,21 @@ function render(n: Row, firm: string, tz: string): { subject: string; text: stri
     case 'service_acknowledged':     return { subject: `Docket: service of ${p.process_title} acknowledged`, text: `${p.by_firm} acknowledged service of ${p.process_title}.`, url: `/firm/inbox` };
     case 'settlement_mismatch':      return { subject: `Docket: payment for ${p.invoice_number} did not settle to your account`, text: `A payment of ${p.currency} ${(Number(p.amount_minor) / 100).toLocaleString('en-NG')} for invoice ${p.invoice_number} was reported against a different Paystack subaccount and has NOT been applied. Check your Paystack subaccount in settings and contact Docket.`, url: `/firm` };
     case 'firm_activated':           return { subject: `Docket: ${firm} is live`, text: `${firm} has been verified and activated on Docket. Your public site and bookings are now open.`, url: `/firm` };
+    // Docket Network (migration 63). These reach firm staff, so their links open the console.
+    case 'network_invitation_received': return { subject: `Docket: ${p.from_firm_name ?? 'a firm'} invites your firm to connect`, text: `${p.from_firm_name ?? 'A firm'}${p.from_country ? ` (${p.from_country})` : ''} has invited your firm to connect on Docket. The verification code is in the email sent to the address they invited; nothing happens without it.`, url: `/firm/network` };
+    case 'network_invitation_verified': return { subject: `Docket: your invitation to ${p.to_email ?? 'a firm'} was received`, text: `Somebody entered the code you sent to ${p.to_email ?? 'the firm'}. Their firm's owner or administrator now decides whether to connect.`, url: `/firm/network` };
+    case 'network_connection_accepted': return { subject: `Docket: connected with ${p.firm_name ?? 'a firm'}`, text: `Your firm and ${p.firm_name ?? 'another firm'} are now connected on Docket. Nothing is shared by the connection itself: bring them onto a matter when there is one.`, url: `/firm/network` };
+    case 'network_connection_declined': return { subject: `Docket: ${p.firm_name ?? 'a firm'} declined to connect`, text: `${p.firm_name ?? 'The firm'} declined your invitation to connect.${p.reason ? ` ${p.reason}` : ''}`, url: `/firm/network` };
+    case 'network_connection_review':   return { subject: `Docket: connection with ${p.firm_name ?? 'a firm'} is in review`, text: `The address you invited does not match anything ${p.firm_name ?? 'the firm'} has told Docket about itself, so the connection waits for Docket to check it. You will be told when it is settled.`, url: `/firm/network` };
+    case 'network_connection_suspended': return { subject: `Docket: ${p.firm_name ?? 'a firm'} suspended your connection`, text: `${p.firm_name ?? 'The firm'} has suspended the connection with your firm.${p.reason ? ` ${p.reason}` : ''} No new work can start between you until they lift it; what is already shared stays as it is.`, url: `/firm/network` };
+    case 'network_connection_ended':    return { subject: `Docket: the connection with ${p.firm_name ?? 'a firm'} has ended`, text: `${p.by_firm_name ?? 'A firm'} ended the connection with your firm.${p.reason ? ` ${p.reason}` : ''}${Number(p.collaborations_ended) > 0 ? ` ${p.collaborations_ended} shared matter arrangement${Number(p.collaborations_ended) === 1 ? '' : 's'} ended with it.` : ''} Nothing already downloaded is recalled.`, url: `/firm/network` };
+    case 'collaboration_task_assigned': return { subject: `Docket: ${p.from_firm_name ?? 'a firm'} set your firm a task`, text: `${p.from_firm_name ?? 'A firm'} asks: ${p.title}${p.due_on ? `, by ${fmtDay(String(p.due_on))}` : ''}${p.case_title ? ` (${p.case_title})` : ''}.`, url: `/firm/collaborations` };
+    case 'introduction_requested':      return { subject: `Docket: ${p.firm_name ?? 'a firm'} would like ${p.kind === 'referral_request' ? 'to refer a matter' : 'an introduction'}`, text: `${p.firm_name ?? 'A firm'} has sent your firm ${p.kind === 'referral_request' ? 'a referral request' : 'an introduction request'}${p.practice_area ? ` in ${p.practice_area}` : ''}. Open Docket Network to read it and answer.`, url: `/firm/network` };
+    case 'introduction_answered':       return { subject: `Docket: ${p.firm_name ?? 'a firm'} ${p.accepted ? 'accepted' : 'declined'} your approach`, text: `${p.firm_name ?? 'The firm'} ${p.accepted ? 'accepted' : 'declined'} your ${p.kind === 'referral_request' ? 'referral request' : 'introduction request'}.${p.response ? ` ${p.response}` : ''}`, url: `/firm/network` };
+    case 'alliance_proposed':           return { subject: `Docket: ${p.firm_name ?? 'a firm'} proposes an alliance`, text: `${p.firm_name ?? 'A firm'} has asked your firm to join the alliance "${p.name ?? ''}". Open Docket Network to accept or decline.`, url: `/firm/network/alliances` };
+    case 'alliance_accepted':           return { subject: `Docket: ${p.firm_name ?? 'a firm'} joined ${p.name ?? 'the alliance'}`, text: `${p.firm_name ?? 'A firm'} accepted the alliance "${p.name ?? ''}".`, url: `/firm/network/alliances` };
+    case 'alliance_declined':           return { subject: `Docket: ${p.firm_name ?? 'a firm'} declined ${p.name ?? 'the alliance'}`, text: `${p.firm_name ?? 'A firm'} declined the alliance "${p.name ?? ''}".`, url: `/firm/network/alliances` };
+    case 'alliance_terminated':         return { subject: `Docket: ${p.name ?? 'an alliance'} has been terminated`, text: `${p.firm_name ?? 'A member firm'} terminated the alliance "${p.name ?? ''}". Each firm keeps its own records.`, url: `/firm/network/alliances` };
     default:                         return { subject: `${firm}: notification`, text: `You have a new notification from ${firm}. Open the app for details.`, url: '/app' };
   }
 }
@@ -378,5 +394,31 @@ Deno.serve(async (req: Request) => {
       if (se.transient && r.send_attempts < 5) requeued++; else failed++;
     }
   }
-  return new Response(JSON.stringify({ sent, failed, requeued, unfinalised }), { headers: { 'Content-Type': 'application/json' } });
+  // The outbox (migration 63): emails to addresses that have no account, which enqueue_notification()
+  // cannot carry. A network invitation is one. The same claim and finish discipline as above: a row
+  // left 'sending' is requeued after ten minutes, a transient failure comes back with a delay, a
+  // permanent one stops. {link} in the body is this deployment's APP_URL plus the stored path, so
+  // the database never has to know where the app lives.
+  let emails = 0, emailsFailed = 0;
+  const { data: outbox, error: outboxError } = await supabase.rpc('claim_outbound_emails', { p_limit: 20 });
+  if (outboxError) {
+    console.error('claim_outbound_emails failed', outboxError.message);
+  } else {
+    for (const e of (outbox ?? []) as Array<{ id: string; to_email: string; from_name: string | null; subject: string; body: string; link_path: string | null; send_attempts: number }>) {
+      try {
+        const link = e.link_path ? (Deno.env.get('APP_URL') ?? '') + e.link_path : '';
+        const text = e.body.replace(/\{link\}/g, link);
+        const result = await sendEmail(e.to_email, e.subject, text, e.from_name ?? 'Docket');
+        const { error: finErr } = await supabase.rpc('finish_outbound_email', { p_id: e.id, p_outcome: 'sent', p_provider: result.provider, p_provider_ref: result.ref });
+        if (finErr) { console.error('finish_outbound_email failed', e.id, finErr.message); unfinalised++; }
+        emails++;
+      } catch (err: any) {
+        const se = err instanceof SendError ? err : new SendError(String(err?.message ?? err), true, null);
+        const { error: finErr } = await supabase.rpc('finish_outbound_email', { p_id: e.id, p_outcome: 'failed', p_provider: se.provider, p_error: se.message.slice(0, 500), p_failure_kind: se.transient ? 'transient' : 'permanent' });
+        if (finErr) { console.error('finish_outbound_email failed', e.id, finErr.message); unfinalised++; }
+        emailsFailed++;
+      }
+    }
+  }
+  return new Response(JSON.stringify({ sent, failed, requeued, unfinalised, emails, emailsFailed }), { headers: { 'Content-Type': 'application/json' } });
 });

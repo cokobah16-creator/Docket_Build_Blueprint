@@ -13,6 +13,8 @@ export interface ProposeInput {
   matterId: string;
   withFirmId: string;
   kind: string;
+  /** The other firm's role on the matter (migration 63), or null. */
+  role?: string | null;
   scopeNote: string;
   shareUpdates: boolean;
   endsOn: string | null;
